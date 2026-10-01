@@ -1,0 +1,1434 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   64 seconds
+Total segments:       8
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          8
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+WARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1095/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+Director Request 1 shot-script structure failed (attempt 1/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.
+Checking pronouns segment:
+Checking pronouns segment: LLM result=Amy, a woman in her 30s wearing a white kitchen apron, stands by the stove. Will, a 10‑year‑old boy in a blue t‑shirt and shorts, and Amber, a 14‑year‑old girl in a green hoodie and jeans giggle over their cereal.
+At 00:01.200, Amy finishes stirring her oatmeal, a bowl of steaming porridge swirling with the spoon’s motion.
+At 00:02.600, Amy sets the bowl on the stove counter, letting it rest beside the pot of boiling water.
+At 00:04.400, Will and Amber laugh together as their cereal clinks against bowls, sunlight pouring through the kitchen window amplifying their giggles.
+At 00:06.800, a sudden groan rattles the windows, echoing across the sunny kitchen.
+Checking pronouns segment: replaced At 00:02.600, she sets the bowl on the stove counter, letting it rest beside the pot of boiling water. -> At 00:02.600, Amy sets the bowl on the stove counter, letting it rest beside the pot of boiling water.
+Segment 1 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+Amy, a woman in her 30s wearing a white kitchen apron, stands by the stove. Will, a 10‑year‑old boy in a blue t‑shirt and shorts, and Amber, a 14‑year‑old girl in a green hoodie and jeans giggle over their cereal.
+At 00:01.200, Amy finishes stirring her oatmeal, a bowl of steaming porridge swirling with the spoon’s motion.
+At 00:02.600, Amy sets the bowl on the stove counter, letting it rest beside the pot of boiling water.
+At 00:04.400, Will and Amber laugh together as their cereal clinks against bowls, sunlight pouring through the kitchen window amplifying their giggles.
+At 00:06.800, a sudden groan rattles the windows, echoing across the sunny kitchen.
+End continuity state: Amy stands near the stove holding the oatmeal bowl; Will and Amber are still laughing over their cereal in front of the stove while sunlight streams through the window which rattles from the groan.
+================================================================
+
+================================================================
+H3 AUDIO REQUEST - SEGMENT 1
+================================================================
+H3 audio segment 1: soundscape='stirring spoon on oatmeal (00:01.200), bowl setting sound (00:02.600), cereal clink and giggles (00:04.400), groan echoing through kitchen windows (00:06.800)'; music='soft acoustic guitar arpeggios'
+Combined continuity requested for segment 1 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 1: Amy finishes stirring her oatmeal and sets it on the stove while Will and Amber giggle over cereal, their laughter echoing through the sunny kitchen just as a sudden groan rattles the windows.
+Next required after this prompt:
+  Beat 2: A zombie bursts through the front door, shuffling toward her; she grabs the kids by their shoulders, pushes them into the back bedroom closet, slamming the heavy door behind them.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 1
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.
+<Subject 2> is Will, a 10-year-old boy.
+<Subject 3> is Amber, a 14-year-old girl.
+
+detailed_description: Amy, a woman in her 30s wearing a white kitchen apron, stands by the stove. Will, a 10‑year‑old boy in a blue t‑shirt and shorts, and Amber, a 14‑year‑old girl in a green hoodie and jeans giggle over their cereal.
+
+At 00:01.200, Amy finishes stirring her oatmeal, a bowl of steaming porridge swirling with the spoon’s motion.
+
+At 00:02.600, Amy sets the bowl on the stove counter, letting it rest beside the pot of boiling water.
+
+At 00:04.400, Will and Amber laugh together as their cereal clinks against bowls, sunlight pouring through the kitchen window amplifying their giggles.
+
+At 00:06.800, a sudden groan rattles the windows, echoing across the sunny kitchen.
+
+overall_soundscape: stirring spoon on oatmeal (00:01.200), bowl setting sound (00:02.600), cereal clink and giggles (00:04.400), groan echoing through kitchen windows (00:06.800)
+
+non_diegetic_music: soft acoustic guitar arpeggios
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 1
+Added States: 
+
+ComfyUI render skipped for segment 1; continuing with prompt-derived continuity only.
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "N/A",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "near stove",
+      "pose_action": "standing holding oatmeal bowl",
+      "wardrobe": {
+        "upper": "white kitchen apron",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "near stove"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "front of stove",
+      "pose_action": "laughing",
+      "wardrobe": {
+        "upper": "blue t‑shirt",
+        "lower": "shorts",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "front of stove"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "front of stove",
+      "pose_action": "laughing",
+      "wardrobe": {
+        "upper": "green hoodie",
+        "lower": "jeans",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "front of stove"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 1; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands near the stove holding an oatmeal bowl. Will laughs in front of the stove. Amber laughs in front of the stove.
+================================================================
+Segment 1 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 1 completed Beat 1.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 1.
+Completed prompt generation for segment 1; no ComfyUI request was sent.
+
+================================================================
+SEGMENT 2/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1088/4500 tokens (recent exact segments: 0)
+Segment 2 Director continuity source: prompt
+Checking pronouns segment:
+Checking pronouns segment: LLM result=At 00:01.200, the front door of the house slams open with a creak as a zombie’s head and arm burst through, shuffling forward toward Amy.
+
+At 00:02.800, Amy turns sharply, eyes wide; Will and Amber freeze mid‑laugh while their cereal bowls wobble on the stove.
+
+At 00:04.200, Amy grabs Will by his right shoulder with her left hand and Amber by her left shoulder with her right, pulling them together toward the back bedroom door.
+
+At 00:05.600, Amy thrusts both kids into the closet; Will and Amber tumble onto the wooden floor behind its heavy metal door while their bowls slide across the surface.
+
+At 00:07.000, Amy slams the closet door shut with a loud thud, the hinges groaning as it closes against the hallway.
+Checking pronouns segment: replaced At 00:05.600, she thrusts both kids into the closet; they tumble onto the wooden floor behind its heavy metal door while their bowls slide across the surface. -> At 00:05.600, Amy thrusts both kids into the closet; Will and Amber tumble onto the wooden floor behind its heavy metal door while their bowls slide across the surface.
+Segment 2 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 2
+================================================================
+At 00:01.200, the front door of the house slams open with a creak as a zombie’s head and arm burst through, shuffling forward toward Amy.
+
+At 00:02.800, Amy turns sharply, eyes wide; Will and Amber freeze mid‑laugh while their cereal bowls wobble on the stove.
+
+At 00:04.200, Amy grabs Will by his right shoulder with her left hand and Amber by her left shoulder with her right, pulling them together toward the back bedroom door.
+
+At 00:05.600, Amy thrusts both kids into the closet; Will and Amber tumble onto the wooden floor behind its heavy metal door while their bowls slide across the surface.
+
+At 00:07.000, Amy slams the closet door shut with a loud thud, the hinges groaning as it closes against the hallway.
+End continuity state: The back bedroom closet door is closed; Will and Amber are inside, on the floor with their cereal bowls still in place; Amy stands at its base holding the heavy door shut while the zombie lingers in the hallway.
+================================================================
+
+================================================================
+H3 AUDIO REQUEST - SEGMENT 2
+================================================================
+H3 audio segment 2: soundscape='creak, shuffling footstep, heavy metal clank of zombie head and arm burst through door, Amy’s sharp turn (a quick whoosh), cereal bowls wobble on stove, wooden floor thud as Will and Amber tumble into closet, bowl slide across wood, loud thud from closing closet door with hinges groaning'; music='continues from <Video 1>. A subtle low rumbling underscore swells to match the tension of Amy’s swift capture, then transitions smoothly into a sharp staccato rhythm as she slams the closet shut.'
+Combined continuity requested for segment 2 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 2: A zombie bursts through the front door, shuffling toward her; she grabs the kids by their shoulders, pushes them into the back bedroom closet, slamming the heavy door behind them.
+Next required after this prompt:
+  Beat 3: Amy sprints into the kitchen, stops as the zombie’s clumsy footsteps echo down the hallway.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 2
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+<Subject 2> is Will, a 10-year-old boy. continued from <Video 1>.
+<Subject 3> is Amber, a 14-year-old girl. continued from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:01.200, the front door of the house slams open with a creak as a zombie’s head and arm burst through, shuffling forward toward Amy.
+
+At 00:02.800, Amy turns sharply, eyes wide; Will and Amber freeze mid‑laugh while their cereal bowls wobble on the stove.
+
+At 00:04.200, Amy grabs Will by his right shoulder with her left hand and Amber by her left shoulder with her right, pulling them together toward the back bedroom door.
+
+At 00:05.600, Amy thrusts both kids into the closet; Will and Amber tumble onto the wooden floor behind its heavy metal door while their bowls slide across the surface.
+
+At 00:07.000, Amy slams the closet door shut with a loud thud, the hinges groaning as it closes against the hallway.
+
+overall_soundscape: creak, shuffling footstep, heavy metal clank of zombie head and arm burst through door, Amy’s sharp turn (a quick whoosh), cereal bowls wobble on stove, wooden floor thud as Will and Amber tumble into closet, bowl slide across wood, loud thud from closing closet door with hinges groaning
+
+non_diegetic_music: continues from <Video 1>. A subtle low rumbling underscore swells to match the tension of Amy’s swift capture, then transitions smoothly into a sharp staccato rhythm as she slams the closet shut.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.Added States: 
+
+# ================================================================ END H3 PROMPT - SEGMENT 2
+
+ComfyUI render skipped for segment 2; continuing with prompt-derived continuity only.
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "N/A",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "at base of closet door, holding it shut",
+      "pose_action": "holding closet door closed",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on floor inside back bedroom closet",
+      "pose_action": "tumble on floor, cereal bowl in hand",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "near Amber"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on floor inside back bedroom closet",
+      "pose_action": "tumble on floor, cereal bowl in hand",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "near Will"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 2; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands at the base of the closet door, holding it closed. Will tumbles on the floor inside the back bedroom closet, a cereal bowl in his hand. Amber also tumbles on the floor inside the back bedroom closet, a cereal bowl in her hand.
+================================================================
+Segment 2 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 2 completed Beat 2.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 2.
+Completed prompt generation for segment 2; no ComfyUI request was sent.
+
+================================================================
+SEGMENT 3/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1078/4500 tokens (recent exact segments: 0)
+Segment 3 Director continuity source: prompt
+Checking pronouns segment:
+Checking pronouns segment: LLM result=At 00:01.000, Amy pulls her weight off the closed back‑bedroom closet door and steps out into the hallway, holding the heavy shut door behind her.
+
+At 00:02.200, Amy sprints down the narrow hallway, legs pumping fast; camera follows Amy from a low angle to emphasize speed.
+
+At 00:04.500, clumsy zombie footsteps echo against the floorboards—sudden thuds heard as the creature lurches past the closet door, its silhouette flickering in the dim hallway light.
+
+At 00:06.300, Amy stops at the kitchen doorway, turning her head to scan for danger while the last footstep rings out behind her.
+Checking pronouns segment: replaced At 00:02.200, she sprints down the narrow hallway, legs pumping fast; camera follows her from a low angle to emphasize speed. -> At 00:02.200, Amy sprints down the narrow hallway, legs pumping fast; camera follows Amy from a low angle to emphasize speed.
+Segment 3 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 3
+================================================================
+At 00:01.000, Amy pulls her weight off the closed back‑bedroom closet door and steps out into the hallway, holding the heavy shut door behind her.
+
+At 00:02.200, Amy sprints down the narrow hallway, legs pumping fast; camera follows Amy from a low angle to emphasize speed.
+
+At 00:04.500, clumsy zombie footsteps echo against the floorboards—sudden thuds heard as the creature lurches past the closet door, its silhouette flickering in the dim hallway light.
+
+At 00:06.300, Amy stops at the kitchen doorway, turning her head to scan for danger while the last footstep rings out behind her.
+End continuity state: Amy stands in front of the open kitchen doorway with the back‑bedroom closet door still shut; Will and Amber remain on the floor inside the bedroom, their cereal bowls untouched.
+================================================================
+
+================================================================
+H3 AUDIO REQUEST - SEGMENT 3
+================================================================
+H3 audio segment 3: soundscape='heavy door thud behind Amy; rapid sprint footsteps on narrow hallway floorboards; clumsy zombie footstep echoes against the floorboards, sudden thuds as it lurches past the closet door; final single footstep rings out behind her'; music='continues from <Video 1>. A tense underscore builds with a subtle rhythmic pulse to match Amy’s sprinting pace and transitions into an eerie low drone that swells when the zombie footsteps echo, then tapers off as she stops at the kitchen doorway'
+Combined continuity requested for segment 3 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 3: Amy sprints into the kitchen, stops as the zombie’s clumsy footsteps echo down the hallway.
+Next required after this prompt:
+  Beat 4: She pulls a pistol from a hollowed‑out space in the fridge wall and retrieves a gleaming katana tucked beneath her cutting board.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 3
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:01.000, Amy pulls her weight off the closed back‑bedroom closet door and steps out into the hallway, holding the heavy shut door behind her.
+
+At 00:02.200, Amy sprints down the narrow hallway, legs pumping fast; camera follows Amy from a low angle to emphasize speed.
+
+At 00:04.500, clumsy zombie footsteps echo against the floorboards—sudden thuds heard as the creature lurches past the closet door, its silhouette flickering in the dim hallway light.
+
+At 00:06.300, Amy stops at the kitchen doorway, turning her head to scan for danger while the last footstep rings out behind her.
+
+overall_soundscape: heavy door thud behind Amy; rapid sprint footsteps on narrow hallway floorboards; clumsy zombie footstep echoes against the floorboards, sudden thuds as it lurches past the closet door; final single footstep rings out behind her
+
+non_diegetic_music: continues from <Video 1>. A tense underscore builds with a subtle rhythmic pulse to match Amy’s sprinting pace and transitions into an eerie low drone that swells when the zombie footsteps echo, then tapers off as she stops at the kitchen doorway
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 3
+
+ComfyUI render skipped for segment 3; continuing with prompt-derived continuity only.
+Added States: 
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "N/A",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "front of open kitchen doorway",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "in front of kitchen doorway"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on floor inside back bedroom closet",
+      "pose_action": "tumble on floor, cereal bowl in hand",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "near Amber"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on floor inside back bedroom closet",
+      "pose_action": "tumble on floor, cereal bowl in hand",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "near Will"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 3; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands in front of the open kitchen doorway.  
+Will tumbles on the floor inside the back bedroom closet, holding a cereal bowl.  
+Amber tumbles on the floor inside the back bedroom closet, holding a cereal bowl and near Will.
+================================================================
+Segment 3 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 3 completed Beat 3.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 3.
+Completed prompt generation for segment 3; no ComfyUI request was sent.
+
+================================================================
+SEGMENT 4/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1095/4500 tokens (recent exact segments: 0)
+Segment 4 Director continuity source: prompt
+Director Request 1 shot-script structure failed (attempt 1/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.
+Director Request 1 shot-script structure failed (attempt 2/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.
+Checking pronouns segment:
+Checking pronouns segment: LLM result=At 00:01.000, Amy leans over the refrigerator door, fingers brushing the hollowed‑out space in its wall.
+
+At 00:02.300, Amy slides her hand into that recessed cavity and pulls out a sleek pistol, its gleaming barrel catching kitchen light.
+
+At 00:04.200, Amy lifts a cutting board off the counter with one hand, revealing a katana tucked beneath it; Amy slips the blade into her other hand.
+
+At 00:06.500, Amy holds both weapons upright—pistol in left palm and katana gleaming beside it—ready for action.
+Checking pronouns segment: replaced At 00:04.200, She lifts a cutting board off the counter with one hand, revealing a katana tucked beneath it; she slips the blade into her other hand. -> At 00:04.200, Amy lifts a cutting board off the counter with one hand, revealing a katana tucked beneath it; Amy slips the blade into her other hand.
+Segment 4 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 4
+================================================================
+At 00:01.000, Amy leans over the refrigerator door, fingers brushing the hollowed‑out space in its wall.
+
+At 00:02.300, Amy slides her hand into that recessed cavity and pulls out a sleek pistol, its gleaming barrel catching kitchen light.
+
+At 00:04.200, Amy lifts a cutting board off the counter with one hand, revealing a katana tucked beneath it; Amy slips the blade into her other hand.
+
+At 00:06.500, Amy holds both weapons upright—pistol in left palm and katana gleaming beside it—ready for action.
+End continuity state: Amy stands with back against the open kitchen doorway holding a pistol in one hand and a gleaming katana in the other; Will and Amber remain on bedroom floor with cereal bowls untouched, while the fridge door stays ajar.
+================================================================
+
+================================================================
+H3 AUDIO REQUEST - SEGMENT 4
+================================================================
+H3 audio segment 4: soundscape='[refrigerator door creak, faint humming of fridge compressor, metallic click as Amy pulls pistol out, subtle clang when katana is revealed and slid into hand]'; music='continues from <Video 1> with a low, steady synth pad that swells slightly to underscore the tension in the kitchen scene'
+Combined continuity requested for segment 4 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 4: She pulls a pistol from a hollowed‑out space in the fridge wall and retrieves a gleaming katana tucked beneath her cutting board.
+Next required after this prompt:
+  Beat 5: She fires at the approaching creature, its head snapping off with a wet thud; then she swings the sword, slicing another zombie’s torso cleanly as it staggers back toward the doorway.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 4
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:01.000, Amy leans over the refrigerator door, fingers brushing the hollowed‑out space in its wall.
+
+At 00:02.300, Amy slides her hand into that recessed cavity and pulls out a sleek pistol, its gleaming barrel catching kitchen light.
+
+At 00:04.200, Amy lifts a cutting board off the counter with one hand, revealing a katana tucked beneath it; Amy slips the blade into her other hand.
+
+At 00:06.500, Amy holds both weapons upright—pistol in left palm and katana gleaming beside it—ready for action.
+
+overall_soundscape: [refrigerator door creak, faint humming of fridge compressor, metallic click as Amy pulls pistol out, subtle clang when katana is revealed and slid into hand]
+
+non_diegetic_music: continues from <Video 1> with a low, steady synth pad that swells slightly to underscore the tension in the kitchen scene
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 4
+
+ComfyUI render skipped for segment 4; continuing with prompt-derived continuity only.
+Added States: 
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "N/A",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "back against open kitchen doorway",
+      "pose_action": "holding pistol in left hand and katana in right hand",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "back against kitchen doorway"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on bedroom floor",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "on bedroom floor"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on bedroom floor",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "on bedroom floor"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 4; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy is back against an open kitchen doorway, holding a pistol in her left hand and a katana in her right hand. Will is on the bedroom floor. Amber is also on the bedroom floor.
+================================================================
+Segment 4 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 4 completed Beat 4.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 4.
+Completed prompt generation for segment 4; no ComfyUI request was sent.
+
+================================================================
+SEGMENT 5/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1128/4500 tokens (recent exact segments: 0)
+Segment 5 Director continuity source: prompt
+Director Request 1 shot-script structure failed (attempt 1/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.
+Checking pronouns segment:
+Checking pronouns segment: LLM result=At 00:02.000, Amy pulls the trigger of Amy's pistol and a bullet rockets toward an approaching zombie.
+
+At 00:02.150, the shot hits the creature’s head; its skull snaps off with a wet thud as it falls forward onto the kitchen tiles.
+
+At 00:04.500, a second zombie stumbles into view from the doorway, shoulders shaking as it staggers toward Amy.
+
+At 00:06.200, Amy swings her gleaming katana in one swift motion; the blade slices cleanly through the new zombie’s torso, sending its body back toward the open doorframe.
+Checking pronouns segment: replaced At 00:02.000, Amy pulls the trigger of her pistol and a bullet rockets toward an approaching zombie. -> At 00:02.000, Amy pulls the trigger of Amy's pistol and a bullet rockets toward an approaching zombie.
+Segment 5 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 5
+================================================================
+At 00:02.000, Amy pulls the trigger of Amy's pistol and a bullet rockets toward an approaching zombie.
+
+At 00:02.150, the shot hits the creature’s head; its skull snaps off with a wet thud as it falls forward onto the kitchen tiles.
+
+At 00:04.500, a second zombie stumbles into view from the doorway, shoulders shaking as it staggers toward Amy.
+
+At 00:06.200, Amy swings her gleaming katana in one swift motion; the blade slices cleanly through the new zombie’s torso, sending its body back toward the open doorframe.
+End continuity state: Amy stands by the kitchen doorway with pistol in left hand and katana in right; a severed zombie head lies on the floor near the doorframe while another zombie’s torso is cut and it staggers backward toward the doorway. Will and Amber remain on the bedroom floor with untouched cereal bowls, and the fridge door stays ajar.
+================================================================
+
+================================================================
+H3 AUDIO REQUEST - SEGMENT 5
+================================================================
+H3 audio segment 5: soundscape='["gunshot","head snap wet thud","zombie groan","katana slice"]'; music='continues from <Video 1>. A low, rhythmic drumbeat underscores the action while a subtle synth pad swells as Amy swings her katana.'
+Combined continuity requested for segment 5 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 5: She fires at the approaching creature, its head snapping off with a wet thud; then she swings the sword, slicing another zombie’s torso cleanly as it staggers back toward the doorway.
+Next required after this prompt:
+  Beat 6: More zombies surge through cracks around the doorframe, but Amy keeps her pistol and katana poised, firing one after another until each groaning victim falls with a splash of blood onto the kitchen tiles.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 5Added States: 
+
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:02.000, Amy pulls the trigger of Amy's pistol and a bullet rockets toward an approaching zombie.
+
+At 00:02.150, the shot hits the creature’s head; its skull snaps off with a wet thud as it falls forward onto the kitchen tiles.
+
+At 00:04.500, a second zombie stumbles into view from the doorway, shoulders shaking as it staggers toward Amy.
+
+At 00:06.200, Amy swings her gleaming katana in one swift motion; the blade slices cleanly through the new zombie’s torso, sending its body back toward the open doorframe.
+
+overall_soundscape: ["gunshot", "head snap wet thud", "zombie groan", "katana slice"]
+
+non_diegetic_music: continues from <Video 1>. A low, rhythmic drumbeat underscores the action while a subtle synth pad swells as Amy swings her katana.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 5
+
+ComfyUI render skipped for segment 5; continuing with prompt-derived continuity only.
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "standing",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "by the kitchen doorway",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "near the doorframe"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on the bedroom floor",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "with untouched cereal bowls"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on the bedroom floor",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "with untouched cereal bowls"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 5; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands by the kitchen doorway, near the doorframe.  
+Will is on the bedroom floor, with untouched cereal bowls.  
+Amber is on the bedroom floor, with untouched cereal bowls.
+================================================================
+Segment 5 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 5 completed Beat 5.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 5.
+Completed prompt generation for segment 5; no ComfyUI request was sent.
+
+================================================================
+SEGMENT 6/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1154/4500 tokens (recent exact segments: 0)
+Segment 6 Director continuity source: prompt
+Checking pronouns segment:
+Checking pronouns segment: LLM result=At 00:02.000, A fresh zombie surges through a crack around the kitchen doorframe, its groan echoing as it pushes forward.
+
+At 00:03.200, Amy keeps Amy's pistol poised in left hand and katana ready in right; Amy pulls the trigger, firing an unbroken bullet that hits the zombie’s head.
+
+At 00:04.600, The hit zombie collapses with a splash of blood onto the kitchen tiles, its body slumping into a puddle.
+
+At 00:05.200, A second zombie bursts through another crack; Amy swiftly swings Amy's katana, slicing through the groaning victim.
+
+At 00:06.700, The sliced zombie falls with another splash of blood onto the kitchen tiles, its torso tumbling to a wet pile.
+Checking pronouns segment: replaced At 00:03.200, Amy keeps her pistol poised in left hand and katana ready in right; she pulls the trigger, firing an unbroken bullet that hits the zombie’s head. -> At 00:03.200, Amy keeps Amy's pistol poised in left hand and katana ready in right; Amy pulls the trigger, firing an unbroken bullet that hits the zombie’s head.
+Checking pronouns segment: replaced At 00:05.200, A second zombie bursts through another crack; Amy swiftly swings her katana, slicing through the groaning victim. -> At 00:05.200, A second zombie bursts through another crack; Amy swiftly swings Amy's katana, slicing through the groaning victim.
+Segment 6 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 6
+================================================================
+At 00:02.000, A fresh zombie surges through a crack around the kitchen doorframe, its groan echoing as it pushes forward.
+
+At 00:03.200, Amy keeps Amy's pistol poised in left hand and katana ready in right; Amy pulls the trigger, firing an unbroken bullet that hits the zombie’s head.
+
+At 00:04.600, The hit zombie collapses with a splash of blood onto the kitchen tiles, its body slumping into a puddle.
+
+At 00:05.200, A second zombie bursts through another crack; Amy swiftly swings Amy's katana, slicing through the groaning victim.
+
+At 00:06.700, The sliced zombie falls with another splash of blood onto the kitchen tiles, its torso tumbling to a wet pile.
+End continuity state: Amy stands at the kitchen doorway holding pistol in left hand and katana in right; a splashed zombie head lies near the doorframe on the floor while another zombie corpse rests against the tile wall; fridge door remains ajar.
+================================================================
+
+================================================================
+H3 AUDIO REQUEST - SEGMENT 6
+================================================================
+H3 audio segment 6: soundscape='groaning zombie echoes through kitchen doorframe; pistol trigger click and rapid muzzle flash; sharp metallic slash as katana slices a second zombie; splash of blood on tiles from both fallen corpses; thud of zombies collapsing onto the floor'; music='continues from <Video 1>. A low, rhythmic drumbeat underscores Amy’s swift movements, building tension before she swings her katana.'
+Combined continuity requested for segment 6 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 6: More zombies surge through cracks around the doorframe, but Amy keeps her pistol and katana poised, firing one after another until each groaning victim falls with a splash of blood onto the kitchen tiles.
+Next required after this prompt:
+  Beat 7: Even as the last zombie collapses, fresh pairs emerge from the hallway’s shadow; she meets them head‑on, blasting their heads off before they can reach the closet door.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 6
+Added States: subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:02.000, A fresh zombie surges through a crack around the kitchen doorframe, its groan echoing as it pushes forward.
+
+At 00:03.200, Amy keeps Amy's pistol poised in left hand and katana ready in right; Amy pulls the trigger, firing an unbroken bullet that hits the zombie’s head.
+
+At 00:04.600, The hit zombie collapses with a splash of blood onto the kitchen tiles, its body slumping into a puddle.
+
+At 00:05.200, A second zombie bursts through another crack; Amy swiftly swings Amy's katana, slicing through the groaning victim.
+
+At 00:06.700, The sliced zombie falls with another splash of blood onto the kitchen tiles, its torso tumbling to a wet pile.
+
+overall_soundscape: groaning zombie echoes through kitchen doorframe; pistol trigger click and rapid muzzle flash; sharp metallic slash as katana slices a second zombie; splash of blood on tiles from both fallen corpses; thud of zombies collapsing onto the floor
+
+non_diegetic_music: continues from <Video 1>. A low, rhythmic drumbeat underscores Amy’s swift movements, building tension before she swings her katana.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+
+# ================================================================ END H3 PROMPT - SEGMENT 6
+
+ComfyUI render skipped for segment 6; continuing with prompt-derived continuity only.
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "holding pistol in left hand and katana in right",
+  "ongoing_audio": "groaning zombies echoing through kitchen doorframe; pistol trigger click and rapid muzzle flash; sharp metallic slash as katana slices a second zombie; splash of blood on tiles from both fallen corpses; thud of zombies collapsing onto the floor",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "at the kitchen doorway",
+      "pose_action": "holding pistol in left hand and katana in right",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "zombie head lies near the doorframe on the floor",
+        "zombie corpse rests against the tile wall"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on the bedroom floor",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "with untouched cereal bowls"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on the bedroom floor",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "with untouched cereal bowls"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 6; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands at the kitchen doorway, holding a pistol in her left hand and a katana in her right. A zombie head lies near the doorframe on the floor, while a zombie corpse rests against the tile wall. Groaning zombies echo through the kitchen doorframe; the pistol trigger clicks and emits rapid muzzle flashes. The katana makes a sharp metallic slash as it slices a second zombie, splashing blood onto the tiles from both fallen corpses. A thud is heard as the zombies collapse onto the floor.
+================================================================
+Segment 6 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 6 completed Beat 6.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 6.
+Completed prompt generation for segment 6; no ComfyUI request was sent.
+
+================================================================
+SEGMENT 7/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1136/4500 tokens (recent exact segments: 0)
+Segment 7 Director continuity source: prompt
+Director Request 1 shot-script structure failed (attempt 1/5); retrying: RAW SCENE ends its timed action at 5.8s, too early for a 8-second segment; the final timed micro-beat must land in the final quarter (at or after 6s).
+Checking pronouns segment:
+Checking pronouns segment: LLM result=At 00:01.000, Amy pulls the trigger on a zombie resting against the tile wall; it collapses onto the floor near the splashed head at the kitchen doorway.
+At 00:02.500, fresh pairs of zombies step out from the hallway’s shadow, landing in front of Amy and between Amy and the closet door.
+At 00:03.750, Amy turns to face them, left hand on pistol trigger; Amy shoots one zombie, blasting its head off mid‑step.
+At 00:05.200, Swinging Amy's katana across, Amy slashes two more fresh zombies, their heads flying and falling onto the floorboards.
+At 00:06.800, the remaining fresh pair slump in front of the closet door with their heads already blown off.
+Checking pronouns segment: replaced At 00:02.500, fresh pairs of zombies step out from the hallway’s shadow, landing in front of Amy and between her and the closet door. -> At 00:02.500, fresh pairs of zombies step out from the hallway’s shadow, landing in front of Amy and between Amy and the closet door.
+Checking pronouns segment: replaced At 00:03.750, Amy turns to face them, left hand on pistol trigger; she shoots one zombie, blasting its head off mid‑step. -> At 00:03.750, Amy turns to face them, left hand on pistol trigger; Amy shoots one zombie, blasting its head off mid‑step.
+Checking pronouns segment: replaced At 00:05.200, Swinging her katana across, she slashes two more fresh zombies, their heads flying and falling onto the floorboards. -> At 00:05.200, Swinging Amy's katana across, Amy slashes two more fresh zombies, their heads flying and falling onto the floorboards.
+Segment 7 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 7
+================================================================
+At 00:01.000, Amy pulls the trigger on a zombie resting against the tile wall; it collapses onto the floor near the splashed head at the kitchen doorway.
+At 00:02.500, fresh pairs of zombies step out from the hallway’s shadow, landing in front of Amy and between Amy and the closet door.
+At 00:03.750, Amy turns to face them, left hand on pistol trigger; Amy shoots one zombie, blasting its head off mid‑step.
+At 00:05.200, Swinging Amy's katana across, Amy slashes two more fresh zombies, their heads flying and falling onto the floorboards.
+At 00:06.800, the remaining fresh pair slump in front of the closet door with their heads already blown off.
+End continuity state: Amy stands at kitchen doorway holding pistol left hand and katana right; a splashed zombie head lies near the doorframe on the floor from the last collapse; two freshly collapsed zombies have heads off in front of her; the closet door remains closed; the fridge door stays ajar.
+================================================================
+
+================================================================
+H3 AUDIO REQUEST - SEGMENT 7
+================================================================
+H3 audio segment 7: soundscape='00:01.000 trigger pull click; zombie collapse thuds on tile floor and splashed head splash sound near kitchen doorway; 00:02.500 fresh zombies step out with footstep clacks, landing in front of Amy; 00:03.750 gunshot crack as one zombie’s head is blasted off mid‑step; 00:05.200 katana swish slash sounds and heads flying thunk onto floorboards; 00:06.800 final pair slump with thud and remaining blown-off heads rattling on the ground'; music='continues from <Video 1>. A low, rhythmic drumbeat underscores Amy’s swift movements while a subtle string motif rises as she slashes through fresh zombies.'
+Combined continuity requested for segment 7 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 7: Even as the last zombie collapses, fresh pairs emerge from the hallway’s shadow; she meets them head‑on, blasting their heads off before they can reach the closet door.
+Next required after this prompt:
+  Beat 8: The final zombie lies still on the floorboards; Amy wipes her palm on her jeans and turns toward the back bedroom where Will and Amber wait in silent relief, opens the closet door wide, pulls the two kids out into the kitchen’s bright light.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 7
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:01.000, Amy pulls the trigger on a zombie resting against the tile wall; it collapses onto the floor near the splashed head at the kitchen doorway.
+
+At 00:02.500, fresh pairs of zombies step out from the hallway’s shadow, landing in front of Amy and between Amy and the closet door.
+
+At 00:03.750, Amy turns to face them, left hand on pistol trigger; Amy shoots one zombie, blasting its head off mid‑step.
+
+At 00:05.200, Swinging Amy's katana across, Amy slashes two more fresh zombies, their heads flying and falling onto the floorboards.
+
+At 00:06.800, the remaining fresh pair slump in front of the closet door with their heads already blown off.
+
+overall_soundscape: 00:01.000 trigger pull click; zombie collapse thuds on tile floor and splashed head splash sound near kitchen doorway; 00:02.500 fresh zombies step out with footstep clacks, landing in front of Amy; 00:03.750 gunshot crack as one zombie’s head is blasted off mid‑step; 00:05.200 katana swish slash sounds and heads flying thunk onto floorboards; 00:06.800 final pair slump with thud and remaining blown-off heads rattling on the ground
+
+non_diegetic_music: continues from <Video 1>. A low, rhythmic drumbeat underscores Amy’s swift movements while a subtle string motif rises as she slashes through fresh zombies.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 7
+
+ComfyUI render skipped for segment 7; continuing with prompt-derived continuity only.
+Added States: 
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "standing",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "kitchen doorway",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on the bedroom floor",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "with untouched cereal bowls"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "on the bedroom floor",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "with untouched cereal bowls"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 7; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy is standing in the kitchen doorway.
+================================================================
+Segment 7 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 7 completed Beat 7.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 7.
+Completed prompt generation for segment 7; no ComfyUI request was sent.
+
+================================================================
+SEGMENT 8/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1005/4500 tokens (recent exact segments: 0)
+Segment 8 Director continuity source: prompt
+Director Request 1 shot-script structure failed (attempt 1/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.
+Director Request 1 shot-script structure failed (attempt 2/5); retrying: Timed micro-beats must contain a new visible action/event, not only restate unchanged continuity; put unchanged state only in the untimed End continuity state.
+Director Request 1 physical/order coherence failed (attempt 3/5); retrying: Amy opens the closet door with her left hand while holding a pistol in that same hand; she cannot push it open without first releasing or moving the gun.
+Director Request 1 shot-script structure failed (attempt 4/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.
+Checking pronouns segment:
+Checking pronouns segment: LLM result=At 00:01.000, Amy wipes Amy palm on Amy jeans as the final zombie lies still on the floorboards.
+At 00:02.500, Amy turns toward the back bedroom where Will and Amber wait in silent relief, their eyes brightening.
+At 00:04.200, Amy opens the closet door wide with a quick swing of her left hand holding the pistol, revealing the open doorway into the kitchen.
+At 00:06.700, Amy pulls Will and Amber out through the now-open closet, guiding them into the kitchen’s bright light while keeping Amy katana poised in Amy right hand.
+Checking pronouns segment: replaced At 00:01.000, Amy wipes her palm on her jeans as the final zombie lies still on the floorboards. -> At 00:01.000, Amy wipes Amy palm on Amy jeans as the final zombie lies still on the floorboards.
+Checking pronouns segment: replaced At 00:02.500, she turns toward the back bedroom where Will and Amber wait in silent relief, their eyes brightening. -> At 00:02.500, Amy turns toward the back bedroom where Will and Amber wait in silent relief, their eyes brightening.
+Checking pronouns segment: replaced At 00:06.700, she pulls Will and Amber out through the now-open closet, guiding them into the kitchen’s bright light while keeping her katana poised in her right hand. -> At 00:06.700, Amy pulls Will and Amber out through the now-open closet, guiding them into the kitchen’s bright light while keeping Amy katana poised in Amy right hand.
+Segment 8 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 8
+================================================================
+At 00:01.000, Amy wipes Amy palm on Amy jeans as the final zombie lies still on the floorboards.
+At 00:02.500, Amy turns toward the back bedroom where Will and Amber wait in silent relief, their eyes brightening.
+At 00:04.200, Amy opens the closet door wide with a quick swing of her left hand holding the pistol, revealing the open doorway into the kitchen.
+At 00:06.700, Amy pulls Will and Amber out through the now-open closet, guiding them into the kitchen’s bright light while keeping Amy katana poised in Amy right hand.
+End continuity state: Amy stands at the doorway holding her pistol in her left hand and katana in her right; the closet door is open wide, Will and Amber step onto the kitchen floor under bright light, zombie head remains on the floorboards.
+================================================================
+
+================================================================
+H3 AUDIO REQUEST - SEGMENT 8
+================================================================
+H3 audio segment 8: soundscape='[rustle] [creak_wood] [click_gun_handle] [footsteps_floorboards] [bright_light_hum]'; music='"continues from <Video 1>. A low pulse of strings underscores the tension as Amy leads them into the kitchen."'
+Skipping continuity for final segment 8; no later segment needs its state.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 8: The final zombie lies still on the floorboards; Amy wipes her palm on her jeans and turns toward the back bedroom where Will and Amber wait in silent relief, opens the closet door wide, pulls the two kids out into the kitchen’s bright light.
+Next required after this prompt:
+  All required beats would be complete.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 8
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+<Subject 2> is Will, a 10-year-old boy.
+<Subject 3> is Amber, a 14-year-old girl.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:01.000, Amy wipes Amy palm on Amy jeans as the final zombie lies still on the floorboards.
+
+At 00:02.500, Amy turns toward the back bedroom where Will and Amber wait in silent relief, their eyes brightening.
+
+At 00:04.200, Amy opens the closet door wide with a quick swing of her left hand holding the pistol, revealing the open doorway into the kitchen.
+
+At 00:06.700, Amy pulls Will and Amber out through the now-open closet, guiding them into the kitchen’s bright light while keeping Amy katana poised in Amy right hand.
+
+overall_soundscape: [rustle] [creak_wood] [click_gun_handle] [footsteps_floorboards] [bright_light_hum]
+
+non_diegetic_music: "continues from <Video 1>. A low pulse of strings underscores the tension as Amy leads them into the kitchen."
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 8
+
+ComfyUI render skipped for segment 8; continuing with prompt-derived continuity only.
+Segment 8 completed Beat 8.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 8.
+Completed prompt generation for segment 8; no ComfyUI request was sent.
+All 8 story beats were marked complete.
+Prompt-generation test completed: prompts were generated for all requested segments and no data was sent to ComfyUI.
