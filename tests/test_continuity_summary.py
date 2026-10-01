@@ -1277,7 +1277,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         url = post.call_args.args[0]
         payload = post.call_args.kwargs["json"]
         self.assertEqual(
-            f"{minimax.LM_STUDIO_URL}/v1/chat/completions",
+            f"{minimax.LLM_HOST_URL}/v1/chat/completions",
             url,
         )
         self.assertNotIn("response_format", payload)
