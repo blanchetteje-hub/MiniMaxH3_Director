@@ -50,89 +50,43 @@ A harmless invented motion, route, prop interaction, reaction, or staging choice
 The project goal is to expand paragraph-scale through multi-page stories into fully staged films. The LLM therefore must supply missing cinematic detail rather than mechanically paraphrasing the source.
 
 
-### Sampling policy by responsibility
+### LLM settings by task
 
-Sampling is now a hard responsibility split.
+LLM request settings are selected only by **what the model is being asked to do**.
+The loaded model/formatter must never select temperature, sampling, reasoning,
+prompt transport, or validator settings.
 
-**Creative sampling calls**
-- character canon establishment when configured facts are missing;
-- ARC CREATE and ARC REPAIR;
-- Director Request 1 / RAW scene creation.
+Current task profiles:
 
-These calls use:
-- temperature: `0.8`
-- top_p: `0.95`
-- top_k: `0`
-- min_p: `0.05`
-- repeat_penalty: `1.15`
-- randomized request seed
-- reasoning enabled
-- reasoning_effort: `high`
-- reasoning budget: `1024` tokens
+- `STORY_EXPANSION_LLM_SETTINGS`: continuous prose expansion from the source
+  summary; temperature `0.4`, high reasoning, randomized seed.
+- `CREATIVE_GENERATION_LLM_SETTINGS`: open-ended creative staging such as
+  character canon, ARC create/repair, and Director RAW scene creation;
+  temperature `0.8`, high reasoning, randomized seed.
+- `BEAT_WRITING_LLM_SETTINGS`: Beat CREATE/REPAIR; temperature `0`, high
+  reasoning, seed `42`.
+- `STORY_TO_BEATS_LLM_SETTINGS`: derive Beats from an expanded story;
+  temperature `0`, medium reasoning, seed `42`.
+- `DETERMINISTIC_ANALYSIS_LLM_SETTINGS`: validators, semantic extractors,
+  continuity observers, JSON repair, pronoun cleanup, H3 audio, and every
+  unclassified LLM purpose; temperature `0`, low/128-token reasoning, seed
+  `42`.
 
-**Beat writing calls**
-BEAT CREATE and BEAT REPAIR are semantic writing calls, but local 20B testing showed
-that any temperature above zero causes substantial instruction drift. They therefore use:
-- temperature: `0`
-- seed: `42`
-- repeat_penalty: `1.15`
-- reasoning enabled
-- reasoning_effort: `high`
-- reasoning budget: `1024` tokens
+All profiles use repeat penalty `1.15`. Creative profiles may sample; the
+others are deterministic. `ask_llm()` routes from `history_metadata.purpose`
+to one of these task profiles.
 
-BEAT REPAIR has its own `beat_repair` purpose and must make the smallest textual
-change that fixes the reported validator/coherence issue. The repaired beat is always
-sent back through the normal validator/coherence loop before acceptance.
+Formatter selection (GPT/Qwen/Mistral compatibility code) is output parsing and
+cleanup only. Formatter classes no longer own `DEFAULT_LLM_SETTINGS`, and
+Beat validation no longer swaps prompt/transport settings by active model.
 
-For llama.cpp's OpenAI-compatible request path, Python sends `reasoning_effort="high"`,
-`thinking_budget_tokens=1024`, and `chat_template_kwargs.enable_thinking=true` for
-both creative-sampling calls and Beat writing calls.
-
-**Deterministic calls**
-Every LLM call not on the explicit creative allowlist is deterministic by default.
-This includes validators, semantic extractors, continuity/state observers, JSON
-repair, and the final H3 formatter/translator.
-
-Deterministic calls force:
-- temperature: `0`
-- seed: `42`
-- reasoning enabled
-- reasoning_effort: `low`
-- reasoning budget: `128` tokens
-- reasoning budget message: `. Enough thinking, now answer.`
-
-Existing narrow call-specific sampler values may remain for compatibility, but
-temperature 0 and the low/128 reasoning profile are authoritative.
-
-**llama-server process requirements**
-
-`--deterministic` is a process-level llama.cpp flag, not a per-request JSON
-field. Any llama-server used by this pipeline should therefore be launched with
-`--deterministic`. This stabilizes supported numerical kernels but does not
-remove creative sampling when a request uses temperature 0.8.
-
-The current target server configuration is:
-- `--ctx-size 8192`
-- `--deterministic`
-- `--repeat-penalty 1.15` as a server fallback
-- `--flash-attn on`
-- `--jinja`
-- `--host 0.0.0.0`
-- `--port 1234`
-- `--cache-ram 32768`
-- `--seed 42`
-- `-np 1`
-- `--reasoning-budget-message ". Enough thinking, now answer."`
-
-Do not hard-pin `--reasoning-budget 1024` at server launch when per-request
-creative/deterministic routing is desired; llama.cpp's request-side
-`thinking_budget_tokens` override is used for creative calls. Likewise,
-`reasoning_effort` is sent per creative request so deterministic calls are not
-forced into the creative reasoning profile.
+For llama.cpp's OpenAI-compatible request path, reasoning settings are sent
+per request. `--deterministic` remains a server-process flag and should be
+enabled independently of the loaded model.
 
 Default principle:
 
-> **Only explicit creative stages may sample. Everything else is deterministic by default.**
+> **The task selects the LLM settings. The model never does.**
 
 ### Beat SOURCE FILM authority
 
