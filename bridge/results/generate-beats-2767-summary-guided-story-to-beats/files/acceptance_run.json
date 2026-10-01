@@ -1,0 +1,126 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "db249ed8880bf22a7709458e03db3a74eecdec825573ff8ea0d114ad84e40098",
+  "repository_revision": "c367ecd6ff828bcf4741f3dc74f29afcfcd69ade",
+  "created_at_utc": "2026-10-01T20:21:25Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "8",
+    "--model",
+    "gpt"
+  ],
+  "exit_code": 0,
+  "capture_status": {
+    "complete": true,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 8,
+        "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+        "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+        "characters_introduced": [],
+        "location": "As established by the expanded story.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "Amy flips pancakes while Will laughs at syrup on his spoon and Amber chases a cereal bowl across the counter.",
+            "beat_number": 1,
+            "state_effects": []
+          },
+          {
+            "id": "E2",
+            "event": "A sudden groan rattles the front door; a zombie shuffles inside, its eyes fixed on the kids.",
+            "beat_number": 2,
+            "state_effects": [],
+            "depends_on": [
+              "E1"
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "She grabs Will’s hand, pulls him toward the back bedroom closet, pushes Amber into it beside her brother, they slide down basement stairs and close the hatch behind them with a thud echoing through the house.",
+            "beat_number": 3,
+            "state_effects": [],
+            "depends_on": [
+              "E2"
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "Amy runs to the kitchen drawer, pulls out a hidden pistol, slips a katana from under the rug, then steps onto the living‑room floor heart hammering in her chest.",
+            "beat_number": 4,
+            "state_effects": [],
+            "depends_on": [
+              "E3"
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "The first zombie lunges at Will; Amy fires the pistol, sending it crashing into the wall.",
+            "beat_number": 5,
+            "state_effects": [],
+            "depends_on": [
+              "E4"
+            ]
+          },
+          {
+            "id": "E6",
+            "event": "A second zombie surges toward Amber; she slices its arm with the katana and swings again to finish it.",
+            "beat_number": 6,
+            "state_effects": [],
+            "depends_on": [
+              "E5"
+            ]
+          },
+          {
+            "id": "E7",
+            "event": "More zombies burst from the hallway; Amy keeps shooting and slashing—one by one they fall until only a single zombie remains.",
+            "beat_number": 7,
+            "state_effects": [],
+            "depends_on": [
+              "E6"
+            ]
+          },
+          {
+            "id": "E8",
+            "event": "She pulls the trigger once more, lets her sword fall on the last creature’s chest ending the swarm in a final thud, climbs back up to the closet where Will and Amber wait, lifts them into her arms, and carries them onto the front porch as the sun warms their faces.",
+            "beat_number": 8,
+            "state_effects": [],
+            "depends_on": [
+              "E7"
+            ]
+          }
+        ],
+        "required_end_state": "End at the expanded story's stated conclusion."
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. Amy flips pancakes until they’re golden brown, while Will laughs at syrup on his spoon and Amber chases a cereal bowl across the counter.\n2. A sudden groan rattles the front door; a zombie shuffles inside, its eyes fixed on the kids.\n3. She grabs Will’s hand, pulls him toward the back bedroom closet, pushes Amber into it beside her brother, they slide down basement stairs and close the hatch behind them with a thud echoing through the house.\n4. From the closet, Amy rushes into the kitchen, grabs a hidden pistol from the drawer, pulls a katana out of the rug, and strides onto the living‑room floor with her heart hammering.\n5. The first zombie lunges at Will; Amy fires the pistol, sending it crashing into the wall.\n6. Amber rushes into the kitchen, grabs the katana from under the rug, and slices a surging zombie’s arm before finishing it with another swing.\n7. With her pistol in hand and katana at her side, Amy rushes into the hallway, firing shots while slicing each new zombie until only one stands.\n8. She pulls the trigger once more, lets her sword fall on the last creature’s chest ending the swarm in a final thud, climbs back up to the closet where Will and Amber wait, lifts them into her arms, and carries them onto the front porch as the sun warms their faces.\n",
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
