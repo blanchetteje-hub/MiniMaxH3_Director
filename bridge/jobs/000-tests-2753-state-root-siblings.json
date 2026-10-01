@@ -1,0 +1,10 @@
+{
+  "job_id": "tests-2753-state-root-siblings",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_forward_beat_validation.py",
+    "tests/test_summary_to_story_pipeline.py"
+  ],
+  "timeout_seconds": 1800
+}
