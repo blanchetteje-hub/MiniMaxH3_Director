@@ -3,7 +3,7 @@
 > Write a paragraph or a full story, define the characters, have MiniMaxH3 Continuous Video Generator create it.
 
 MiniMaxH3 Continuous Video Automator turns a written story or creative brief
-into a continuous sequence of MiniMax H3 video clips. It uses LM Studio as the
+into a continuous sequence of MiniMax H3 video clips. It uses LLM host as the
 writer/director and ComfyUI as the renderer, then joins the clips into one MP4.
 
 The desktop app is the easiest way to use it. The command line is available for
@@ -18,7 +18,7 @@ You supply those separately and connect them through the setup below.
 - Optionally turns the story into an ordered beat list and a saved story arc.
 - Uses `subjects.txt` and up to six reference images to keep characters and
   visual identity consistent.
-- Asks LM Studio for one directed shot at a time and formats it for MiniMax H3.
+- Asks LLM host for one directed shot at a time and formats it for MiniMax H3.
 - Uses initial, continuation, and optional clean-refresh ComfyUI workflows.
 - Checkpoints successful segments so an interrupted run can resume.
 - Trims continuation overlap frames and writes `final.mp4` with FFmpeg.
@@ -40,7 +40,7 @@ You also need:
 - Windows 10/11 or a current Linux distribution.
 - Python 3.10 or newer.
 - A current [ComfyUI installation](https://docs.comfy.org/installation/).
-- [LM Studio](https://lmstudio.ai/download) with a loaded instruction-following
+- [LLM host](https://lmstudio.ai/download) with a loaded instruction-following
   model and its local API server enabled.
 - [FFmpeg](https://ffmpeg.org/download.html), with both `ffmpeg` and `ffprobe`
   available on `PATH`.
@@ -55,10 +55,10 @@ You also need:
 
 The application has three cooperating stages:
 
-1. **Writer:** if `beats.txt` is empty, LM Studio expands `story.txt` into a
+1. **Writer:** if `beats.txt` is empty, LLM host expands `story.txt` into a
    macro story arc and then an ordered beat for each requested segment. You can
    also write the beats yourself.
-2. **Director:** for each segment, LM Studio turns the active beat and the
+2. **Director:** for each segment, LLM host turns the active beat and the
    committed continuity state into a structured shot, then formats it as a
    MiniMax H3 audiovisual prompt. Python validates the result and keeps beat and
    subject identities consistent.
@@ -125,14 +125,14 @@ for the complete workflow.
 
 The program uses:
 
-- **LM Studio** to turn a story and ordered beat list into one directed shot at
+- **LLM host** to turn a story and ordered beat list into one directed shot at
   a time.
 - **ComfyUI** to render the first clip and extend it with later clips.
 - **FFmpeg** to remove overlap frames and concatenate the clips into a final
   MP4.
 
 The automation checkpoints every successful segment, tracks completed story
-beats, and keeps LM Studio context bounded to structured continuity state plus
+beats, and keeps LLM host context bounded to structured continuity state plus
 the two newest exact prompts. An interrupted run can resume without
 regenerating completed clips.
 
@@ -144,7 +144,7 @@ regenerating completed clips.
 
 1. Reads `story.txt`, `beats.txt`, and optional `subjects.txt` and
    `phrase_exclusions.txt`.
-2. Requests a structured shot description from an LM Studio model.
+2. Requests a structured shot description from an LLM host model.
 3. Normalizes and validates that description locally with deterministic Python
    rules, then inserts it into the correct ComfyUI API workflow.
 4. Generates the initial clip or extends the previous clip.
@@ -164,7 +164,7 @@ You need:
 - [Git](https://git-scm.com/downloads).
 - [Python 3.10 or newer](https://www.python.org/downloads/).
 - A current [ComfyUI installation](https://docs.comfy.org/installation/).
-- [LM Studio](https://lmstudio.ai/download).
+- [LLM host](https://lmstudio.ai/download).
 - [FFmpeg](https://ffmpeg.org/download.html), including both `ffmpeg` and
   `ffprobe` on `PATH`.
 
@@ -182,7 +182,7 @@ Complete these once, in order:
    supplied workflows.
 5. Optionally place up to six reference images in `ComfyUI/input` and assign
    them in both reference-to-video workflows.
-6. Load an LLM in LM Studio and start its local API server.
+6. Load an LLM in LLM host and start its local API server.
 7. Set filesystem environment variables if their defaults do not match your
    system, then launch `desktop_app.py`.
 8. Use **Files & configuration** in the GUI to create `story.txt`, `beats.txt`,
@@ -480,36 +480,36 @@ The directive is metadata, not a story beat. The program treats the file as empt
 generates the required number of beats, and appends the directive to every saved
 beat. This file-level form requires an explicit strength.
 
-## 6. Set up LM Studio
+## 6. Set up LLM host
 
-Every LM Studio chat-completions request includes a randomly generated positive
+Every LLM host chat-completions request includes a randomly generated positive
 31-bit `seed`. Transport retries receive a new seed, while the structured-output
 fallback for the same attempt keeps that attempt's seed. The seed is also stored
 in `prompt_history.txt` metadata so a request can be reproduced.
 
-1. Install and open [LM Studio](https://lmstudio.ai/).
+1. Install and open [LLM host](https://lmstudio.ai/).
 2. Download and load the current tested local model (Mistral Small 3.2 24B, or
    another compatible instruction-following model).
 3. The current local Mistral 24B setup uses a context window of about **6,044
    tokens**. Prompt stages must therefore stay deliberately small; do not rely on
    the older 13B-era guidance that assumed a ~21,000-token context window.
-4. In LM Studio's **Developer** area, start the local API server.
+4. In LLM host's **Developer** area, start the local API server.
 5. Confirm that the model supports the OpenAI-compatible chat-completions
    endpoint and structured JSON-schema output.
 
-The default LM Studio server is commonly available at:
+The default LLM host server is commonly available at:
 
 ```text
 http://127.0.0.1:1234
 ```
 
 The checked-in `minimax.py` defaults to `http://192.168.0.203:1234`. Override
-`MINIMAX_LM_STUDIO_URL` for a different server. The script does not send a
-model name to LM Studio; it uses whichever chat model the user has loaded.
-If LM Studio and this script run on the same computer, use:
+`MINIMAX_LLM_HOST_URL` for a different server. The script does not send a
+model name to LLM host; it uses whichever chat model the user has loaded.
+If LLM host and this script run on the same computer, use:
 
 ```powershell
-$env:MINIMAX_LM_STUDIO_URL = "http://127.0.0.1:1234"
+$env:MINIMAX_LLM_HOST_URL = "http://127.0.0.1:1234"
 ```
 
 Test the server from PowerShell:
@@ -518,12 +518,12 @@ Test the server from PowerShell:
 Invoke-RestMethod http://127.0.0.1:1234/v1/models
 ```
 
-For remote LM Studio hosts, enable network serving in LM Studio, use the host
+For remote LLM host hosts, enable network serving in LLM host, use the host
 computer's LAN IP, and allow the port through its firewall.
 
 ## 7. Configure connections and paths
 
-The desktop app exposes ComfyUI and LM Studio URLs and passes the saved values
+The desktop app exposes ComfyUI and LLM host URLs and passes the saved values
 to the generator. Filesystem overrides still come from environment variables.
 Linux defaults to `~/AI/ComfyUI/input` and `~/AI/ComfyUI/output`; Windows
 defaults to `H:\images\input` and `H:\images\output` in this checkout. Override
@@ -537,7 +537,7 @@ export MINIMAX_COMFYUI_OUTPUT="$HOME/ComfyUI/output"
 export MINIMAX_COMFYUI_INPUT="$HOME/ComfyUI/input"
 export MINIMAX_VIDEO_OUTPUT="$HOME/ComfyUI/output/video"
 export MINIMAX_COMFY_URL="http://127.0.0.1:8188"
-export MINIMAX_LM_STUDIO_URL="http://127.0.0.1:1234"
+export MINIMAX_LLM_HOST_URL="http://127.0.0.1:1234"
 ```
 
 Windows PowerShell:
@@ -548,7 +548,7 @@ $env:MINIMAX_COMFYUI_OUTPUT = "H:\images\output"
 $env:MINIMAX_COMFYUI_INPUT = "H:\images\input"
 $env:MINIMAX_VIDEO_OUTPUT = "H:\images\output\video"
 $env:MINIMAX_COMFY_URL = "http://127.0.0.1:8188"
-$env:MINIMAX_LM_STUDIO_URL = "http://192.168.0.203:1234"
+$env:MINIMAX_LLM_HOST_URL = "http://192.168.0.203:1234"
 ```
 
 `MINIMAX_COMFYUI_OUTPUT` must be the output directory used by the ComfyUI
@@ -647,7 +647,7 @@ authoritative, numbered beats must be consecutive, and the numeric prefixes are
 removed when beat text is loaded. Existing unnumbered hand-authored beat lines
 remain supported. The director cannot mark a later beat complete before an
 earlier one. If the file is blank or contains only comments, the program first
-asks LM Studio for a macro story arc, then generates the beats one complete
+asks LLM host for a macro story arc, then generates the beats one complete
 macro phase at a time. Each phase receives its ordered `required_events` and a
 previous-phase final-beat boundary for continuity; recent accepted beats may
 also be supplied as useful context. Responses use globally numbered
@@ -686,7 +686,7 @@ During beat-validation retries, Python remembers finalized beats and their state
 snapshots. A later response cannot reopen them; only the current provisional
 window may be repaired.
 
-Each valid macro arc returned by LM Studio is written as formatted JSON to
+Each valid macro arc returned by LLM host is written as formatted JSON to
 `story_arc.json`, overwriting the previous contents. Its SHA-256 source hash is
 written alongside it in `story_arc.json.sha256`. When beats need to be generated,
 the saved arc is reused only when that sidecar matches the current `story.txt`
@@ -779,7 +779,7 @@ The filename is `subjects.txt`, not `subject_definitions.txt`.
 
 ### Continuity safeguards
 
-Beginning after prompt 2, the script asks LM Studio for exactly eight labeled
+Beginning after prompt 2, the script asks LLM host for exactly eight labeled
 state fields summarizing the newest two generated prompts. This uses a separate,
 stateless chat-completions message list and is independent of the director's
 Python formatting and validation. The summary request runs after the current
@@ -800,7 +800,7 @@ by segment 2, B002 by segment 4, and so on. On a beat's deadline segment, the
 director must visibly complete it and include its ID in `completed_beat_ids`.
 Every response is first normalized and validated by deterministic Python rules.
 Formatting problems that can be repaired without changing story content do not
-cause another LM Studio request. Unresolved content problems can trigger at most
+cause another LLM host request. Unresolved content problems can trigger at most
 two stateless correction requests containing exactly one system turn and one
 user turn. If a
 correction request fails or the corrected result remains invalid, the latest
@@ -812,7 +812,7 @@ the run. Network/transport retries remain separate.
 Confirm all of the following:
 
 - ComfyUI is running and `/system_stats` responds.
-- LM Studio is running, a model is loaded, and `/v1/models` responds.
+- LLM host is running, a model is loaded, and `/v1/models` responds.
 - `python -c "import requests"` succeeds.
 - `ffmpeg -version` and `ffprobe -version` succeed.
 - ComfyUI starts without reporting missing workflow nodes.
@@ -823,7 +823,7 @@ Confirm all of the following:
 - `MINIMAX_COMFYUI_INPUT` points to the real ComfyUI input directory when it
   is not `ComfyUI/input`.
 - `story.txt` is non-empty. `beats.txt` either contains ordered beats or is blank
-  so LM Studio can generate one beat per segment before startup continues.
+  so LLM host can generate one beat per segment before startup continues.
 
 For the first test, use the desktop app's **New run** mode with:
 
@@ -847,7 +847,7 @@ python minimax.py 5 10 0.2
 
 The GUI is the main control surface:
 
-1. Start ComfyUI and start the LM Studio local API server with a model loaded.
+1. Start ComfyUI and start the LLM host local API server with a model loaded.
 2. Launch the app with `python desktop_app.py`.
 3. Confirm or edit the project sources under **Files & configuration**.
 4. Set **Segment duration**, **Total duration**, and **Megapixels**.
@@ -868,7 +868,7 @@ the same generation options as the CLI:
 | **Steps** | Set BasicScheduler sampling steps for all workflows. |
 | **Trim frames** | Remove this many frames from the start of each segment after the first during stitching; defaults to `2`. Set to `0` to disable the trim. |
 | **Legacy refresh fallback** | Numeric refresh cadence used only when no source-span chapter refresh schedule is available. |
-| **Vision continuity** | Ask an image-capable LM Studio model to inspect rendered frames on a cadence; `0` disables this. |
+| **Vision continuity** | Ask an image-capable LLM host model to inspect rendered frames on a cadence; `0` disables this. |
 | **Retention analysis** | Include structured retention guidance in non-initial H3 prompts. |
 | **Formatter** | Select the GPT, Mistral, or Qwen formatter; GPT is the current default. |
 | **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
@@ -909,7 +909,7 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `--test-prompt-generation` | Generate and print all prompts without submitting anything to ComfyUI or rendering video; disabled by default. |
 | `--vision-continuity N` | Run rendered-frame continuity checks every `N` segments; `0` disables them, `1` checks every segment, and larger values check on a cadence. |
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
-| `--model {gpt,mistral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `gpt`. |
+| `--model {gpt,mistral,qwen}` | Select the response formatter for the user-loaded LLM host model; defaults to `gpt`. |
 | `--lora_dir DIRECTORY` | Directory containing LoRA files; defaults to `/mnt/h/StableDiffusion/loras` in this checkout. |
 | `--image1 PATH` through `--image6 PATH` | Override the corresponding numbered reference image in the initial, append, and refresh workflows. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
@@ -986,7 +986,7 @@ original inputs or start a new run.
 |---|---|
 | `generation_state.json` | Atomic checkpoint and runtime source of truth containing settings, director results, beat state, canonical Subject registry/identity data, committed structured continuity state, per-segment identity snapshots, internal video-created subject definitions, and video paths. |
 | `beats.txt` | Ordered beats and optional beat-specific LoRA directives. |
-| `prompt_history.txt` | A human-readable delimiter-separated history of normalized LM Studio requests and response metadata. Message content is written in raw blocks so embedded newlines remain visible. |
+| `prompt_history.txt` | A human-readable delimiter-separated history of normalized LLM host requests and response metadata. Message content is written in raw blocks so embedded newlines remain visible. |
 | Configured video output/`segment_*.mp4` | Individual generated clips. |
 | Configured video output/`continuation_frames/` | Continuation-frame videos used by the append workflow. |
 | Configured video output/`vision_frames/` | Extracted frames used by optional vision continuity checks. |
@@ -994,7 +994,7 @@ original inputs or start a new run.
 
 ## Workflow validation
 
-Before contacting LM Studio or generating video, the program validates the
+Before contacting LLM host or generating video, the program validates the
 workflow JSON and the named nodes it controls:
 
 - `Float (duration)`
@@ -1017,7 +1017,7 @@ workflow, preserve these titles or update the matching constants in
 - Each segment is exactly one directed shot.
 - Exactly the newest two generated prompts are kept verbatim for immediate
   continuity.
-- A background LM Studio request proposes a structured continuity candidate for
+- A background LLM host request proposes a structured continuity candidate for
   the current segment. It becomes authoritative only after ComfyUI successfully
   renders that segment.
 - The next director request receives an authoritative opening state rendered
@@ -1058,7 +1058,7 @@ workflow, preserve these titles or update the matching constants in
 - Beat completion is accepted only as a contiguous prefix of `beats.txt`, so a
   model cannot silently skip a required event.
 
-Outgoing LM Studio requests are appended to `prompt_history.txt` as
+Outgoing LLM host requests are appended to `prompt_history.txt` as
 delimiter-separated records. The metadata and message structure are formatted
 as JSON, while each string message body is written in a raw content block so
 embedded newlines and quotes remain directly visible. Older JSON-array and
@@ -1104,7 +1104,7 @@ target by `0.02` each time. After 10 retries, the program exits and reports the
 last ComfyUI failure. Append-segment retries keep the previous video's
 resolution.
 
-### LM Studio connection or JSON errors
+### LLM host connection or JSON errors
 
 - Confirm the model is loaded, not merely downloaded.
 - Confirm the Developer API server is running.
