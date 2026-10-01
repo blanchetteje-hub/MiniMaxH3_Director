@@ -18842,7 +18842,7 @@ def _parse_director_raw_scene_result(raw_result):
             if isinstance(raw_scene_value, str)
             else ""
         )
-        beat_complete = candidate.get("beat_complete") is True
+        reported_beat_complete = candidate.get("beat_complete") is True
         completion_checks_present = all(
             key in candidate
             for key in (
@@ -18861,10 +18861,17 @@ def _parse_director_raw_scene_result(raw_result):
             activity_tools_settled = (
                 candidate.get("activity_tools_settled") is True
             )
+            beat_complete = (
+                reported_beat_complete
+                and finite_activity_complete
+                and named_beneficiaries_complete
+                and activity_tools_settled
+            )
         else:
             # Preserve legacy/mock callers that predate the expanded Request-1
             # response contract. Production structured output requires all
             # three explicit completion checks.
+            beat_complete = reported_beat_complete
             finite_activity_complete = beat_complete
             named_beneficiaries_complete = beat_complete
             activity_tools_settled = beat_complete
