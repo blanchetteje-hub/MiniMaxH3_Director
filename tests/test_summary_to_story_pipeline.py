@@ -45,7 +45,7 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
         )
         self.assertIn("location is unambiguous", normalized)
         self.assertIn(
-            "Do not invent a route, barrier, door, window, container, or location transition unless it is needed to connect explicit summary events.",
+            "When the summary does not specify a new location, route, barrier, or container, keep the action in the nearest already-established location rather than inventing one.",
             normalized,
         )
         self.assertIn("support 8 distinct film beats", normalized)
