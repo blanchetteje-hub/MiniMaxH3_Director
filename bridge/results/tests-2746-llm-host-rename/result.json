@@ -1,0 +1,32 @@
+{
+  "job_id": "tests-2746-llm-host-rename",
+  "kind": "run_tests",
+  "started_at": 1790876333.6007185,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_minimax_integration.py",
+      "tests\\test_continuity_summary.py",
+      "tests\\test_director_retry.py",
+      "tests\\test_generate_beats_mode.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 140 items / 1 skipped\n\ntests/test_continuity_summary.py::ContinuitySummaryTests::test_background_workers_are_closed_when_generation_raises ",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": true,
+    "timeout_seconds": null,
+    "started_at": 1790876335.0709357,
+    "finished_at": 1790876535.375528
+  },
+  "interrupted": true,
+  "bridge_stop_requested": true,
+  "finished_at": 1790876535.375528,
+  "status": "interrupted"
+}
