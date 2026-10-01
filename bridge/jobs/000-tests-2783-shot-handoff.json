@@ -1,0 +1,12 @@
+{
+  "job_id": "tests-2783-shot-handoff",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_simplified_prompt_regressions.py",
+    "tests/test_director_retry.py",
+    "tests/test_continuity_summary.py",
+    "tests/test_resume.py"
+  ],
+  "timeout_seconds": 1800
+}
