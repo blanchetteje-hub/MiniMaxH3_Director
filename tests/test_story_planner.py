@@ -145,7 +145,7 @@ def test_parse_binary_decision_is_strict():
         parse_binary_decision({"decision": "MAYBE", "reason": "unclear"})
 
 
-def test_classify_source_units_uses_terminal_and_hard_reset_calls():
+def test_classify_source_units_uses_terminal_and_hard_reset_calls(capsys):
     from story_planner import classify_source_units
 
     story = "Work begins. Work completes. One year later, new work begins."
@@ -176,6 +176,13 @@ def test_classify_source_units_uses_terminal_and_hard_reset_calls():
         "source_unit_hard_reset",
         "source_unit_terminal",
         "source_unit_hard_reset",
+    ]
+    assert capsys.readouterr().out.splitlines() == [
+        "Terminal check span 1: NO",
+        "Terminal check span 2: YES",
+        "Hard-reset check span 2: NO",
+        "Terminal check span 3: NO",
+        "Hard-reset check span 3: YES",
     ]
 
 
