@@ -60,6 +60,10 @@ class CharacterCanonTests(unittest.TestCase):
             {"name", "age", "clothing", "gender", "other_facts"},
         )
         self.assertEqual(set(item["required"]), set(item["properties"]))
+        self.assertIn(
+            "age|clothing|gender",
+            item["properties"]["other_facts"]["items"]["properties"]["field"]["pattern"],
+        )
 
     def test_source_matched_character_canon_is_reused_without_llm(self):
         with tempfile.TemporaryDirectory() as directory:
