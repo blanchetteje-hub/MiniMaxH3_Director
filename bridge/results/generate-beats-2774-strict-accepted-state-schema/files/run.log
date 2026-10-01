@@ -1,0 +1,179 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\beats.txt with 8 creative story beats.
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\expanded_story.txt.
+Expanded story:
+Amy stirred eggs and butter on the stove while Will and Amber giggled over pancakes, their tiny hands reaching for syrup. The kitchen hummed with ordinary morning chatter.
+
+A sudden thud at the front door shattered that calm; a zombie’s groan echoed through the hallway as its limp body pushed past the living‑room threshold into the house.
+
+Amy grabbed Will by the shoulder and scooped Amber under her arm, sprinting toward the back bedroom closet where she’d hidden a sturdy mattress. She shoved them inside, slamming the door shut behind them with a quick kick.
+
+Breathing hard, Amy turned back to the kitchen, wiping sweat from her brow as she reached for the small brass key on the counter that unlocked her secret stash beneath the floorboards.
+
+She slid open the panel, revealing a pistol and a gleaming katana. She hefted both weapons in one hand, eyes scanning the dim hallway where another zombie lurked.
+
+One by one, zombies burst into view—Will’s first, then Amber’s, followed by three more that shuffled from the living room. Amy fired her pistol at each head, slicing through flesh with precise swings of the katana as they staggered back to their groaning positions.
+
+Despite her quick shots and swift cuts, a fourth zombie emerged from the kitchen doorway, its eyes fixed on her. She spun, firing again before it could reach her, then leapt over the closet door to block its path.
+
+The last remaining zombie lunged at her; she sidestepped, aimed, and shot it squarely in the chest, watching it collapse into a pile of gray limbs. The hallway fell silent except for her heavy breathing.
+
+She pushed open the back bedroom door, grabbing Will’s hand and pulling Amber toward her as they sprinted out to the safe spot—her backyard shed, where she’d set up a barricade with plywood. Together, they emerged from the house, shaking but alive, holding each other close in the quiet after the last zombie fell.
+Story-derived Beat framework created with 8 beats.
+Beat 1 created: Amy cooks pancakes while Will and Amber giggle over syrup in the kitchen.
+Beat 2 created: A zombie thuds at the front door, groans through the hallway, and pushes into the living room.
+Beat 3 created: Amy grabs Will by the shoulder, scoops Amber under her arm, sprints to the back bedroom closet, and slams the door shut behind them with a quick kick.
+Beat 4 created: Breathing hard, she turns back to the kitchen, wipes sweat from her brow, and reaches for the brass key that unlocks her secret stash beneath the floorboards.
+Beat 5 created: She slides open the panel revealing a pistol and a gleaming katana; hefting both weapons in one hand, she scans the dim hallway where another zombie lurks.
+Beat 6 created: One by one zombies burst into view—Will’s first, then Amber’s, followed by three more from the living room—and Amy fires her pistol at each head while slicing with the katana as they stagger back to groaning positions.
+Beat 7 created: A fourth zombie emerges from the kitchen doorway; she spins, shoots before it reaches her, leaps over the closet door to block its path, and then sidesteps a final lunge, aims, and fires squarely in the chest, watching it collapse into gray limbs.
+Beat 8 created: She pushes open the back bedroom door, grabs Will’s hand and pulls Amber toward her as they sprint out to the backyard shed where she’d set up a plywood barricade; together they emerge from the house shaking but alive.
+Beat 1 jobs: current=E1 - Amy cooks pancakes while Will and Amber giggle over syrup in the kitchen.; next=E2 - A zombie thuds at the front door, groans through the hallway, and pushes into the living room.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Beat 1 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+Validating Beat 1 (attempt 2/10) with the single beat validator.
+Beat 1 validation attempt 2/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 2/10).
+Beat 1 coherence attempt 2/10: VALID.
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "kitchen"}, "Will": {"location": "kitchen"}, "Amber": {"location": "kitchen"}}, "environment": {"objects": {"plate": {"type": "dish", "contains": ["golden pancake"]}}, "persistent_effects": [{"description": "Syrup is present in the kitchen, being giggled over by Will and Amber."}]}}
+Beat 1 accepted: Amy flips a golden pancake onto a plate while Will and Amber giggle over syrup in the kitchen.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - A zombie thuds at the front door, groans through the hallway, and pushes into the living room.; next=E3 - Amy grabs Will by the shoulder, scoops Amber under her arm, sprints to the back bedroom closet, and slams the door shut behind them with a quick kick.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+Beat 2 coherence attempt 1/10: VALID.
+Beat 2 observed persistent state: {"threats": {"Zombie1": {"location": "living_room", "status": "active"}}}
+Beat 2 accepted: A zombie thuds at the front door, groans through the hallway, and pushes into the living room.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - Amy grabs Will by the shoulder, scoops Amber under her arm, sprints to the back bedroom closet, and slams the door shut behind them with a quick kick.; next=E4 - Breathing hard, she turns back to the kitchen, wipes sweat from her brow, and reaches for the brass key that unlocks her secret stash beneath the floorboards.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+Beat 3 coherence attempt 1/10: VALID.
+Beat 3 observed persistent state: {"characters": {"Will": {"location": "back_bedroom_closet"}}, "environment": {"rooms": {"back_bedroom_closet": {"type": "closet"}}}}
+Beat 3 accepted: Amy grabs Will by the shoulder, scoops Amber under her arm, sprints to the back bedroom closet, and slams the door shut behind them with a quick kick.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - Breathing hard, she turns back to the kitchen, wipes sweat from her brow, and reaches for the brass key that unlocks her secret stash beneath the floorboards.; next=E5 - She slides open the panel revealing a pistol and a gleaming katana; hefting both weapons in one hand, she scans the dim hallway where another zombie lurks.; completed before=E1, E2, E3; pending before=E4, E5, E6, E7, E8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+Beat 4 coherence attempt 1/10: VALID.
+Beat 4 observed persistent state: {"characters": {"Amy": {"held_objects": ["brass_key"]}}, "environment": {"objects": {"brass_key": {"type": "key", "contains": []}}, "rooms": {"floorboard_stash_under_kitchen_floorboards": {"type": "stash"}}}}
+Beat 4 accepted: Breathing hard, she turns back to the kitchen, wipes sweat from her brow, and reaches for the brass key that unlocks her secret stash beneath the floorboards.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - She slides open the panel revealing a pistol and a gleaming katana; hefting both weapons in one hand, she scans the dim hallway where another zombie lurks.; next=E6 - One by one zombies burst into view—Will’s first, then Amber’s, followed by three more from the living room—and Amy fires her pistol at each head while slicing with the katana as they stagger back to groaning positions.; completed before=E1, E2, E3, E4; pending before=E5, E6, E7, E8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: INVALID; issue: Amy is still located in the kitchen and holds only a brass key; the pistol and katana are not present or acquired, so she cannot slide open a panel revealing them or scan the hallway.
+Validating Beat 5 (attempt 2/10) with the single beat validator.
+Beat 5 validation attempt 2/10: VALID; issue: none
+Checking Beat 5 within-beat physical coherence (attempt 2/10).
+Beat 5 coherence attempt 2/10: VALID.
+Beat 5 observed persistent state: {"characters": {"Amy": {"held_objects": ["brass_key", "pistol", "katana"]}}, "environment": {"objects": {"pistol": {"type": "weapon"}, "katana": {"type": "blade"}}}}
+Beat 5 accepted: She inserts the brass key into a hidden latch beneath the kitchen floorboards, slides open the panel revealing a pistol and gleaming katana, hefting both weapons together as she scans the dim hallway for another lurking zombie.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - One by one zombies burst into view—Will’s first, then Amber’s, followed by three more from the living room—and Amy fires her pistol at each head while slicing with the katana as they stagger back to groaning positions.; next=E7 - A fourth zombie emerges from the kitchen doorway; she spins, shoots before it reaches her, leaps over the closet door to block its path, and then sidesteps a final lunge, aims, and fires squarely in the chest, watching it collapse into gray limbs.; completed before=E1, E2, E3, E4, E5; pending before=E6, E7, E8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: VALID; issue: none
+Checking Beat 6 within-beat physical coherence (attempt 1/10).
+Beat 6 coherence attempt 1/10: VALID.
+Beat 6 observed persistent state: {"threats": {"zombie_1": {"location": "living_room", "status": "active", "injuries": [], "body_topology": "N/A"}, "zombie_2": {"location": "living_room", "status": "active", "injuries": ["headshot_by_pistol"], "body_topology": "N/A"}, "zombie_3": {"location": "living_room", "status": "active", "injuries": [], "body_topology": "N/A"}, "zombie_4": {"location": "living_room", "status": "active", "injuries": ["headshot_by_pistol"], "body_topology": "N/A"}}}
+Beat 6 accepted: One by one zombies burst into view—Will’s first, then Amber’s, followed by three more from the living room—and Amy fires her pistol at each head while slicing with the katana as they stagger back to groaning positions.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+Beat 7 jobs: current=E7 - A fourth zombie emerges from the kitchen doorway; she spins, shoots before it reaches her, leaps over the closet door to block its path, and then sidesteps a final lunge, aims, and fires squarely in the chest, watching it collapse into gray limbs.; next=E8 - She pushes open the back bedroom door, grabs Will’s hand and pulls Amber toward her as they sprint out to the backyard shed where she’d set up a plywood barricade; together they emerge from the house shaking but alive.; completed before=E1, E2, E3, E4, E5, E6; pending before=E7, E8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Checking Beat 7 within-beat physical coherence (attempt 1/10).
+Beat 7 coherence attempt 1/10: VALID.
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Beat generation failed before the video workflow could start: State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 30281, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 18610, in load_or_generate_beats
+    return generate_beats_via_story_expansion(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 17461, in generate_beats_via_story_expansion
+    return _run_forward_beat_validation(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 12852, in _run_forward_beat_validation
+    observed_patch = extract_accepted_beat_state_patch(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 10690, in extract_accepted_beat_state_patch
+    return parse_accepted_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 10665, in parse_accepted_beat_state_patch
+    return persistent_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 10482, in persistent_beat_state_patch
+    normalized = _python_owned_state_patch(normalize_beat_state_patch(patch))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9265, in normalize_beat_state_patch
+    _validate_canonical_state_namespace(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9300, in _validate_canonical_state_namespace
+    visit(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9289, in visit
+    raise ValueError(
+ValueError: State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 32130, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 30308, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 30281, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 18610, in load_or_generate_beats
+    return generate_beats_via_story_expansion(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 17461, in generate_beats_via_story_expansion
+    return _run_forward_beat_validation(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 12852, in _run_forward_beat_validation
+    observed_patch = extract_accepted_beat_state_patch(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 10690, in extract_accepted_beat_state_patch
+    return parse_accepted_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 10665, in parse_accepted_beat_state_patch
+    return persistent_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 10482, in persistent_beat_state_patch
+    normalized = _python_owned_state_patch(normalize_beat_state_patch(patch))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9265, in normalize_beat_state_patch
+    _validate_canonical_state_namespace(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9300, in _validate_canonical_state_namespace
+    visit(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 9289, in visit
+    raise ValueError(
+ValueError: State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 32202, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 32130, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-nlhi1ni6\repo\minimax.py", line 30308, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.
