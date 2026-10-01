@@ -1,0 +1,27 @@
+{
+  "job_id": "tests-2706-final-location-validator",
+  "kind": "run_tests",
+  "started_at": 1790865502.8272836,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_forward_beat_validation.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_gpt-arc-refresh\nconfigfile: pytest.ini\ncollecting ... collected 18 items\n\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_beat_generation_uses_compact_creative_prompt PASSED [  5%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_coherence_prompt_uses_previous_accepted_beat_when_available PASSED [ 11%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_coherence_validator_is_narrow_and_generic PASSED [ 16%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_compact_validator_state_removes_noise_but_preserves_facts PASSED [ 22%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_invalid_candidate_regenerates_same_beat_without_state_mutation PASSED [ 27%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_invalid_required_event_shape_is_rejected_deterministically PASSED [ 33%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_location_effect_seeds_threat_from_arc_typed_role PASSED [ 38%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_planning_metadata_rejects_raw_json_delimiters PASSED [ 44%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_state_preflight_failure_preserves_saved_arc_and_does_not_start_beats PASSED [ 50%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_unresolvable_location_effect_raises_deterministic_state_error PASSED [ 55%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_valid_beat_commits_assigned_effects_after_validation PASSED [ 61%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_checks_final_state_for_typed_effects PASSED [ 66%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_contract_is_immutable_and_minimal PASSED [ 72%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_preserves_group_beneficiary_roles PASSED [ 77%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_prompt_includes_assigned_state_effects PASSED [ 83%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_prompt_rejects_materially_incoherent_staging PASSED [ 88%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_rejects_completed_state_grammar_for_assigned_action PASSED [ 94%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_requires_assigned_final_location_to_be_visible PASSED [100%]\n\n============================= 18 passed in 2.70s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790865504.264822,
+    "finished_at": 1790865507.6792784
+  },
+  "finished_at": 1790865507.6792784,
+  "status": "ok"
+}
