@@ -1,0 +1,111 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\beats.txt with 8 creative story beats.
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\expanded_story.txt.
+Expanded story:
+Amy stirred a bowl of eggs at the stove while Will and Amber laughed over sizzling pancakes on the counter. The house buzzed with ordinary morning sounds—crackling toast, the kettle whistling, her kids’ chatter.
+
+A groan split the air as the front door rattled; a zombie lurching in, its eyes set on the living room. Amy’s heart thudded, but she didn’t pause. She grabbed Will and Amber by their hands and shoved them toward the back bedroom closet, sliding it shut behind her with a quick knock.
+
+She ran back to the kitchen, breathing hard, then slipped into the pantry to pull out her hidden arsenal: a pistol tucked beneath the flour bin and a katana she’d stored in a drawer beside the stove. She checked each weapon’s weight before stepping outside again.
+
+One zombie lunged at the door; Amy fired the pistol, its shot echoing through the hallway. The creature staggered, then fell with a wet thud. Another surged from the living room, and she sliced it cleanly in half with her katana. A third appeared behind the pantry door—she tossed the gun again, killing it before it could reach her.
+
+They kept coming: one after another, each zombie falling to either bullet or blade as Amy moved swiftly between them, never letting a single one get close enough to bite. The kitchen turned into a battlefield of clanging metal and splattering blood, but she fought on without faltering.
+
+When the last zombie collapsed in a heap beside the fridge, Amy let out an exhausted sigh. She slipped back through the closet door, found Will and Amber huddled inside, eyes wide with relief. Together they stepped out into the hallway, breathing the cool air of safety as the house settled around them. The morning had been ordinary—until it wasn’t—and now the two kids were safe again, thanks to Amy’s quick thinking and relentless fight.
+Story-derived Beat framework created with 8 beats.
+Beat 1 created: Amy stirs eggs on stove while Will and Amber laugh over sizzling pancakes, filling the house with ordinary morning sounds.
+Beat 2 created: A groan splits the air as a zombie rattles the front door; Amy grabs Will and Amber by their hands and shoves them into the back bedroom closet, slamming it shut behind her.
+Beat 3 created: She rushes to the kitchen, then slips into the pantry to pull out her hidden arsenal—a pistol tucked beneath the flour bin and a katana stored in a drawer beside the stove—checking each weapon before stepping outside again.
+Beat 4 created: As she steps through the front door, a zombie lunges at her; Amy fires the pistol, its shot echoing through the hallway and sending the creature staggering to a wet thud.
+Beat 5 created: Another zombie surges from the living room, and with swift motion Amy slices it cleanly in half using the katana.
+Beat 6 created: A third zombie appears behind the pantry door; she tosses her gun again, killing it before it can reach her.
+Beat 7 created: More zombies keep coming one after another, each falling to either bullet or blade as Amy moves swiftly between them, turning the kitchen into a battlefield of clanging metal and splattering blood without faltering.
+Beat 8 created: When the last zombie collapses beside the fridge, Amy slips back through the closet door, finds Will and Amber huddled inside with wide eyes, and together they step out into the hallway breathing the cool air of safety as the house settles around them.
+Beat 1 jobs: current=E1 - Amy stirs eggs on stove while Will and Amber laugh over sizzling pancakes, filling the house with ordinary morning sounds.; next=E2 - A groan splits the air as a zombie rattles the front door; Amy grabs Will and Amber by their hands and shoves them into the back bedroom closet, slamming it shut behind her.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Beat 1 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+Validating Beat 1 (attempt 2/10) with the single beat validator.
+Beat 1 validation attempt 2/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 2/10).
+Beat 1 coherence attempt 2/10: VALID.
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "kitchen"}, "Will": {"location": "kitchen"}, "Amber": {"location": "kitchen"}}}
+Beat 1 accepted: Amy finishes stirring eggs on the stove while Will and Amber laugh over sizzling pancakes, filling the house with ordinary morning sounds.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - A groan splits the air as a zombie rattles the front door; Amy grabs Will and Amber by their hands and shoves them into the back bedroom closet, slamming it shut behind her.; next=E3 - She rushes to the kitchen, then slips into the pantry to pull out her hidden arsenal—a pistol tucked beneath the flour bin and a katana stored in a drawer beside the stove—checking each weapon before stepping outside again.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+Beat 2 coherence attempt 1/10: VALID.
+Beat 2 observed persistent state: {"characters": {"Amy": {"location": "back bedroom closet"}, "Will": {"location": "back bedroom closet", "contained_in": "back bedroom closet"}, "Amber": {"location": "back bedroom closet", "contained_in": "back bedroom closet"}}}
+Beat 2 accepted: A groan splits the air as a zombie rattles the front door; Amy grabs Will and Amber by their hands and shoves them into the back bedroom closet, slamming it shut behind her.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - She rushes to the kitchen, then slips into the pantry to pull out her hidden arsenal—a pistol tucked beneath the flour bin and a katana stored in a drawer beside the stove—checking each weapon before stepping outside again.; next=E4 - As she steps through the front door, a zombie lunges at her; Amy fires the pistol, its shot echoing through the hallway and sending the creature staggering to a wet thud.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+Beat 3 coherence attempt 1/10: VALID.
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Beat generation failed before the video workflow could start: Canonical environment objects must be an object.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 30272, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 18601, in load_or_generate_beats
+    return generate_beats_via_story_expansion(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 17452, in generate_beats_via_story_expansion
+    return _run_forward_beat_validation(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 12851, in _run_forward_beat_validation
+    staged_state = apply_accepted_beat_state_patch(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 10702, in apply_accepted_beat_state_patch
+    merged = normalize_beat_canonical_state(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 9110, in normalize_beat_canonical_state
+    raise ValueError(f"Canonical environment {field} must be an object.")
+ValueError: Canonical environment objects must be an object.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 32121, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 30299, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: Canonical environment objects must be an object.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 30272, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 18601, in load_or_generate_beats
+    return generate_beats_via_story_expansion(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 17452, in generate_beats_via_story_expansion
+    return _run_forward_beat_validation(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 12851, in _run_forward_beat_validation
+    staged_state = apply_accepted_beat_state_patch(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 10702, in apply_accepted_beat_state_patch
+    merged = normalize_beat_canonical_state(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 9110, in normalize_beat_canonical_state
+    raise ValueError(f"Canonical environment {field} must be an object.")
+ValueError: Canonical environment objects must be an object.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 32193, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 32121, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-hcv40u0v\repo\minimax.py", line 30299, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: Canonical environment objects must be an object.
