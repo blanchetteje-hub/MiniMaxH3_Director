@@ -10,7 +10,7 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
     def test_story_pipeline_profiles_match_tuned_settings(self):
         self.assertEqual(
             minimax.STORY_EXPANSION_LLM_PARAMETERS["temperature"],
-            0.6,
+            0.4,
         )
         self.assertEqual(minimax.STORY_EXPANSION_REASONING_EFFORT, "high")
         self.assertEqual(
