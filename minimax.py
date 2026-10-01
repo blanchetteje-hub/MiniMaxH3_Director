@@ -374,6 +374,28 @@ BEAT_LLM_SAMPLING_PARAMETERS = {
     "seed": BENCHMARK_SEED,
 }
 
+STORY_EXPANSION_LLM_PARAMETERS = {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0.05,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "repeat_penalty": 1.15,
+    "seed": BENCHMARK_SEED,
+}
+
+STORY_TO_BEATS_LLM_PARAMETERS = {
+    "temperature": 0,
+    "top_p": None,
+    "top_k": None,
+    "min_p": None,
+    "presence_penalty": None,
+    "frequency_penalty": None,
+    "repeat_penalty": 1.15,
+    "seed": BENCHMARK_SEED,
+}
+
 BEAT_WRITING_LLM_PURPOSES = frozenset({
     "beat_generation",
     "beat_repair",
@@ -382,8 +404,6 @@ BEAT_WRITING_LLM_PURPOSES = frozenset({
 # These purpose names own creative expansion/restaging outside Beat CREATE/REPAIR.
 CREATIVE_LLM_PURPOSES = frozenset({
     "character_canon",
-    "story_expansion",
-    "story_to_beats",
     "macro_arc_create",
     "macro_arc_repair",
     "macro_arc_majority_tail_repair",
@@ -420,6 +440,11 @@ QWEN_DIRECTOR_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
 
 CREATIVE_REASONING_EFFORT = "high"
 CREATIVE_REASONING_BUDGET_TOKENS = 1024
+
+STORY_EXPANSION_REASONING_EFFORT = "high"
+STORY_EXPANSION_REASONING_BUDGET_TOKENS = 1024
+STORY_TO_BEATS_REASONING_EFFORT = "medium"
+STORY_TO_BEATS_REASONING_BUDGET_TOKENS = 1024
 
 DETERMINISTIC_REASONING_EFFORT = "low"
 DETERMINISTIC_REASONING_BUDGET_TOKENS = 128
@@ -8341,7 +8366,39 @@ def ask_llm(
     # Creative calls share one tuned sampling/reasoning profile. Deterministic
     # calls force greedy temperature-0 behavior. Numerical --deterministic mode
     # is configured on llama-server itself, not in this request body.
-    if history_purpose in BEAT_WRITING_LLM_PURPOSES:
+    if history_purpose == "story_expansion":
+        temperature = STORY_EXPANSION_LLM_PARAMETERS["temperature"]
+        top_p = STORY_EXPANSION_LLM_PARAMETERS["top_p"]
+        top_k = STORY_EXPANSION_LLM_PARAMETERS["top_k"]
+        min_p = STORY_EXPANSION_LLM_PARAMETERS["min_p"]
+        presence_penalty = STORY_EXPANSION_LLM_PARAMETERS["presence_penalty"]
+        frequency_penalty = STORY_EXPANSION_LLM_PARAMETERS["frequency_penalty"]
+        repeat_penalty = STORY_EXPANSION_LLM_PARAMETERS["repeat_penalty"]
+        seed = generate_random_llm_seed()
+        reasoning_effort = STORY_EXPANSION_REASONING_EFFORT
+        thinking_budget_tokens = STORY_EXPANSION_REASONING_BUDGET_TOKENS
+        reasoning_budget_message = REASONING_BUDGET_MESSAGE
+        enable_thinking = True
+        thinking = None
+        chat_template = None
+        jinja = None
+    elif history_purpose == "story_to_beats":
+        temperature = STORY_TO_BEATS_LLM_PARAMETERS["temperature"]
+        top_p = STORY_TO_BEATS_LLM_PARAMETERS["top_p"]
+        top_k = STORY_TO_BEATS_LLM_PARAMETERS["top_k"]
+        min_p = STORY_TO_BEATS_LLM_PARAMETERS["min_p"]
+        presence_penalty = STORY_TO_BEATS_LLM_PARAMETERS["presence_penalty"]
+        frequency_penalty = STORY_TO_BEATS_LLM_PARAMETERS["frequency_penalty"]
+        repeat_penalty = STORY_TO_BEATS_LLM_PARAMETERS["repeat_penalty"]
+        seed = STORY_TO_BEATS_LLM_PARAMETERS["seed"]
+        reasoning_effort = STORY_TO_BEATS_REASONING_EFFORT
+        thinking_budget_tokens = STORY_TO_BEATS_REASONING_BUDGET_TOKENS
+        reasoning_budget_message = REASONING_BUDGET_MESSAGE
+        enable_thinking = True
+        thinking = None
+        chat_template = None
+        jinja = None
+    elif history_purpose in BEAT_WRITING_LLM_PURPOSES:
         temperature = BEAT_LLM_SAMPLING_PARAMETERS["temperature"]
         top_p = BEAT_LLM_SAMPLING_PARAMETERS["top_p"]
         top_k = BEAT_LLM_SAMPLING_PARAMETERS["top_k"]
