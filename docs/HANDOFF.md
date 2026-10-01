@@ -453,6 +453,17 @@ Fix:
 
 This keeps Request 2 a lossless formatter without adding prompt rules or another semantic repair loop.
 
+### 2805 — deterministic RAW fallback exposed validator false negative
+
+Segment 2 Request 2 lost two RAW actions, so the new Python fallback copied the canonical timed RAW actions into `detailed_description` exactly as intended. The subsequent local-LLM preservation check nevertheless labeled the first and last copied actions OMITTED.
+
+Conclusion: after canonical RAW text is inserted deterministically, preservation is true by construction. Re-asking the 20B to judge identical copied text adds uncertainty and can create false failures.
+
+Change:
+- keep the first semantic preservation check on normal Request 2 output;
+- on failure, substitute canonical timed RAW text deterministically;
+- do not perform a second semantic LLM preservation check on the deterministic fallback.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.

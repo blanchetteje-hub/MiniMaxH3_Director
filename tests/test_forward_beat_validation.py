@@ -512,6 +512,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
                 str(Path(directory) / "beats.txt"),
                 llm_request,
                 state_path=str(Path(directory) / "state.json"),
+                capture_accepted_state=True,
             )
 
         self.assertEqual(result, ["The operator closes the gate."])
