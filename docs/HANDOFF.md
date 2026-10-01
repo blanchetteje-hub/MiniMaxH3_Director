@@ -928,3 +928,36 @@ Fix:
   entering the arc-wipe loop.
 
 Commit: `61d0325f6a52d751de0c2d70f18451302c782611`.
+
+
+## 2026-10-01 — updated Amy acceptance: state/split fixes green; Beat final-location miss found
+
+Bridge results:
+- `tests-2704-source-state-split-fixes`: 57/57 passed.
+- `generate-beats-2705-gpt-updated-story-v2`: completed successfully against the
+  updated locked Amy story.
+
+2705 confirmed:
+- source majority sentence remained one intact span;
+- newly introduced zombie emitted `set_threat_state=active` before
+  `set_location(zombie, house)`;
+- final kid retrieval no longer emitted nonsensical `Will -> Amy` /
+  `Amber -> Amy` locations;
+- full 8-beat generation completed without state-preflight failure.
+
+Earliest real semantic miss:
+- Beat 2 CURRENT JOB says Amy moves the children to safety **and returns to the
+  kitchen**.
+- Candidate ended after placing the children in a closet and never showed Amy's
+  return, even though assigned state includes `set_location(Amy, kitchen)`.
+- Beat validator incorrectly returned VALID.
+
+Fix:
+- Beat validator now states that every assigned `set_location(entity, place)`
+  must be visibly true at the candidate's final state.
+- If CURRENT JOB explicitly says an actor returns to a location, the candidate
+  must show that return before ending.
+
+Commits:
+- `b0dc4bfbc75a693f2697cbb3249d88d6d9c60ea0` — final-location validator rule.
+- `9be30ba0ab1cbc21833bf29d524585f075ab4a43` — regression coverage.
