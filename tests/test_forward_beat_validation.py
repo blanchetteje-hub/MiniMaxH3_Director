@@ -583,6 +583,25 @@ class ForwardBeatValidationTests(unittest.TestCase):
                 state_before=minimax.new_beat_canonical_state(),
             )
 
+    def test_persistent_state_canonicalizes_reserved_new_threat_id_before_namespace_validation(self):
+        patch = {
+            "threats": {
+                "story": {
+                    "type": "zombie",
+                    "status": "active",
+                }
+            }
+        }
+        result = minimax.persistent_beat_state_patch(
+            patch,
+            state_before=minimax.new_beat_canonical_state(),
+        )
+        self.assertNotIn("story", result["threats"])
+        self.assertEqual(
+            result["threats"],
+            {"threat_1": {"type": "zombie", "status": "active"}},
+        )
+
     def test_accepted_beat_state_schema_requires_object_roots(self):
         response = minimax.build_accepted_beat_state_response_format()
         self.assertTrue(response["json_schema"]["strict"])
