@@ -1,0 +1,10 @@
+{
+  "job_id": "tests-2699-beat-temp-zero-repair",
+  "kind": "run_tests",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests\\test_llm_prompt_pipeline.py",
+    "tests\\test_beat_retry_hierarchy.py"
+  ],
+  "timeout_seconds": 1800
+}
