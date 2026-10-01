@@ -1,0 +1,34 @@
+{
+  "job_id": "generate-beats-2765-summary-guided-story-to-beats",
+  "kind": "run_acceptance",
+  "started_at": 1790885619.9298,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--planning-only"
+    ],
+    "returncode": 1,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py --generate-beats 8 8 --model gpt\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-161341\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nGenerating the story arc and beats based on story.txt\nFATAL: prompt-generation run stopped at first real failure: ValueError: Canonical fact has an invalid or duplicate field.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\\minimax.py\", line 32104, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\\minimax.py\", line 30225, in _run_main\n    character_canon = load_or_generate_character_canon(\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\\minimax.py\", line 5876, in load_or_generate_character_canon\n    canon = parse_character_canon_result(raw_result)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\\minimax.py\", line 5764, in parse_character_canon_result\n    raise ValueError(\"Canonical fact has an invalid or duplicate field.\")\nValueError: Canonical fact has an invalid or duplicate field.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\\minimax.py\", line 32176, in <module>\n    main()\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\\minimax.py\", line 32104, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\\minimax.py\", line 30225, in _run_main\n    character_canon = load_or_generate_character_canon(\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\\minimax.py\", line 5876, in load_or_generate_character_canon\n    canon = parse_character_canon_result(raw_result)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-ubsa91v_\\repo\\minimax.py\", line 5764, in parse_character_canon_result\n    raise ValueError(\"Canonical fact has an invalid or duplicate field.\")\nValueError: Canonical fact has an invalid or duplicate field.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-161341\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nPlanning-only capture is incomplete; story_arc.json and/or beats.txt was not produced. Include run.log for diagnosis.\nMiniMax exited with code 1; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790885621.218119,
+    "finished_at": 1790885641.9035468,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20261001-161341"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1790885641.969287,
+  "status": "ok"
+}
