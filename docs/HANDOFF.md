@@ -398,11 +398,35 @@ Relevant commits:
 - `610f8f3319d41e2b3fb92d61aceaf3e18de8b1f6`
 - `459316da5f333abb0f78cadf4c2d1a6c9993c250`
 
+### 2774 — strict output helps; threat-ID ordering bug found
+
+`tests-2773-strict-accepted-state-schema`: **42 passed, 4 subtests passed**.
+
+`generate-beats-2774-strict-accepted-state-schema` reaches Beat 7 with clean structured state before failing again on:
+
+`State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.`
+
+Strict structured output improved the extractor substantially, but llama.cpp still did not reliably enforce the `propertyNames` reservation.
+
+Root cause in Python:
+- Python already owns stable threat IDs through `_normalize_threat_patch_ids()`;
+- however, `persistent_beat_state_patch()` validated the raw model patch namespace **before** threat IDs were canonicalized;
+- therefore a model-invented label such as `story` crashed before Python could rename it to `threat_N`.
+
+Fix:
+- canonicalize new threat IDs before `normalize_beat_state_patch()` namespace validation;
+- no semantic guessing, prompt changes, or broader normalization added;
+- strict accepted-state schema remains enabled.
+
+Relevant commits:
+- `30a35e53a940d63c171ea0d29d9421d293ecc52a`
+- `d3c0dda6599e2baa7a3287529bad763b6ff4b17b`
+
 ## Immediate next work
 
 Queued:
-- `tests-2773-strict-accepted-state-schema`
-- `generate-beats-2774-strict-accepted-state-schema`
+- `tests-2775-threat-id-ordering`
+- `generate-beats-2776-threat-id-ordering`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
