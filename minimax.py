@@ -11311,6 +11311,7 @@ def build_beat_coherence_validation_messages(
     beat_job,
     candidate_beat,
     settings=None,
+    previous_beat="",
 ):
     """Build the narrow post-validation physical/coherence prompt."""
     settings = settings or _active_beat_validation_settings()
@@ -11320,6 +11321,11 @@ def build_beat_coherence_validation_messages(
         "Judge meaning, not exact wording. Return one JSON object with boolean "
         "valid and string issue."
     )
+    previous_beat_block = (
+        f"PREVIOUS BEAT\n{str(previous_beat).strip()}\n\n"
+        if str(previous_beat or "").strip()
+        else ""
+    )
     user = f"""
 CURRENT STATE
 {json.dumps(state, ensure_ascii=False, separators=(",", ":"))}
@@ -11327,11 +11333,12 @@ CURRENT STATE
 CURRENT JOB
 {beat_job}
 
-CANDIDATE BEAT
+{previous_beat_block}CANDIDATE BEAT
 {candidate_beat}
 
 CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.
 Read CANDIDATE BEAT literally in order and carry each stated result forward.
+- PREVIOUS BEAT, when present, provides immediate context; judge only CANDIDATE BEAT.
 - Reject repeating an irreversible removal or destruction on the same specific
   target, part, or object unless restoration, regeneration, or reinstallation
   happens first.
@@ -12338,6 +12345,7 @@ def _run_forward_beat_validation(
                     beat_job=current_job,
                     candidate_beat=candidate,
                     settings=_active_beat_validation_settings(),
+                    previous_beat=finalized_texts[-1] if finalized_texts else "",
                 )
                 print(
                     f"Checking Beat {beat_number} within-beat physical coherence "
@@ -14292,6 +14300,13 @@ def extract_source_span_state_effects(
                     raw,
                     unit.text,
                     llm_request=llm_request,
+                )
+                print(
+                    f"Source unit {unit.id} state effects:\n"
+                    f"Source span: {unit.text}\n"
+                    "Result: "
+                    + json.dumps(effects_by_unit[unit.id], ensure_ascii=False),
+                    flush=True,
                 )
                 break
             except LLMConnectionError:

@@ -1,7 +1,37 @@
 import pytest
+from types import SimpleNamespace
 
 import minimax
 from story_planner import PlannedChapter, SourceUnit, StoryPlan
+
+
+def test_source_unit_state_effects_print_source_and_result(capsys):
+    units = [
+        SourceUnit(id=1, start=0, end=10, text="Amy waits."),
+        SourceUnit(
+            id=2, start=11, end=56,
+            text="A zombie shatters the kitchen door window.",
+        ),
+    ]
+    responses = iter([
+        {"state_effects": []},
+        {"state_effects": [{
+            "op": "set_barrier_state",
+            "entity": "kitchen door window",
+            "value": "broken",
+        }]},
+    ])
+    result = minimax.extract_source_span_state_effects(
+        SimpleNamespace(source_units=units),
+        lambda _messages, **_kwargs: next(responses),
+    )
+    output = capsys.readouterr().out
+    assert result[1] == []
+    assert result[2][0]["op"] == "set_barrier_state"
+    assert "Source unit 1 state effects:\nSource span: Amy waits.\nResult: []" in output
+    assert "Source unit 2 state effects:" in output
+    assert "A zombie shatters the kitchen door window." in output
+    assert '"value": "broken"' in output
 
 
 def _amy_plan():

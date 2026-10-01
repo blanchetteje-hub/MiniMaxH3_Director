@@ -1081,6 +1081,15 @@ def group_chapter_source_responsibilities(
             **sampling,
         )
         relation_value = parse_local_relation(raw_relation)
+        left = units_by_id[left_id]
+        right = units_by_id[unit_id]
+        print(
+            "Source-unit local relation:\n"
+            f"LEFT source span {left.id} [{left.start}:{left.end}]: {left.text}\n"
+            f"RIGHT source span {right.id} [{right.start}:{right.end}]: {right.text}\n"
+            f"Result: {relation_value}",
+            flush=True,
+        )
         if relation_value == "MERGE":
             current.append(unit_id)
         else:

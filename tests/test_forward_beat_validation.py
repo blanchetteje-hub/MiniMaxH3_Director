@@ -27,6 +27,40 @@ ARC = {"phases": [{
 
 
 class ForwardBeatValidationTests(unittest.TestCase):
+    def test_coherence_prompt_uses_previous_accepted_beat_when_available(self):
+        beats = [
+            "Tala opens the gate.",
+            "Tala walks through the open gate.",
+        ]
+        coherence_prompts = []
+
+        def llm_request(messages, **kwargs):
+            purpose = kwargs.get("history_metadata", {}).get("purpose")
+            if purpose == "beat_finite_endpoint_extract":
+                return {"status": "COMPLETE"}
+            if purpose == "beat_coherence_validation":
+                coherence_prompts.append(messages[-1]["content"])
+            return {"valid": True, "issue": ""}
+
+        with tempfile.TemporaryDirectory() as directory:
+            minimax._run_forward_beat_validation(
+                lambda: beats,
+                "Tala opens the gate and walks through it.",
+                2,
+                {"phases": []},
+                str(Path(directory) / "beats.txt"),
+                llm_request,
+                state_path=str(Path(directory) / "state.json"),
+            )
+
+        self.assertEqual(len(coherence_prompts), 2)
+        self.assertNotIn("PREVIOUS BEAT", coherence_prompts[0])
+        self.assertIn(
+            "PREVIOUS BEAT\nTala opens the gate.\n\nCANDIDATE BEAT\n"
+            "Tala walks through the open gate.",
+            coherence_prompts[1],
+        )
+
     def test_coherence_validator_is_narrow_and_generic(self):
         messages = minimax.build_beat_coherence_validation_messages(
             {"characters": {"Tala": {"status": "alive"}}},

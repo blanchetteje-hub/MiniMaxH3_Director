@@ -426,7 +426,7 @@ def test_local_relation_prompt_distinguishes_trigger_completion_from_followup_wo
     assert "Testing, calibrating, inspecting, transporting" in prompt
 
 
-def test_local_relation_parser_and_grouping_keep_repeatables_isolated():
+def test_local_relation_parser_and_grouping_keep_repeatables_isolated(capsys):
     from story_planner import (
         build_chapter_spans,
         group_chapter_source_responsibilities,
@@ -457,6 +457,11 @@ def test_local_relation_parser_and_grouping_keep_repeatables_isolated():
     )
 
     assert groups == ((1, 2), (3, 4), (5,))
+    output = capsys.readouterr().out
+    assert f"LEFT source span 1 [{units[0].start}:{units[0].end}]: {units[0].text}" in output
+    assert f"RIGHT source span 2 [{units[1].start}:{units[1].end}]: {units[1].text}" in output
+    assert output.count("Result: MERGE") == 2
+    assert output.count("Result: NEW_TASK") == 1
 
 
 def test_real_amy_story_groups_to_three_finite_beats_plus_repeated_process():
