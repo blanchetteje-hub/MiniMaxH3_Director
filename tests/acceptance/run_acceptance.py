@@ -220,19 +220,21 @@ def build_command(
     director_only: bool = False,
 ) -> tuple[list[str], int | None]:
     beats = benchmark["beats"]
+    segment_length = float(beats[0]["length_seconds"])
     if planning_only:
         command = [
             python_executable,
             "minimax.py",
             "--generate-beats",
             str(len(beats)),
+            f"{segment_length:g}",
             "--model",
             model,
         ]
         command.extend(extra_args)
         return command, None
 
-    segment_length = float(beats[0]["length_seconds"])
+
     total_length = segment_length * len(beats)
     # Chapter/source-span planning owns refresh boundaries. Never feed the
     # gold benchmark's refresh locations back into the runtime; doing so could
