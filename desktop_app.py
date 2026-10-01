@@ -325,6 +325,10 @@ class MiniMaxBridge:
             if not isinstance(settings, dict):
                 raise ValueError("Generation settings must be an object.")
             beat_count = _positive_int(settings.get("beat_count"), "Story beats")
+            beat_length = _positive_float(
+                settings.get("segment_length"),
+                "Beat duration",
+            )
             model = str(settings.get("model", "gpt")).strip().lower()
             if model not in {"gpt", "mistral", "qwen"}:
                 raise ValueError("Model formatter must be 'gpt', 'mistral', or 'qwen'.")
@@ -334,6 +338,7 @@ class MiniMaxBridge:
                 str(self.script_path),
                 "--generate-beats",
                 str(beat_count),
+                _number_argument(beat_length),
                 "--model",
                 model,
             ]
