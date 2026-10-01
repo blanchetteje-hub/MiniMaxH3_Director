@@ -46,11 +46,11 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
         self.assertIn("location is unambiguous", normalized)
         self.assertIn("support 8 distinct film beats", normalized)
         self.assertIn(
-            "The ending must preserve the source's stated final situation.",
+            "The source's final explicit event must also be the expanded story's final event.",
             normalized,
         )
         self.assertIn(
-            "Do not invent a new escape, destination, surviving threat, or aftermath after the source's final event.",
+            "Do not continue past it with a new destination, containment, escape, surviving threat, resolution, or aftermath.",
             normalized,
         )
 
