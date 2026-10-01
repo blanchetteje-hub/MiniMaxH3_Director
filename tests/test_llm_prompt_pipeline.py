@@ -1606,7 +1606,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
         self.assertNotIn("1. Opening", user_content)
         self.assertNotIn("BEATS:", user_content)
-        self.assertIn("CONTINUITY STATE:", user_content)
+        self.assertIn("PREVIOUS SHOT END — START HERE, DO NOT REPLAY:", user_content)
         self.assertIn("Mark is at the door.", user_content)
 
     def test_generation_messages_include_only_current_and_next_beat(self):
