@@ -23843,6 +23843,18 @@ def build_segment_request(
     )
 
 
+# Prefer the previous Director shot ending for adjacent-shot continuity.
+def director_opening_handoff(previous_result, structured_summary=""):
+    """Return the previous canonical shot ending, falling back to structured state."""
+    previous = previous_result if isinstance(previous_result, dict) else {}
+    shot_end = str(previous.get("_director_end_state") or "").strip()
+    if not shot_end and previous:
+        shot_end = _extract_end_continuity_state(
+            get_detailed_description(previous, "")
+        )
+    return shot_end or str(structured_summary or "").strip()
+
+
 # Build Request 1 of the two-stage Director micro-prompt pipeline.
 def build_generation_messages(
     director_rules,
@@ -30777,22 +30789,39 @@ def _run_main(
             conditioning_mode=conditioning_mode,
             is_final_story_segment=(segment_number == total_segments),
         )
-        opening_summary = (
+        structured_opening_summary = (
             str(opening_summary_text or "").strip()
             if segment_number > 1 else ""
         )
+        previous_result = (
+            list(recent_items)[-1][1]
+            if segment_number > 1 and recent_items
+            else {}
+        )
+        director_opening_summary = director_opening_handoff(
+            previous_result,
+            structured_opening_summary,
+        )
+        h3_opening_summary = structured_opening_summary
         source_opening_state = format_source_authorized_opening_state(
             macro_arc,
             segment_number,
             subject_information=subject_information,
         )
         if source_opening_state:
-            rendered_context = opening_summary or "N/A"
-            opening_summary = (
+            director_context = director_opening_summary or "N/A"
+            h3_context = h3_opening_summary or "N/A"
+            director_opening_summary = (
+                source_opening_state
+                + "\n\nPREVIOUS SHOT END (primary adjacent-shot continuity; "
+                "do not override source-authorized facts)\n"
+                + director_context
+            )
+            h3_opening_summary = (
                 source_opening_state
                 + "\n\nRENDERED CONTINUITY (supplemental; do not override "
                 "source-authorized facts)\n"
-                + rendered_context
+                + h3_context
             )
         excluded_picture_ids = (
             get_conditioning_excluded_picture_ids(
@@ -30801,16 +30830,6 @@ def _run_main(
             )
             if conditioning_mode != "initial" else set()
         )
-        previous_final_frame = ""
-        if recent_items:
-            previous_result = list(recent_items)[-1][1]
-            previous_final_frame = _extract_end_continuity_state(
-                get_detailed_description(previous_result, "")
-            )
-
-        # Phase 2 is already H3-ready opening prose; use the same concise text
-        # for both Director continuity and the final H3 prompt.
-        h3_opening_summary = opening_summary
         messages, estimated_tokens, recent_count = build_generation_messages(
             director_rules=segment_director_rules,
             story=story,
@@ -30821,7 +30840,7 @@ def _run_main(
             total_segments=total_segments,
             segment_length=segment_length,
             total_length=total_length,
-            continuity_summary=opening_summary,
+            continuity_summary=director_opening_summary,
             subject_definitions=subject_definitions,
             conditioning_mode=conditioning_mode,
             dialogue_exclusions=dialogue_exclusions,
@@ -30848,10 +30867,10 @@ def _run_main(
             "messages": messages,
             "estimated_tokens": estimated_tokens,
             "recent_count": recent_count,
-            "opening_state": opening_summary,
-            "previous_final_frame": previous_final_frame,
+            "opening_state": director_opening_summary,
+            "previous_final_frame": director_opening_summary,
             "registry_state": opening_state,
-            "opening_summary": opening_summary,
+            "opening_summary": director_opening_summary,
             "h3_opening_summary": h3_opening_summary,
             "continuity_source": (
                 continuity_source if segment_number > 1 else "initial"
@@ -30867,7 +30886,7 @@ def _run_main(
                 completed_ids,
                 recent_items,
                 opening_state,
-                opening_summary,
+                director_opening_summary,
                 dialogue_exclusions,
             ),
         }
@@ -31208,6 +31227,9 @@ def _run_main(
         request1_ending_scene = _extract_end_continuity_state(
             payload.get("raw_scene", "")
         )
+        if request1_ending_scene:
+            llm_result["_director_end_state"] = request1_ending_scene
+            payload["llm_result"] = llm_result
         # Phase 2 writes the opening of the NEXT segment, so give it the phase
         # that contains the next beat when one exists. On the final segment,
         # retain the current phase for a complete debug record.
