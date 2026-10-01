@@ -17100,6 +17100,8 @@ STORY
 Convert the complete story above into exactly {int(total_segments)} sequential beats.
 Preserve the story's event order and outcomes. Do not summarize away an action
 that must visibly happen on screen. Each beat must be executable as one film clip.
+A terminal result belongs to one beat only: if the next beat begins with that
+result or consequence, the current beat must stop before it.
 {extra_text}
 
 RETURN
@@ -17248,7 +17250,9 @@ VALIDATION ISSUE
 Rewrite only Beat {int(beat_number)}. Keep it one concise sentence. Preserve the
 same story event and outcome. Fix the stated problem while maintaining spatial
 continuity with the previous and next beats. If movement is required, show it.
-Do not pull a later story event into this beat.
+Do not pull a later story event into this beat. A terminal result belongs to one
+beat only: if NEXT PLANNED BEAT begins with that result or consequence, stop this
+beat before it.
 
 RETURN
 {{"beat_number":{int(beat_number)},"beat_text":"one sentence"}}""".strip(),
