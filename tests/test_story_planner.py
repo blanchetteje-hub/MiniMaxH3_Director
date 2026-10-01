@@ -135,6 +135,30 @@ def test_binary_classifier_builders_keep_questions_narrow():
     assert "Immediate cause-and-effect" in reset_prompt
 
 
+def test_split_prompt_forbids_fragmenting_one_ongoing_majority_process():
+    from story_planner import (
+        SourceUnit,
+        build_cut_choice_messages,
+        build_source_unit_split_messages,
+        enumerate_cut_candidates,
+    )
+
+    text = (
+        "The majority of the film is Amy killing zombies as they try "
+        "and attack her."
+    )
+    unit = SourceUnit(id=1, start=0, end=len(text), text=text)
+
+    split_prompt = build_source_unit_split_messages(text, unit)[-1]["content"]
+    assert "long/repeated-process sentence by itself is KEEP_TOGETHER" in split_prompt
+    assert "and attack her" in split_prompt
+
+    candidates = enumerate_cut_candidates(unit)
+    cut_prompt = build_cut_choice_messages(unit, candidates)[-1]["content"]
+    assert "RIGHT side independently states the distinct terminal/reset phase" in cut_prompt
+    assert "choose NONE" in cut_prompt
+
+
 def test_parse_binary_decision_is_strict():
     from story_planner import parse_binary_decision
 
