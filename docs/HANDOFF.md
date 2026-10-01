@@ -166,18 +166,42 @@ Relevant commits:
 - `9ee1c04e5fbe8f2c6916c0ca70c72397f350553a` — clarify accepted-state root namespaces
 - `a3da214bc1bc5a37af92015c86196362d63e005c` — regression coverage
 
+### 2754 — character canon source-contract failure
+
+`generate-beats-2754-summary-to-story`
+
+Result: failed before story expansion with:
+
+`ValueError: Duplicate canonical character: Unnamed`
+
+Root cause:
+- `canonical_data.txt` on this branch contains the configured field list `age, clothing, gender`;
+- the character-canon prompt was stale and still treated that file as if it contained character records;
+- it also told the local model not to use story/subject information, leaving no character names available;
+- GPT-OSS 20B emitted multiple `Unnamed` records and deterministic parsing rejected the duplicate.
+
+Fix:
+- `canonical_data.txt` is again treated as the field configuration;
+- character names/facts are grounded from `story.txt` + `subjects.txt`;
+- the canon cache hash includes configured fields, story, and subjects;
+- no special handling for `Unnamed` was added.
+
+Relevant commits:
+- `8c18a09ece41805be8d0f4f31f4cf907908622ab` — fix character-canon source contract
+- `53f532c6ddccfa35ec00d13f65bf8d4a18b37a4a` — align character-canon regressions
+
 ## Immediate next work
 
 Queued:
-- `tests-2753-state-root-siblings`
-- `generate-beats-2754-summary-to-story`
+- `tests-2755-character-canon-fields`
+- `generate-beats-2756-summary-to-story`
 
 When processed:
-1. confirm the focused tests are green;
-2. confirm the accepted-state extractor no longer produces nested canonical roots;
-3. inspect the expanded story first and preserve the clean novelist prompt unless new evidence requires a change;
-4. then identify the earliest real Beat/state failure;
-5. explain the failure and proposed fix before making further changes.
+1. confirm the character-canon and planning regressions are green;
+2. confirm character canon uses real named characters instead of `Unnamed`;
+3. confirm the accepted-state root-sibling fix still holds;
+4. inspect the expanded story first and preserve the clean novelist prompt unless new evidence requires a change;
+5. then identify the earliest real Beat/state failure and explain it before making further changes.
 
 ## Public repository rule
 
