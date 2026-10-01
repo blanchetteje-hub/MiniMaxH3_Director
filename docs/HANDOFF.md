@@ -328,10 +328,36 @@ Separate continuity issue observed upstream in the expanded story:
 
 Do not blame or modify the SUMMARY+STORY beat prompt for that contradiction. One unchanged repeat is queued to determine whether the expanded-story barrier inconsistency repeats before changing the novelist prompt.
 
+### 2768 — repeat confirms prompts; story namespace schema failure
+
+`generate-beats-2768-summary-guided-repeat`
+
+The repeat did **not** reproduce the earlier barrier/safe-location contradiction:
+- both kids remain out of the fight;
+- Beat 8 retrieves both Will and Amber;
+- SUMMARY+STORY beat conversion remains useful and should stay.
+
+The run fails after Beat 3 in accepted-state capture with:
+
+`State effects cannot nest canonical state root 'story.persistent_facts.characters.Amy.location'; roots must remain top-level.`
+
+Cause:
+- `story.persistent_facts` was still schema-open enough for GPT-OSS to place character-state data under the story namespace.
+
+Fix:
+- accepted-state `story` is now limited to `terminal_states` and `persistent_facts`;
+- reserved canonical root names cannot be used directly inside `story.persistent_facts`;
+- no novelist or story-to-beats prompt changes were made.
+
+Relevant commits:
+- `887fbe8c5ac6f2a47459629eac27f8e38a272d1e`
+- `56f4ade89048730627e95eeef2a600b7adcc6852`
+
 ## Immediate next work
 
 Queued:
-- `generate-beats-2768-summary-guided-repeat`
+- `tests-2769-story-namespace-schema`
+- `generate-beats-2770-summary-guided-story-to-beats`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
