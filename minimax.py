@@ -10573,6 +10573,15 @@ def build_accepted_beat_state_response_format():
                             },
                             "environment": {
                                 "type": "object",
+                                "properties": {
+                                    "doors": {"type": "object", "additionalProperties": True},
+                                    "windows": {"type": "object", "additionalProperties": True},
+                                    "barriers": {"type": "object", "additionalProperties": True},
+                                    "objects": {"type": "object", "additionalProperties": True},
+                                    "paths": {"type": "object", "additionalProperties": True},
+                                    "persistent_effects": {"type": "array"},
+                                    "hazards": {"type": "array"},
+                                },
                                 "additionalProperties": True,
                             },
                             "threats": {
