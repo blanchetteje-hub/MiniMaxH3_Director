@@ -79,6 +79,29 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(request.call_count, 3)
         self.assertIn("Mark completes the action.", payload["raw_scene"])
 
+    def test_request_one_retries_missing_end_state_marker(self):
+        malformed = {
+            "raw_scene": (
+                "At 00:00.000, Mark reaches for the latch.\n"
+                "At 00:04.500, Mark closes the hatch."
+            ),
+            "finite_activity_complete": True,
+            "named_beneficiaries_complete": True,
+            "activity_tools_settled": True,
+            "beat_complete": True,
+        }
+        request = mock.Mock(side_effect=[
+            malformed,
+            director_response("Mark closes the hatch."),
+            formatter_response("[Shot 1] At 00:00.000, Mark closes the hatch."),
+        ])
+        with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
+            payload = minimax.request_segment_llm(
+                segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
+            )
+        self.assertEqual(request.call_count, 3)
+        self.assertIn("End continuity state:", payload["raw_scene"])
+
     def test_request_one_does_not_repair_semantic_omission_during_baseline(self):
         bundle = segment_bundle()
         bundle["messages"] = [{
@@ -477,7 +500,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("Harmless local route or prop details are allowed", prompt)
         self.assertIn("Python will normalize minor timestamp formatting differences", prompt)
         self.assertNotIn("AUTHORITATIVE FINAL STATE CONTRACT", prompt)
-        self.assertNotIn("finite_activity_complete", prompt)
+        self.assertIn("finite_activity_complete", prompt)
+        self.assertIn("beat_complete", prompt)
         self.assertLess(len(prompt), 3500)
     def test_director_raw_scene_rejects_early_timeline_completion(self):
         raw_scene = (
