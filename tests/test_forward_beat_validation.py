@@ -547,6 +547,10 @@ class ForwardBeatValidationTests(unittest.TestCase):
             "These four roots are siblings. Never nest characters, environment, threats, or story inside one another.",
             prompt,
         )
+        self.assertIn(
+            "Use threats only for hostile or dangerous entities.",
+            prompt,
+        )
 
     def test_accepted_beat_state_prompt_requires_distinct_threat_identity(self):
         state = minimax.new_beat_canonical_state()
@@ -587,6 +591,10 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertFalse(schema["additionalProperties"])
         for root in ("characters", "environment", "threats", "story"):
             self.assertEqual(schema["properties"][root]["type"], "object")
+        self.assertEqual(
+            schema["properties"]["threats"]["additionalProperties"]["type"],
+            "object",
+        )
 
     def test_validator_preserves_group_beneficiary_roles(self):
         messages = minimax.build_beat_validation_messages(
