@@ -73,7 +73,7 @@ class ComfyHistoryResponse:
         return self.payload
 
 
-class LmStudioIntegrationTests(unittest.TestCase):
+class LlmHostIntegrationTests(unittest.TestCase):
     def test_subject_can_use_multiple_picture_references(self):
         definitions = (
             "<Subject 1> is Mark, a man referenced in <Picture 1> and "
@@ -1004,7 +1004,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(sleep.call_count, 6)
 
     def test_lm_message_normalizer_merges_adjacent_users(self):
-        normalized = minimax.normalize_lm_studio_messages([
+        normalized = minimax.normalize_llm_host_messages([
             {"role": "system", "content": "director"},
             {"role": "user", "content": "original task"},
             {"role": "user", "content": "correction"}
@@ -1028,7 +1028,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
                 "APPEND_SYSTEM_PROMPT_FILE",
                 append_path,
             ):
-                normalized = minimax.normalize_lm_studio_messages([
+                normalized = minimax.normalize_llm_host_messages([
                     {"role": "system", "content": "director"},
                     {"role": "user", "content": "task"},
                 ])
@@ -1047,7 +1047,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
                 "APPEND_SYSTEM_PROMPT_FILE",
                 append_path,
             ):
-                normalized = minimax.normalize_lm_studio_messages([
+                normalized = minimax.normalize_llm_host_messages([
                     {"role": "system", "content": "director"},
                     {"role": "user", "content": "task"},
                 ])
@@ -1188,7 +1188,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(fallback_payload["seed"], first_payload["seed"])
 
     @mock.patch("minimax.requests.post")
-    def test_ask_llm_reports_lm_studio_http_error_body(self, post):
+    def test_ask_llm_reports_llm_host_http_error_body(self, post):
         rejected = mock.Mock(
             status_code=400,
             text='{"error":"context length exceeded"}'
