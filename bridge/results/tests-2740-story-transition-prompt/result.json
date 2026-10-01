@@ -1,0 +1,27 @@
+{
+  "job_id": "tests-2740-story-transition-prompt",
+  "kind": "run_tests",
+  "started_at": 1790875462.1186955,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_summary_to_story_pipeline.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 6 items\n\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_derived_macro_arc_is_one_event_per_beat PASSED [ 16%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_expansion_prompt_uses_target_runtime_and_source_summary FAILED [ 33%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_pipeline_profiles_match_tuned_settings PASSED [ 50%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_to_beats_prompt_keeps_full_story_and_continuity_rule PASSED [ 66%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_timestamp_cleanup_removes_story_clock_times_only \ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_timestamp_cleanup_removes_story_clock_times_only PASSED [ 83%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_two_pass_generation_feeds_timestamp_cleaned_beats_to_validator PASSED [100%]\n\n================================== FAILURES ===================================\n_ SummaryToStoryPipelineTests.test_story_expansion_prompt_uses_target_runtime_and_source_summary _\n\nself = <tests.test_summary_to_story_pipeline.SummaryToStoryPipelineTests testMethod=test_story_expansion_prompt_uses_target_runtime_and_source_summary>\n\n    def test_story_expansion_prompt_uses_target_runtime_and_source_summary(self):\n        messages = minimax.build_story_expansion_messages(\n            \"A ranger crosses a flooded valley.\",\n            64,\n            total_segments=8,\n        )\n        self.assertIn(\"You are a novelist\", messages[0][\"content\"])\n        self.assertIn(\"A ranger crosses a flooded valley.\", messages[1][\"content\"])\n        self.assertIn(\"64-second timeframe\", messages[1][\"content\"])\n        self.assertIn(\"Preserve every explicit event and outcome\", messages[1][\"content\"])\n        self.assertIn(\"must happen visibly\", messages[1][\"content\"])\n>       self.assertIn(\"Do not compress, imply, or skip an explicit transition\", messages[1][\"content\"])\nE       AssertionError: 'Do not compress, imply, or skip an explicit transition' not found in \"SUMMARY\\nA ranger crosses a flooded valley.\\n\\nThe entire story must be able to take place within a 64-second timeframe.\\n\\nPreserve every explicit event and outcome in the summary in the same order.\\nEvery explicit event in the summary must happen visibly in the story. Do not\\ncompress, imply, or skip an explicit transition. If a character moves from one\\nlocation to another, write the movement clearly enough that the character's\\nlocation is unambiguous.\\nWrite enough concrete sequential action to support 8 distinct film beats.\\nYou may add connective staging and concrete detail, but do not add a new major\\nplot event, outcome, or named character. Write one continuous story, not an\\noutline, beat list, screenplay, or analysis.\"\n\ntests\\test_summary_to_story_pipeline.py:41: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_expansion_prompt_uses_target_runtime_and_source_summary - AssertionError: 'Do not compress, imply, or skip an explicit transition' not found in \"SUMMARY\\nA ranger crosses a flooded valley.\\n\\nThe entire story must be able to take place within a 64-second timeframe.\\n\\nPreserve every explicit event and outcome in the summary in the same order.\\nEvery explicit event in the summary must happen visibly in the story. Do not\\ncompress, imply, or skip an explicit transition. If a character moves from one\\nlocation to another, write the movement clearly enough that the character's\\nlocation is unambiguous.\\nWrite enough concrete sequential action to support 8 distinct film beats.\\nYou may add connective staging and concrete detail, but do not add a new major\\nplot event, outcome, or named character. Write one continuous story, not an\\noutline, beat list, screenplay, or analysis.\"\n=============== 1 failed, 5 passed, 4 subtests passed in 2.58s ================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790875463.6822581,
+    "finished_at": 1790875467.3023372
+  },
+  "finished_at": 1790875467.3023372,
+  "status": "ok"
+}
