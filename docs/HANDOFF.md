@@ -1,237 +1,197 @@
 # MiniMax H3 — Development Handoff
 
-Read `docs/PROJECT_NOTES.md` first. It is the architectural source of truth. This file is intentionally short and should contain only the current implementation state, active constraints, latest findings, and immediate next work. Historical chronology belongs in `docs/HANDOFF_OLD.md`.
+Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This file describes the current branch implementation, active experiment, latest evidence, and immediate next work.
 
 ## Repository / active branch
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
-Active development branch: `gpt-arc-refresh`
+Active experimental branch: `summary-to-story-test`
 
 Runtime/bridge mailbox branch: `gpt-runtime`
 
-Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is used for development/evaluation only, not as a production dependency.
+Baseline branch this experiment diverged from: `gpt-arc-refresh`
+
+Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/evaluation only and must not become a production dependency.
 
 ## Primary goal
 
 `story.txt -> gold-standard MiniMax H3 prompts`
 
-`story.txt` is the one narrative source of truth. Intermediate artifacts may organize or concretize the story but may not become competing narrative authority.
+`story.txt` remains the sole narrative authority. Expansion may add concrete staging/detail where the source is silent, but it may not add, replace, contradict, skip, reorder, or materially alter source events/outcomes.
 
-Fix the earliest demonstrated production/acceptance failure. Do not compensate downstream for an upstream semantic error.
+Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture/prompt changes.
 
-## Current planning architecture
+## Current branch experiment: summary -> expanded story -> beats
 
-The active planner is source-span / chapter-first.
+This branch is testing a simpler front end to Beat planning than the older source-span/chapter planner.
 
-1. Python exposes exact source units from `story.txt`.
-2. Narrow LLM classifiers identify only the semantics Python cannot derive directly:
-   - source-unit split gate;
-   - TERMINAL;
-   - HARD_RESET;
-   - visible responsibility;
-   - local MERGE vs NEW_TASK relation;
-   - typed persistent state effects.
-3. Python derives chapter boundaries, source ownership, beat counts, event ordering, and required-event assignments.
-4. Beat CREATE expands assigned events into concise executable beats.
-5. Beats run through CREATE -> VALIDATE -> REPAIR -> VALIDATE until accepted.
-6. Accepted required-event state effects are applied by Python only after validation.
+Current `--generate-beats` flow:
 
-Do not fall back to the old broad ARC semantic architecture when a source-span extractor fails. Repair the source-span path.
+1. Read `story.txt`.
+2. Novelist call expands the short story/summary into a runtime-length working story.
+3. A second local-model call converts that expanded story into exactly N sequential beat events.
+4. Python creates a deterministic one-event-per-beat macro arc.
+5. Existing Beat CREATE -> VALIDATE -> REPAIR -> VALIDATE processing turns those events into accepted beats.
+6. Accepted-Beat state capture records persistent continuity after each accepted beat.
 
-## Beat CREATE / REPAIR policy
+The expanded story is an intermediate implementation artifact, not a new narrative authority. When it disagrees with `story.txt`, the expansion is wrong.
 
-Beat generation is the current optimization focus.
+### CLI contract
 
-Beat CREATE receives:
-- full `story.txt` under `SOURCE FILM`;
-- `KNOWN SUBJECTS`;
-- canonical `CHARACTER FACTS`;
-- only the chapter/local `ASSIGNED EVENTS`;
-- `PREVIOUS BEAT` when one exists.
+`--generate-beats` now takes two required positive values:
 
-The full story is context only. `ASSIGNED EVENTS` determine what may happen now.
+`--generate-beats <beat-count> <beat-length-seconds>`
 
-Beat CREATE and Beat REPAIR use:
-- temperature `0`;
-- seed `42`;
-- repeat penalty `1.15`;
-- high reasoning;
-- 1024-token reasoning budget.
+Both are needed so the novelist knows the target total runtime:
 
-This is intentional: testing showed GPT-OSS 20B became substantially less reliable on Beat writing at any nonzero temperature.
+`beat-count * beat-length-seconds`
 
-Beat repair should make the smallest textual change necessary and must re-enter normal validation before acceptance.
+The desktop/UI command path passes both values as well.
 
-## LLM responsibility split
+## Story expansion / novelist profile
 
-Treat the local 20B as capable but instruction-fragile.
+Current novelist settings on this branch:
 
-Prefer:
-- short prompts;
-- one semantic responsibility per call;
-- Python-owned truth + narrow extractor + deterministic comparison;
-- deterministic arithmetic/bookkeeping/state application.
+- temperature: `0.4` (lowered from `0.6` after observed drift)
+- reasoning effort: high
+- reasoning budget: 1024 tokens
+- prompt explicitly preserves every source event/outcome
+- explicit transitions must happen visibly rather than being compressed or implied
+- when the source does not establish a new location/route/barrier/container, stay in the nearest established location rather than inventing one
+- target runtime and requested beat count are supplied
 
-Avoid:
-- broad holistic validators when Python already owns the invariant;
-- stacking more prose onto a prompt that is already being ignored;
-- combining semantic inference and bookkeeping into the same local-model call.
+The prompt should remain compact. Do not respond to every bad generation by stacking more prose onto it; promote only the smallest generic rule supported by repeated evidence.
 
-Sampling:
-- ARC create/repair, character canon, and Director RAW remain creative sampling calls.
-- Beat CREATE/REPAIR are temperature 0 despite being writing calls.
-- Validators/extractors are deterministic: temperature 0, seed 42, low reasoning, 128-token reasoning budget.
-- llama-server should run with `--deterministic`; this is a process flag, not a request field.
-- target context size is 8192.
+## Story-to-beats profile
 
-## Canonical character data
+The second pass receives the full expanded story and must return exactly the requested number of sequential beats.
 
-`canonical_data.txt` is user-authored character information.
+Current settings:
 
-For each character, the system establishes:
-- age;
-- clothing;
-- gender.
+- temperature: `0`
+- reasoning effort: medium
+- reasoning budget: 1024 tokens
 
-Explicit file values are copied. Missing required values may be chosen once by the local model. Extra facts are extracted only when explicitly authored.
+Python strips story-style clock timestamps before the generated beat framework enters normal validation.
 
-`character_canon.json` is cached from the canonical-data text and reused deterministically.
+The generated macro arc is intentionally simple:
+- one required event per requested beat;
+- sequential dependency chain;
+- no model-authored bookkeeping/state effects at this stage.
 
-`subjects.txt` remains separate and is used for visual subject identity/mapping.
+## Beat validation/state behavior retained from baseline
 
-## Current canonical state direction
+Normal Beat CREATE/VALIDATE/REPAIR remains in place after the new two-pass planner.
 
-Python owns canonical state.
+Important retained rules:
+- Beat CREATE/REPAIR use temperature 0 / seed 42.
+- Python owns deterministic bookkeeping and canonical state.
+- accepted beats are observed for broad persistent state after validation.
+- broad state capture does not imply broad prompt injection later.
+- an unspecified observation must not erase a concrete established fact.
+- Director optimization is not the current focus; stabilize planning/beats first.
 
-Recent direction from the current iteration:
-- state capture should remember persistent facts broadly;
-- this may include rooms, objects, threat condition/injuries, concrete locations, inventory, barriers/windows, etc.;
-- broad capture does **not** mean every stored fact must later be injected into every prompt;
-- relevance filtering can be added later, analogous to subject definitions being injected only when relevant;
-- an observed `UNSPECIFIED` value must never erase a previously established concrete fact.
+## Accepted-Beat state schema fixes on this branch
 
-The important distinction is:
-- **catalog state broadly**;
-- **inject state selectively later**.
+Earlier accepted-state extraction showed two predictable 20B JSON-shape failures.
 
-Do not weaken state capture merely because prompt filtering is not implemented yet.
+1. Nested threat shorthand:
+   `{"threats":{"zombies":"active"}}`
 
-## Accepted-Beat persistent state capture
+   Accepted-state-only normalization converts known threat-state enum strings into:
+   `{"threats":{"zombies":{"status":"active"}}}`
 
-After a Beat has passed semantic + coherence validation and required-event effects are staged, a deterministic accepted-Beat extractor observes concrete persistent end-state facts established by the finalized text.
+   Ambiguous nested strings still fail.
 
-The extractor may concretize source abstractions, for example:
-- authored `safe location` -> Beat-established `closet`;
-- generic inventory state -> explicit held/stored object placement.
+2. Root-level threat shape:
+   acceptance 2748 produced a non-object `state_patch.threats`, which the canonical state parser correctly rejected.
 
-Captured facts are merged into canonical Python state and the persistent-state ledger.
+   The response schema now requires each allowed root to be an object:
+   - `characters`
+   - `environment`
+   - `threats`
+   - `story`
 
-This path intentionally captures incidental but persistent world facts (for example a room or object) so later stages can use them if relevant.
+   This prevents ambiguous root-level shorthand instead of making Python guess its meaning.
 
-### Latest acceptance finding: 2710
+Relevant branch commits:
+- `8a611913770ac8d010a6df55ecec2ea7e479a7e3` — update novelist temperature regression to 0.4
+- `1b795fb5b3f85b3615f033c006748458d3665dcf` — constrain accepted-Beat state root shapes
+- `9b734d3770d12ebb67a2445ed19973c115d6e3de` — regression coverage
 
-`generate-beats-2710-gpt-accepted-state` showed that accepted-Beat capture is successfully retaining useful continuity:
-- concrete kid locations;
-- kitchen objects;
-- pistol/katana state;
-- accumulated threat injuries;
-- window/environment changes.
+## Terminology refactor
 
-Its first attempt exposed a deterministic schema defect:
+User-facing/code terminology is being changed from **LM Studio** to **LLM host** because the runtime is not tied to LM Studio.
 
-`Beat state patch entity threats.zombies must be an object.`
+The associated setting/variable naming is being migrated as well, including compatibility handling for the legacy key where needed.
 
-The extractor produced an unambiguous shorthand equivalent to:
+Do not reintroduce LM-Studio-specific naming for generic runtime behavior.
 
-`{"threats":{"zombies":"active"}}`
+## Latest verification
 
-while canonical threat entries require object records.
+### 2749 — focused regression suite
 
-Fix:
-- known scalar threat-state enum values are normalized to `{"status": value}` only on the accepted-Beat state path;
-- ambiguous scalar values are still rejected rather than guessed;
-- the generic canonical patch contract remains strict.
+`tests-2749-accepted-state-root-schema`
 
-Relevant commits:
-- `f9aa9b60d7646d50db0ade54e9a2ef2e05737383` — normalize accepted Beat threat-status shorthand;
-- `2e193e1e4c0078e75d72699abcc327af3933c6f4` — regression coverage;
-- `509fd416e52e5a4375125ed906d39cb0896d424a` — align stale source-span regression with full-story Beat context.
+Result: **39 passed, 9 subtests passed**.
 
-## Other recent verified planning fixes
+Covered:
+- `--generate-beats` CLI + desktop behavior
+- summary-to-story pipeline
+- accepted-Beat state capture/schema
+- forward Beat validation
 
-Recent Amy acceptance work established:
-- typed state may seed a newly introduced threat namespace before location effects;
-- singular/plural aliases may support that typing conservatively;
-- required-event state is deterministically preflighted before Beat generation;
-- deterministic state-preflight failures preserve the saved arc and fail fast rather than wiping/restarting forever;
-- Beat validation now requires assigned final `set_location` values to be visibly true by candidate end;
-- the locked test story wording was adjusted where story phrasing itself was unnecessarily hostile to the local 20B, while real state-management failures continue to be fixed in architecture instead of hidden in story edits.
+The 0.4 novelist temperature regression and accepted-state root-object schema are green.
 
-Relevant commits include:
-- `28bf277bfb2ee4a766670144115eac88b5f7142a`;
-- `61d0325f6a52d751de0c2d70f18451302c782611`;
-- `b0dc4bfbc75a693f2697cbb3249d88d6d9c60ea0`;
-- `9be30ba0ab1cbc21833bf29d524585f075ab4a43`.
+### 2750 — full Amy planning run
 
-## Boundary policy during Beat optimization
+`generate-beats-2750-summary-to-story`
 
-Broad boundary/barrier enforcement remains dormant in the Beat path.
+Result: **completed successfully through all 8 accepted beats**.
 
-Do not restore the old barrier/state prompt blocks wholesale.
+This proves:
+- summary -> expanded story -> exactly 8 macro events works end-to-end;
+- Beat validation/repair can consume the generated framework;
+- accepted-state capture no longer crashes on the demonstrated threat-root shape.
 
-Reintroduce only the smallest specific boundary fact/rule when a concrete Beat failure proves it is necessary.
+However, the run exposes the next real problem: **the novelist is still altering source story semantics.**
 
-Underlying boundary helpers may remain in code for later use.
+Observed examples in the expanded story/framework:
+- source says Amy is cooking breakfast; expansion changes Will/Amber into chasing each other around the kitchen table;
+- it invents a back bedroom safe room and extra living-room/hallway travel;
+- after stating that the **last zombie** falls, the ending says Amy and the children must `slip past remaining zombies`;
+- it then sends the family into the night/outside the house, whereas the source only requires Amy to return to the safe location and bring Will and Amber back out with her.
 
-## Director status
+The clearest acceptance failure is the contradiction:
+**last zombie killed -> remaining zombies still present.**
 
-Do **not** tune Director prompts while Beat output/state is still the active optimization target.
+That is upstream story-expansion drift. Do not patch Beat validation or state logic to compensate for it.
 
-Director Request 1 is presently a minimal creative staging stage. Older Director-era rules, topology experiments, retry chronology, and barrier-specific acceptance history are archived in `HANDOFF_OLD.md`.
+A secondary observation is that accepted-state extraction can still overstate a character location from wording such as “ushers them inside”; for example Beat 3 recorded Amy in the back bedroom even though the beat does not clearly establish that Amy entered it. Do not fix this before the upstream expansion failure unless a later run proves it independently blocks continuity.
 
-When Beat output is trustworthy enough to become a stable upstream contract, resume Director optimization from fresh acceptance evidence rather than reopening old failures speculatively.
+## Immediate next work
 
-## Runtime / recovery principles
-
-- Infrastructure connection failures are fatal.
-- Deterministic programming/state-schema failures should fail fast instead of endlessly replaying the same invalid plan.
-- Recoverable generation/model failures may retry from durable checkpoints.
-- Explicit force Beat generation must reset Beat validation state so a prior completed checkpoint cannot silently bypass fresh CREATE/VALIDATE calls.
-- Creative stages that still sample use randomized request seeds; deterministic stages use seed 42.
-- Beat CREATE/REPAIR are the explicit exception: they are writing calls but intentionally deterministic.
+1. Treat 2750 as the current semantic baseline.
+2. Fix the **novelist/story-expansion** prompt, not downstream Beat validation.
+3. Add the smallest generic source-authority rule that prevents:
+   - resurrecting/adding threats after a source-defined final threat is resolved;
+   - inventing a new final destination/outcome not present in the source.
+4. Keep the existing useful grounding rules and temperature 0.4; avoid overloading a prompt that is otherwise moving in the right direction.
+5. Run focused regressions, then another full `--generate-beats 8 8` Amy planning acceptance.
+6. Compare the new expanded story first. Only analyze later Beat/state failures after the expansion preserves the source story.
 
 ## Public repository rule
 
 Committed repository content must remain SFW/generic.
 
-Runtime user-provided stories may contain arbitrary content, but committed tests, examples, prompts, comments, fixtures, and docs should not embed graphic or sexual material.
-
-## Current queued bridge work
-
-Queued after the 2710 finding:
-
-- `tests-2711-accepted-state-shorthand`
-- `generate-beats-2712-gpt-accepted-state-shorthand`
-
-When processed:
-
-1. Confirm the focused regression suite is green.
-2. Confirm accepted-Beat state capture no longer crashes on scalar threat status.
-3. Inspect the new Amy plan from Beat 1 forward.
-4. Identify the earliest real semantic/state failure.
-5. Explain the failure and proposed fix **before** making repository changes.
-6. Fix only that earliest failure, then retest.
-
-Potential later observation from 2710:
-- the successful attempt's final Beat retrieved the children but may not have explicitly shown the required `kills the last zombie` portion.
-- Do **not** patch this preemptively. Evaluate it only if 2712 reaches that point without an earlier failure.
+Runtime/user-provided stories may contain arbitrary content, but committed tests, examples, prompts, comments, fixtures, and docs should remain generic/SFW.
 
 ## Handoff maintenance rule
 
-Keep this file concise.
+Keep this file current and concise while work continues on `summary-to-story-test`.
 
-When a dated issue is resolved or no longer directly relevant to the next developer action:
-- move its chronology into `docs/HANDOFF_OLD.md`;
-- retain only the resulting architectural rule/current behavior here;
-- do not let acceptance-by-acceptance history accumulate again.
+When this experiment is merged, abandoned, or replaced:
+- preserve durable architectural decisions in `PROJECT_NOTES.md`;
+- move obsolete chronology to `HANDOFF_OLD.md`;
+- update the active branch and immediate-next-work sections rather than leaving stale queued-job references.
