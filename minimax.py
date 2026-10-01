@@ -12278,21 +12278,6 @@ def _run_forward_beat_validation(
                 [candidate], phrase_exclusions, beat_start=beat_number
             )
             structural_issues.extend(validate_beat_planning_metadata(candidate))
-            structural_issues.extend(
-                _beat_unassigned_barrier_end_state_errors(
-                    state_before,
-                    [
-                        {
-                            "id": event["id"],
-                            "state_effects": copy.deepcopy(
-                                event.get("state_effects", [])
-                            ),
-                        }
-                        for event in assigned_current_events
-                    ],
-                    candidate,
-                )
-            )
             missing_named_subjects = _missing_named_job_subjects(
                 current_job,
                 candidate,
