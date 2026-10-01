@@ -90,7 +90,9 @@ Important retained rules:
 - accepted beats are observed for broad persistent state after validation.
 - broad state capture does not imply broad prompt injection later.
 - an unspecified observation must not erase a concrete established fact.
-- Director optimization is not the current focus; stabilize planning/beats first.
+- acceptance 2776 completed all 8 Beats successfully and the Beat text is now provisionally stable enough to move downstream.
+
+Accepted-Beat state capture remains useful, but further state-schema/bookkeeping cleanup is **not** the active optimization target. Do not delay Director work to perfect incidental state observations. Revisit state only when a concrete Director failure traces back to missing or incorrect canonical continuity.
 
 ## Accepted-Beat state schema fixes on this branch
 
@@ -424,16 +426,18 @@ Relevant commits:
 
 ## Immediate next work
 
-Queued:
-- `tests-2775-threat-id-ordering`
-- `generate-beats-2776-threat-id-ordering`
+Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.
 
-When processed:
-1. confirm the character-canon and planning regressions are green;
-2. confirm character canon uses real named characters instead of `Unnamed`;
-3. confirm the accepted-state root-sibling fix still holds;
-4. inspect the expanded story first and preserve the clean novelist prompt unless new evidence requires a change;
-5. then identify the earliest real Beat/state failure and explain it before making further changes.
+Next:
+1. reuse the saved 2776 plan so Beat sampling does not change underneath the Director test;
+2. run Director-only acceptance from that exact story_arc.json + beats.txt;
+3. inspect Request 1 / RAW scene output from Segment 1 forward;
+4. identify the earliest real Beat -> RAW scene failure;
+5. explain that failure and proposed fix before changing code or prompts;
+6. do not resume accepted-state cleanup unless the RAW failure demonstrably depends on bad/missing canonical state.
+
+Queued:
+- director-2777-beat-to-raw
 
 ## Public repository rule
 
