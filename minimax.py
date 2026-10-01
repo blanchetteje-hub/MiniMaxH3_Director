@@ -16921,12 +16921,12 @@ Every explicit event in the summary must happen visibly in the story. Do not
 compress, imply, or skip an explicit transition. If a character moves from one
 location to another, write the movement clearly enough that the character's
 location is unambiguous.
-When the summary does not specify a new location, route, barrier, or container,
-keep the action in the nearest already-established location rather than inventing one.
 {beat_support_rule}
 You may add connective staging and concrete detail, but do not add a new major
-plot event, outcome, or named character. Write one continuous story, not an
-outline, beat list, screenplay, or analysis.""".strip(),
+plot event, outcome, or named character.
+The ending must preserve the source's stated final situation. Do not invent a new
+escape, destination, surviving threat, or aftermath after the source's final event.
+Write one continuous story, not an outline, beat list, screenplay, or analysis.""".strip(),
         },
     ]
 
