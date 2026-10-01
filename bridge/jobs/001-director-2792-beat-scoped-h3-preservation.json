@@ -1,0 +1,9 @@
+{
+  "job_id": "director-2792-beat-scoped-h3-preservation",
+  "kind": "run_acceptance",
+  "code_branch": "summary-to-story-test",
+  "model": "gpt",
+  "image1": "amy.jpg",
+  "director_plan_job": "generate-beats-2781-frozen-director-input",
+  "timeout_seconds": 3600
+}
