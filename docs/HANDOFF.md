@@ -504,6 +504,10 @@ Change:
 
 This moves H3-specific reference precision out of the creative RAW prompt instead of adding another Request-1 rule.
 
+### LLM logging convention
+
+All production LLM stages should emit their result or concise verdict through `print()` so bridge `run.log` is sufficient for diagnosis. The pronoun resolver now logs whether it made no replacements or prints each changed line as `Checking pronouns segment: replaced <before> -> <after>`.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.

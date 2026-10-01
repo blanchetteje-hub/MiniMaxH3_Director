@@ -319,6 +319,10 @@ It is an implementation mechanism inside an existing acceptance loop when:
 
 Keep extractors independent, tiny, and purpose-specific rather than combining them into another general validator.
 
+### LLM result logging
+
+Every production LLM stage, validator, extractor, and cleanup call should print a concise human-readable result to stdout so acceptance/bridge run logs show what the model decided. Prefer compact stage-specific messages such as `Checking pronouns segment: replaced ...`, `...: no replacements`, or validator `VALID/INVALID: issue` messages. Do not make important LLM decisions visible only in hidden request history or metadata.
+
 ## Chapter-first planning architecture
 
 The system is conceptually writing a book from `story.txt`.
