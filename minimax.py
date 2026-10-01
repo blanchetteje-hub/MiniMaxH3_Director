@@ -1978,12 +1978,13 @@ def parse_args(arguments=None):
     )
     parser.add_argument(
         "--generate-beats",
-        type=int,
+        type=float,
+        nargs=2,
         default=None,
-        metavar="COUNT",
+        metavar=("COUNT", "BEAT_LENGTH"),
         help=(
-            "write COUNT story beats and story_arc.json from story.txt, then "
-            "exit without running H3 or ComfyUI"
+            "write COUNT story beats using BEAT_LENGTH seconds per beat and "
+            "story_arc.json from story.txt, then exit without running H3 or ComfyUI"
         ),
     )
     parser.add_argument(
@@ -2128,8 +2129,15 @@ def parse_args(arguments=None):
         return args
 
     if args.generate_beats is not None:
-        if args.generate_beats <= 0:
-            parser.error("--generate-beats must be greater than zero.")
+        beat_count_raw, beat_length_raw = args.generate_beats
+        if (
+            not math.isfinite(beat_count_raw)
+            or beat_count_raw <= 0
+            or not float(beat_count_raw).is_integer()
+        ):
+            parser.error("--generate-beats COUNT must be a whole number greater than zero.")
+        if not math.isfinite(beat_length_raw) or beat_length_raw <= 0:
+            parser.error("--generate-beats BEAT_LENGTH must be greater than zero.")
         if args.repair is not None:
             parser.error("--generate-beats cannot be combined with --repair.")
         if any(
@@ -2137,7 +2145,7 @@ def parse_args(arguments=None):
             for value in (args.segment_length, args.total_length, args.megapixels)
         ):
             parser.error(
-                "--generate-beats accepts only its COUNT argument, not video "
+                "--generate-beats accepts COUNT and BEAT_LENGTH only, not video "
                 "generation positionals."
             )
         if (
@@ -2147,6 +2155,11 @@ def parse_args(arguments=None):
             or args.capture_h3_validation_fixture is not None
         ):
             parser.error("H3 fixture capture requires normal video generation.")
+        beat_count = int(beat_count_raw)
+        beat_length = float(beat_length_raw)
+        args.generate_beats = (beat_count, beat_length)
+        args.segment_length = beat_length
+        args.total_length = beat_count * beat_length
         return args
 
     if args.test_prompt_generation and args.repair is not None:
@@ -30077,8 +30090,13 @@ def _run_main(
     if getattr(args, "generate_from_prompts", False):
         return render_generated_prompts(args)
 
-    generate_beats_count = getattr(args, "generate_beats", None)
-    generate_beats_only = generate_beats_count is not None
+    generate_beats_args = getattr(args, "generate_beats", None)
+    generate_beats_only = generate_beats_args is not None
+    generate_beats_count = (
+        int(generate_beats_args[0])
+        if generate_beats_only
+        else None
+    )
     generate_prompts_count = getattr(args, "generate_prompts", None)
     generate_prompts_only = generate_prompts_count is not None
     director_only = bool(getattr(args, "director_only", False))
