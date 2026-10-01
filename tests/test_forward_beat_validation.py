@@ -261,6 +261,60 @@ class ForwardBeatValidationTests(unittest.TestCase):
         )
         self.assertEqual(validation_states[0], validation_states[1])
 
+    def test_location_effect_seeds_threat_from_arc_typed_role(self):
+        arc = {
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 2,
+                "required_events": [
+                    {
+                        "id": "E1",
+                        "event": "A zombie breaks into the house.",
+                        "beat_number": 1,
+                        "state_effects": [
+                            {"op": "set_location", "entity": "zombie", "value": "house"},
+                        ],
+                    },
+                    {
+                        "id": "E2",
+                        "event": "Amy kills the zombies.",
+                        "beat_number": 2,
+                        "state_effects": [
+                            {"op": "set_threat_state", "entity": "zombies", "value": "dead"},
+                        ],
+                    },
+                ],
+            }],
+        }
+        state = minimax._preflight_required_event_state_effects(arc)
+
+        self.assertEqual(state["threats"]["zombie"]["location"], "house")
+        self.assertEqual(state["threats"]["zombies"]["status"], "dead")
+
+    def test_unresolvable_location_effect_raises_deterministic_state_error(self):
+        arc = {
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 1,
+                "required_events": [{
+                    "id": "E1",
+                    "event": "The parcel moves to the hall.",
+                    "beat_number": 1,
+                    "state_effects": [
+                        {"op": "set_location", "entity": "parcel", "value": "hall"},
+                    ],
+                }],
+            }],
+        }
+
+        with self.assertRaisesRegex(
+            minimax.RequiredEventStateApplicationError,
+            "untracked entity: 'parcel'",
+        ):
+            minimax._preflight_required_event_state_effects(arc)
+
     def test_valid_beat_commits_assigned_effects_after_validation(self):
         def validator(messages, **kwargs):
             content = messages[1]["content"]
