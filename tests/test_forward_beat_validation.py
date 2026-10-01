@@ -540,9 +540,22 @@ class ForwardBeatValidationTests(unittest.TestCase):
             "Amy puts Will and Amber in the back closet beside a blue vase.",
         )
         prompt = messages[-1]["content"]
-        self.assertIn("capture persistent world facts broadly", prompt)
+        self.assertIn("Capture persistent world facts broadly", prompt)
         self.assertIn("blue vase", prompt)
         self.assertIn("Do not output story_progress", prompt)
+
+    def test_accepted_beat_state_normalizes_unambiguous_threat_status_shorthand(self):
+        parsed = minimax.parse_accepted_beat_state_patch(
+            {"state_patch": {"threats": {"zombies": "active"}}},
+            state_before=minimax.new_beat_canonical_state(),
+        )
+        self.assertEqual(parsed["threats"]["zombies"], {"status": "active"})
+
+        with self.assertRaisesRegex(ValueError, "threats.zombies must be an object"):
+            minimax.parse_accepted_beat_state_patch(
+                {"state_patch": {"threats": {"zombies": "in the hallway"}}},
+                state_before=minimax.new_beat_canonical_state(),
+            )
 
     def test_validator_preserves_group_beneficiary_roles(self):
         messages = minimax.build_beat_validation_messages(
