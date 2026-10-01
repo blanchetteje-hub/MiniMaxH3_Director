@@ -8317,7 +8317,9 @@ def ask_llm(
         presence_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["presence_penalty"]
         frequency_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["frequency_penalty"]
         repeat_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["repeat_penalty"]
-        seed = CREATIVE_LLM_SAMPLING_PARAMETERS["seed"]
+        # Creative work should vary across requests/runs. Validators and
+        # extractors remain pinned to BENCHMARK_SEED below.
+        seed = generate_random_llm_seed()
         reasoning_effort = CREATIVE_REASONING_EFFORT
         thinking_budget_tokens = CREATIVE_REASONING_BUDGET_TOKENS
         reasoning_budget_message = REASONING_BUDGET_MESSAGE
@@ -17594,7 +17596,11 @@ def load_or_generate_beats(
         # still empty so a failed/incomplete beat-generation run can resume
         # from its existing plan.
         reuse_story_arc=not force_generate or not beats,
-        reset_validation_state=force_generate and bool(beats),
+        # An explicit force-generation request means CREATE + VALIDATE must
+        # run again even when beats.txt was cleared before launch. Otherwise a
+        # completed beat_validation_state.json can silently short-circuit the
+        # entire beat loop and return the prior finalized beats.
+        reset_validation_state=force_generate,
     )
 
 
