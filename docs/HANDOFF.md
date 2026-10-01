@@ -58,7 +58,7 @@ Current novelist settings on this branch:
 - reasoning budget: 1024 tokens
 - prompt explicitly preserves every source event/outcome
 - explicit transitions must happen visibly rather than being compressed or implied
-- when the source does not establish a new location/route/barrier/container, stay in the nearest established location rather than inventing one
+- ending guard: preserve the source's stated final situation; do not invent a new escape, destination, surviving threat, or aftermath after the source's final event
 - target runtime and requested beat count are supplied
 
 The prompt should remain compact. Do not respond to every bad generation by stacking more prose onto it; promote only the smallest generic rule supported by repeated evidence.
@@ -130,56 +130,54 @@ Do not reintroduce LM-Studio-specific naming for generic runtime behavior.
 
 ## Latest verification
 
-### 2749 — focused regression suite
+### 2751 — story expansion prompt regression
 
-`tests-2749-accepted-state-root-schema`
+`tests-2751-clean-ending-prompt`
 
-Result: **39 passed, 9 subtests passed**.
+Result: **6 passed, 4 subtests passed**.
 
-Covered:
-- `--generate-beats` CLI + desktop behavior
-- summary-to-story pipeline
-- accepted-Beat state capture/schema
-- forward Beat validation
+The newer location/barrier rule was removed from the novelist prompt. The replacement is one compact ending guard:
+- preserve the source's stated final situation;
+- do not invent a new escape, destination, surviving threat, or aftermath after the source's final event.
 
-The 0.4 novelist temperature regression and accepted-state root-object schema are green.
+### 2752 — full Amy planning run
 
-### 2750 — full Amy planning run
+`generate-beats-2752-summary-to-story`
 
-`generate-beats-2750-summary-to-story`
+The expanded story is materially better than 2750:
+- no zombies survive after the stated last zombie dies;
+- no new escape/aftermath is invented;
+- Amy returns to the safe location and retrieves Will and Amber.
 
-Result: **completed successfully through all 8 accepted beats**.
+The run then fails after Beat 2 in accepted-state capture with:
 
-This proves:
-- summary -> expanded story -> exactly 8 macro events works end-to-end;
-- Beat validation/repair can consume the generated framework;
-- accepted-state capture no longer crashes on the demonstrated threat-root shape.
+`State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.`
 
-However, the run exposes the next real problem: **the novelist is still altering source story semantics.**
+This is not a novelist failure. It is a local-model JSON namespace-shape failure in the accepted-state extractor.
 
-Observed examples in the expanded story/framework:
-- source says Amy is cooking breakfast; expansion changes Will/Amber into chasing each other around the kitchen table;
-- it invents a back bedroom safe room and extra living-room/hallway travel;
-- after stating that the **last zombie** falls, the ending says Amy and the children must `slip past remaining zombies`;
-- it then sends the family into the night/outside the house, whereas the source only requires Amy to return to the safe location and bring Will and Amber back out with her.
+Current fix:
+- accepted-state prompt now explicitly says `characters`, `environment`, `threats`, and `story` are sibling roots and must never be nested inside one another;
+- no Python guessing/normalization was added for ambiguous nested roots;
+- novelist prompt remains untouched.
 
-The clearest acceptance failure is the contradiction:
-**last zombie killed -> remaining zombies still present.**
-
-That is upstream story-expansion drift. Do not patch Beat validation or state logic to compensate for it.
-
-A secondary observation is that accepted-state extraction can still overstate a character location from wording such as “ushers them inside”; for example Beat 3 recorded Amy in the back bedroom even though the beat does not clearly establish that Amy entered it. Do not fix this before the upstream expansion failure unless a later run proves it independently blocks continuity.
+Relevant commits:
+- `eb207214079bcd001284196a458e015eff47cda6` — simplify novelist prompt and add ending guard
+- `fd354a9683df63fde86eb0ffa57286466ce64ed9` — update novelist regression
+- `9ee1c04e5fbe8f2c6916c0ca70c72397f350553a` — clarify accepted-state root namespaces
+- `a3da214bc1bc5a37af92015c86196362d63e005c` — regression coverage
 
 ## Immediate next work
 
-1. Treat 2750 as the current semantic baseline.
-2. Fix the **novelist/story-expansion** prompt, not downstream Beat validation.
-3. Add the smallest generic source-authority rule that prevents:
-   - resurrecting/adding threats after a source-defined final threat is resolved;
-   - inventing a new final destination/outcome not present in the source.
-4. Keep the existing useful grounding rules and temperature 0.4; avoid overloading a prompt that is otherwise moving in the right direction.
-5. Run focused regressions, then another full `--generate-beats 8 8` Amy planning acceptance.
-6. Compare the new expanded story first. Only analyze later Beat/state failures after the expansion preserves the source story.
+Queued:
+- `tests-2753-state-root-siblings`
+- `generate-beats-2754-summary-to-story`
+
+When processed:
+1. confirm the focused tests are green;
+2. confirm the accepted-state extractor no longer produces nested canonical roots;
+3. inspect the expanded story first and preserve the clean novelist prompt unless new evidence requires a change;
+4. then identify the earliest real Beat/state failure;
+5. explain the failure and proposed fix before making further changes.
 
 ## Public repository rule
 
