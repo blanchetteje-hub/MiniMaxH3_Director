@@ -624,7 +624,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         formatted = formatter_response(
             "[Shot 1] At 00:00.000, Mark enters and reacts to the environment."
         )
-        # Even with the structured response format, LM Studio may return the
+        # Even with the structured response format, LLM host may return the
         # formatter object as JSON text rather than a decoded Python dict.
         ask_llm.side_effect = [director_response(raw_scene), json.dumps(formatted)]
 
@@ -677,7 +677,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(payload["h3_mode"], "T2VA")
 
-    def test_combined_continuity_avoids_lm_studio_schema_rejection(self):
+    def test_combined_continuity_avoids_llm_host_schema_rejection(self):
         llm_request = mock.Mock(side_effect=[
             {"subject": {"name": "Amy"}},
         ])
