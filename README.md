@@ -1108,7 +1108,7 @@ resolution.
 
 - Confirm the model is loaded, not merely downloaded.
 - Confirm the Developer API server is running.
-- Test `/v1/models` at the same host configured in `LM_STUDIO_URL`.
+- Test `/v1/models` at the same host configured in `LLM_HOST_URL`.
 - Use a model that supports structured JSON-schema output.
 - The current tested Mistral 24B setup uses about a 6,044-token context window.
   If a request exceeds that budget, reduce/simplify the stage prompt rather than
