@@ -314,43 +314,13 @@ DIRECTOR_RAW_SCENE_ATTEMPTS = 5
 
 BEAT_VALIDATION_STATE_VERSION = 3
 
-# Frozen model profiles used by the beat-validation benchmark.  These are
-# intentionally separate from the audiovisual formatter defaults: beat
-# validation must use the same prompt layout and sampling settings that were
-# measured in tests/LLM.
+# LLM request settings are selected only by the work being performed.
+# Model/formatter choice must never change sampling, reasoning, prompt transport,
+# or validator behavior.
 BENCHMARK_SEED = 42
+REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
 
-MISTRAL_24B_SETTINGS = {
-    "temperature": 0,
-    "seed": BENCHMARK_SEED,
-    "repeat_penalty": 1.15,
-    "top_p": None,
-    "top_k": None,
-    "min_p": None,
-    "thinking": "off",
-    "chat_template": "built-in",
-    "jinja": True,
-    "context": 6144,
-    "user_prompt_only": False,
-    "stream": False,
-}
-
-QWEN38_27B_SETTINGS = {
-    "temperature": 0,
-    "seed": BENCHMARK_SEED,
-    "repeat_penalty": 1.15,
-    "top_p": None,
-    "top_k": None,
-    "min_p": None,
-    "thinking": "off",
-    "chat_template": "built-in",
-    "jinja": True,
-    "context": 6144,
-    "user_prompt_only": True,
-    "stream": False,
-}
-
-CREATIVE_LLM_SAMPLING_PARAMETERS = {
+CREATIVE_GENERATION_LLM_SETTINGS = {
     "temperature": 0.8,
     "top_p": 0.95,
     "top_k": 0,
@@ -358,13 +328,14 @@ CREATIVE_LLM_SAMPLING_PARAMETERS = {
     "presence_penalty": 0.0,
     "frequency_penalty": 0.0,
     "repeat_penalty": 1.15,
-    "seed": BENCHMARK_SEED,
+    "seed": None,
+    "reasoning_effort": "high",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
 }
 
-# Beat creation and repair are semantic writing tasks, but local GPT-OSS 20B
-# testing is substantially more reliable at greedy temperature 0. Keep the
-# larger reasoning budget used by creative work while removing sampling drift.
-BEAT_LLM_SAMPLING_PARAMETERS = {
+BEAT_WRITING_LLM_SETTINGS = {
     "temperature": 0,
     "top_p": None,
     "top_k": None,
@@ -373,9 +344,13 @@ BEAT_LLM_SAMPLING_PARAMETERS = {
     "frequency_penalty": None,
     "repeat_penalty": 1.15,
     "seed": BENCHMARK_SEED,
+    "reasoning_effort": "high",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
 }
 
-STORY_EXPANSION_LLM_PARAMETERS = {
+STORY_EXPANSION_LLM_SETTINGS = {
     "temperature": 0.4,
     "top_p": 0.95,
     "top_k": 0,
@@ -383,10 +358,14 @@ STORY_EXPANSION_LLM_PARAMETERS = {
     "presence_penalty": 0.0,
     "frequency_penalty": 0.0,
     "repeat_penalty": 1.15,
-    "seed": BENCHMARK_SEED,
+    "seed": None,
+    "reasoning_effort": "high",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
 }
 
-STORY_TO_BEATS_LLM_PARAMETERS = {
+STORY_TO_BEATS_LLM_SETTINGS = {
     "temperature": 0,
     "top_p": None,
     "top_k": None,
@@ -395,6 +374,25 @@ STORY_TO_BEATS_LLM_PARAMETERS = {
     "frequency_penalty": None,
     "repeat_penalty": 1.15,
     "seed": BENCHMARK_SEED,
+    "reasoning_effort": "medium",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
+}
+
+DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
+    "temperature": 0,
+    "top_p": None,
+    "top_k": None,
+    "min_p": None,
+    "presence_penalty": None,
+    "frequency_penalty": None,
+    "repeat_penalty": 1.15,
+    "seed": BENCHMARK_SEED,
+    "reasoning_effort": "low",
+    "thinking_budget_tokens": 128,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
 }
 
 BEAT_WRITING_LLM_PURPOSES = frozenset({
@@ -402,8 +400,7 @@ BEAT_WRITING_LLM_PURPOSES = frozenset({
     "beat_repair",
 })
 
-# These purpose names own creative expansion/restaging outside Beat CREATE/REPAIR.
-CREATIVE_LLM_PURPOSES = frozenset({
+CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
     "character_canon",
     "macro_arc_create",
     "macro_arc_repair",
@@ -411,11 +408,7 @@ CREATIVE_LLM_PURPOSES = frozenset({
     "director_raw_scene",
 })
 
-# Observation, extraction, validation, translation, and schema repair must not
-# sample creatively. --deterministic itself is a llama-server process flag and
-# therefore cannot be toggled per request; production llama-server should be
-# launched with that flag for both creative and deterministic calls.
-DETERMINISTIC_LLM_PURPOSES = frozenset({
+DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "accepted_beat_state_extract",
     "beat_coherence_validation",
     "beat_destination_presence_extract",
@@ -438,22 +431,6 @@ DETERMINISTIC_LLM_PURPOSES = frozenset({
     "subject_continuity",
     "visual_end_state",
 })
-
-ARC_LLM_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
-QWEN_DIRECTOR_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
-
-CREATIVE_REASONING_EFFORT = "high"
-CREATIVE_REASONING_BUDGET_TOKENS = 1024
-
-STORY_EXPANSION_REASONING_EFFORT = "high"
-STORY_EXPANSION_REASONING_BUDGET_TOKENS = 1024
-STORY_TO_BEATS_REASONING_EFFORT = "medium"
-STORY_TO_BEATS_REASONING_BUDGET_TOKENS = 1024
-
-DETERMINISTIC_REASONING_EFFORT = "low"
-DETERMINISTIC_REASONING_BUDGET_TOKENS = 128
-
-REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
 
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
     "MINIMAX_CONTINUITY_STRICT", "1"
@@ -1605,26 +1582,6 @@ def configure_formatter(model):
     format_mistral_prompt = ACTIVE_FORMATTER.format_prompt
     validate_mistral_prompt = ACTIVE_FORMATTER.validate_prompt
     return ACTIVE_FORMATTER
-
-
-def _active_formatter_llm_settings():
-    """Return a copy of the active formatter's LLM settings."""
-    return dict(getattr(ACTIVE_FORMATTER, "DEFAULT_LLM_SETTINGS", {}))
-
-
-def _active_director_llm_settings():
-    """Return sampling settings for the creative Director Request 1 call."""
-    settings = _active_formatter_llm_settings()
-    if isinstance(ACTIVE_FORMATTER, QwenFormatter):
-        settings.update(QWEN_DIRECTOR_SAMPLING_PARAMETERS)
-    return settings
-
-
-def _active_beat_validation_settings():
-    """Return the benchmarked validator profile for the active local model."""
-    if isinstance(ACTIVE_FORMATTER, QwenFormatter):
-        return dict(QWEN38_27B_SETTINGS)
-    return dict(MISTRAL_24B_SETTINGS)
 
 
 configure_formatter("gpt")
@@ -6027,7 +5984,6 @@ def load_or_generate_character_canon(
             **(history_metadata or {}),
             "purpose": "character_canon",
         },
-        **ARC_LLM_SAMPLING_PARAMETERS,
     )
     canon = parse_character_canon_result(raw_result)
     return save_character_canon(
@@ -8497,140 +8453,35 @@ def ask_llm(
         int(available_completion_tokens),
     )
     history_purpose = str((history_metadata or {}).get("purpose", ""))
-    use_beat_validation_settings = (
-        history_purpose == "beat_validation"
-        or (history_metadata or {}).get("use_beat_validation_settings")
-    )
-    formatter_settings = (
-        _active_beat_validation_settings()
-        if use_beat_validation_settings
-        else _active_formatter_llm_settings()
-    )
-    if formatter_settings and use_beat_validation_settings:
-        # Beat validation is frozen to the benchmarked production profile.
-        temperature = formatter_settings.get("temperature", temperature)
-        top_p = formatter_settings.get("top_p")
-        top_k = formatter_settings.get("top_k")
-        min_p = formatter_settings.get("min_p")
-        presence_penalty = formatter_settings.get("presence_penalty")
-        frequency_penalty = formatter_settings.get("frequency_penalty")
-        repeat_penalty = formatter_settings.get("repeat_penalty")
-        seed = formatter_settings.get("seed", seed)
-        thinking = formatter_settings.get("thinking")
-        chat_template = formatter_settings.get("chat_template")
-        jinja = formatter_settings.get("jinja")
-    elif formatter_settings:
-        # Explicit per-call sampling settings are authoritative. Formatter
-        # defaults only fill values the caller did not supply.
-        if temperature is None:
-            temperature = formatter_settings.get("temperature", 0.35)
-        if top_p is None:
-            top_p = formatter_settings.get("top_p")
-        if top_k is None:
-            top_k = formatter_settings.get("top_k")
-        if min_p is None:
-            min_p = formatter_settings.get("min_p")
-        if presence_penalty is None:
-            presence_penalty = formatter_settings.get("presence_penalty")
-        if frequency_penalty is None:
-            frequency_penalty = formatter_settings.get("frequency_penalty")
-        if repeat_penalty is None:
-            repeat_penalty = formatter_settings.get("repeat_penalty")
-        if seed is None:
-            seed = formatter_settings.get("seed")
-        if thinking is None:
-            thinking = formatter_settings.get("thinking")
-        if chat_template is None:
-            chat_template = formatter_settings.get("chat_template")
-        if jinja is None:
-            jinja = formatter_settings.get("jinja")
-    elif temperature is None:
-        temperature = 0.35
-
-    # Responsibility-based routing is authoritative over legacy caller profiles.
-    # Creative calls share one tuned sampling/reasoning profile. Deterministic
-    # calls force greedy temperature-0 behavior. Numerical --deterministic mode
-    # is configured on llama-server itself, not in this request body.
+    # Select request behavior strictly by task/responsibility. Formatter/model
+    # selection is intentionally absent from this routing.
     if history_purpose == "story_expansion":
-        temperature = STORY_EXPANSION_LLM_PARAMETERS["temperature"]
-        top_p = STORY_EXPANSION_LLM_PARAMETERS["top_p"]
-        top_k = STORY_EXPANSION_LLM_PARAMETERS["top_k"]
-        min_p = STORY_EXPANSION_LLM_PARAMETERS["min_p"]
-        presence_penalty = STORY_EXPANSION_LLM_PARAMETERS["presence_penalty"]
-        frequency_penalty = STORY_EXPANSION_LLM_PARAMETERS["frequency_penalty"]
-        repeat_penalty = STORY_EXPANSION_LLM_PARAMETERS["repeat_penalty"]
-        seed = generate_random_llm_seed()
-        reasoning_effort = STORY_EXPANSION_REASONING_EFFORT
-        thinking_budget_tokens = STORY_EXPANSION_REASONING_BUDGET_TOKENS
-        reasoning_budget_message = REASONING_BUDGET_MESSAGE
-        enable_thinking = True
-        thinking = None
-        chat_template = None
-        jinja = None
+        llm_settings = STORY_EXPANSION_LLM_SETTINGS
     elif history_purpose == "story_to_beats":
-        temperature = STORY_TO_BEATS_LLM_PARAMETERS["temperature"]
-        top_p = STORY_TO_BEATS_LLM_PARAMETERS["top_p"]
-        top_k = STORY_TO_BEATS_LLM_PARAMETERS["top_k"]
-        min_p = STORY_TO_BEATS_LLM_PARAMETERS["min_p"]
-        presence_penalty = STORY_TO_BEATS_LLM_PARAMETERS["presence_penalty"]
-        frequency_penalty = STORY_TO_BEATS_LLM_PARAMETERS["frequency_penalty"]
-        repeat_penalty = STORY_TO_BEATS_LLM_PARAMETERS["repeat_penalty"]
-        seed = STORY_TO_BEATS_LLM_PARAMETERS["seed"]
-        reasoning_effort = STORY_TO_BEATS_REASONING_EFFORT
-        thinking_budget_tokens = STORY_TO_BEATS_REASONING_BUDGET_TOKENS
-        reasoning_budget_message = REASONING_BUDGET_MESSAGE
-        enable_thinking = True
-        thinking = None
-        chat_template = None
-        jinja = None
+        llm_settings = STORY_TO_BEATS_LLM_SETTINGS
     elif history_purpose in BEAT_WRITING_LLM_PURPOSES:
-        temperature = BEAT_LLM_SAMPLING_PARAMETERS["temperature"]
-        top_p = BEAT_LLM_SAMPLING_PARAMETERS["top_p"]
-        top_k = BEAT_LLM_SAMPLING_PARAMETERS["top_k"]
-        min_p = BEAT_LLM_SAMPLING_PARAMETERS["min_p"]
-        presence_penalty = BEAT_LLM_SAMPLING_PARAMETERS["presence_penalty"]
-        frequency_penalty = BEAT_LLM_SAMPLING_PARAMETERS["frequency_penalty"]
-        repeat_penalty = BEAT_LLM_SAMPLING_PARAMETERS["repeat_penalty"]
-        seed = BEAT_LLM_SAMPLING_PARAMETERS["seed"]
-        # Preserve the larger reasoning budget: the model's analysis is useful,
-        # but sampling above temperature 0 causes answer drift.
-        reasoning_effort = CREATIVE_REASONING_EFFORT
-        thinking_budget_tokens = CREATIVE_REASONING_BUDGET_TOKENS
-        reasoning_budget_message = REASONING_BUDGET_MESSAGE
-        enable_thinking = True
-        thinking = None
-        chat_template = None
-        jinja = None
-    elif history_purpose in CREATIVE_LLM_PURPOSES:
-        temperature = CREATIVE_LLM_SAMPLING_PARAMETERS["temperature"]
-        top_p = CREATIVE_LLM_SAMPLING_PARAMETERS["top_p"]
-        top_k = CREATIVE_LLM_SAMPLING_PARAMETERS["top_k"]
-        min_p = CREATIVE_LLM_SAMPLING_PARAMETERS["min_p"]
-        presence_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["presence_penalty"]
-        frequency_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["frequency_penalty"]
-        repeat_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["repeat_penalty"]
-        seed = generate_random_llm_seed()
-        reasoning_effort = CREATIVE_REASONING_EFFORT
-        thinking_budget_tokens = CREATIVE_REASONING_BUDGET_TOKENS
-        reasoning_budget_message = REASONING_BUDGET_MESSAGE
-        enable_thinking = True
-        thinking = None
-        chat_template = None
-        jinja = None
+        llm_settings = BEAT_WRITING_LLM_SETTINGS
+    elif history_purpose in CREATIVE_GENERATION_LLM_PURPOSES:
+        llm_settings = CREATIVE_GENERATION_LLM_SETTINGS
     else:
-        # Deterministic is the safe default. Only the explicit creative
-        # allowlist above may sample. Deterministic semantic calls still get a
-        # small reasoning budget so extractors/validators can inspect meaning
-        # before returning their fixed-temperature answer.
-        temperature = 0
-        seed = BENCHMARK_SEED
-        reasoning_effort = DETERMINISTIC_REASONING_EFFORT
-        thinking_budget_tokens = DETERMINISTIC_REASONING_BUDGET_TOKENS
-        reasoning_budget_message = REASONING_BUDGET_MESSAGE
-        enable_thinking = True
-        thinking = None
-        chat_template = None
-        jinja = None
+        llm_settings = DETERMINISTIC_ANALYSIS_LLM_SETTINGS
+
+    temperature = llm_settings["temperature"]
+    top_p = llm_settings["top_p"]
+    top_k = llm_settings["top_k"]
+    min_p = llm_settings["min_p"]
+    presence_penalty = llm_settings["presence_penalty"]
+    frequency_penalty = llm_settings["frequency_penalty"]
+    repeat_penalty = llm_settings["repeat_penalty"]
+    configured_seed = llm_settings["seed"]
+    seed = generate_random_llm_seed() if configured_seed is None else configured_seed
+    reasoning_effort = llm_settings["reasoning_effort"]
+    thinking_budget_tokens = llm_settings["thinking_budget_tokens"]
+    reasoning_budget_message = llm_settings["reasoning_budget_message"]
+    enable_thinking = llm_settings["enable_thinking"]
+    thinking = None
+    chat_template = None
+    jinja = None
 
     beat_history_purposes = {
         "macro_arc_create",
@@ -8654,11 +8505,7 @@ def ask_llm(
     while attempt < max_attempts:
         attempt += 1
         try:
-            llm_seed = (
-                seed
-                if seed is not None
-                else formatter_settings.get("seed") or generate_random_llm_seed()
-            )
+            llm_seed = seed if seed is not None else generate_random_llm_seed()
             request_payload = {
                 "messages": messages,
                 "temperature": temperature,
@@ -8681,26 +8528,6 @@ def ask_llm(
                 }
             )
             chat_template_kwargs = {}
-            if use_beat_validation_settings:
-                # Preserve benchmarked Qwen validator behavior.
-                if (
-                    isinstance(ACTIVE_FORMATTER, QwenFormatter)
-                    and thinking in (False, "off")
-                ):
-                    chat_template_kwargs["enable_thinking"] = False
-            else:
-                optional_prompt_settings = {
-                    "thinking": thinking,
-                    "chat_template": chat_template,
-                    "jinja": jinja,
-                }
-                request_payload.update(
-                    {
-                        name: value
-                        for name, value in optional_prompt_settings.items()
-                        if value is not None
-                    }
-                )
 
             if enable_thinking is not None:
                 chat_template_kwargs["enable_thinking"] = bool(enable_thinking)
@@ -10838,7 +10665,6 @@ def extract_accepted_beat_state_patch(
             "purpose": "accepted_beat_state_extract",
             "beat_number": beat_number,
         },
-        **BEAT_LLM_SAMPLING_PARAMETERS,
     )
     return parse_accepted_beat_state_patch(
         raw,
@@ -11754,7 +11580,7 @@ def build_beat_validation_messages(
     assigned_state_effects=None,
 ):
     """Build the compact single-candidate beat-validation prompt."""
-    settings = settings or _active_beat_validation_settings()
+    settings = settings or {}
     state = compact_beat_validation_state(current_state)
     # Boundary/barrier enforcement is intentionally dormant during beat
     # perfection. Keep canonical state untouched, but hide boundary-specific
@@ -11857,9 +11683,6 @@ harmful treatment of protected/non-hostile participants.
 Return only {{"valid": true, "issue": ""}} when all checks pass, otherwise
 {{"valid": false, "issue": "short concrete explanation"}}. No extra keys or markdown.
 """.strip()
-    if settings.get("user_prompt_only"):
-        user = f"{system}\n\n{user}"
-        system = ""
     return [
         {"role": "system", "content": system},
         {"role": "user", "content": user},
@@ -11874,7 +11697,7 @@ def build_beat_coherence_validation_messages(
     previous_beat="",
 ):
     """Build the narrow post-validation physical/coherence prompt."""
-    settings = settings or _active_beat_validation_settings()
+    settings = settings or {}
     state = compact_beat_validation_state(current_state)
     system = (
         "Validate only physical/causal coherence inside one candidate beat. "
@@ -12797,7 +12620,6 @@ def _run_forward_beat_validation(
                 beat_job=current_job,
                 next_beat_job=next_job,
                 candidate_beat=candidate,
-                settings=_active_beat_validation_settings(),
                 assigned_state_effects=[
                     {
                         "id": event["id"],
@@ -12820,7 +12642,6 @@ def _run_forward_beat_validation(
                     history_metadata={
                         **(history_metadata or {}),
                         "purpose": "beat_validation",
-                        "use_beat_validation_settings": True,
                         "beat_number": beat_number,
                         "validation_attempt": validation_attempt,
                         "total_segments": int(total_segments),
@@ -12861,7 +12682,6 @@ def _run_forward_beat_validation(
                             history_metadata={
                                 **(history_metadata or {}),
                                 "purpose": "beat_finite_endpoint_extract",
-                                "use_beat_validation_settings": True,
                                 "beat_number": beat_number,
                                 "validation_attempt": validation_attempt,
                                 "total_segments": int(total_segments),
@@ -12905,8 +12725,7 @@ def _run_forward_beat_validation(
                     current_state=state_before,
                     beat_job=current_job,
                     candidate_beat=candidate,
-                    settings=_active_beat_validation_settings(),
-                    previous_beat=finalized_texts[-1] if finalized_texts else "",
+                        previous_beat=finalized_texts[-1] if finalized_texts else "",
                 )
                 print(
                     f"Checking Beat {beat_number} within-beat physical coherence "
@@ -12921,7 +12740,6 @@ def _run_forward_beat_validation(
                         history_metadata={
                             **(history_metadata or {}),
                             "purpose": "beat_coherence_validation",
-                            "use_beat_validation_settings": True,
                             "beat_number": beat_number,
                             "validation_attempt": validation_attempt,
                             "total_segments": int(total_segments),
@@ -14887,7 +14705,6 @@ def extract_source_span_state_effects(
                     "source_unit_id": unit.id,
                     "attempt": attempt,
                 },
-                **ARC_LLM_SAMPLING_PARAMETERS,
             )
             try:
                 effects_by_unit[unit.id] = parse_source_unit_state_effects(
@@ -16973,7 +16790,6 @@ def build_source_span_macro_arc_from_story(
         total_segments,
         llm_request,
         history_metadata=history_metadata,
-        sampling_parameters=ARC_LLM_SAMPLING_PARAMETERS,
         on_source_span=lambda unit: print(
             f"Source span {unit.id} [{unit.start}:{unit.end}]: {unit.text}",
             flush=True,
@@ -17498,7 +17314,6 @@ def generate_beats_via_story_expansion(
                     "total_segments": total_segments,
                     "duration_seconds": duration_seconds,
                 },
-                **CREATIVE_LLM_SAMPLING_PARAMETERS,
             )
             expanded_story = _parse_expanded_story(raw_story)
             break
@@ -17540,7 +17355,6 @@ def generate_beats_via_story_expansion(
                     "attempt": attempt,
                     "total_segments": total_segments,
                 },
-                **CREATIVE_LLM_SAMPLING_PARAMETERS,
             )
             extracted_beats = _normalize_story_derived_beats(
                 raw_beats,
@@ -17615,7 +17429,6 @@ def generate_beats_via_story_expansion(
                 "total_segments": total_segments,
                 "repair": True,
             },
-            **CREATIVE_LLM_SAMPLING_PARAMETERS,
         )
         repaired = parse_story_beat_repair_result(
             raw_repair,
@@ -17786,7 +17599,6 @@ def generate_beats_from_story(
                     "attempt": attempt,
                     "total_segments": total_segments,
                 },
-                **ARC_LLM_SAMPLING_PARAMETERS,
             )
             try:
                 print(raw_arc, flush=True)
@@ -17857,7 +17669,6 @@ def generate_beats_from_story(
                     "response_attempt": response_attempt,
                     "total_segments": total_segments,
                 },
-                **ARC_LLM_SAMPLING_PARAMETERS,
             )
             try:
                 has_majority = bool(
@@ -17891,7 +17702,6 @@ def generate_beats_from_story(
                             "response_attempt": response_attempt,
                             "total_segments": total_segments,
                         },
-                        **ARC_LLM_SAMPLING_PARAMETERS,
                     )
                     majority_validation = parse_macro_arc_majority_evidence_result(
                         raw_majority,
@@ -18009,7 +17819,6 @@ def generate_beats_from_story(
                                 "total_segments": total_segments,
                             },
                             max_tokens=1000,
-                            **ARC_LLM_SAMPLING_PARAMETERS,
                         )
                         replacements = parse_macro_arc_majority_tail_repair_result(
                             tail_raw,
@@ -18056,7 +17865,6 @@ def generate_beats_from_story(
                                 "attempt": repair_round,
                                 "total_segments": total_segments,
                             },
-                            **ARC_LLM_SAMPLING_PARAMETERS,
                         )
                         repaired = parse_flat_arc_plan(
                             repair_raw,
@@ -18211,7 +18019,6 @@ def generate_beats_from_story(
                         "batch_end": batch_end,
                         "phase_number": current_phase["phase_number"],
                     },
-                    **BEAT_LLM_SAMPLING_PARAMETERS,
                 )
                 try:
                     batch_beats = parse_generated_beats(
@@ -18366,7 +18173,6 @@ def generate_beats_from_story(
                 "total_segments": total_segments,
                 "beat_number": beat_number,
             },
-            **BEAT_LLM_SAMPLING_PARAMETERS,
         )
         regenerated = parse_generated_beats(
             raw_result,
@@ -30207,7 +30013,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             request1_messages,
             response_format=DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
             history_metadata=request1_metadata,
-            **_active_director_llm_settings(),
         )
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
         raw_scene = _canonicalize_director_timestamps(
