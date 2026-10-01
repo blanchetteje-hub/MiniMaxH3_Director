@@ -287,11 +287,33 @@ Relevant commits:
 - `6357e1d303c105e056f3c78b53abc3022c7e4a2e`
 - `7e8319d51c0d6bda12143ecf3e87154ac29183fd`
 
+### 2765 — blocked before SUMMARY+STORY beat conversion
+
+`tests-2764-summary-guided-story-to-beats`: **42 passed, 4 subtests passed**.
+
+`generate-beats-2765-summary-guided-story-to-beats` failed before story expansion / story-to-beats with:
+
+`Canonical fact has an invalid or duplicate field.`
+
+Cause:
+- character-canon JSON allows arbitrary `other_facts[].field` strings;
+- GPT-OSS emitted a field that normalized to an already-required core field (`age`, `clothing`, or `gender`);
+- deterministic parsing correctly rejected the duplicate.
+
+Fix:
+- reserve `age`, `clothing`, and `gender` in the character-canon JSON schema so they cannot be emitted through `other_facts`;
+- parser remains strict;
+- SUMMARY+STORY beat-conversion prompt remains unchanged and is still awaiting a clean acceptance sample.
+
+Relevant commits:
+- `80690ec5b4c948f7ba9f6089db3edb5997cd98a8`
+- `e942948a9a0850a3f3b6b0064d3f1eef7d40d8e0`
+
 ## Immediate next work
 
 Queued:
-- `tests-2764-summary-guided-story-to-beats`
-- `generate-beats-2765-summary-guided-story-to-beats`
+- `tests-2766-character-canon-core-fields`
+- `generate-beats-2767-summary-guided-story-to-beats`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
