@@ -1,0 +1,58 @@
+{
+  "job_id": "probe-2722-distinct-threat",
+  "kind": "llama_chat",
+  "started_at": 1790869380.9471936,
+  "request": {
+    "model": "qwen3.8-27b-obliterated@q3_k_m",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract concrete persistent end-state facts explicitly established by one already-accepted story beat. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT CANONICAL STATE\n{\"version\":1,\"characters\":{},\"environment\":{\"location\":\"N/A\",\"doors\":{},\"windows\":{},\"barriers\":{},\"objects\":{},\"persistent_effects\":[],\"paths\":{},\"hazards\":[]},\"threats\":{\"threat_1\":{\"type\":\"drone\",\"status\":\"dead\",\"location\":\"hallway\",\"injuries\":[],\"body_topology\":\"N/A\",\"current_action\":\"N/A\",\"has_exited\":false}},\"story\":{\"terminal_states\":{},\"persistent_facts\":{}},\"story_progress\":{\"current_macro_phase\":null,\"completed_required_event_ids\":[],\"pending_required_event_ids\":[],\"irreversible_states\":[],\"persistent_state_effects\":{}}}\n\nACCEPTED BEAT\nA new drone enters through the hatch.\n\nReturn only facts true at the END of ACCEPTED BEAT that should remain available later.\n\nImportant rules:\n- ACCEPTED BEAT is already valid. Do not judge or repair it.\n- If ACCEPTED BEAT explicitly introduces a distinct threat with wording such as \"another\", \"new\", \"second\", or \"third\", emit a separate threat entry instead of updating an existing threat of the same type. Python will assign its stable canonical threat ID.\n- Do not merge distinct entities merely because their types are similar.\n- Output only changed or newly established facts.\n- Do not output story_progress.\n- Top-level state_patch keys may only be: characters, environment, threats, story.\n\nReturn exactly:\n{\"state_patch\": {...}}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-fwmy4j76sgibm7cwa7rk98",
+    "object": "chat.completion",
+    "created": 1790869380,
+    "model": "qwen3.8-27b-obliterated@q3_k_m",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "\n\n```json\n{\n  \"state_patch\": {\n    \"threats\": {\n      \"drone_2\": {\n        \"type\": \"drone\",\n        \"status\": \"alive\",\n        \"location\": \"hallway\"\n      }\n    }\n  }\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 347,
+      "completion_tokens": 68,
+      "total_tokens": 415,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {
+      "total_draft_tokens_count": 57,
+      "accepted_draft_tokens_count": 49,
+      "rejected_draft_tokens_count": 8
+    },
+    "system_fingerprint": "qwen3.8-27b-obliterated@q3_k_m"
+  },
+  "finished_at": 1790869390.6862588,
+  "status": "ok"
+}
