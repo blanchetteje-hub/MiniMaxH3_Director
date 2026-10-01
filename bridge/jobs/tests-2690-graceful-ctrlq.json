@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "tests-2690-graceful-ctrlq",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests\\test_chatgpt_llama_bridge.py"
+  ],
+  "timeout_seconds": 1800
+}
