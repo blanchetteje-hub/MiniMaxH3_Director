@@ -7898,13 +7898,6 @@ def repair_json_with_llm(
             return _parse_llm_json_content_without_repair(repaired)
         except LLMConnectionError:
             raise
-        except RequiredEventStateApplicationError as error:
-            print(
-                "Required-event state application failed deterministically; "
-                f"preserving the current story arc instead of restarting it: {error}",
-                flush=True,
-            )
-            raise
         except Exception as error:
             last_error = error
 
@@ -17570,6 +17563,13 @@ def generate_beats_from_story(
                 if os.path.exists(stale_path):
                     os.remove(stale_path)
         except LLMConnectionError:
+            raise
+        except RequiredEventStateApplicationError as error:
+            print(
+                "Required-event state application failed deterministically; "
+                f"preserving the current story arc instead of restarting it: {error}",
+                flush=True,
+            )
             raise
         except Exception as error:
             # H3 generation is an interactive recovery loop. Any recoverable
