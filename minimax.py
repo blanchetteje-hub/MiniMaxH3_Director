@@ -387,6 +387,7 @@ CREATIVE_LLM_PURPOSES = frozenset({
 # therefore cannot be toggled per request; production llama-server should be
 # launched with that flag for both creative and deterministic calls.
 DETERMINISTIC_LLM_PURPOSES = frozenset({
+    "accepted_beat_state_extract",
     "beat_coherence_validation",
     "beat_destination_presence_extract",
     "beat_finite_endpoint_extract",
@@ -10380,6 +10381,174 @@ def persistent_beat_state_patch(patch, state_before=None):
     return _remove_unchanged_beat_patch_values(cleaned, incoming)
 
 
+
+def build_accepted_beat_state_messages(current_state, candidate_beat):
+    """Build the post-acceptance observation request for canonical Beat state."""
+    state = normalize_beat_canonical_state(
+        current_state or new_beat_canonical_state()
+    )
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract concrete persistent end-state facts explicitly established "
+                "by one already-accepted story beat. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+CURRENT CANONICAL STATE
+{json.dumps(state, ensure_ascii=False, separators=(",", ":"))}
+
+ACCEPTED BEAT
+{str(candidate_beat or "").strip()}
+
+Return only facts that are true at the END of ACCEPTED BEAT and that should
+remain available to later beats. Capture persistent world facts broadly; Python
+will decide later which facts are relevant enough to inject into prompts.
+
+Important rules:
+- ACCEPTED BEAT is already semantically valid. Do not judge or repair it.
+- When the beat concretizes an abstract incoming fact, preserve the concrete
+  realization. Example: incoming location "safe location" plus "Will enters the
+  back closet" means Will.location = "back closet".
+- Record explicit final character locations, containment, held/equipped/stored
+  objects, injuries, conditions, and other persistent character facts.
+- Record explicit persistent environment facts. New rooms/areas may go under
+  environment.rooms, and concrete objects may go under environment.objects.
+  It is acceptable to remember an incidental persistent object such as a blue
+  vase; capture is broader than prompt injection.
+- Record barriers/doors/windows and threat state when the beat explicitly
+  establishes their persistent final state.
+- Use existing character/entity names from CURRENT CANONICAL STATE when the beat
+  clearly refers to them. Do not merge distinct entities merely because their
+  types are similar.
+- Do not output transient pose, camera, lighting, momentary action, dialogue,
+  sound, emotion, or speculation.
+- Do not output story_progress. Python owns required-event bookkeeping.
+- Output only changed or newly established facts. Do not copy unchanged defaults.
+- Top-level state_patch keys may only be: characters, environment, threats, story.
+- If no persistent fact is established, return an empty state_patch object.
+
+Return exactly:
+{{"state_patch": {{...}}}}
+""".strip(),
+        },
+    ]
+
+
+def build_accepted_beat_state_response_format():
+    """Return the flexible JSON schema for one accepted-Beat state patch."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "accepted_beat_state_patch",
+            "strict": False,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "state_patch": {
+                        "type": "object",
+                        "additionalProperties": True,
+                    },
+                },
+                "required": ["state_patch"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_accepted_beat_state_patch(raw_result, state_before=None):
+    """Parse and structurally normalize one accepted-Beat observation patch."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"state_patch"}:
+        raise ValueError(
+            "Accepted-Beat state response must contain only state_patch."
+        )
+    patch = candidate["state_patch"]
+    if not isinstance(patch, dict):
+        raise ValueError("Accepted-Beat state_patch must be an object.")
+    if "story_progress" in patch:
+        raise ValueError(
+            "Accepted-Beat state_patch may not modify Python-owned story_progress."
+        )
+    unknown_roots = set(patch) - {
+        "characters", "environment", "threats", "story",
+    }
+    if unknown_roots:
+        raise ValueError(
+            "Accepted-Beat state_patch has unsupported root(s): "
+            + ", ".join(sorted(unknown_roots))
+        )
+    return persistent_beat_state_patch(
+        patch,
+        state_before=state_before,
+    )
+
+
+def extract_accepted_beat_state_patch(
+    current_state,
+    candidate_beat,
+    llm_request,
+    *,
+    history_metadata=None,
+    beat_number=None,
+):
+    """Observe persistent end-state facts after an already-valid Beat."""
+    raw = llm_request(
+        build_accepted_beat_state_messages(current_state, candidate_beat),
+        response_format=build_accepted_beat_state_response_format(),
+        history_metadata={
+            **(history_metadata or {}),
+            "purpose": "accepted_beat_state_extract",
+            "beat_number": beat_number,
+        },
+        **BEAT_LLM_SAMPLING_PARAMETERS,
+    )
+    return parse_accepted_beat_state_patch(
+        raw,
+        state_before=current_state,
+    )
+
+
+def apply_accepted_beat_state_patch(current_state, patch):
+    """Merge observed accepted-Beat facts and make them durable canonical facts.
+
+    The accepted Beat may concretize an authored abstraction (for example
+    "safe location" -> "back closet"). The observed value therefore replaces
+    the same persistent ledger path after semantic validation has already
+    established that the Beat is compatible with its assigned source event.
+    """
+    previous = normalize_beat_canonical_state(
+        current_state or new_beat_canonical_state()
+    )
+    sparse = persistent_beat_state_patch(patch, state_before=previous)
+    sparse = _canonicalize_character_patch(previous, sparse)
+    sparse = _normalize_threat_patch_ids(previous, sparse)
+    merged = normalize_beat_canonical_state(
+        _deep_merge_state(previous, sparse)
+    )
+    merged = _enforce_irreversible_entity_statuses(previous, merged)
+    merged = _enforce_closed_containment(previous, merged)
+
+    ledger = copy.deepcopy(
+        merged.get("story_progress", {}).get(
+            "persistent_state_effects", {}
+        )
+        or {}
+    )
+    for path, value in _flatten_state_effects(sparse).items():
+        if str(path).startswith("story_progress."):
+            continue
+        ledger[path] = copy.deepcopy(value)
+    merged["story_progress"]["persistent_state_effects"] = ledger
+    return _reapply_persistent_state_effects(merged)
+
+
 def validate_completed_event_ids(
     event_ids,
     beat_number,
@@ -12023,6 +12192,7 @@ def _run_forward_beat_validation(
     state_path=None,
     reset_state=False,
     candidate_factory=None,
+    capture_accepted_state=False,
 ):
     """Validate beats sequentially, retrying only the current candidate."""
     state_path = get_beat_validation_state_path(path, state_path)
@@ -12499,6 +12669,25 @@ def _run_forward_beat_validation(
             [events_by_id[event_id] for event_id in newly_completed],
             entity_roles=_required_event_entity_roles(all_events),
         )
+        if capture_accepted_state:
+            observed_patch = extract_accepted_beat_state_patch(
+                staged_state,
+                candidate,
+                llm_request,
+                history_metadata=history_metadata,
+                beat_number=beat_number,
+            )
+            if observed_patch:
+                staged_state = apply_accepted_beat_state_patch(
+                    staged_state,
+                    observed_patch,
+                )
+                print(
+                    f"Beat {beat_number} observed persistent state: "
+                    + json.dumps(observed_patch, ensure_ascii=False),
+                    flush=True,
+                )
+
         staged_state["story_progress"]["completed_required_event_ids"] = (
             _ordered_required_event_ids(all_event_ids, staged_completed)
         )
@@ -16567,6 +16756,7 @@ def generate_beats_from_story(
     reuse_story_arc=True,
     validation_state_path=None,
     reset_validation_state=False,
+    capture_accepted_state=False,
 ):
     if llm_request is None:
         llm_request = ask_llm
@@ -17454,6 +17644,7 @@ def generate_beats_from_story(
                         or process_attempt > 1
                     ),
                     candidate_factory=generate_candidate,
+                    capture_accepted_state=capture_accepted_state,
                 )
             except IndexError as error:
                 recovered = recover_completed_beats_after_index_error(error)
@@ -17624,6 +17815,7 @@ def load_or_generate_beats(
     story_arc_source=None,
     phrase_exclusions=(),
     force_generate=False,
+    capture_accepted_state=False,
 ):
     try:
         raw = load_text_file(path, required=not force_generate)
@@ -17694,6 +17886,7 @@ def load_or_generate_beats(
         # completed beat_validation_state.json can silently short-circuit the
         # entire beat loop and return the prior finalized beats.
         reset_validation_state=force_generate,
+        capture_accepted_state=capture_accepted_state,
     )
 
 
@@ -29357,6 +29550,7 @@ def _run_main(
                     generate_beats_only
                     or (generate_prompts_only and resume_segment == 1)
                 ),
+                capture_accepted_state=True,
             )
         except LLMConnectionError:
             raise
