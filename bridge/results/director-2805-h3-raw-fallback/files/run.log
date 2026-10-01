@@ -1,0 +1,248 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   64 seconds
+Total segments:       8
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          8
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+WARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1095/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:01.000, Amy (adult) finishes stirring her oatmeal; she lifts the spoon and sets the brown ceramic pot on the stove burner, apron white.
+At 00:02.500, Will (10), in red T‑shirt and shorts, giggles over his bowl of cereal while Amber (14), wearing a black hoodie, does the same; their laughter echoes across the sunny kitchen counter.
+At 00:04.200, Sunlight streams through the window onto the table, bathing the bowls in warm light; a picture frame hangs above it, catching the glow.
+At 00:06.800, A sudden groan rattles the windows; the glass trembles and the picture frame shudders slightly.
+End continuity state: Amy on stove with pot of oatmeal on burner, Will and Amber laughing at table in sunny kitchen, a picture frame swaying from the groan.
+================================================================
+
+================================================================
+DIRECTOR REQUEST 2 START - SEGMENT 1
+================================================================
+Combined continuity requested for segment 1 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 1: Amy finishes stirring her oatmeal and sets it on the stove while Will and Amber giggle over cereal, their laughter echoing through the sunny kitchen just as a sudden groan rattles the windows.
+Next required after this prompt:
+  Beat 2: A zombie bursts through the front door, shuffling toward her; she grabs the kids by their shoulders, pushes them into the back bedroom closet, slamming the heavy door behind them.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 1
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.
+<Subject 2> is Will, a 10-year-old boy.
+<Subject 3> is Amber, a 14-year-old girl.
+
+detailed_description: [Shot 1]
+
+At 00:01.000, Amy (adult) finishes stirring her oatmeal; she lifts the spoon and sets the brown ceramic pot on the stove burner, apron white.
+
+At 00:02.500, Will (10), in red T‑shirt and shorts, giggles over his bowl of cereal while Amber (14), wearing a black hoodie, does the same; their laughter echoes across the sunny kitchen counter.
+
+At 00:04.200, Sunlight streams through the window onto the table, bathing the bowls in warm light; a picture frame hangs above it, catching the glow.
+
+At 00:06.800, A sudden groan rattles the windows; the glass trembles and the picture frame shudders slightly.
+
+overall_soundscape: laughter, groan
+
+non_diegetic_music: soft piano
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 1
+
+ComfyUI render skipped for segment 1; continuing with prompt-derived continuity only.
+Added States: 
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "laughing",
+  "ongoing_audio": "laughter, groan",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "N/A",
+      "pose_action": "stirring",
+      "wardrobe": {
+        "upper": "apron white",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "N/A",
+      "pose_action": "laughing",
+      "wardrobe": {
+        "upper": "red T‑shirt",
+        "lower": "shorts",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "table"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "N/A",
+      "pose_action": "laughing",
+      "wardrobe": {
+        "upper": "black hoodie",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "table"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 1; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy is stirring while laughing. Will and Amber are laughing at the table, with laughter and a groan audible.
+================================================================
+Segment 1 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 1 completed Beat 1.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 1.
+Completed prompt generation for segment 1; no ComfyUI request was sent.
+
+================================================================
+SEGMENT 2/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1070/4500 tokens (recent exact segments: 0)
+Segment 2 Director continuity source: prompt
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 2
+================================================================
+At 00:01.000, front door swings open with a sudden groan; a zombie bursts through, shuffling forward toward Amy.
+
+At 00:02.500, Amy turns sharply, eyes wide, and pulls Will’s shoulder with her left hand while grabbing Amber’s shoulder with her right hand.
+
+At 00:04.200, she pushes both kids sideways into the back bedroom closet; their bodies tumble onto the floor as they scramble inside the cramped space.
+
+At 00:06.800, Amy slams the heavy wooden closet door behind them with a loud thud that echoes down the hallway.
+
+End continuity state: Amy stands in front of the closed closet door, Will and Amber are packed into its back corner, the pot of oatmeal sits on the stove, and the picture frame sways slightly from the groan.
+================================================================
+
+================================================================
+DIRECTOR REQUEST 2 START - SEGMENT 2
+================================================================
+WARNING: Segment 2 Request 2 lost RAW action (00:01.000: final H3 action is omitted relative to RAW.; 00:06.800: final H3 action is omitted relative to RAW.); using deterministic RAW detailed-description fallback.
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Segment 2 final H3 action preservation failed after deterministic RAW fallback: 00:01.000: final H3 action is omitted relative to RAW.; 00:06.800: final H3 action is omitted relative to RAW.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-xinfr5_n\repo\minimax.py", line 32433, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-xinfr5_n\repo\minimax.py", line 31426, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Segment 2 final H3 action preservation failed after deterministic RAW fallback: 00:01.000: final H3 action is omitted relative to RAW.; 00:06.800: final H3 action is omitted relative to RAW.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-xinfr5_n\repo\minimax.py", line 32505, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-xinfr5_n\repo\minimax.py", line 32433, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-xinfr5_n\repo\minimax.py", line 31426, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Segment 2 final H3 action preservation failed after deterministic RAW fallback: 00:01.000: final H3 action is omitted relative to RAW.; 00:06.800: final H3 action is omitted relative to RAW.
