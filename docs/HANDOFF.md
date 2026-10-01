@@ -719,3 +719,38 @@ Changes:
   - `0089a064c2c857ff4518f6e12aeadd27bf237e23` — disable destination-presence gate
   - `e650fda8fedf7a9634b5cd7304fd79c9f0ec9328` — update regressions
 
+
+
+## 2026-09-30 — forced beat generation checkpoint + creative seed fix
+
+Observed user-facing failure:
+- `--generate-beats` printed the source-span planner output and then jumped directly to
+  `Story arc and beats generated successfully.`
+- The newly generated `beats.txt` was repeatedly identical.
+- No per-beat CREATE/VALIDATE logging appeared, making it look as though Beat VALIDATE
+  was not running.
+
+Root causes:
+- Explicit creative ARC/BEAT requests were routed through the creative profile but still
+  pinned to `BENCHMARK_SEED` (42), so identical prompts were intentionally reproducible.
+- When explicit force-generation started with an already-empty `beats.txt`,
+  `load_or_generate_beats()` passed `reset_validation_state=False`. A completed
+  `beat_validation_state.json` with a matching fingerprint could therefore short-circuit
+  `_run_forward_beat_validation()`, returning the previous finalized beats without calling
+  Beat CREATE or Beat VALIDATE.
+
+Fixes:
+- Creative requests now call `generate_random_llm_seed()`; deterministic validators and
+  extractors remain temperature 0 / seed 42.
+- Any explicit `force_generate=True` now resets beat validation state, even when
+  `beats.txt` is empty before launch. Normal non-forced recovery behavior is unchanged.
+- Production commit: `8dfcc060efdb4286f6481358283f204ed344b7c7`.
+- Regression commits: `310b587074b4c3cd0b4dddf4c96fab3790393624`,
+  `587165ef65fec9a70049a1da4a6be4e3577353e0`.
+- Queued bridge regression: `tests-2698-force-beat-validation-random-seed`.
+
+Expected next manual run:
+- source-span planning may still be structurally similar;
+- Beat CREATE lines must appear;
+- each beat must visibly enter the single-beat validator;
+- repeated explicit Generate Beats runs should no longer be locked to identical creative output.
