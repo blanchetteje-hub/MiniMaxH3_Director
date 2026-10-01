@@ -754,3 +754,30 @@ Expected next manual run:
 - Beat CREATE lines must appear;
 - each beat must visibly enter the single-beat validator;
 - repeated explicit Generate Beats runs should no longer be locked to identical creative output.
+
+
+## 2026-09-30 — Beat CREATE subject guard regression + hidden source classification delay
+
+Observed full-run failure:
+- Source-span planning completed and saved story_arc.json.
+- Beat generation then failed before contacting the LLM with:
+  `Parsed subjects.txt information was not included in the beat generation prompt; refusing to contact LM Studio.`
+
+Root cause:
+- `build_beat_generation_messages()` computed the compact `subject_text` aliases but the
+  compact Beat CREATE refactor omitted the `KNOWN SUBJECTS` section from the actual prompt.
+- `verify_subjects_in_beat_messages()` correctly detected that omission and aborted.
+- Fix: restore `KNOWN SUBJECTS\n{subject_text}` in Beat CREATE.
+- Production commit: `f00b65a1af16101ebefdbad8e90a189294a8879e`.
+- Existing regression `test_minimal_beat_generation_keeps_defined_subjects` already encodes
+  this exact contract and was ahead of production code.
+
+Planner latency clarification:
+- After the final `Source span ...` line, `plan_story_chapters()` calls
+  `classify_source_units()` before visible-event classification.
+- With 8 source units this performs 15 sequential deterministic LLM calls:
+  - 8 terminal classifiers (one per unit);
+  - 7 hard-reset classifiers (units 2-8).
+- These calls currently have no progress logging, so the program appears idle until
+  `classify_visible_source_unit_ids()` begins printing `Event N requires...`.
+- They exist only to derive chapter boundaries; Beat CREATE has not begun during this pause.
