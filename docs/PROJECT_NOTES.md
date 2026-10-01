@@ -40,6 +40,13 @@ The governing distinction is:
 
 Do not reject a beat, Director scene, or H3 prompt merely because it contains a detail that was not literally stated in `story.txt`. Ask instead whether the detail is compatible with all established authority and helps concretely realize the film.
 
+For Director/H3 quality review, invented staging/detail is acceptable by default. Treat it as a real failure only when it:
+- creates physical or spatial incoherence;
+- changes, distorts, preempts, or otherwise throws off the overall story/assigned beat trajectory; or
+- is completely inconsequential to the story, staging, readability, tone, or continuity and therefore adds pure noise.
+
+A harmless invented motion, route, prop interaction, reaction, or staging choice is not a defect merely because it is absent from the source. Do not over-police useful cinematic elaboration.
+
 The project goal is to expand paragraph-scale through multi-page stories into fully staged films. The LLM therefore must supply missing cinematic detail rather than mechanically paraphrasing the source.
 
 
