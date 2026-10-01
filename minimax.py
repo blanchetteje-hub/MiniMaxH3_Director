@@ -924,7 +924,7 @@ DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the creative director for one {s
 JOB
 - ASSIGNED SOURCE is the story authority for what happens now.
 - CURRENT BEAT is the scene to stage in this clip.
-- OPENING CONTINUITY STATE is helpful frame-0 context. Keep concrete relevant facts, but if a broad or generic continuity summary conflicts with CURRENT BEAT, CURRENT BEAT wins.
+- PREVIOUS SHOT END is frame-0 context for continuation shots. Start there without replaying it; if it conflicts with CURRENT BEAT, CURRENT BEAT wins.
 - CANONICAL STARTING CHARACTER FACTS, when provided, are authoritative identity/appearance facts. Establish applicable visible facts for characters already present in CURRENT BEAT or ASSIGNED SOURCE; never introduce a character only to show a canonical fact.
 - NEXT BEAT is boundary context only. Do not begin it.
 
@@ -937,7 +937,7 @@ WRITE THE SCENE
 - Keep all timed action inside the {segment_seconds}-second clip.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
-- After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Include changed location/held-prop facts needed to start the next shot; do not repeat an earlier state or add a new event.
+- After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Preserve only cut-relevant positions/containment, held props, door/barrier state, and unresolved active threats needed to start the next shot; do not repeat an earlier state or add a new event.
 
 {story_segment_ending_rules}
 
@@ -23942,7 +23942,7 @@ def build_generation_messages(
 NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:
 {next_beat_text}
 
-CONTINUITY STATE:
+PREVIOUS SHOT END — START HERE, DO NOT REPLAY:
 {continuity_text}
 {phrase_exclusion_block}
 {dialogue_block}"""
