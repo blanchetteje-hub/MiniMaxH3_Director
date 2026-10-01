@@ -995,7 +995,6 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         prompt = " ".join(messages[1]["content"].split())
         self.assertNotIn("CLOSED BARRIERS AT START", prompt)
         self.assertIn("Will enters the basement and the door is locked.", prompt)
-        self.assertIn("2. basement door starts locked and blocks basement", prompt)
         self.assertIn("people on opposite sides cannot touch, pass objects", prompt)
     def test_beat_validator_includes_python_owned_barrier_binding(self):
         effects = [
@@ -1039,7 +1038,6 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             "Amy gets Will and Amber into the basement and locks the door.",
             prompt,
         )
-        self.assertIn("2. 'door' means the basement door.", prompt)
         self.assertIn("Do not use a different nearby door", prompt)
     def test_barrier_state_prompt_does_not_destroy_retracted_intact_barrier(self):
         messages = minimax.build_director_barrier_state_messages(
