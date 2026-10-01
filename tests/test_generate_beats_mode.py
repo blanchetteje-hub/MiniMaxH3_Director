@@ -10,25 +10,33 @@ import minimax
 
 
 class GenerateBeatsCliTests(unittest.TestCase):
-    def test_parse_args_accepts_count_without_video_positionals(self):
-        args = minimax.parse_args(["--generate-beats", "12", "--model", "qwen"])
+    def test_parse_args_accepts_count_and_beat_length_without_video_positionals(self):
+        args = minimax.parse_args(
+            ["--generate-beats", "12", "6.5", "--model", "qwen"]
+        )
 
-        self.assertEqual(args.generate_beats, 12)
+        self.assertEqual(args.generate_beats, (12, 6.5))
         self.assertEqual(args.model, "qwen")
-        self.assertIsNone(args.segment_length)
-        self.assertIsNone(args.total_length)
+        self.assertEqual(args.segment_length, 6.5)
+        self.assertEqual(args.total_length, 78.0)
         self.assertIsNone(args.megapixels)
 
-    def test_parse_args_requires_a_positive_beat_count(self):
-        for arguments in (["--generate-beats"], ["--generate-beats", "0"]):
+    def test_parse_args_requires_positive_count_and_beat_length(self):
+        for arguments in (
+            ["--generate-beats"],
+            ["--generate-beats", "8"],
+            ["--generate-beats", "0", "8"],
+            ["--generate-beats", "8", "0"],
+            ["--generate-beats", "8.5", "8"],
+        ):
             with self.subTest(arguments=arguments), self.assertRaises(SystemExit):
                 minimax.parse_args(arguments)
 
     def test_story_only_mode_forces_planning_and_stops_before_comfyui(self):
         args = SimpleNamespace(
-            generate_beats=7,
-            segment_length=None,
-            total_length=None,
+            generate_beats=(7, 8.0),
+            segment_length=8.0,
+            total_length=56.0,
             megapixels=None,
             resume=1,
             repair=None,
@@ -77,9 +85,9 @@ class GenerateBeatsCliTests(unittest.TestCase):
 
     def test_story_only_mode_rejects_an_empty_story_with_exact_error(self):
         args = SimpleNamespace(
-            generate_beats=3,
-            segment_length=None,
-            total_length=None,
+            generate_beats=(3, 8.0),
+            segment_length=8.0,
+            total_length=24.0,
             megapixels=None,
             resume=1,
             repair=None,
@@ -147,9 +155,9 @@ class GenerateBeatsDesktopTests(unittest.TestCase):
             python_executable="python-test",
         )
 
-    def test_story_command_contains_only_count_and_formatter_options(self):
+    def test_story_command_contains_count_length_and_formatter_options(self):
         command = self.make_bridge().build_command(
-            {"beat_count": "9", "model": "qwen"},
+            {"beat_count": "9", "segment_length": "7.5", "model": "qwen"},
             generate_beats=True,
         )
 
@@ -161,6 +169,7 @@ class GenerateBeatsDesktopTests(unittest.TestCase):
                 str(Path(__file__).resolve()),
                 "--generate-beats",
                 "9",
+                "7.5",
                 "--model",
                 "qwen",
             ],
@@ -178,7 +187,7 @@ class GenerateBeatsDesktopTests(unittest.TestCase):
                 clear=True,
             ):
                 result = bridge.start_generation(
-                    {"beat_count": "4", "model": "mistral"},
+                    {"beat_count": "4", "segment_length": "8", "model": "mistral"},
                     True,
                 )
 
