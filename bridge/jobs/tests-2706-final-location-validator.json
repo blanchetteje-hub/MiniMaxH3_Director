@@ -1,0 +1,9 @@
+{
+  "job_id": "tests-2706-final-location-validator",
+  "kind": "run_tests",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests\\test_forward_beat_validation.py"
+  ],
+  "timeout_seconds": 1800
+}
