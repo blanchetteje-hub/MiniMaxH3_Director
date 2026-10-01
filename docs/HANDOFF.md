@@ -380,11 +380,29 @@ Relevant commits:
 - `8ea3885c4105aa16c1c0883b20a3d784e97013f6`
 - `008b884380503e0633bfa2a2734b373c2e41e9d5`
 
+### 2772 — malformed accepted-state keys; test strict structured output
+
+`tests-2771-environment-container-schema`: **42 passed, 4 subtests passed**.
+
+`generate-beats-2772-summary-guided-story-to-beats` again produced a coherent 8-beat framework ending with both Will and Amber retrieved. The failure remained downstream in accepted-state extraction.
+
+Observed extractor output contained syntactically valid but structurally nonsensical keys, including fragments resembling serialized JSON inside key names. Example failure:
+
+`State effects cannot nest canonical state root 'environment.objects":{"pantry_closet":{}}},.threats'; roots must remain top-level.`
+
+The accepted-state response format was still declared with `strict: False`. Rather than adding more semantic field rules, the current experiment changes only this response schema to `strict: True` so llama.cpp must adhere more closely to the JSON schema.
+
+This may reveal whether the flexible schema is compatible with strict structured output. If not, the next failure should be an immediate schema/grammar error rather than corrupted state.
+
+Relevant commits:
+- `610f8f3319d41e2b3fb92d61aceaf3e18de8b1f6`
+- `459316da5f333abb0f78cadf4c2d1a6c9993c250`
+
 ## Immediate next work
 
 Queued:
-- `tests-2771-environment-container-schema`
-- `generate-beats-2772-summary-guided-story-to-beats`
+- `tests-2773-strict-accepted-state-schema`
+- `generate-beats-2774-strict-accepted-state-schema`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
