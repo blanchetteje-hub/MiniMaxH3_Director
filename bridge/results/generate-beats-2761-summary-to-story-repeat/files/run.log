@@ -1,0 +1,151 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\beats.txt with 8 creative story beats.
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\expanded_story.txt.
+Expanded story:
+Amy stirred eggs in the bright kitchen as Will and Amber giggled over pancakes on the counter.  
+A groaning figure burst through the front door, shattering the window with its weightless hand.  
+She grabbed Will’s small hand and pulled Amber toward the basement closet, pushing them inside before the zombie lunged at her feet.  
+Amy stepped back into the kitchen, breathing hard, then slid a pistol from behind the cereal boxes in the pantry.  
+Her fingers closed around the cool steel; she flicked open its magazine and drew a gleaming katana from a hidden compartment beneath the stove.  
+She fired the pistol at the first zombie that staggered through the doorway, then sliced it cleanly with the katana as another lunged forward.  
+More zombies surged in, each one dropping to her knees or slashing wildly, but Amy kept them down—one by one—her shots and blades echoing off the tiles.  
+When the last groaning corpse hit the floor, she ran back up the stairs, scooped Will and Amber out of the closet, and carried them together into the living room.
+Story-derived Beat framework created with 8 beats.
+Beat 1 created: Amy stirred eggs in the bright kitchen while Will and Amber giggled over pancakes on the counter.
+Beat 2 created: A groaning figure burst through the front door, shattering the window with its weightless hand.
+Beat 3 created: She grabbed Will’s small hand and pulled Amber toward the basement closet, pushing them inside before a zombie lunged at her feet.
+Beat 4 created: Amy stepped back into the kitchen, breathing hard, then slid a pistol from behind the cereal boxes in the pantry.
+Beat 5 created: Her fingers closed around the cool steel; she flicked open its magazine and drew a gleaming katana from a hidden compartment beneath the stove.
+Beat 6 created: She fired the pistol at the first zombie that staggered through the doorway, then sliced it cleanly with the katana as another lunged forward.
+Beat 7 created: More zombies surged in, each dropping to her knees or slashing wildly, but Amy kept them down—one by one—with shots and blades echoing off the tiles.
+Beat 8 created: When the last groaning corpse hit the floor, she ran back up the stairs, scooped Will and Amber out of the closet, and carried them together into the living room.
+Beat 1 jobs: current=E1 - Amy stirred eggs in the bright kitchen while Will and Amber giggled over pancakes on the counter.; next=E2 - A groaning figure burst through the front door, shattering the window with its weightless hand.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+Beat 1 coherence attempt 1/10: VALID.
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "kitchen"}, "Will": {"location": "kitchen"}, "Amber": {"location": "kitchen"}}}
+Beat 1 accepted: Amy stirred eggs in the bright kitchen while Will and Amber giggled over pancakes on the counter.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - A groaning figure burst through the front door, shattering the window with its weightless hand.; next=E3 - She grabbed Will’s small hand and pulled Amber toward the basement closet, pushing them inside before a zombie lunged at her feet.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: INVALID; issue: The groaning figure bursts through the front door, but all characters are located in the kitchen—no one is at or near the front door to perform that action.
+Validating Beat 2 (attempt 2/10) with the single beat validator.
+Beat 2 validation attempt 2/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 2/10).
+Beat 2 coherence attempt 2/10: VALID.
+Beat 2 observed persistent state: {"environment": {"windows": {"front_window": {"status": "shattered"}}}, "threats": {"groaning_figure": {"location": "kitchen", "current_injuries": "none", "prior_injures": "none", "injury_history": [], "containment": "N/A", "contained_in": null, "accessible": true, "clothing": {"upper": {"item": "N/A", "damage": "none"}, "lower": {"item": "N/A", "damage": "none"}}, "held_objects": [], "equipped_objects": [], "stored_objects": [], "weapon_state": "N/A", "injuries": [], "body_condition": "alive/conscious", "status": "hostile", "relationships": []}}}
+Beat 2 accepted: A groaning figure burst through the front door, shattering a window as it rushed into the bright kitchen.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - She grabbed Will’s small hand and pulled Amber toward the basement closet, pushing them inside before a zombie lunged at her feet.; next=E4 - Amy stepped back into the kitchen, breathing hard, then slid a pistol from behind the cereal boxes in the pantry.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+Beat 3 coherence attempt 1/10: VALID.
+Beat 3 observed persistent state: {"characters": {"Amy": {"location": "basement closet"}, "Will": {"location": "basement closet", "held_objects": ["small hand of Amy"]}, "Amber": {"location": "basement closet"}}}
+Beat 3 accepted: She grabbed Will’s small hand and pulled Amber toward the basement closet, pushing them inside before a zombie lunged at her feet.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - Amy stepped back into the kitchen, breathing hard, then slid a pistol from behind the cereal boxes in the pantry.; next=E5 - Her fingers closed around the cool steel; she flicked open its magazine and drew a gleaming katana from a hidden compartment beneath the stove.; completed before=E1, E2, E3; pending before=E4, E5, E6, E7, E8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+Beat 4 coherence attempt 1/10: VALID.
+Beat 4 observed persistent state: {"characters": {"Amy": {"location": "kitchen", "held_objects": ["small hand of Amy", "pistol"]}}, "environment": {"objects": {"pistol": {"location": "pantry"}}}}
+Beat 4 accepted: Amy stepped back into the kitchen, breathing hard, then slid a pistol from behind the cereal boxes in the pantry.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - Her fingers closed around the cool steel; she flicked open its magazine and drew a gleaming katana from a hidden compartment beneath the stove.; next=E6 - She fired the pistol at the first zombie that staggered through the doorway, then sliced it cleanly with the katana as another lunged forward.; completed before=E1, E2, E3, E4; pending before=E5, E6, E7, E8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: VALID; issue: none
+Checking Beat 5 within-beat physical coherence (attempt 1/10).
+Beat 5 coherence attempt 1/10: VALID.
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Beat generation failed before the video workflow could start: State effects cannot nest canonical state root 'characters.environment'; roots must remain top-level.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 30247, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 18576, in load_or_generate_beats
+    return generate_beats_via_story_expansion(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 17427, in generate_beats_via_story_expansion
+    return _run_forward_beat_validation(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 12823, in _run_forward_beat_validation
+    observed_patch = extract_accepted_beat_state_patch(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 10661, in extract_accepted_beat_state_patch
+    return parse_accepted_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 10636, in parse_accepted_beat_state_patch
+    return persistent_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 10478, in persistent_beat_state_patch
+    normalized = _python_owned_state_patch(normalize_beat_state_patch(patch))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9261, in normalize_beat_state_patch
+    _validate_canonical_state_namespace(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9296, in _validate_canonical_state_namespace
+    visit(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9294, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9294, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9285, in visit
+    raise ValueError(
+ValueError: State effects cannot nest canonical state root 'characters.environment'; roots must remain top-level.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 32096, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 30274, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: State effects cannot nest canonical state root 'characters.environment'; roots must remain top-level.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 30247, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 18576, in load_or_generate_beats
+    return generate_beats_via_story_expansion(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 17427, in generate_beats_via_story_expansion
+    return _run_forward_beat_validation(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 12823, in _run_forward_beat_validation
+    observed_patch = extract_accepted_beat_state_patch(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 10661, in extract_accepted_beat_state_patch
+    return parse_accepted_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 10636, in parse_accepted_beat_state_patch
+    return persistent_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 10478, in persistent_beat_state_patch
+    normalized = _python_owned_state_patch(normalize_beat_state_patch(patch))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9261, in normalize_beat_state_patch
+    _validate_canonical_state_namespace(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9296, in _validate_canonical_state_namespace
+    visit(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9294, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9294, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 9285, in visit
+    raise ValueError(
+ValueError: State effects cannot nest canonical state root 'characters.environment'; roots must remain top-level.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 32168, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 32096, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p5avy5vz\repo\minimax.py", line 30274, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: State effects cannot nest canonical state root 'characters.environment'; roots must remain top-level.
