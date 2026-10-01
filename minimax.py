@@ -12452,6 +12452,7 @@ def _run_forward_beat_validation(
         finalized_through = beat_number
         checkpoint["beat_state_after"][str(beat_number)] = copy.deepcopy(state_cursor)
         save_checkpoint()
+        print(f"Beat {beat_number} accepted: {candidate}", flush=True)
         print(
             f"Beat {beat_number} accepted and finalized; "
             f"committed required events: {', '.join(newly_completed) or 'none'}; "
@@ -16362,6 +16363,10 @@ def build_source_span_macro_arc_from_story(
         llm_request,
         history_metadata=history_metadata,
         sampling_parameters=ARC_LLM_SAMPLING_PARAMETERS,
+        on_source_span=lambda unit: print(
+            f"Source span {unit.id} [{unit.start}:{unit.end}]: {unit.text}",
+            flush=True,
+        ),
     )
     state_effects_by_unit = extract_source_span_state_effects(
         plan,
@@ -17095,6 +17100,8 @@ def generate_beats_from_story(
                     f"Phase {current_phase['phase_number']} exhausted its "
                     f"{BEAT_PHASE_GENERATION_ATTEMPTS} beat-generation attempts."
                 )
+            for beat_number, beat_text in enumerate(batch_beats, start=batch_start):
+                print(f"Beat {beat_number} created: {beat_text}", flush=True)
             generated.extend(batch_beats)
             print(
                 f"Accepted macro phase {current_phase['phase_number']}; collected "
@@ -17185,6 +17192,7 @@ def generate_beats_from_story(
             phrase_exclusions=phrase_exclusions,
             llm_request=llm_request,
         )
+        print(f"Beat {beat_number} created: {regenerated[0]}", flush=True)
         return regenerated[0]
 
     # Keep an accepted story arc immutable across candidate, phase, framework,

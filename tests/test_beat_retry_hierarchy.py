@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import minimax
 
@@ -54,7 +55,7 @@ class BeatRetryHierarchyTests(unittest.TestCase):
                 return {"valid": True, "issue": ""}
             raise AssertionError(purpose)
 
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, patch("builtins.print") as printed:
             result = minimax.generate_beats_from_story(
                 "The operator completes action X.", 1,
                 path=str(Path(directory) / "beats.txt"),
@@ -65,6 +66,13 @@ class BeatRetryHierarchyTests(unittest.TestCase):
             )
 
         self.assertEqual(result, ["Operator completes action X."])
+        messages = [call.args[0] for call in printed.call_args_list if call.args]
+        self.assertEqual(
+            messages.count("Beat 1 created: Operator completes action X."), 2
+        )
+        self.assertEqual(
+            messages.count("Beat 1 accepted: Operator completes action X."), 1
+        )
         self.assertNotIn("macro_arc_create", purposes)
         self.assertNotIn("macro_arc_validate", purposes)
         self.assertEqual(purposes.count("beat_validation"), 2)

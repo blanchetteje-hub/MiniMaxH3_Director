@@ -737,6 +737,7 @@ def refine_source_units(
     *,
     history_metadata: dict | None = None,
     sampling_parameters: dict | None = None,
+    on_source_span=None,
 ) -> list[SourceUnit]:
     """Refine only units explicitly gated SPLIT, preserving exact source spans."""
 
@@ -747,7 +748,18 @@ def refine_source_units(
 
     sampling = dict(sampling_parameters or {})
     history = dict(history_metadata or {})
-    refined_spans: list[tuple[int, int]] = []
+    refined: list[SourceUnit] = []
+
+    def add_span(start: int, end: int) -> None:
+        unit = SourceUnit(
+            id=len(refined) + 1,
+            start=start,
+            end=end,
+            text=story[start:end],
+        )
+        refined.append(unit)
+        if on_source_span is not None:
+            on_source_span(unit)
 
     for unit in units:
         # If Python cannot enumerate a legal exact cut point, the unit cannot
@@ -755,7 +767,7 @@ def refine_source_units(
         # call or inviting the model to invent a boundary.
         candidates = enumerate_cut_candidates(unit)
         if not candidates:
-            refined_spans.append((unit.start, unit.end))
+            add_span(unit.start, unit.end)
             continue
 
         split_raw = llm_request(
@@ -769,7 +781,7 @@ def refine_source_units(
             **sampling,
         )
         if not parse_split_decision(split_raw):
-            refined_spans.append((unit.start, unit.end))
+            add_span(unit.start, unit.end)
             continue
 
         cut_raw = llm_request(
@@ -784,7 +796,7 @@ def refine_source_units(
         )
         chosen = parse_cut_choice(cut_raw, candidates)
         if chosen is None:
-            refined_spans.append((unit.start, unit.end))
+            add_span(unit.start, unit.end)
             continue
 
         absolute_cut = unit.start + chosen.offset
@@ -796,21 +808,10 @@ def refine_source_units(
             right_start += 1
 
         if left_end <= unit.start or right_start >= unit.end:
-            refined_spans.append((unit.start, unit.end))
+            add_span(unit.start, unit.end)
             continue
-        refined_spans.append((unit.start, left_end))
-        refined_spans.append((right_start, unit.end))
-
-    refined: list[SourceUnit] = []
-    for start, end in refined_spans:
-        refined.append(
-            SourceUnit(
-                id=len(refined) + 1,
-                start=start,
-                end=end,
-                text=story[start:end],
-            )
-        )
+        add_span(unit.start, left_end)
+        add_span(right_start, unit.end)
     return refined
 
 
@@ -820,6 +821,7 @@ def plan_story_chapters(
     *,
     history_metadata: dict | None = None,
     sampling_parameters: dict | None = None,
+    on_source_span=None,
 ) -> tuple[list[SourceUnit], list[ChapterSpan]]:
     """Run the source-span planner through exact chapter construction."""
 
@@ -830,6 +832,7 @@ def plan_story_chapters(
         llm_request,
         history_metadata=history_metadata,
         sampling_parameters=sampling_parameters,
+        on_source_span=on_source_span,
     )
     units = classify_source_units(
         story,
@@ -903,7 +906,13 @@ def classify_visible_source_unit_ids(
             },
             **sampling,
         )
-        if parse_binary_decision(raw_result):
+        requires_event = parse_binary_decision(raw_result)
+        print(
+            f"Event {unit.id} requires a concrete on-screen event: "
+            f"{'YES' if requires_event else 'NO'}",
+            flush=True,
+        )
+        if requires_event:
             visible_ids.append(unit.id)
 
     return visible_ids
@@ -1231,6 +1240,7 @@ def build_story_plan(
     *,
     history_metadata: dict | None = None,
     sampling_parameters: dict | None = None,
+    on_source_span=None,
 ) -> StoryPlan:
     """Build a source-authoritative chapter plan with grouped beat ownership.
 
@@ -1244,6 +1254,7 @@ def build_story_plan(
         llm_request,
         history_metadata=history_metadata,
         sampling_parameters=sampling_parameters,
+        on_source_span=on_source_span,
     )
     repeatable = explicit_repeatable_source_unit_ids(units)
     visible = classify_visible_source_unit_ids(

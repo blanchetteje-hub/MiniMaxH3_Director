@@ -220,12 +220,15 @@ def test_refine_source_units_only_uses_cut_choice_after_split_gate():
         {"choice": "A", "reason": "resolution begins on the right"},
     ])
     purposes = []
+    extracted = []
 
     def fake_llm(messages, **kwargs):
         purposes.append(kwargs["history_metadata"]["purpose"])
         return next(responses)
 
-    refined = refine_source_units(story, units, fake_llm)
+    refined = refine_source_units(
+        story, units, fake_llm, on_source_span=extracted.append
+    )
 
     assert [unit.text for unit in refined] == [
         "She spends most of the story repeating measurements,",
@@ -233,6 +236,7 @@ def test_refine_source_units_only_uses_cut_choice_after_split_gate():
     ]
     assert purposes == ["source_unit_split_gate", "source_unit_cut_choice"]
     assert all(story[unit.start:unit.end] == unit.text for unit in refined)
+    assert extracted == refined
 
 
 def test_refine_source_units_keeps_continuous_unit_without_cut_call():
@@ -367,7 +371,7 @@ def test_hard_reset_prompt_forbids_inferred_cinematic_breaks():
     assert "If the discontinuity is not stated or directly entailed" in prompt
 
 
-def test_visible_source_responsibility_classifier_filters_framing_only_units():
+def test_visible_source_responsibility_classifier_filters_framing_only_units(capsys):
     from story_planner import classify_visible_source_unit_ids
 
     story = (
@@ -389,6 +393,11 @@ def test_visible_source_responsibility_classifier_filters_framing_only_units():
 
     assert classify_visible_source_unit_ids(units, fake_llm) == [2]
     assert purposes == ["source_unit_visible_responsibility"] * 3
+    assert capsys.readouterr().out.splitlines() == [
+        "Event 1 requires a concrete on-screen event: NO",
+        "Event 2 requires a concrete on-screen event: YES",
+        "Event 3 requires a concrete on-screen event: NO",
+    ]
 
 
 def test_visible_source_responsibility_prompt_keeps_repeated_action_visible():

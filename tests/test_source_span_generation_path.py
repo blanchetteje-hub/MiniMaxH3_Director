@@ -1,8 +1,31 @@
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import minimax
+from story_planner import SourceUnit
+
+
+def test_source_span_planning_prints_each_finalized_span(capsys):
+    story = "First action. Second action."
+
+    def fake_build_story_plan(source, total, request, **kwargs):
+        del total, request
+        callback = kwargs["on_source_span"]
+        callback(SourceUnit(id=1, start=0, end=13, text=source[:13]))
+        callback(SourceUnit(id=2, start=14, end=28, text=source[14:28]))
+        return SimpleNamespace(chapters=[])
+
+    with patch("minimax.build_story_plan", side_effect=fake_build_story_plan), patch(
+        "minimax.extract_source_span_state_effects", return_value={}
+    ), patch("minimax.source_span_story_plan_to_macro_arc", return_value={}):
+        minimax.build_source_span_macro_arc_from_story(story, 2, lambda *_args: None)
+
+    output = capsys.readouterr().out
+    assert "Source span 1 [0:13]: First action." in output
+    assert "Source span 2 [14:28]: Second action." in output
 
 
 def test_generate_beats_prefers_source_span_planner_and_scopes_chapter_source():
