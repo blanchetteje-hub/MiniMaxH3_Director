@@ -1,0 +1,10 @@
+{
+  "kind": "run_tests",
+  "job_id": "tests-2696-beat-source-canon",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests\\test_character_canon.py",
+    "tests\\test_llm_prompt_pipeline.py"
+  ],
+  "timeout_seconds": 1800
+}
