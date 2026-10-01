@@ -127,6 +127,7 @@ class GenerateBeatsCliTests(unittest.TestCase):
         self.assertEqual(result, ["New beat"])
         load.assert_called_once_with("beats.txt", required=False)
         self.assertTrue(generated.call_args.kwargs["reuse_story_arc"])
+        self.assertTrue(generated.call_args.kwargs["reset_validation_state"])
 
     def test_story_arc_count_mismatch_is_treated_as_a_cache_miss(self):
         raw_arc = json.dumps({"phases": [{"beat_start": 1, "beat_end": 3}]})
