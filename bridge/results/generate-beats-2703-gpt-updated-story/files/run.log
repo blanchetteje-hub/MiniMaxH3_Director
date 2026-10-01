@@ -1,0 +1,149 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\beats.txt with 8 creative story beats.
+
+=== Source-span planning attempt 1/10 ===
+Source span 1 [0:93]: A realistic action film about a woman, Amy, protecting her two kids from a zombie apocalypse.
+Source span 2 [94:180]: Amy is at home on a normal day, cooking breakfast for her young kids (Will and Amber).
+Source span 3 [181:212]: A zombie breaks into the house.
+Source span 4 [213:283]: Amy rushes her two kids to a safe location and returns to the kitchen.
+Source span 5 [284:353]: She retrieves her hidden arsenal consisting of a pistol and a katana.
+Source span 6 [354:458]: The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try
+Source span 7 [459:474]: and attack her.
+Source span 8 [475:564]: After Amy kills the last of the zombies, she retrieves her kids from their safe location.
+Terminal check span 1: NO
+Terminal check span 2: NO
+Hard-reset check span 2: NO
+Terminal check span 3: NO
+Hard-reset check span 3: NO
+Terminal check span 4: NO
+Hard-reset check span 4: NO
+Terminal check span 5: NO
+Hard-reset check span 5: NO
+Terminal check span 6: NO
+Hard-reset check span 6: NO
+Terminal check span 7: NO
+Hard-reset check span 7: NO
+Terminal check span 8: YES
+Hard-reset check span 8: YES
+Event 1 requires a concrete on-screen event: NO
+Event 2 requires a concrete on-screen event: YES
+Event 3 requires a concrete on-screen event: YES
+Event 4 requires a concrete on-screen event: YES
+Event 5 requires a concrete on-screen event: YES
+Event 6 requires a concrete on-screen event: YES
+Event 7 requires a concrete on-screen event: YES
+Event 8 requires a concrete on-screen event: YES
+Source-unit local relation:
+LEFT source span 2 [94:180]: Amy is at home on a normal day, cooking breakfast for her young kids (Will and Amber).
+RIGHT source span 3 [181:212]: A zombie breaks into the house.
+Result: NEW_TASK
+Source-unit local relation:
+LEFT source span 3 [181:212]: A zombie breaks into the house.
+RIGHT source span 4 [213:283]: Amy rushes her two kids to a safe location and returns to the kitchen.
+Result: MERGE
+Source-unit local relation:
+LEFT source span 4 [213:283]: Amy rushes her two kids to a safe location and returns to the kitchen.
+RIGHT source span 5 [284:353]: She retrieves her hidden arsenal consisting of a pistol and a katana.
+Result: NEW_TASK
+Source unit 1 state effects:
+Source span: A realistic action film about a woman, Amy, protecting her two kids from a zombie apocalypse.
+Result: []
+Source unit 2 state effects:
+Source span: Amy is at home on a normal day, cooking breakfast for her young kids (Will and Amber).
+Result: [{"op": "set_location", "entity": "Amy", "value": "home"}]
+Source unit 3 state effects:
+Source span: A zombie breaks into the house.
+Result: [{"op": "set_location", "entity": "zombie", "value": "house"}]
+Source unit 4 state effects:
+Source span: Amy rushes her two kids to a safe location and returns to the kitchen.
+Result: []
+Source unit 5 state effects:
+Source span: She retrieves her hidden arsenal consisting of a pistol and a katana.
+Result: [{"op": "set_item_state", "entity": "pistol", "owner": "Amy", "value": "held"}, {"op": "set_item_state", "entity": "katana", "owner": "Amy", "value": "held"}]
+Source unit 6 state effects:
+Source span: The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try
+Result: []
+Source unit 7 state effects:
+Source span: and attack her.
+Result: []
+Source unit 8 state effects:
+Source span: After Amy kills the last of the zombies, she retrieves her kids from their safe location.
+Result: [{"op": "set_location", "entity": "Will", "value": "Amy"}, {"op": "set_location", "entity": "Amber", "value": "Amy"}]
+Source-span planner produced 2 chapter(s): chapter 1=7 beats, chapter 2=1 beats
+Saved story arc to C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\story_arc.json.
+Required-event state application failed deterministically; preserving the current story arc instead of restarting it: Required event E2 state effect set_location could not be applied: set_location references an untracked entity: 'zombie'.
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Beat generation failed before the video workflow could start: Required event E2 state effect set_location could not be applied: set_location references an untracked entity: 'zombie'.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 10142, in _apply_required_event_state_effects
+    updates = _apply_state_operation(state, effect)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 9492, in _apply_state_operation
+    raise ValueError(
+ValueError: set_location references an untracked entity: 'zombie'.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 29336, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 17665, in load_or_generate_beats
+    return generate_beats_from_story(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 17424, in generate_beats_from_story
+    _preflight_required_event_state_effects(
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 10173, in _preflight_required_event_state_effects
+    state = _apply_required_event_state_effects(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 10144, in _apply_required_event_state_effects
+    raise RequiredEventStateApplicationError(
+RequiredEventStateApplicationError: Required event E2 state effect set_location could not be applied: set_location references an untracked entity: 'zombie'.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 31176, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 29354, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: Required event E2 state effect set_location could not be applied: set_location references an untracked entity: 'zombie'.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 10142, in _apply_required_event_state_effects
+    updates = _apply_state_operation(state, effect)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 9492, in _apply_state_operation
+    raise ValueError(
+ValueError: set_location references an untracked entity: 'zombie'.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 29336, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 17665, in load_or_generate_beats
+    return generate_beats_from_story(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 17424, in generate_beats_from_story
+    _preflight_required_event_state_effects(
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 10173, in _preflight_required_event_state_effects
+    state = _apply_required_event_state_effects(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 10144, in _apply_required_event_state_effects
+    raise RequiredEventStateApplicationError(
+RequiredEventStateApplicationError: Required event E2 state effect set_location could not be applied: set_location references an untracked entity: 'zombie'.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 31248, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 31176, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-g9yig0w8\repo\minimax.py", line 29354, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: Required event E2 state effect set_location could not be applied: set_location references an untracked entity: 'zombie'.
