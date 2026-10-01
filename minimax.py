@@ -15591,6 +15591,105 @@ def parse_story_beat_instructions(story):
 
 # Build beat generation messages.
 
+def _canonical_character_records_from_subject_information(subject_information):
+    """Parse canonical character fact lines already prepared for planning."""
+    records = {}
+    for raw_line in str(subject_information or "").splitlines():
+        line = raw_line.strip()
+        if not line.startswith("- ") or " canonical " not in line:
+            continue
+        body = line[2:].strip().rstrip(".")
+        name, separator, fact_text = body.partition(" canonical ")
+        name = " ".join(name.split()).strip()
+        if not separator or not name:
+            continue
+        facts = {}
+        chunks = ("canonical " + fact_text).split(";")
+        for chunk in chunks:
+            chunk = " ".join(chunk.split()).strip()
+            match = re.fullmatch(
+                r"canonical\s+(?P<field>[A-Za-z0-9_ ]+):\s*(?P<value>.+)",
+                chunk,
+            )
+            if not match:
+                continue
+            key = re.sub(r"\s+", "_", match.group("field").strip().casefold())
+            value = match.group("value").strip()
+            if key and value:
+                facts[key] = value
+        if facts:
+            records[name] = facts
+    return records
+
+
+def prepare_source_film_for_beats(story, subject_information=""):
+    """Return full story.txt with canonical clothing merged into character info."""
+    source = str(story or "").strip()
+    if not source:
+        return source
+
+    header_match = re.search(
+        r"(?im)^(?P<indent>[ \t]*)character information\s*:\s*$",
+        source,
+    )
+    if header_match is None:
+        return source
+
+    source = (
+        source[:header_match.start()]
+        + header_match.group("indent")
+        + "CHARACTER INFORMATION:"
+        + source[header_match.end():]
+    )
+
+    records = _canonical_character_records_from_subject_information(
+        subject_information
+    )
+    if not records:
+        return source
+
+    header_match = re.search(r"(?m)^CHARACTER INFORMATION:\s*$", source)
+    if header_match is None:
+        return source
+    prefix = source[:header_match.end()]
+    block = source[header_match.end():]
+
+    for name, facts in records.items():
+        clothing = " ".join(str(facts.get("clothing") or "").split()).strip()
+        if not clothing:
+            continue
+        line_pattern = re.compile(
+            rf"(?im)^(?P<indent>[ \t]*){re.escape(name)}\b(?P<rest>[^\r\n]*)$"
+        )
+        line_match = line_pattern.search(block)
+        if line_match is None:
+            block += f"\n{name} is wearing {clothing}."
+            continue
+
+        original_line = line_match.group(0)
+        if re.search(r"(?i)\bwear(?:s|ing)?\b", original_line):
+            continue
+        rest = line_match.group("rest").strip()
+        if rest.startswith("is "):
+            rest = rest[3:].strip()
+            replacement = (
+                f"{line_match.group('indent')}{name} is wearing {clothing}, "
+                f"and is {rest}"
+            )
+        elif rest:
+            replacement = (
+                f"{line_match.group('indent')}{name} is wearing {clothing}; "
+                f"{rest}"
+            )
+        else:
+            replacement = (
+                f"{line_match.group('indent')}{name} is wearing {clothing}."
+            )
+        block = block[:line_match.start()] + replacement + block[line_match.end():]
+
+    return prefix + block
+
+
 def build_beat_generation_messages(
     story,
     total_segments,
