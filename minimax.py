@@ -397,6 +397,9 @@ QWEN_DIRECTOR_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
 CREATIVE_REASONING_EFFORT = "high"
 CREATIVE_REASONING_BUDGET_TOKENS = 1024
 
+DETERMINISTIC_REASONING_EFFORT = "low"
+DETERMINISTIC_REASONING_BUDGET_TOKENS = 128
+
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
     "MINIMAX_CONTINUITY_STRICT", "1"
 ).strip().lower() not in {"0", "false", "no", "off"}
@@ -8385,10 +8388,17 @@ def ask_llm(
         jinja = None
     else:
         # Deterministic is the safe default. Only the explicit creative
-        # allowlist above may sample. This also protects new validators or
-        # extractors whose caller forgets to label a purpose.
+        # allowlist above may sample. Deterministic semantic calls still get a
+        # small reasoning budget so extractors/validators can inspect meaning
+        # before returning their fixed-temperature answer.
         temperature = 0
         seed = BENCHMARK_SEED
+        reasoning_effort = DETERMINISTIC_REASONING_EFFORT
+        thinking_budget_tokens = DETERMINISTIC_REASONING_BUDGET_TOKENS
+        enable_thinking = True
+        thinking = None
+        chat_template = None
+        jinja = None
 
     beat_history_purposes = {
         "macro_arc_create",
