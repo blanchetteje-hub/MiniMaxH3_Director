@@ -10557,7 +10557,7 @@ def build_accepted_beat_state_response_format():
         "type": "json_schema",
         "json_schema": {
             "name": "accepted_beat_state_patch",
-            "strict": False,
+            "strict": True,
             "schema": {
                 "type": "object",
                 "properties": {
