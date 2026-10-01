@@ -309,11 +309,29 @@ Relevant commits:
 - `80690ec5b4c948f7ba9f6089db3edb5997cd98a8`
 - `e942948a9a0850a3f3b6b0064d3f1eef7d40d8e0`
 
+### 2767 — first clean SUMMARY+STORY beat-conversion sample
+
+`tests-2766-character-canon-core-fields`: **42 passed, 4 subtests passed**.
+
+`generate-beats-2767-summary-guided-story-to-beats`: **completed all 8 beats successfully**.
+
+The new story-to-beats prompt preserved the source-level ending obligation better:
+- Beat 8 explicitly retrieves both Will and Amber;
+- both children are carried out together.
+
+Keep the SUMMARY+STORY prompt change.
+
+Separate continuity issue observed upstream in the expanded story:
+- Will and Amber are placed behind a closed hatch/safe location;
+- later the expanded story has zombies lunge at Will and Amber anyway;
+- the beat converter carries that contradiction forward.
+
+Do not blame or modify the SUMMARY+STORY beat prompt for that contradiction. One unchanged repeat is queued to determine whether the expanded-story barrier inconsistency repeats before changing the novelist prompt.
+
 ## Immediate next work
 
 Queued:
-- `tests-2766-character-canon-core-fields`
-- `generate-beats-2767-summary-guided-story-to-beats`
+- `generate-beats-2768-summary-guided-repeat`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
