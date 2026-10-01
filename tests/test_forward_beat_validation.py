@@ -462,6 +462,88 @@ class ForwardBeatValidationTests(unittest.TestCase):
             prompt,
         )
 
+    def test_accepted_beat_state_concretizes_abstract_location_and_ledger(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"]["Will"] = {"location": "safe location"}
+        state["characters"]["Amber"] = {"location": "safe location"}
+        state["story_progress"]["persistent_state_effects"] = {
+            "characters.Will.location": "safe location",
+            "characters.Amber.location": "safe location",
+        }
+        state = minimax.normalize_beat_canonical_state(state)
+
+        updated = minimax.apply_accepted_beat_state_patch(
+            state,
+            {
+                "characters": {
+                    "Will": {"location": "back closet"},
+                    "Amber": {"location": "back closet"},
+                }
+            },
+        )
+
+        self.assertEqual(updated["characters"]["Will"]["location"], "back closet")
+        self.assertEqual(updated["characters"]["Amber"]["location"], "back closet")
+        self.assertEqual(
+            updated["story_progress"]["persistent_state_effects"][
+                "characters.Will.location"
+            ],
+            "back closet",
+        )
+        self.assertEqual(
+            updated["story_progress"]["persistent_state_effects"][
+                "characters.Amber.location"
+            ],
+            "back closet",
+        )
+
+    def test_accepted_beat_state_keeps_broad_persistent_room_and_object_facts(self):
+        state = minimax.new_beat_canonical_state()
+
+        updated = minimax.apply_accepted_beat_state_patch(
+            state,
+            {
+                "environment": {
+                    "rooms": {
+                        "back closet": {
+                            "description": "small storage closet",
+                        }
+                    },
+                    "objects": {
+                        "blue vase": {
+                            "location": "back closet",
+                            "condition": "intact",
+                        }
+                    },
+                }
+            },
+        )
+
+        self.assertEqual(
+            updated["environment"]["rooms"]["back closet"]["description"],
+            "small storage closet",
+        )
+        self.assertEqual(
+            updated["environment"]["objects"]["blue vase"]["location"],
+            "back closet",
+        )
+        self.assertEqual(
+            updated["story_progress"]["persistent_state_effects"][
+                "environment.objects.blue vase.location"
+            ],
+            "back closet",
+        )
+
+    def test_accepted_beat_state_prompt_requests_broad_capture_without_story_progress(self):
+        messages = minimax.build_accepted_beat_state_messages(
+            minimax.new_beat_canonical_state(),
+            "Amy puts Will and Amber in the back closet beside a blue vase.",
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn("capture persistent world facts broadly", prompt)
+        self.assertIn("blue vase", prompt)
+        self.assertIn("Do not output story_progress", prompt)
+
     def test_validator_preserves_group_beneficiary_roles(self):
         messages = minimax.build_beat_validation_messages(
             "",
