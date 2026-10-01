@@ -15713,6 +15713,10 @@ def build_beat_generation_messages(
     batch_size = batch_end - batch_start + 1
     previous_beats = list(previous_beats or [])
     current_phase = current_phase or {}
+    source_film = prepare_source_film_for_beats(
+        story,
+        subject_information,
+    )
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
     character_facts = (
         _canonical_character_facts_from_subject_information(subject_information)
@@ -15793,7 +15797,7 @@ def build_beat_generation_messages(
         {
             "role": "user",
             "content": f"""SOURCE FILM
-{story}
+{source_film}
 
 KNOWN SUBJECTS
 {subject_text}
