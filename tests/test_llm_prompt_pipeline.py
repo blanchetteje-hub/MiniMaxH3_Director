@@ -342,8 +342,12 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         request_json = post.call_args.kwargs["json"]
         self.assertEqual(request_json["temperature"], 0)
         self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
-        self.assertNotIn("reasoning_effort", request_json)
-        self.assertNotIn("thinking_budget_tokens", request_json)
+        self.assertEqual(request_json["reasoning_effort"], "low")
+        self.assertEqual(request_json["thinking_budget_tokens"], 128)
+        self.assertEqual(
+            request_json["chat_template_kwargs"],
+            {"enable_thinking": True},
+        )
 
 
     @patch("minimax.generate_random_llm_seed", return_value=42)
@@ -505,8 +509,10 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             request_json = post.call_args.kwargs["json"]
             self.assertEqual(
                 request_json["chat_template_kwargs"],
-                {"enable_thinking": False},
+                {"enable_thinking": True},
             )
+            self.assertEqual(request_json["reasoning_effort"], "low")
+            self.assertEqual(request_json["thinking_budget_tokens"], 128)
             self.assertNotIn("thinking", request_json)
             self.assertNotIn("chat_template", request_json)
             self.assertNotIn("jinja", request_json)
