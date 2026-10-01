@@ -10479,11 +10479,12 @@ def persistent_beat_state_patch(patch, state_before=None):
     true in the incoming state, so Call 4 sees the same sparse proposal that
     Python will apply.
     """
-    normalized = _python_owned_state_patch(normalize_beat_state_patch(patch))
-    cleaned = _strip_beat_scene_metadata(normalized)
     incoming = normalize_beat_canonical_state(
         state_before or new_beat_canonical_state()
     )
+    patch = _normalize_threat_patch_ids(incoming, patch)
+    normalized = _python_owned_state_patch(normalize_beat_state_patch(patch))
+    cleaned = _strip_beat_scene_metadata(normalized)
     return _remove_unchanged_beat_patch_values(cleaned, incoming)
 
 
