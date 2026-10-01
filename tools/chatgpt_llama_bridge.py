@@ -574,6 +574,7 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
         "stdout": completed["stdout"],
         "stderr": completed["stderr"],
         "timed_out": completed["timed_out"],
+        "interrupted": completed.get("interrupted", False),
         "timeout_seconds": completed["timeout_seconds"],
         "started_at": completed["started_at"],
         "finished_at": completed["finished_at"],
@@ -1189,6 +1190,8 @@ def main(argv=None):
 
     max_file_bytes = int(args.max_file_mb * 1024 * 1024)
     while True:
+        if _GRACEFUL_STOP_REQUESTED.is_set():
+            return 0
         try:
             print("Checking mailbox...", flush=True)
             handled = process_once(
