@@ -15,18 +15,6 @@ from formatter_base import BaseFormatter
 import mistral_formatter as mistral
 
 
-DEFAULT_LLM_SETTINGS = {
-    "temperature": 0.15,
-    "top_p": 1.0,
-    "top_k": 0,
-    "min_p": 0.0,
-    "repeat_penalty": 1.0,
-    "presence_penalty": 0.0,
-    "frequency_penalty": 0.0,
-    "chat_template": "built-in",
-    "jinja": True,
-}
-
 
 _ABSTRACT_MUSIC_WORDS = re.compile(
     r"(?i)\b(?:ominous|tense|sad|happy|hopeful|dramatic|emotional|scary|"
@@ -171,8 +159,6 @@ def _remove_visual_speaker_ids(description: str) -> str:
 
 class QwenFormatter(BaseFormatter):
     """Format locally tested Qwen responses for MiniMax H3."""
-
-    DEFAULT_LLM_SETTINGS = DEFAULT_LLM_SETTINGS
 
     def __init__(self) -> None:
         self._shared = mistral.MistralFormatter()
