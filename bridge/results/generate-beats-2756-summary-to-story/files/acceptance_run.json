@@ -1,0 +1,125 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "db249ed8880bf22a7709458e03db3a74eecdec825573ff8ea0d114ad84e40098",
+  "repository_revision": "dc6c0b49e8b4bee844444b96a5236469f90209cf",
+  "created_at_utc": "2026-10-01T19:38:42Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "8",
+    "--model",
+    "gpt"
+  ],
+  "exit_code": 1,
+  "capture_status": {
+    "complete": false,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 8,
+        "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+        "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+        "characters_introduced": [],
+        "location": "As established by the expanded story.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "Amy stirs oatmeal on stove while Will and Amber giggle over cereal bowls in the humming morning kitchen.",
+            "beat_number": 1,
+            "state_effects": []
+          },
+          {
+            "id": "E2",
+            "event": "A groaning shudder cracks the front door as an undead creature bursts in, eyes glazed, arms reaching for her kids.",
+            "beat_number": 2,
+            "state_effects": [],
+            "depends_on": [
+              "E1"
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "Quick as a heartbeat, Amy scoops Will into one arm, presses Amber against her chest, and sprints toward the back closet that serves as their safe spot.",
+            "beat_number": 3,
+            "state_effects": [],
+            "depends_on": [
+              "E2"
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "She shoves them inside, slams the door shut, turns to face the chaos, then runs back through the hallway toward the kitchen while the zombie’s groan echoes behind her.",
+            "beat_number": 4,
+            "state_effects": [],
+            "depends_on": [
+              "E3"
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "Amy slips under a loose floorboard in the pantry, pulls out a pistol tucked behind canned beans, and slides a gleaming katana from its sheath on the counter, readying both weapons.",
+            "beat_number": 5,
+            "state_effects": [],
+            "depends_on": [
+              "E4"
+            ]
+          },
+          {
+            "id": "E6",
+            "event": "Facing the first lunge of a zombie, she fires a single shot that sends it sprawling into the kitchen tiles.",
+            "beat_number": 6,
+            "state_effects": [],
+            "depends_on": [
+              "E5"
+            ]
+          },
+          {
+            "id": "E7",
+            "event": "A second creature surges forward; Amy swings the katana in a swift arc severing its neck cleanly, then spins to fire another round at a third zombie that stumbles from the hallway and crashes against the fridge.",
+            "beat_number": 7,
+            "state_effects": [],
+            "depends_on": [
+              "E6"
+            ]
+          },
+          {
+            "id": "E8",
+            "event": "The last zombie thuds dead on the floor; breathing hard, Amy grabs Will and Amber’s hands once more, hurried back through the closet door into the kitchen, and pushes them out of the house—safe at last.",
+            "beat_number": 8,
+            "state_effects": [],
+            "depends_on": [
+              "E7"
+            ]
+          }
+        ],
+        "required_end_state": "End at the expanded story's stated conclusion."
+      }
+    ]
+  },
+  "generated_beats_text": null,
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
