@@ -94,6 +94,29 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
         self.assertIn('"having finished X"', prompt)
         self.assertIn("Show every assigned action and result in THIS beat", prompt)
 
+    def test_director_opening_handoff_prefers_previous_shot_end(self):
+        previous = {
+            "_director_end_state": (
+                "Amy stands beside the stove while Will and Amber remain at the table."
+            )
+        }
+        self.assertEqual(
+            minimax.director_opening_handoff(
+                previous,
+                "Structured continuity says Amy is in the kitchen.",
+            ),
+            previous["_director_end_state"],
+        )
+
+    def test_director_opening_handoff_falls_back_to_structured_state(self):
+        self.assertEqual(
+            minimax.director_opening_handoff(
+                {},
+                "Amy is in the kitchen beside the stove.",
+            ),
+            "Amy is in the kitchen beside the stove.",
+        )
+
     def test_director_rules_are_minimal_and_action_focused(self):
         rules = minimax.build_director_rules(
             8, 8, 1, SUBJECTS, 1,
