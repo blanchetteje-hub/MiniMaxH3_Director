@@ -1,0 +1,255 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   64 seconds
+Total segments:       8
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          8
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+WARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1074/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.800, Amy reaches for a wooden spoon resting on the counter next to the stovetop.
+At 00:01.500, she turns it in her pot of oatmeal, producing a gentle sizzling sound as the oats stir.
+At 00:02.900, Will giggles loudly while flipping his cereal bowl, splashing milk across the table.
+At 00:04.200, Amber chuckles and tilts her own bowl to pour more cereal onto an empty spoon beside her.
+At 00:05.700, Amy continues swirling the pot; steam curls from the surface.
+At 00:06.800, Will and Amber laugh together as their bowls fill with crunchy oats and sweet milk.
+End continuity state: Amy stands by the stove holding a steaming pot of oatmeal, Will holds his cereal bowl mid‑air laughing, amber sits beside him clutching her own bowl—kitchen bright and quiet before the next beat.
+================================================================
+
+================================================================
+DIRECTOR REQUEST 2 START - SEGMENT 1
+================================================================
+Combined continuity requested for segment 1 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 1: Amy stirs a pot of oatmeal on the stove while Will and Amber giggle over their cereal bowls in the bright kitchen.
+Next required after this prompt:
+  Beat 2: A sudden thud at the front door shatters the quiet as a zombie lunges through the gap, its pale hand reaching for Amy's apron, causing Will to squeal and Amber to clutch her small hand.
+================================================================Added States: 
+
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 1
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.
+<Subject 2> is Will, a 10-year-old boy.
+<Subject 3> is Amber, a 14-year-old girl.
+
+detailed_description: [Shot 1]
+
+At 00:00.800, Amy reaches for a wooden spoon resting on the counter next to the stovetop.
+
+At 00:01.500, she turns it in her pot of oatmeal, producing a gentle sizzling sound as the oats stir.
+
+At 00:02.900, Will giggles loudly while flipping his cereal bowl, splashing milk across the table.
+
+At 00:04.200, Amber chuckles and tilts her own bowl to pour more cereal onto an empty spoon beside her.
+
+At 00:05.700, Amy continues swirling the pot; steam curls from the surface.
+
+At 00:06.800, Will and Amber laugh together as their bowls fill with crunchy oats and sweet milk.
+
+overall_soundscape: gentle sizzling, milk splash, giggles, chuckles
+
+non_diegetic_music: soft piano
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 1
+
+ComfyUI render skipped for segment 1; continuing with prompt-derived continuity only.
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "N/A",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "by the stove",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [
+        "oatmeal steam"
+      ],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "mid‑air",
+      "pose_action": "holding cereal bowl",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [
+        "milk"
+      ],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "beside Will",
+      "pose_action": "sitting",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [
+        "cereal"
+      ],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 1; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands by the stove with oatmeal steam rising. Will is mid‑air holding a cereal bowl that contains milk. Amber sits beside Will with cereal in front of her.
+================================================================
+Segment 1 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 1 completed Beat 1.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 1.
+Completed prompt generation for segment 1; no ComfyUI request was sent.
+
+================================================================
+SEGMENT 2/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1112/4500 tokens (recent exact segments: 0)
+Segment 2 Director continuity source: prompt
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 2
+================================================================
+At 00:01.200, A deep thud reverberates through the kitchen from a front door that is slightly ajar; a small crack appears at the gap where it opens.
+
+At 00:02.400, The zombie lunges forward through the gap, its pale hand pushing against the air near Amy’s apron while a faint flicker of light hits his fingers.
+
+At 00:04.000, The zombie's palm touches the edge of Amy’s apron, causing her to flinch and the cloth to ripple in the stove‑warm breeze.
+
+At 00:06.200, Will squeals loudly as his cereal bowl slides from midair onto the counter; Amber clutches her small hand tightly, eyes wide, while the zombie's pale hand continues to hover near Amy’s apron.
+
+End continuity state: Amy stands by the stove holding a steaming pot of oatmeal; Will’s bowl lies on the counter floor; Amber sits beside him clutching her own hand; front door is ajar with a small gap showing the silhouette of the zombie and its pale hand reaching for Amy’s apron.
+================================================================
+
+================================================================
+DIRECTOR REQUEST 2 START - SEGMENT 2
+================================================================
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Segment 2 final H3 action preservation failed: 00:01.200: final H3 action is omitted relative to RAW.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-iamdxqxm\repo\minimax.py", line 32261, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-iamdxqxm\repo\minimax.py", line 31255, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Segment 2 final H3 action preservation failed: 00:01.200: final H3 action is omitted relative to RAW.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-iamdxqxm\repo\minimax.py", line 32333, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-iamdxqxm\repo\minimax.py", line 32261, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-iamdxqxm\repo\minimax.py", line 31255, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Segment 2 final H3 action preservation failed: 00:01.200: final H3 action is omitted relative to RAW.
