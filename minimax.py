@@ -400,6 +400,8 @@ CREATIVE_REASONING_BUDGET_TOKENS = 1024
 DETERMINISTIC_REASONING_EFFORT = "low"
 DETERMINISTIC_REASONING_BUDGET_TOKENS = 128
 
+REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
+
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
     "MINIMAX_CONTINUITY_STRICT", "1"
 ).strip().lower() not in {"0", "false", "no", "off"}
@@ -8288,6 +8290,7 @@ def ask_llm(
     jinja=None,
     reasoning_effort=None,
     thinking_budget_tokens=None,
+    reasoning_budget_message=None,
     enable_thinking=None,
     max_tokens=8192,
     parse_json_response=None,
@@ -8380,6 +8383,7 @@ def ask_llm(
         seed = CREATIVE_LLM_SAMPLING_PARAMETERS["seed"]
         reasoning_effort = CREATIVE_REASONING_EFFORT
         thinking_budget_tokens = CREATIVE_REASONING_BUDGET_TOKENS
+        reasoning_budget_message = REASONING_BUDGET_MESSAGE
         enable_thinking = True
         # These are server-launch/legacy provider settings, not part of the
         # llama.cpp OpenAI request contract used for the creative profile.
@@ -8395,6 +8399,7 @@ def ask_llm(
         seed = BENCHMARK_SEED
         reasoning_effort = DETERMINISTIC_REASONING_EFFORT
         thinking_budget_tokens = DETERMINISTIC_REASONING_BUDGET_TOKENS
+        reasoning_budget_message = REASONING_BUDGET_MESSAGE
         enable_thinking = True
         thinking = None
         chat_template = None
@@ -8479,6 +8484,10 @@ def ask_llm(
                 request_payload["thinking_budget_tokens"] = int(
                     thinking_budget_tokens
                 )
+            if reasoning_budget_message is not None:
+                request_payload["reasoning_budget_message"] = str(
+                    reasoning_budget_message
+                )
             sampling_metadata = {
                 name: request_payload[name]
                 for name in (
@@ -8491,6 +8500,7 @@ def ask_llm(
                     "repeat_penalty",
                     "reasoning_effort",
                     "thinking_budget_tokens",
+                    "reasoning_budget_message",
                 )
                 if name in request_payload
             }
