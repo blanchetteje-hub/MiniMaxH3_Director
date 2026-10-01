@@ -215,11 +215,30 @@ Relevant commits:
 - `cd4ab71da690d8922a4dd464fbf6ccd50e406574`
 - `13f1c8be24cc1a853c4ea39c609302db925daf5f`
 
+### 2758 — reserved root reused as threat ID
+
+`tests-2757-threat-entry-shape`: **42 passed, 4 subtests passed**.
+
+`generate-beats-2758-summary-to-story` reaches Beat 6 before failing with:
+
+`State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.`
+
+The previous schema change successfully enforced object-shaped threat entries. The remaining failure is namespace-specific: GPT-OSS used the reserved canonical root name `story` as a threat ID despite the prompt already saying the roots are siblings.
+
+Fix:
+- reserve canonical root names structurally in the `threats` JSON schema using `propertyNames`;
+- threat records remain otherwise flexible;
+- no additional extractor prose rule and no Python guessing/normalization were added.
+
+Relevant commits:
+- `24715c6e83f6bee8c3b1b127f300865ae0ef6321`
+- `663a23c6b31e8e155e255cb94b4b0f1c466bd9b5`
+
 ## Immediate next work
 
 Queued:
-- `tests-2757-threat-entry-shape`
-- `generate-beats-2758-summary-to-story`
+- `tests-2759-reserved-threat-keys`
+- `generate-beats-2760-summary-to-story`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
