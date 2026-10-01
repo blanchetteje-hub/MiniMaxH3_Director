@@ -1,0 +1,12 @@
+{
+  "job_id": "tests-2746-llm-host-rename",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_minimax_integration.py",
+    "tests/test_continuity_summary.py",
+    "tests/test_director_retry.py",
+    "tests/test_generate_beats_mode.py"
+  ],
+  "timeout_seconds": 1800
+}
