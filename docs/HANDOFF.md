@@ -847,3 +847,32 @@ Subject/canonical clarification:
   `subjects.txt`.
 - `subjects.txt` remains useful for known visual-subject identity/mapping into planning
   prompts, so the restored `KNOWN SUBJECTS` block remains in Beat CREATE for now.
+
+
+## 2026-10-01 — Beat CREATE/REPAIR moved to temperature 0
+
+Local repeated testing showed that GPT-OSS 20B Beat writing becomes unstable at any
+temperature above zero. A captured repair trace also showed correct internal reasoning
+followed by a sampled final answer that reintroduced the exact ambiguity it had identified.
+
+Changes:
+- Beat CREATE (`beat_generation`) now uses temperature `0`, seed `42`, and
+  repeat penalty `1.15`.
+- Beat CREATE keeps the high reasoning profile (`reasoning_effort="high"`,
+  `thinking_budget_tokens=1024`) because reasoning quality was useful; only answer
+  sampling was causing drift.
+- Beat repair now has its own `beat_repair` purpose and uses the same temperature-0,
+  high-reasoning Beat writing profile.
+- Beat repair prompt now explicitly requires the smallest textual change, preservation of
+  unaffected wording, and explicit replacement/non-reintroduction when the reported issue
+  identifies a bad/ambiguous word.
+- Existing REPAIR -> VALIDATE flow remains intact; a repaired beat cannot be accepted
+  without another validator/coherence pass.
+- Other creative calls (ARC create/repair, character canon, Director raw scene) remain on
+  their existing creative sampling profile; this change is Beat-specific.
+
+Commits:
+- `8c7f04140c38e413c9b2185bf63405643ce8a911` — production routing + repair contract
+- `bc7901f474420c8c0454309fdbb8df4654a565e0` — Beat CREATE/REPAIR routing regressions
+- `7d35e7dd596f5d73777f547ac98b84d87e62676f` — repair purpose/revalidation-order regression
+- `6a1384286c62ffbf95972f4653194aca91bc0c31` — PROJECT_NOTES sampling policy update
