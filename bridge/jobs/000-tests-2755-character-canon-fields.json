@@ -1,0 +1,11 @@
+{
+  "job_id": "tests-2755-character-canon-fields",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_character_canon.py",
+    "tests/test_summary_to_story_pipeline.py",
+    "tests/test_forward_beat_validation.py"
+  ],
+  "timeout_seconds": 1800
+}
