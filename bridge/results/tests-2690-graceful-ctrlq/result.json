@@ -1,0 +1,27 @@
+{
+  "job_id": "tests-2690-graceful-ctrlq",
+  "kind": "run_tests",
+  "started_at": 1790816926.23233,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_chatgpt_llama_bridge.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_gpt-arc-refresh\nconfigfile: pytest.ini\ncollecting ... collected 9 items\n\ntests/test_chatgpt_llama_bridge.py::ChatGPTLlamaBridgeDeveloperLogTests::test_acceptance_allows_qwen_model PASSED [ 11%]\ntests/test_chatgpt_llama_bridge.py::ChatGPTLlamaBridgeDeveloperLogTests::test_acceptance_log_capture_streams_model_io_and_stats PASSED [ 22%]\ntests/test_chatgpt_llama_bridge.py::ChatGPTLlamaBridgeDeveloperLogTests::test_acceptance_rejects_nonbaseline_branch PASSED [ 33%]\ntests/test_chatgpt_llama_bridge.py::ChatGPTLlamaBridgeDeveloperLogTests::test_acceptance_rejects_unsupported_model PASSED [ 44%]\ntests/test_chatgpt_llama_bridge.py::ChatGPTLlamaBridgeDeveloperLogTests::test_missing_lms_cli_still_publishes_diagnostic_document PASSED [ 55%]\ntests/test_chatgpt_llama_bridge.py::ChatGPTLlamaBridgePytestTests::test_run_tests_streams_through_managed_process PASSED [ 66%]\ntests/test_chatgpt_llama_bridge.py::ChatGPTLlamaBridgeGracefulStopTests::test_ctrl_q_request_sets_graceful_stop_without_hard_exit PASSED [ 77%]\ntests/test_chatgpt_llama_bridge.py::ChatGPTLlamaBridgeGracefulStopTests::test_process_once_publishes_interrupted_job_and_stops_before_next PASSED [ 88%]\ntests/test_chatgpt_llama_bridge.py::ChatGPTLlamaBridgeGracefulStopTests::test_run_local_process_marks_graceful_interrupt PASSED [100%]\n\n============================== 9 passed in 1.95s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790816927.2705147,
+    "finished_at": 1790816929.9314442
+  },
+  "finished_at": 1790816929.9314442,
+  "status": "ok"
+}
