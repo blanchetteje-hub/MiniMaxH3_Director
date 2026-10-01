@@ -755,7 +755,6 @@ Expected next manual run:
 - each beat must visibly enter the single-beat validator;
 - repeated explicit Generate Beats runs should no longer be locked to identical creative output.
 
-
 ## 2026-09-30 — Beat CREATE subject guard regression + hidden source classification delay
 
 Observed full-run failure:
@@ -781,3 +780,50 @@ Planner latency clarification:
 - These calls currently have no progress logging, so the program appears idle until
   `classify_visible_source_unit_ids()` begins printing `Event N requires...`.
 - They exist only to derive chapter boundaries; Beat CREATE has not begun during this pause.
+
+## 2026-09-30 — current working-tree changes: canonical data, planning diagnostics, and compact validation
+
+This section records the uncommitted changes made after the previous checkpoint. It supersedes the earlier canonical-data descriptions above where they conflict.
+
+### Canonical character data
+
+- `canonical_data.txt` is now authored character information, not a comma/newline-separated list of fields. The included example defines Amy, Will, and Amber directly.
+- The canonicalization request sends only the contents of `canonical_data.txt` to the LLM. It no longer uses `story.txt` or `subjects.txt` to establish character facts.
+- Every character must receive `age`, `clothing`, and `gender`. The LLM copies values stated in the file and invents a reasonable value only when one of those three is missing.
+- Additional fields are extracted only when explicitly stated in `canonical_data.txt`; the LLM is instructed not to invent additional fields.
+- `character_canon.json` now uses version 3 and is keyed by a SHA-256 hash of the canonical-data text alone. It is reused when the file is unchanged and regenerated when it changes.
+- Segment 1 Director Request 1 receives the original `canonical_data.txt` text under `CANONICAL STARTING CHARACTER FACTS`.
+- README documentation and canonical-character regression tests were updated for this file-driven format.
+
+### Source-span planning diagnostics
+
+- Source-span refinement accepts an `on_source_span` callback. The runtime uses it to print every finalized span as it is extracted:
+  `Source span N [start:end]: text`.
+- Each `source_unit_visible_responsibility` decision now prints:
+  `Event N requires a concrete on-screen event: YES|NO`.
+- Each `source_unit_local_relation` decision now prints both source spans and the parsed `MERGE` or `NEW_TASK` result.
+- Each `source_unit_state_effects` result now prints the source unit, source text, and JSON state effects, including an empty list when no persistent effect is found.
+- These diagnostics are flushed immediately so a live planning run shows progress while each narrow LLM request completes.
+
+### Beat creation and acceptance diagnostics
+
+- Batch Beat CREATE prints every generated beat as:
+  `Beat N created: <beat text>`.
+- Single-beat repair/regeneration prints the same creation line.
+- After a candidate passes validation and its checkpoint is saved, acceptance prints:
+  `Beat N accepted: <beat text>`.
+- The existing detailed acceptance line remains and reports committed required events and the completed-event cursor.
+
+### Beat validation prompt and coherence context
+
+- The main `beat_validation` prompt was reduced from roughly 1,280 fixed words to roughly 374 fixed words.
+- The compact prompt retains the essential checks: current-job completion, finite versus ongoing work, participant/beneficiary preservation, previous-state continuity, reserved-later ownership, assigned final-state effects, and material fidelity.
+- Boundary/barrier/containment effects remain filtered from this semantic validator according to the active boundary-dormant architecture.
+- The post-validation physical/causal coherence prompt receives the previously accepted beat under `PREVIOUS BEAT` when one exists. Beat 1 omits that section.
+- Focused validator and planner regressions were updated to assert the shorter wording and the previous-beat handoff.
+
+### Verification
+
+- Focused canonical, planner, source-span, beat-generation, and validator tests pass after these changes.
+- The compact `beat_validation` prompt was checked at approximately 374 fixed words before dynamic story/state content is inserted.
+- No commit has been created for this working-tree update.
