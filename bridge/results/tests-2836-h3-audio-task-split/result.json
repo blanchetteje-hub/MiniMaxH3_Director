@@ -1,0 +1,32 @@
+{
+  "job_id": "tests-2836-h3-audio-task-split",
+  "kind": "run_tests",
+  "started_at": 1790905182.2356803,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_is_extraction_only",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_audio_parsers_accept_only_their_single_field",
+      "tests\\test_llm_prompt_pipeline.py::H3AudioNormalizationTests::test_audio_parsers_replace_underscores_with_spaces",
+      "tests\\test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_music_uses_narrow_creative_profile",
+      "tests\\test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_soundscape_remains_deterministic"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 6 items\n\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_is_extraction_only PASSED [ 16%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only PASSED [ 33%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_audio_parsers_accept_only_their_single_field PASSED [ 50%]\ntests/test_llm_prompt_pipeline.py::H3AudioNormalizationTests::test_audio_parsers_replace_underscores_with_spaces PASSED [ 66%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_music_uses_narrow_creative_profile PASSED [ 83%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_soundscape_remains_deterministic PASSED [100%]\n\n============================== 6 passed in 2.75s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790905183.662474,
+    "finished_at": 1790905187.1586795
+  },
+  "finished_at": 1790905187.1586795,
+  "status": "ok"
+}
