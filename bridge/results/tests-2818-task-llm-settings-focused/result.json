@@ -1,0 +1,31 @@
+{
+  "job_id": "tests-2818-task-llm-settings-focused",
+  "kind": "run_tests",
+  "started_at": 1790899314.622148,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_llm_prompt_pipeline.py::LLMSamplingRoutingTests",
+      "tests\\test_minimax_integration.py::TestMinimaxIntegration::test_unclassified_llm_transport_uses_deterministic_profile",
+      "tests\\test_minimax_integration.py::TestMinimaxIntegration::test_llm_transport_forwards_creativity_sampling_parameters",
+      "tests\\test_minimax_integration.py::TestMinimaxIntegration::test_creative_request_keeps_one_random_seed_across_transport_retries",
+      "tests\\test_gpt_formatter.py::GPTFormatterTests::test_gpt_formatter_is_available_and_is_default_runtime_formatter"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 4,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... ERROR: found no collectors for C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_minimax_integration.py::TestMinimaxIntegration::test_unclassified_llm_transport_uses_deterministic_profile\n\nERROR: found no collectors for C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_minimax_integration.py::TestMinimaxIntegration::test_llm_transport_forwards_creativity_sampling_parameters\n\nERROR: found no collectors for C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_minimax_integration.py::TestMinimaxIntegration::test_creative_request_keeps_one_random_seed_across_transport_retries\n\ncollected 1 item / 1 skipped\n\n============================= 1 skipped in 0.63s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790899315.8266897,
+    "finished_at": 1790899316.866677
+  },
+  "finished_at": 1790899316.867677,
+  "status": "ok"
+}
