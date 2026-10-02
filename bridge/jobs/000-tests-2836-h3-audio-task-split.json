@@ -1,0 +1,14 @@
+{
+  "job_id": "tests-2836-h3-audio-task-split",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_is_extraction_only",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_audio_parsers_accept_only_their_single_field",
+    "tests/test_llm_prompt_pipeline.py::H3AudioNormalizationTests::test_audio_parsers_replace_underscores_with_spaces",
+    "tests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_music_uses_narrow_creative_profile",
+    "tests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_soundscape_remains_deterministic"
+  ],
+  "timeout_seconds": 1800
+}
