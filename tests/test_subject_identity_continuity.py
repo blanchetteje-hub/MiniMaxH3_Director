@@ -368,6 +368,61 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             amber,
         )
 
+    def test_dynamic_subject_definition_renders_full_python_state(self):
+        definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+        state = minimax.continuity_state_for_registry(definitions)
+        state["subjects"]["Will"] = minimax.new_subject_continuity_record({
+            "subject_id": 2,
+            "name": "Will",
+            "gender": "male",
+            "speaker_id": "S2",
+            "origin_segment": 2,
+            "canonical_description": (
+                "Will is an 8-year-old male wearing a blue T-shirt and shorts."
+            ),
+        })
+        will = state["subjects"]["Will"]
+        will["position"] = "beside the basement door"
+        will["pose_action"] = "crouched and looking toward the stairs"
+        will["wardrobe"] = {
+            "upper": "a torn blue T-shirt",
+            "lower": "muddy shorts",
+            "footwear": "white sneakers",
+            "other": "N/A",
+        }
+        will["topology"] = "left sleeve torn away"
+        will["body_state"] = "standing with weight off the right leg"
+        will["physical_condition"] = "tired and dirty"
+        will["held_props"] = ["a flashlight"]
+        will["attached_objects"] = ["a backpack"]
+        will["injuries"] = ["a scraped left knee"]
+        will["substances"] = ["mud on both hands"]
+        will["spatial_relationships"] = ["the backpack remains on Will's back"]
+        will["persistent_effects"] = ["dust covering his hair"]
+
+        rendered = minimax.derive_additional_subject_definitions(
+            definitions,
+            state,
+        )
+        line = next(item for item in rendered if "Will" in item)
+
+        self.assertIn(
+            "Will is an 8-year-old male wearing a blue T-shirt and shorts.",
+            line,
+        )
+        self.assertIn("Last known state: Will was beside the basement door", line)
+        self.assertIn("wearing a torn blue T-shirt, muddy shorts, and white sneakers", line)
+        self.assertIn("Last known pose/action: crouched and looking toward the stairs", line)
+        self.assertIn("Topology: left sleeve torn away", line)
+        self.assertIn("Body state: standing with weight off the right leg", line)
+        self.assertIn("Physical condition: tired and dirty", line)
+        self.assertIn("Held props: a flashlight", line)
+        self.assertIn("Attached objects: a backpack", line)
+        self.assertIn("Injuries: a scraped left knee", line)
+        self.assertIn("Persistent substances: mud on both hands", line)
+        self.assertIn("Physical relationships: the backpack remains on Will's back", line)
+        self.assertIn("Persistent effects: dust covering his hair", line)
+
     def test_canonical_named_character_not_visible_is_not_promoted(self):
         canon = {
             "fields": ["gender"],

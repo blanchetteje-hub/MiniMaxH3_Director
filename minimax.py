@@ -5719,6 +5719,32 @@ def format_authoritative_opening_state(
     return "\n".join(lines)
 
 
+# Render every usable Subject state field as deterministic re-entry prose.
+def format_subject_state_for_definition(subject_id, name, record):
+    """Render the last known Python-owned Subject state for a definition."""
+    rendered = _subject_opening_sentence(
+        subject_id,
+        name,
+        record,
+        summary=False,
+    )
+    if not rendered:
+        return ""
+    rendered = rendered.replace(
+        f"At the opening, {name} remains ",
+        f"Last known state: {name} was ",
+        1,
+    ).replace(
+        f"At the opening, {name} is ",
+        f"Last known state: {name} was ",
+        1,
+    ).replace(
+        "Opening pose/action:",
+        "Last known pose/action:",
+    )
+    return rendered
+
+
 # Render video-created Subject definitions from continuity_state.
 def derive_additional_subject_definitions(
     base_subject_definitions,
@@ -5767,6 +5793,13 @@ def derive_additional_subject_definitions(
         )
         if canonical_description:
             definition += " " + canonical_description
+        state_description = format_subject_state_for_definition(
+            subject_id,
+            name,
+            record,
+        )
+        if state_description:
+            definition += " " + state_description
         definitions.append(definition)
     return definitions
 
