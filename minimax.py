@@ -1992,11 +1992,11 @@ def parse_args(arguments=None):
     parser.add_argument(
         "--refresh",
         type=int,
-        default=4,
+        default=6,
         metavar="SEGMENTS",
         help=(
             "regenerate from the preceding segment's last frame on every "
-            "SEGMENTS-th segment (default: 4)"
+            "SEGMENTS-th segment (default: 6)"
         ),
     )
     parser.add_argument(

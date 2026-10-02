@@ -52,7 +52,7 @@ DEFAULT_SETTINGS = {
     "resume": "1",
     "steps": "6",
     "trim_frames": "2",
-    "refresh": "4",
+    "refresh": "6",
     "vision_continuity": "0",
     "retention": False,
     "repair": "",
@@ -297,7 +297,7 @@ class MiniMaxBridge:
                 settings.get("trim_frames", 2), "Trim frames"
             ),
             "refresh": _positive_int(
-                settings.get("refresh", 4), "Legacy refresh fallback"
+                settings.get("refresh", 6), "Legacy refresh fallback"
             ),
             "vision_continuity": _non_negative_int(
                 settings.get("vision_continuity", 0), "Vision continuity"
@@ -421,7 +421,7 @@ class MiniMaxBridge:
         effective = dict(settings)
         if render:
             effective.update(segment_length=1, total_segments=1, megapixels=0.5,
-                             steps=6, trim_frames=2, refresh=4, vision_continuity=0,
+                             steps=6, trim_frames=2, refresh=6, vision_continuity=0,
                              model="gpt", resume=1, first_frame=False,
                              retention=False, loras=[], temp=0.8)
         values = self._validate_settings(effective)
