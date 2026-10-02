@@ -5925,12 +5925,11 @@ def reset_generation_state_subjects_for_new_phase(
 
 # Render parsed subject names and descriptive prose for beat planning.
 
-def load_canonical_data(path=CANONICAL_DATA_FILE):
-    """Load the configured character fields that should be canonicalized."""
-    data = load_text_file(path, required=True).strip()
-    if not data:
-        raise ValueError("canonical_data.txt must list canonical character fields.")
-    return data
+def load_canonical_data(path=None):
+    """Load optional canonical character information; missing or blank means disabled."""
+    return load_text_file(
+        CANONICAL_DATA_FILE if path is None else path, required=False
+    ).strip()
 
 
 def build_character_canon_messages(canonical_data, story, subject_definitions=""):
@@ -5946,7 +5945,8 @@ def build_character_canon_messages(canonical_data, story, subject_definitions=""
         {
             "role": "user",
             "content": (
-                "CANONICAL DATA lists the character fields to establish. "
+                "CANONICAL DATA is optional additional character information. "
+                "When it is empty, establish character facts from STORY and SUBJECTS. "
                 "Use STORY and SUBJECTS to identify the named characters and copy "
                 "any explicit values for those fields. If a configured value is "
                 "missing, invent one reasonable value once. Return name, age, "
@@ -6115,43 +6115,13 @@ def load_or_generate_character_canon(
     llm_request=None,
     history_metadata=None,
 ):
-    """Reuse or establish configured character facts from story/subjects."""
+    """Generate and save character facts from story/subjects on every planning run."""
     canonical_data = load_canonical_data() if canonical_data is None else str(canonical_data).strip()
-    if not canonical_data:
-        raise ValueError("canonical_data.txt must list canonical character fields.")
     expected_hash = _character_canon_source_hash(
         canonical_data,
         story,
         subject_definitions,
     )
-    raw = load_text_file(path, required=False)
-    if raw:
-        try:
-            payload = json.loads(raw)
-            if (
-                isinstance(payload, dict)
-                and payload.get("version") == 3
-                and payload.get("source_sha256") == expected_hash
-            ):
-                characters = payload.get("characters")
-                facts = [{
-                    "name": record["name"],
-                    **{field: record[field] for field in ("age", "clothing", "gender")},
-                    "other_facts": [
-                        {"field": field, "value": value}
-                        for field, value in record.items()
-                        if field not in {"name", "age", "clothing", "gender"}
-                    ],
-                } for record in characters]
-                parsed = parse_character_canon_result({"characters": facts})
-                if parsed == {"fields": payload.get("fields"), "characters": characters}:
-                    return payload
-        except (ValueError, TypeError, KeyError, json.JSONDecodeError):
-            pass
-        print(
-            f"Ignoring stale or invalid {path}; regenerating character canon.",
-            flush=True,
-        )
 
     if llm_request is None:
         llm_request = ask_llm
@@ -26353,6 +26323,7 @@ def build_h3_prompt(
     previous_visible_subject_ids=None,
     retention=False,
     retention_json=None,
+    character_canon=None,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -26575,13 +26546,20 @@ def build_h3_prompt(
             )
     canonical_prompt_text = ""
     if segment_number is not None and int(segment_number) == 1:
+        canonical_prompt_text = "\n".join(
+            sentence
+            for sentence in canonical_character_subject_descriptions(character_canon).values()
+            if sentence not in subject_text
+        )
         try:
             with open(CANONICAL_DATA_FILE, "r", encoding="utf-8", newline="") as canonical_file:
-                canonical_prompt_text = canonical_file.read()
+                raw_canonical_data = canonical_file.read()
+            if raw_canonical_data:
+                canonical_prompt_text += ("\n" if canonical_prompt_text else "") + raw_canonical_data
         except FileNotFoundError:
             pass
-    # Insert the raw file after sanitization and identity repair so its text
-    # (including whitespace, markdown, and line endings) remains verbatim.
+    # Insert canon prose and raw data after sanitization and identity repair
+    # so the optional raw file retains its whitespace and line endings.
     canonical_marker = "CANONICAL_DATA_VERBATIM_INSERTION_POINT"
     sections = []
     _append_h3_prompt_section(sections, "subject_definitions", subject_text)
@@ -32353,6 +32331,7 @@ def _run_main(
             excluded_picture_ids=segment_bundle.get("excluded_picture_ids"),
             continuity_state=continuity_state,
             previous_visible_subject_ids=previous_visible_subject_ids,
+            character_canon=character_canon,
             retention=retention,
             # Retention is intentionally rendered from the unmerged Phase 1
             # JSON. The merged state remains authoritative for visual

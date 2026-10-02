@@ -65,7 +65,7 @@ class CharacterCanonTests(unittest.TestCase):
             item["properties"]["other_facts"]["items"]["properties"]["field"]["pattern"],
         )
 
-    def test_source_matched_character_canon_is_reused_without_llm(self):
+    def test_source_matched_character_canon_is_regenerated_by_llm(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "character_canon.json"
             source_hash = minimax._character_canon_source_hash(
@@ -86,7 +86,7 @@ class CharacterCanonTests(unittest.TestCase):
                 source_hash,
                 path=str(path),
             )
-            request = Mock(side_effect=AssertionError("LLM should not be called"))
+            request = Mock(return_value=character_result(age="31"))
             result = minimax.load_or_generate_character_canon(
                 CANONICAL_DATA,
                 story=STORY,
@@ -94,9 +94,10 @@ class CharacterCanonTests(unittest.TestCase):
                 path=str(path),
                 llm_request=request,
             )
-            self.assertEqual(result["characters"][0]["age"], "30")
+            self.assertEqual(result["characters"][0]["age"], "31")
             self.assertEqual(result["characters"][0]["gender"], "female")
-            request.assert_not_called()
+            request.assert_called_once()
+            self.assertEqual(json.loads(path.read_text())["characters"][0]["age"], "31")
 
     def test_canonical_character_sentence_is_deterministic(self):
         self.assertEqual(

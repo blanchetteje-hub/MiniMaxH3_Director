@@ -38,3 +38,30 @@ class CanonicalPromptInsertionTests(unittest.TestCase):
                 path.write_text("", encoding="utf-8")
                 self.assertEqual(self.prompt(1), expected)
                 self.assertNotIn("CANONICAL_DATA_VERBATIM_INSERTION_POINT", expected)
+
+    def test_segment_one_includes_canon_sentences_using_existing_formatter(self):
+        canon = {"characters": [
+            {"name": "Amy", "age": "34", "gender": "female", "clothing": "black tank top and jeans"},
+            {"name": "Will", "age": "8", "gender": "male", "clothing": "blue shirt"},
+        ]}
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            minimax, "CANONICAL_DATA_FILE", str(Path(directory) / "missing.txt")
+        ):
+            prompt = self.prompt(1, character_canon=canon)
+            subject_section = prompt.split("\n\ndetailed_description:", 1)[0]
+            for record in canon["characters"]:
+                sentence = minimax.format_canonical_character_sentence(record)
+                self.assertIn(sentence, subject_section)
+                self.assertEqual(prompt.count(sentence), 1)
+                self.assertNotIn(sentence, self.prompt(2, character_canon=canon))
+
+    def test_canon_prose_and_raw_optional_data_are_both_kept(self):
+        canon = {"characters": [{"name": "Amy", "age": "34", "gender": "female", "clothing": "red coat"}]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "canonical_data.txt"
+            raw = "  Amy has green eyes.\r\n"
+            path.write_bytes(raw.encode("utf-8"))
+            with mock.patch.object(minimax, "CANONICAL_DATA_FILE", str(path)):
+                prompt = self.prompt(1, character_canon=canon)
+            self.assertIn(minimax.format_canonical_character_sentence(canon["characters"][0]), prompt)
+            self.assertIn(raw + "\n\ndetailed_description:", prompt)

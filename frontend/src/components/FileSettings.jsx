@@ -6,7 +6,7 @@ const FILE_HELP = {
   story: 'The source story used by New to create the story arc and beats.',
   beats: 'Ordered story events used by Existing. New replaces these with beats generated from the story.',
   subjects: 'Stable subject identities and reference Picture mappings supplied to the Director.',
-  canonical_data: 'Canonical character facts used by planning. Its contents are also appended verbatim to segment 1 subject definitions.',
+  canonical_data: 'Optional canonical character facts used by planning. The LLM still generates character canon from the story and subjects when this is missing or blank. Its contents are appended verbatim to segment 1 subject definitions when present.',
   phrase_exclusions: 'One excluded word or phrase per line, supplied to planning and checked in beats.',
   generated_prompts: 'Saved final video prompts and render settings. Render-Only reads this package without calling the LLM.',
   generation_state: 'Read-only checkpoint with completed clips and continuity state, used for resume and repair.',

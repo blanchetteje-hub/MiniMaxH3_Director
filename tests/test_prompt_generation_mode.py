@@ -104,6 +104,10 @@ def test_prompt_generation_mode_skips_comfyui_and_stitching(count):
         }
         return payload
 
+    def assemble_prompt(*args, **kwargs):
+        assert kwargs["character_canon"]["characters"][0]["name"] == "Amy"
+        return "H3 prompt"
+
     render = mock.patch("minimax.render_segment_with_retries")
     stitch = mock.patch("minimax.stitch_videos")
     verify_images = mock.patch("minimax.verify_reference_images")
@@ -132,7 +136,7 @@ def test_prompt_generation_mode_skips_comfyui_and_stitching(count):
             "minimax.request_combined_continuity",
             return_value={"reduced_state": {}},
         ),
-        mock.patch("minimax.build_h3_prompt", return_value="H3 prompt"),
+        mock.patch("minimax.build_h3_prompt", side_effect=assemble_prompt),
         mock.patch(
             "minimax.request_continuity_opening_state",
             return_value="OPENING",

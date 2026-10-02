@@ -595,7 +595,11 @@ Python also verifies common explicit constraints such as exact phrase
 placement/count, prohibited words, required phrases, and an exact final
 sentence; failed checks trigger another correction.
 
-### `canonical_data.txt` — required character information
+### `canonical_data.txt` — optional character information
+
+The planning pipeline always calls the LLM to generate `character_canon.json`
+from `story.txt` and `subjects.txt`. This optional file adds explicit character
+facts; missing or blank files do not skip canon generation.
 
 Write the character facts directly in this file, for example:
 
@@ -608,8 +612,12 @@ Amber is female and 5-years-old.
 The program converts these statements to `character_canon.json`. Each character
 gets age, clothing, and gender; the model supplies a reasonable value when one
 of those three is missing. Other facts are included only when stated in the file.
-The saved JSON is reused until `canonical_data.txt` changes. The original file
-text is also included in the first Director prompt for segment 1.
+The JSON is regenerated on every planning run, even if an existing file matches
+the inputs. Render-Only uses saved prompts and does not call the LLM. The original file
+text is also included in the first Director prompt for segment 1. Natural
+sentences generated from `character_canon.json` are appended to segment 1’s
+H3 `subject_definitions` using the same canon-to-prose formatter used for
+character definitions.
 
 ### `phrase_exclusions.txt` — optional phrase exclusions
 
@@ -1188,7 +1196,7 @@ MINIMAX_DEBUG=1 python minimax.py 5 2 0.2
 | `Minimax_auto_append_API.json` | Video-continuation API workflow. |
 | `Minimax_auto_refresh_API.json` | Auto-refresh reference-to-video workflow used by `--refresh`. |
 | `story.txt` | Source story or creative brief. |
-| `canonical_data.txt` | Character facts used to build the canonical JSON and the first Director prompt. |
+| `canonical_data.txt` | Optional character facts used to build canonical JSON and enrich segment 1. |
 | `character_canon.json` | Cached structured character facts derived from `canonical_data.txt`. |
 | `story_arc.json` | Persisted macro story arc reused by automatic beat generation when valid. |
 | `story_arc.json.sha256` | SHA-256 of the `story.txt` source associated with the persisted arc. |
