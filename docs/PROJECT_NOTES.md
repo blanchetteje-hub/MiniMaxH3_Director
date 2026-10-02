@@ -1615,3 +1615,12 @@ attackers as generic prose.
 The beat-writing rule now requires every distinct unnamed animate foreground participant
 who acts or is acted on to receive a stable marked handle, even for a one-beat appearance.
 Only truly interchangeable collective groups may remain unlabeled.
+
+
+### 2026-10-02 — Dynamic Subject determination locked
+- Dynamic Subject identity is owned post-RAW, not by Beats.
+- The resolver operates on finalized timed RAW, preserves the exact `End continuity state:` via Python, and may add only functional identities for unnamed foreground animate participants.
+- Identifiers already present in accepted RAW are immutable across Subject resolution; deterministic alias drift such as `Will1`, `Amber1`, or `Zombie2_1` is restored/rejected.
+- Python remains authoritative for Subject IDs, speaker IDs, persistence, registration, and scene-scoped H3 filtering.
+- Acceptance 2868 verified clean dynamic registration (`Zombie1`, then `Zombie2`/`Zombie3`) with no identifier-alias corruption. Treat this area as locked unless new evidence shows a regression.
+- Next major gold-gap target: camera choreography.
