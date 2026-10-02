@@ -1,0 +1,29 @@
+{
+  "job_id": "tests-2869-cli-exit",
+  "kind": "run_tests",
+  "started_at": 1790958100.8911664,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_resume.py::ResumeTests::test_main_does_not_retry_invalid_command_line",
+      "tests\\test_resume.py::ResumeTests::test_parse_args_rejects_nonpositive_steps",
+      "tests\\test_prompt_generation_mode.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 9 items\n\ntests/test_resume.py::ResumeTests::test_main_does_not_retry_invalid_command_line PASSED [ 11%]\ntests/test_resume.py::ResumeTests::test_parse_args_rejects_nonpositive_steps PASSED [ 22%]\ntests/test_prompt_generation_mode.py::test_parse_args_defaults_prompt_generation_test_mode_off PASSED [ 33%]\ntests/test_prompt_generation_mode.py::test_generate_all_uses_normal_video_positionals_without_comfyui PASSED [ 44%]\ntests/test_prompt_generation_mode.py::test_use_prompts_accepts_explicit_package_path_without_video_positionals PASSED [ 55%]\ntests/test_prompt_generation_mode.py::test_use_prompts_rejects_video_positionals PASSED [ 66%]\ntests/test_prompt_generation_mode.py::test_director_only_implies_prompt_generation_and_never_combines_with_generation PASSED [ 77%]\ntests/test_prompt_generation_mode.py::test_director_raw_scene_retry_budget_is_five PASSED [ 88%]\ntests/test_prompt_generation_mode.py::test_prompt_generation_mode_skips_comfyui_and_stitching PASSED [100%]\n\n============================== 9 passed in 2.74s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790958102.4624789,
+    "finished_at": 1790958105.9429333
+  },
+  "finished_at": 1790958105.9429333,
+  "status": "ok"
+}
