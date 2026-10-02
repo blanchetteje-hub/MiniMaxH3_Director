@@ -29778,19 +29778,18 @@ def build_director_pronoun_resolution_messages(
         {
             "role": "system",
             "content": (
-                "Make person references explicit for a video prompt. Scan the entire "
-                "supplied timed scene and replace every personal pronoun whose referent "
-                "is clear (especially they, them, their, she, her, he, him, his) with "
-                "the explicit person name or names. Preserve grammatical case: subject "
-                "pronouns become names (she -> Amy), object pronouns become names "
-                "(her -> Amy), and possessives become possessive names "
-                "(her palm -> Amy's palm; their bowls -> Will and Amber's bowls). "
-                "Never put a bare name before a possessed noun: 'Amy palm' is invalid. "
-                "Change only those pronouns. Preserve every timestamp, action, action "
-                "order, object, location, sound, camera instruction, dialogue, and "
-                "punctuation meaning. Do not add, remove, combine, split, or reinterpret "
-                "actions. If a pronoun's referent is uncertain, leave it unchanged. "
-                "Return JSON only."
+                "Make ambiguous person references explicit for a video prompt. Scan the "
+                "supplied timed scene and replace only clear personal subject/object "
+                "pronouns whose explicit name would help identify the actor or target "
+                "(especially she, he, they, him, her, them). Prefer names for standalone "
+                "they/them. Leave ordinary possessive determiners unchanged when their "
+                "owner is already clear from the sentence or nearby context: keep "
+                "'her hand', 'his collar', and 'their bowls' as written. Do not rewrite "
+                "a readable local possessive merely to repeat a name. Change only the "
+                "pronoun itself. Preserve every timestamp, action, action order, object, "
+                "location, sound, camera instruction, dialogue, and punctuation meaning. "
+                "Do not add, remove, combine, split, or reinterpret actions. If a "
+                "pronoun's referent is uncertain, leave it unchanged. Return JSON only."
             ),
         },
         {
