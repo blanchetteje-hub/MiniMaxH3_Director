@@ -1,0 +1,13 @@
+{
+  "job_id": "tests-2818-task-llm-settings-focused",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests",
+    "tests/test_minimax_integration.py::TestMinimaxIntegration::test_unclassified_llm_transport_uses_deterministic_profile",
+    "tests/test_minimax_integration.py::TestMinimaxIntegration::test_llm_transport_forwards_creativity_sampling_parameters",
+    "tests/test_minimax_integration.py::TestMinimaxIntegration::test_creative_request_keeps_one_random_seed_across_transport_retries",
+    "tests/test_gpt_formatter.py::GPTFormatterTests::test_gpt_formatter_is_available_and_is_default_runtime_formatter"
+  ],
+  "timeout_seconds": 1800
+}
