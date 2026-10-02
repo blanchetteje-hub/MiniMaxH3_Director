@@ -29906,9 +29906,12 @@ def build_director_raw_scene_coherence_messages(current_beat, raw_scene):
                 "material action-order contradictions, such as closing a barrier before "
                 "someone passes through it, using an occupied hand without releasing "
                 "what it holds, or showing a required result before its prerequisite "
-                "action. Do not judge style, prose quality, camera taste, or incidental "
-                "details. Return exactly one JSON object with boolean valid and string "
-                "issue."
+                "action. Do not infer that two differently worded references to an "
+                "unnamed person, creature, object, or body must be different entities; "
+                "require explicit evidence of distinct identities or counts before "
+                "calling that a contradiction. Do not judge style, prose quality, camera "
+                "taste, or incidental details. Return exactly one JSON object with "
+                "boolean valid and string issue."
             ),
         },
         {
