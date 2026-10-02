@@ -1,0 +1,11 @@
+{
+  "job_id": "tests-2838-h3-audio-quality",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py",
+    "tests/test_llm_prompt_pipeline.py::H3AudioNormalizationTests",
+    "tests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests"
+  ],
+  "timeout_seconds": 1800
+}
