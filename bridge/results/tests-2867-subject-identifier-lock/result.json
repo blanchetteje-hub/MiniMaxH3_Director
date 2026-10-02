@@ -1,0 +1,29 @@
+{
+  "job_id": "tests-2867-subject-identifier-lock",
+  "kind": "run_tests",
+  "started_at": 1790955374.260705,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_preserves_existing_identifiers",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_accepts_only_identity_labeling",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_rejects_timestamp_drift"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 3 items\n\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_preserves_existing_identifiers PASSED [ 33%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_accepts_only_identity_labeling PASSED [ 66%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_rejects_timestamp_drift PASSED [100%]\n\n============================== 3 passed in 2.60s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790955375.5297933,
+    "finished_at": 1790955378.833323
+  },
+  "finished_at": 1790955378.833323,
+  "status": "ok"
+}
