@@ -1,0 +1,12 @@
+{
+  "job_id": "tests-2827-camera-coherence",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_clear_local_possessives",
+    "tests/test_llm_prompt_pipeline.py::DirectorRawSceneCompletionTests::test_director_prompt_is_minimal_scene_contract",
+    "tests/test_llm_prompt_pipeline.py::DirectorMicroPromptPipelineTests::test_raw_scene_coherence_does_not_invent_entity_multiplicity"
+  ],
+  "timeout_seconds": 1800
+}
