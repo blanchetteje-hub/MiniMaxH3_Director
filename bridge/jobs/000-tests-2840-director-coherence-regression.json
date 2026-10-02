@@ -1,0 +1,9 @@
+{
+  "job_id": "tests-2840-director-coherence-regression",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_request_one_retries_physically_incoherent_raw_scene"
+  ],
+  "timeout_seconds": 1800
+}
