@@ -31727,10 +31727,11 @@ def _run_main(
         request2_result_for_fixture = copy.deepcopy(payload["llm_result"])
         llm_result = dict(payload["llm_result"])
         raw_subject_names = []
-        raw_description = get_detailed_description(llm_result, "")
+        accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
+        resolved_raw_scene = accepted_raw_scene
         try:
-            raw_description, raw_subject_names = resolve_director_raw_scene_subjects(
-                raw_description,
+            resolved_raw_scene, raw_subject_names = resolve_director_raw_scene_subjects(
+                accepted_raw_scene,
                 subject_definitions=subject_definitions,
                 history_metadata={
                     "run_id": run_id,
@@ -31751,8 +31752,9 @@ def _run_main(
                 f"using accepted RAW unchanged: {error}",
                 flush=True,
             )
+        payload["raw_scene"] = resolved_raw_scene
         llm_result["detailed_description"] = inject_persistent_state_into_description(
-            raw_description,
+            _raw_scene_timed_description(resolved_raw_scene),
         )
         payload["llm_result"] = llm_result
         loras = payload["loras"]
