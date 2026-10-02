@@ -1,0 +1,9 @@
+{
+  "job_id": "tests-2844-h3-music-contract",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only"
+  ],
+  "timeout_seconds": 1800
+}
