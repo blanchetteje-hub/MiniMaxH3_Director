@@ -952,6 +952,7 @@ WRITE THE SCENE
 - Prefer names when a pronoun could be ambiguous.
 - Short dialogue is allowed when it naturally supports CURRENT BEAT.
 - Camera movement may clarify action.
+- Prefer continuous camera movement and reframing over cuts when the action can be shown coherently in one shot.
 - Keep all timed action inside the {segment_seconds}-second clip.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
