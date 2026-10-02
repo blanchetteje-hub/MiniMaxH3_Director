@@ -1,0 +1,11 @@
+{
+  "job_id": "tests-2867-subject-identifier-lock",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_preserves_existing_identifiers",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_accepts_only_identity_labeling",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_rejects_timestamp_drift"
+  ],
+  "timeout_seconds": 1800
+}
