@@ -1,0 +1,32 @@
+{
+  "job_id": "tests-2850-functional-subject-markers",
+  "kind": "run_tests",
+  "started_at": 1790909782.1370182,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_to_beats_prompt_keeps_summary_story_and_continuity_rule",
+      "tests\\test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_functional_subject_labels_are_extracted_in_first_seen_order",
+      "tests\\test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_functional_subject_markers_are_removed_before_downstream_beats",
+      "tests\\test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_derived_macro_arc_carries_functional_subject_labels",
+      "tests\\test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_functional_subject_extractor_ignores_unmarked_numbered_words",
+      "tests\\test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_derived_macro_arc_is_one_event_per_beat"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 6 items\n\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_to_beats_prompt_keeps_summary_story_and_continuity_rule PASSED [ 16%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_functional_subject_labels_are_extracted_in_first_seen_order PASSED [ 33%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_functional_subject_markers_are_removed_before_downstream_beats PASSED [ 50%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_derived_macro_arc_carries_functional_subject_labels PASSED [ 66%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_functional_subject_extractor_ignores_unmarked_numbered_words PASSED [ 83%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_derived_macro_arc_is_one_event_per_beat PASSED [100%]\n\n============================== 6 passed in 2.92s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790909783.4173558,
+    "finished_at": 1790909787.0729547
+  },
+  "finished_at": 1790909787.0729547,
+  "status": "ok"
+}
