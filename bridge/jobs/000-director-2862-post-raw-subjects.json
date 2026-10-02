@@ -1,0 +1,8 @@
+{
+  "job_id": "director-2862-post-raw-subjects",
+  "kind": "run_acceptance",
+  "code_branch": "summary-to-story-test",
+  "model": "gpt",
+  "image1": "amy.jpg",
+  "timeout_seconds": 3600
+}
