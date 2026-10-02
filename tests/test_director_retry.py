@@ -93,6 +93,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         text = messages[0]["content"] + "\n" + messages[1]["content"]
         self.assertIn("Change only personal pronouns", text)
         self.assertIn("especially they, them, their", text)
+        self.assertIn("Preserve grammatical case", text)
+        self.assertIn("her palm -> Amy's palm", text)
+        self.assertIn("their bowls -> Will and Amber's bowls", text)
+        self.assertIn("Amy palm' is invalid", text)
         self.assertIn("Do not add, remove, combine, split, or reinterpret actions", text)
 
     def test_raw_pronoun_resolution_accepts_name_only_rewrite(self):
@@ -119,6 +123,28 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(
             request.call_args.kwargs["history_metadata"]["purpose"],
             "director_raw_scene_pronoun_resolution",
+        )
+
+    def test_raw_pronoun_resolution_accepts_subject_object_and_possessive_names(self):
+        original = (
+            "At 00:01.000, she looks at Will and touches her palm.\n"
+            "At 00:04.500, Will gives her their bowls.\n"
+            "End continuity state: Amy stands beside Will."
+        )
+        resolved_timed = (
+            "At 00:01.000, Amy looks at Will and touches Amy's palm.\n"
+            "At 00:04.500, Will gives Amy Will and Amber's bowls."
+        )
+        request = mock.Mock(return_value={"raw_scene": resolved_timed})
+        result = minimax.resolve_director_raw_scene_pronouns(
+            original,
+            "<Subject 1> is Amy. <Subject 2> is Will. <Subject 3> is Amber.",
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(
+            result,
+            resolved_timed + "\nEnd continuity state: Amy stands beside Will.",
         )
 
     def test_raw_pronoun_resolution_logs_replacements(self):
