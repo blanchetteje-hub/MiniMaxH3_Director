@@ -1,0 +1,28 @@
+{
+  "job_id": "tests-2820-task-llm-settings-final",
+  "kind": "run_tests",
+  "started_at": 1790899458.2585344,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_llm_prompt_pipeline.py::LLMSamplingRoutingTests",
+      "tests\\test_gpt_formatter.py::GPTFormatterTests::test_gpt_formatter_is_available_and_is_default_runtime_formatter"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 12 items\n\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_arc_create_uses_same_creative_profile PASSED [  8%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_ask_llm_rejects_input_that_leaves_no_completion_room PASSED [ 16%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_ask_llm_respects_requested_completion_when_it_fits_context PASSED [ 25%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_beat_generation_uses_temperature_zero_with_large_reasoning_budget PASSED [ 33%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_beat_repair_uses_same_temperature_zero_writing_profile PASSED [ 41%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_beat_validation_prompt_does_not_follow_active_model PASSED [ 50%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_beat_validation_remains_pinned_to_benchmark_sampling PASSED [ 58%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_beat_validation_transport_does_not_follow_active_formatter PASSED [ 66%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_extractor_forces_temperature_zero_even_if_caller_passes_creative_profile PASSED [ 75%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_schema_specific_http_400_retries_without_response_format PASSED [ 83%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_unrelated_http_400_does_not_drop_response_format PASSED [ 91%]\ntests/test_gpt_formatter.py::GPTFormatterTests::test_gpt_formatter_is_available_and_is_default_runtime_formatter PASSED [100%]\n\n============================= 12 passed in 2.64s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790899459.350278,
+    "finished_at": 1790899462.7398276
+  },
+  "finished_at": 1790899462.7398276,
+  "status": "ok"
+}
