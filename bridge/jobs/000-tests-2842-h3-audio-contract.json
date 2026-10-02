@@ -1,0 +1,17 @@
+{
+  "job_id": "tests-2842-h3-audio-contract",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_is_extraction_only",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_rejects_visual_only_facts",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_parser_rejects_punctuation_only_output",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_parser_rejects_overlong_cue",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_audio_contract_retries_malformed_soundscape",
+    "tests/test_llm_prompt_pipeline.py::H3AudioNormalizationTests",
+    "tests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_music_uses_narrow_creative_profile",
+    "tests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_soundscape_remains_deterministic"
+  ],
+  "timeout_seconds": 1800
+}
