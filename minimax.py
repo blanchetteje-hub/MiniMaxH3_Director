@@ -7025,22 +7025,24 @@ def find_workflow_node(workflow, node_name, workflow_label, expected_class_type=
             matches.append((node_id, node))
 
     if not matches:
-        raise RuntimeError(
+        raise WorkflowConfigurationError(
             f"{workflow_label} is missing the ComfyUI node named '{node_name}'."
         )
     if len(matches) > 1:
-        raise RuntimeError(
+        raise WorkflowConfigurationError(
             f"{workflow_label} contains multiple nodes named '{node_name}'."
         )
 
     node_id, node = matches[0]
     if expected_class_type and node.get("class_type") != expected_class_type:
-        raise RuntimeError(
+        raise WorkflowConfigurationError(
             f"Node '{node_name}' has type '{node.get('class_type')}', "
             f"expected '{expected_class_type}'."
         )
     if not isinstance(node.get("inputs"), dict):
-        raise RuntimeError(f"Node '{node_name}' has no valid inputs object.")
+        raise WorkflowConfigurationError(
+            f"Node '{node_name}' has no valid inputs object."
+        )
 
     return node_id, node
 
@@ -7061,10 +7063,58 @@ def set_node_input(
         expected_class_type
     )
     if input_name not in node["inputs"]:
-        raise RuntimeError(
+        raise WorkflowConfigurationError(
             f"Node '{node_name}' in {workflow_label} is missing input '{input_name}'."
         )
     node["inputs"][input_name] = value
+
+
+def find_duration_node(workflow, workflow_label, *, repair=False):
+    """Return the supported duration node regardless of ComfyUI export variant."""
+
+    candidates = (
+        (REPAIR_DURATION_NODE_NAME, REPAIR_DURATION_NODE_CLASS),
+        (DURATION_NODE_NAME, DURATION_NODE_CLASS),
+    ) if repair else (
+        (DURATION_NODE_NAME, DURATION_NODE_CLASS),
+        (REPAIR_DURATION_NODE_NAME, REPAIR_DURATION_NODE_CLASS),
+    )
+    matches = []
+    for node_name, class_type in candidates:
+        for node_id, node in workflow.items():
+            if not isinstance(node, dict):
+                continue
+            if node.get("_meta", {}).get("title") != node_name:
+                continue
+            if node.get("class_type") != class_type:
+                continue
+            matches.append((node_id, node, node_name, class_type))
+    if not matches:
+        expected = " or ".join(
+            f"'{name}'/{class_type}" for name, class_type in candidates
+        )
+        raise WorkflowConfigurationError(
+            f"{workflow_label} is missing a supported duration node "
+            f"({expected})."
+        )
+    if len(matches) > 1:
+        raise WorkflowConfigurationError(
+            f"{workflow_label} contains multiple supported duration nodes."
+        )
+    return matches[0]
+
+
+def set_duration_input(workflow, workflow_label, duration, *, repair=False):
+    """Set duration on whichever supported duration node the workflow exports."""
+
+    _node_id, node, _node_name, _class_type = find_duration_node(
+        workflow, workflow_label, repair=repair
+    )
+    if "value" not in node.get("inputs", {}):
+        raise WorkflowConfigurationError(
+            f"The duration node in {workflow_label} is missing input 'value'."
+        )
+    node["inputs"]["value"] = duration
 
 
 # Validate named connection.
@@ -7095,7 +7145,7 @@ def validate_named_connection(
         or str(connection[0]) != str(source_id)
         or connection[1] != output_index
     ):
-        raise RuntimeError(
+        raise WorkflowConfigurationError(
             f"'{input_name}' on '{destination_name}' must connect to "
             f"output {output_index} of '{source_name}' in {workflow_label}."
         )
@@ -7198,8 +7248,14 @@ def connect_refresh_workflow_inputs(workflow, workflow_label):
 
 # Validate workflow.
 def validate_workflow(workflow, workflow_label, is_append=False):
+    _duration_id, duration_node, duration_name, _duration_class = find_duration_node(
+        workflow, workflow_label
+    )
+    # Downstream connection helpers use the canonical title. Normalize only
+    # the in-memory API graph; the user's saved workflow file is untouched.
+    if duration_name != DURATION_NODE_NAME:
+        duration_node.setdefault("_meta", {})["title"] = DURATION_NODE_NAME
     required = (
-        (DURATION_NODE_NAME, DURATION_NODE_CLASS),
         (PROMPT_NODE_NAME, "DPRandomGenerator"),
         (NOISE_NODE_NAME, "RandomNoise"),
         (SAVE_VIDEO_NODE_NAME, "SaveVideo")
@@ -7357,12 +7413,7 @@ def validate_refresh_workflow(workflow, workflow_label):
 def validate_repair_base_workflow(workflow, workflow_label):
     """Validate the repair hybrid graph used for one-segment regeneration."""
 
-    find_workflow_node(
-        workflow,
-        REPAIR_DURATION_NODE_NAME,
-        workflow_label,
-        REPAIR_DURATION_NODE_CLASS,
-    )
+    find_duration_node(workflow, workflow_label, repair=True)
     find_workflow_node(
         workflow,
         PROMPT_NODE_NAME,
@@ -26274,6 +26325,10 @@ def free_vram():
         print(f"WARNING: ComfyUI could not release VRAM: {e}")
 
 
+class WorkflowConfigurationError(RuntimeError):
+    """A local ComfyUI workflow does not match the supported runtime contract."""
+
+
 class ComfyUIExecutionError(RuntimeError):
     """A completed ComfyUI prompt failed during node execution."""
 
@@ -27922,10 +27977,7 @@ def prepare_initial_workflow(
     validate_workflow(workflow, label, is_append=False)
     prune_missing_reference_images(workflow, label, "initial")
 
-    set_node_input(
-        workflow, DURATION_NODE_NAME, "value", duration,
-        label, DURATION_NODE_CLASS
-    )
+    set_duration_input(workflow, label, duration)
     set_node_input(
         workflow, PROMPT_NODE_NAME, "text", h3_prompt,
         label, "DPRandomGenerator"
@@ -28026,10 +28078,7 @@ def prepare_refresh_workflow(
     else:
         extend["inputs"].pop("ref_images", None)
 
-    set_node_input(
-        workflow, DURATION_NODE_NAME, "value", duration,
-        label, DURATION_NODE_CLASS,
-    )
+    set_duration_input(workflow, label, duration)
     set_node_input(
         workflow, PROMPT_NODE_NAME, "text", h3_prompt,
         label, "DPRandomGenerator",
@@ -28250,14 +28299,7 @@ def prepare_repair_workflow(
     copy_reference_image_inputs(reference_workflow, workflow, label)
     prune_missing_reference_images(workflow, label, "repair")
 
-    set_node_input(
-        workflow,
-        REPAIR_DURATION_NODE_NAME,
-        "value",
-        duration,
-        label,
-        REPAIR_DURATION_NODE_CLASS,
-    )
+    set_duration_input(workflow, label, duration, repair=True)
     set_node_input(
         workflow, PROMPT_NODE_NAME, "text", h3_prompt,
         label, "DPRandomGenerator",
@@ -28404,10 +28446,7 @@ def prepare_append_workflow(
             f"Previous video is missing or empty: {previous_video_path}"
         )
 
-    set_node_input(
-        workflow, DURATION_NODE_NAME, "value", duration,
-        label, DURATION_NODE_CLASS
-    )
+    set_duration_input(workflow, label, duration)
     set_node_input(
         workflow, PROMPT_NODE_NAME, "text", h3_prompt,
         label, "DPRandomGenerator"
@@ -32958,9 +32997,13 @@ def main():
             raise
         except KeyboardInterrupt:
             raise
-        except (re.error, RequiredEventStateApplicationError):
-            # Deterministic programming/state-application defects cannot repair
-            # themselves by replaying the same saved arc/checkpoint.
+        except (
+            re.error,
+            RequiredEventStateApplicationError,
+            WorkflowConfigurationError,
+        ):
+            # Deterministic programming/state/workflow defects cannot repair
+            # themselves by replaying the same saved checkpoint.
             raise
         except SystemExit:
             # argparse and explicit command-line exits are user-controlled.
