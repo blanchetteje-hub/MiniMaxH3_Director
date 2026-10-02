@@ -801,11 +801,50 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Complete every finite action explicitly assigned by CURRENT BEAT", normalized)
         self.assertIn("every named person or target", normalized)
         self.assertIn("natural physical staging", normalized)
-        self.assertIn("Camera movement may clarify action", normalized)
+        self.assertIn("one continuous camera take", normalized)
+        self.assertIn("move the camera instead of cutting", normalized)
+        self.assertIn("tracks with a moving subject", normalized)
         self.assertIn("Explicitly locate every named subject whose final position matters", normalized)
-        self.assertIn("Prefer continuous camera movement and reframing over cuts", normalized)
         self.assertIn("NEXT BEAT is boundary context only", normalized)
         self.assertNotIn("Do not invent persistent changes", normalized)
+    def test_director_camera_choreography_periodically_reframes_without_cuts(self):
+        segment_3 = " ".join(minimax.build_director_rules(
+            80, 8, 10, "", 3,
+            conditioning_mode="continuation",
+            is_final_story_segment=False,
+        ).split())
+        segment_4 = " ".join(minimax.build_director_rules(
+            80, 8, 10, "", 4,
+            conditioning_mode="continuation",
+            is_final_story_segment=False,
+        ).split())
+        segment_7 = " ".join(minimax.build_director_rules(
+            80, 8, 10, "", 7,
+            conditioning_mode="continuation",
+            is_final_story_segment=False,
+        ).split())
+
+        self.assertIn("one continuous camera take", segment_4)
+        self.assertIn("cuts, cutaways, insert shots", segment_4)
+        self.assertIn("pushes in, pulls out, pans left/right", segment_4)
+        self.assertIn("REFRAME THIS SEGMENT", segment_4)
+        self.assertIn("After about 1 second", segment_4)
+        self.assertIn("materially different composition", segment_4)
+        self.assertIn("Do not cut", segment_4)
+        self.assertIn("REFRAME THIS SEGMENT", segment_7)
+        self.assertNotIn("REFRAME THIS SEGMENT", segment_3)
+        self.assertIn("Do not force a new composition", segment_3)
+
+    def test_director_camera_choreography_segment_one_establishes_composition(self):
+        rules = " ".join(minimax.build_director_rules(
+            8, 8, 1, "", 1,
+            conditioning_mode="initial",
+            is_final_story_segment=True,
+        ).split())
+        self.assertIn("Establish a useful opening composition", rules)
+        self.assertNotIn("inherited opening composition", rules)
+        self.assertNotIn("REFRAME THIS SEGMENT", rules)
+
     def test_completion_prompt_disallows_implicit_mover_barrier_crossing(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Mara guides Eli and Noor into the shelter and locks the door.",

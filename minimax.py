@@ -1013,8 +1013,7 @@ WRITE THE SCENE
 - Use natural physical staging. Harmless local route or prop details are allowed when needed to make the action readable.
 - Prefer names when a pronoun could be ambiguous.
 - Short dialogue is allowed when it naturally supports CURRENT BEAT.
-- Camera movement may clarify action.
-- Prefer continuous camera movement and reframing over cuts when the action can be shown coherently in one shot.
+{camera_choreography_rules}
 - Keep all timed action inside the {segment_seconds}-second clip.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
@@ -19131,6 +19130,53 @@ def build_story_segment_ending_rules(is_final_story_segment):
     )
 
 
+# Return the Director camera rule for one segment.
+def build_director_camera_choreography_rules(segment_number):
+    """Prefer continuous camera choreography over seam-exposing cuts."""
+    try:
+        segment_number = int(segment_number)
+    except (TypeError, ValueError):
+        segment_number = 1
+
+    lines = [
+        "CAMERA CHOREOGRAPHY",
+        "- Stage the entire segment as one continuous camera take. Do not use "
+        "cuts, cutaways, insert shots, reverse-angle cuts, reaction cuts, fades, "
+        "wipes, or shot changes unless CURRENT BEAT explicitly requires a "
+        "discontinuous time or location change that cannot be shown continuously.",
+        "- When framing, angle, distance, height, or viewed subject must change, "
+        "move the camera instead of cutting. Use natural English camera actions "
+        "such as pushes in, pulls out, pans left/right, trucks left/right, tilts "
+        "up/down, pedestals up/down, arcs around, or tracks with a moving subject. "
+        "A static shot is valid when movement would not help.",
+        "- Camera movement must follow, reveal, or refocus important story action. "
+        "Do not add decorative movement, and keep the active subject/action readable "
+        "through the move.",
+    ]
+
+    # Every third segment after Segment 1 deliberately changes composition
+    # without adding an editorial cut: 4, 7, 10, ...
+    if segment_number > 1 and (segment_number - 1) % 3 == 0:
+        lines.append(
+            "- REFRAME THIS SEGMENT: Begin from the inherited opening composition. "
+            "After about 1 second, move continuously into a materially different "
+            "composition by changing angle, distance, height, framed subject, or "
+            "viewing side. Do not cut."
+        )
+    elif segment_number == 1:
+        lines.append(
+            "- Establish a useful opening composition. Use camera movement when it "
+            "helps follow or reveal CURRENT BEAT; do not force a decorative reframe."
+        )
+    else:
+        lines.append(
+            "- Begin from the established opening composition. Do not force a new "
+            "composition; use camera movement when it naturally follows or reveals "
+            "CURRENT BEAT."
+        )
+    return "\n".join(lines)
+
+
 # Return the narrow Request-1 Director system prompt.
 def build_director_rules(
     total_length,
@@ -19162,6 +19208,9 @@ def build_director_rules(
         beat_number=int(segment_number),
         story_segment_ending_rules=build_story_segment_ending_rules(
             is_final_story_segment
+        ),
+        camera_choreography_rules=build_director_camera_choreography_rules(
+            segment_number
         ),
     )
     return rules

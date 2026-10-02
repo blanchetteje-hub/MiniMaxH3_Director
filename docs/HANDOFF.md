@@ -815,3 +815,23 @@ context, and final H3 assembly independently prepends the Python-owned sentence
 "[Shot 1] The scene starts in {starting_location}." so the location cannot be
 dropped by the formatter. The overall location is metadata only for now; it is
 intentionally not promoted into the unfinished room-geometry/topology system.
+
+
+## 2026-10-02 update — continuous camera choreography
+The official H3 prompt-writing guidance and production renders both point toward
+camera motion instead of editorial cutaways when the scene remains continuous.
+Director Request 1 now owns that behavior explicitly. Each segment is staged as
+one continuous camera take by default; cutaways, inserts, reverse-angle/reaction
+cuts, fades, wipes, and shot changes are forbidden unless CURRENT BEAT truly
+requires a discontinuous time/location change that cannot be shown continuously.
+When framing needs to change, the Director is told to use natural push/pull,
+pan, truck, tilt, pedestal, arc, tracking, or static camera behavior and to make
+movement follow/reveal/refocus story action rather than decorate it.
+
+To prevent the film from becoming compositionally static while still hiding
+segment seams, Segments 4, 7, 10, ... receive a deterministic reframe rule:
+begin from the inherited composition, then after about one second move
+continuously into a materially different angle/distance/height/framed subject/
+viewing side without cutting. Other continuation segments do not force a new
+composition. Request 2 remains a formatter and preserves Request 1 camera
+choreography rather than inventing its own.
