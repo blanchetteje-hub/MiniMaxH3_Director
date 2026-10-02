@@ -1,0 +1,9 @@
+{
+  "job_id": "tests-2833-audio-completeness",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_llm_prompt_pipeline.py::DirectorPromptCallContractTests::test_formatter_music_rule_matches_locked_gold_modes"
+  ],
+  "timeout_seconds": 1800
+}
