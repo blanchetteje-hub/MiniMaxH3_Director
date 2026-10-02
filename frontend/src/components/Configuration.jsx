@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { invokeBridge } from '../lib/pywebview.js'
+import HelpTip from './HelpTip.jsx'
 
 export default function Configuration({ onSettingsLoaded }) {
   const [settings, setSettings] = useState(null)
@@ -95,44 +96,52 @@ export default function Configuration({ onSettingsLoaded }) {
         </div>
       </div>
 
-      <div className="config-section">
-        <label className="field">
-          <span>ComfyUI URL</span>
+      <details className="advanced" open>
+        <summary>Service connections & LoRA directory</summary>
+        <div className="config-section">
+        <div className="field">
+          <span>ComfyUI URL <HelpTip text="Address of the ComfyUI server that renders your video. Start this service before rendering." /></span>
           <input
             type="url"
+            aria-label="ComfyUI URL"
             value={settings.comfyui_url}
             onChange={(e) => updateComfyUIUrl(e.target.value)}
             placeholder="http://127.0.0.1:8188"
           />
-          <small>Address of your ComfyUI server. Updates all 3 workflows.</small>
-        </label>
+          <small>Address of your ComfyUI server, used by all workflows.</small>
+        </div>
 
-        <label className="field">
-          <span>LLM host URL</span>
+        <div className="field">
+          <span>LLM host URL <HelpTip text="Address of the local language model API used to plan beats and write video prompts." /></span>
           <input
             type="url"
+            aria-label="LLM host URL"
             value={settings.llm_host_url}
             onChange={(e) => updateLLMHostUrl(e.target.value)}
             placeholder="http://127.0.0.1:1234"
           />
           <small>Address of your LLM host server.</small>
-        </label>
-        <label className="field">
-          <span>LoRA Path</span>
+        </div>
+        <div className="field">
+          <span>LoRA Path <HelpTip text="Folder containing the LoRA files named in global settings or beats. Paths must be accessible to the generator." /></span>
           <input
             type="text"
+            aria-label="LoRA Path"
             value={settings.lora_dir}
             onChange={(e) => updateLoraDir(e.target.value)}
             placeholder="/mnt/h/StableDiffusion/loras"
           />
           <small>Directory containing LoRA files.</small>
-        </label>
-      </div>
+        </div>
+        </div>
+      </details>
 
-      <div className="config-section">
+      <details className="advanced">
+        <summary>Defined Images (optional)</summary>
+        <div className="config-section">
         <div className="subheading-row">
           <div>
-            <h3>Defined Images</h3>
+            <h3>Defined Images <HelpTip text="Up to six ComfyUI input filenames or paths, in order. These become Picture 1 through Picture 6 and override the corresponding workflow reference images." /></h3>
             <p>Up to six ordered reference images for all generation workflows.</p>
           </div>
         </div>
@@ -156,6 +165,7 @@ export default function Configuration({ onSettingsLoaded }) {
         )}
 
         <div className="add-image-row">
+          <HelpTip text="Enter a reference image filename or path, then select Add Image. Remove an image with its × button; list order determines its Picture number." />
           <input
             type="text"
             value={newImageName}
@@ -172,7 +182,8 @@ export default function Configuration({ onSettingsLoaded }) {
             + Add Image
           </button>
         </div>
-      </div>
+        </div>
+      </details>
 
       {error && <p className="form-error">{error}</p>}
     </section>

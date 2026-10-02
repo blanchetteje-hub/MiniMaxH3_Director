@@ -33,7 +33,10 @@ There is no single guaranteed hardware minimum because the required VRAM and
 RAM depend on the workflow resolution, segment length, and ComfyUI setup. As a
 practical starting point, use a GPU with about 16 GB VRAM and start at `0.2`
 megapixels. More demanding runs may need 32 GB VRAM and substantial system RAM,
-or two machines sharing the workload.
+or two machines sharing the workload. In the desktop app, choose **16 GB** to
+generate prompts with the LLM first, then switch GPU services and render with
+ComfyUI. Choose **32 GB+** when both services can run together. This setting
+controls the available actions; it does not automatically start or stop servers.
 
 You also need:
 
@@ -825,56 +828,57 @@ Confirm all of the following:
 - `story.txt` is non-empty. `beats.txt` either contains ordered beats or is blank
   so LLM host can generate one beat per segment before startup continues.
 
-For the first test, use the desktop app's **New run** mode with:
+For the first test, use the desktop app's **New** tab with:
 
 | GUI field | Test value |
 |---|---:|
-| Segment duration | `5` |
+| Clip duration (seconds) | `5` |
 | Number of segments | `2` |
-| Megapixels | `0.2` |
+| Resolution (megapixels) | `0.2` |
 
-Keep the default pipeline controls, select **Generate**, and follow the
+With **32 GB+** selected, keep the default pipeline controls, select **Generate**, and follow the
 **Status** and **Live output** panels. This requests two five-second segments
 at approximately 0.2 megapixels for the initial clip.
 
 The equivalent command-line test is:
 
 ```powershell
-python minimax.py 5 2 0.2
+python minimax.py 5 2 0.2 --new
 ```
 
 ## Run from the desktop app (recommended)
 
 The GUI is the main control surface:
 
-1. Start ComfyUI and start the LLM host local API server with a model loaded.
-2. Launch the app with `python desktop_app.py`.
-3. Confirm or edit the project sources under **Files & configuration**.
-4. Set **Segment duration**, **Number of segments**, and **Megapixels**.
-5. Choose **New run**, **Resume**, or **Repair**.
-6. If `beats.txt` is blank, enter a beat count and select **Generate Story**;
-   otherwise review or write the beats yourself.
-7. Adjust **Pipeline controls** or add ordered global LoRAs if needed.
-8. Select **Generate** and monitor **Status** and **Live output**.
+1. Launch the app with `python desktop_app.py` and review service URLs and project files.
+2. Choose a source tab: **New**, **Existing**, or **Render-Only**.
+3. Choose **16 GB** or **32 GB+** VRAM mode and start the service needed for your next action.
+4. For New or Existing, set **Clip duration (seconds)**, **Number of segments**, and **Resolution (megapixels)**. Eight seconds and five segments request 40 seconds of clips.
+5. Expand optional sections for planning, rendering, resume/repair, reference images, LoRAs, or advanced diagnostics as needed. Every option has a small **?** with an explanation.
+6. Start generation and follow **Status** and **Live output**.
 
-Settings are saved in `gui_settings.json` for the next launch. The GUI exposes
-the same generation options as the CLI:
-
-| GUI control | Purpose |
+| Source tab | Input and behavior |
 |---|---|
-| **New run** | Start at segment 1 with a new checkpoint and reset beat progress. |
-| **Resume** | Continue at a one-based segment recorded in `generation_state.json`. |
-| **Repair** | Rerender an existing middle segment that has clips on both sides. |
-| **Steps** | Set BasicScheduler sampling steps for all workflows. |
-| **Trim frames** | Remove this many frames from the start of each segment after the first during stitching; defaults to `2`. Set to `0` to disable the trim. |
-| **Legacy refresh fallback** | Numeric refresh cadence used only when no source-span chapter refresh schedule is available. |
-| **Vision continuity** | Ask an image-capable LLM host model to inspect rendered frames on a cadence; `0` disables this. |
-| **Retention analysis** | Include structured retention guidance in non-initial H3 prompts. |
-| **Formatter** | Select the GPT, Mistral, or Qwen formatter; GPT is the current default. |
-| **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
-| **LoRA Path** | Directory used to verify global and beat-specific LoRA files. |
-| **Global LoRAs** | Apply any number of named LoRAs, in order, to every beat. |
-| **Defined Images** | Map up to six ordered paths to `--image1` through `--image6` and override the matching reference node in all three workflows. |
+| **New** | Clear `beats.txt` and regenerate the story arc and beats from `story.txt`, then create prompts and video. |
+| **Existing** | Use the existing non-empty `beats.txt` without replacing its beats. |
+| **Render-Only** | Read `generated_prompts.txt` and render its saved prompts through ComfyUI, without calling the LLM. Timing and render settings come from the saved package. |
+
+| VRAM mode | Available actions |
+|---|---|
+| **32 GB+** | **Generate** runs the selected tab's pipeline. New and Existing use the LLM and ComfyUI; Render-Only uses ComfyUI. |
+| **16 GB** | **Generate Prompts (LLM)** saves `generated_prompts.txt` without rendering. Then unload the LLM, start ComfyUI, and choose **Generate Video (ComfyUI)** to render that package. Prompt generation applies to New or Existing; Render-Only uses the video action. |
+
+The 16 GB mode separates the services so only one model needs to occupy GPU
+memory at a time. The app does not unload models or manage the servers for you.
+Saved prompts let you close the LLM server before starting ComfyUI.
+
+Settings are saved in `gui_settings.json` for the next launch. Optional controls
+are grouped in collapsible sections, including sampling steps, frame trimming,
+refresh cadence, vision continuity, retention analysis, formatter selection,
+first-frame instructions, ordered reference images, and global LoRAs. Service
+URLs and the LoRA directory are available under configuration. Resume and repair
+controls apply to an Existing run; diagnostic and fixture controls expose the
+corresponding CLI options without requiring manually assembled arguments.
 
 Resume with the same segment duration, number of segments, and megapixel values as
 the interrupted run. If `story.txt`, `beats.txt`, or `subjects.txt` changed
@@ -889,7 +893,7 @@ app.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH SEGMENT_COUNT [MEGAPIXELS] [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--test-prompt-generation] [--vision-continuity N] [--repair SEGMENT] [--model {gpt,mistral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH SEGMENT_COUNT [MEGAPIXELS] [ff] [--new | --existing] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--test-prompt-generation] [--vision-continuity N] [--repair SEGMENT] [--model {gpt,mistral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -906,8 +910,14 @@ frame alignment and stitching trims can affect the final encoded duration.
 | `SEGMENT_LENGTH` | Target seconds generated per segment; must be greater than zero. |
 | `SEGMENT_COUNT` | Number of clips to generate; must be a whole number greater than zero. |
 | `MEGAPIXELS` | Optional initial and refresh resolution target; defaults to `0.5` and must be greater than zero. |
+| `--new` | Clear beats and regenerate from the story before a fresh run or prompt-generation pass. |
+| `--existing` | Require and use existing beats, without regenerating them. |
+| `--generate-prompts COUNT` | Save final H3 prompts to `generated_prompts.txt` without contacting ComfyUI; supply timing positionals for custom segment length. |
+| `--generate-from-prompts` | Render `generated_prompts.txt` through ComfyUI without LLM planning. |
+| `--generate-all` | Run planning and save prompts without rendering, using the timing positionals. |
+| `--use-prompts PATH` | Render the saved prompt package at PATH without LLM planning. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
-| `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
+| `--steps STEPS` | BasicScheduler sampling steps for all workflows; defaults to `6`. |
 | `--trim-frames FRAMES` | Trim this many leading frames from every segment after the first when stitching; defaults to `2`, and `0` disables the trim. |
 | `--refresh SEGMENTS` | Compatibility fallback used only when no source-span chapter refresh schedule is available. |
 | `--retention` | Add retention analysis to non-initial H3 prompts; disabled by default. |
@@ -924,10 +934,10 @@ To generate only the story arc and beats, without contacting ComfyUI or
 rendering video, use:
 
 ```powershell
-python minimax.py --generate-beats 12
+python minimax.py --generate-beats 12 5
 ```
 
-The count is the number of beats to write. The generated beats are saved to
+The count is the number of beats to write; the second value is seconds per beat. The generated beats are saved to
 `beats.txt`, and the reusable macro plan is saved to `story_arc.json`.
 
 For example, this applies two global LoRAs to every segment; any LoRAs declared

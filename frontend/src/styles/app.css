@@ -863,3 +863,31 @@ button:disabled {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* Contextual help remains available to both keyboard and pointer users. */
+.help-tip { position: relative; display: inline-flex; vertical-align: middle; flex-shrink: 0; }
+.help-tip-button { width: 18px; height: 18px; padding: 0; border: 1px solid #6f8095; border-radius: 50%; background: transparent; color: #adbed4; font-size: 12px; line-height: 16px; cursor: help; }
+.help-tip-button:focus-visible { outline: 2px solid #7cafff; outline-offset: 3px; }
+.help-tip-content { display: none; position: absolute; top: 26px; right: 0; width: 250px; max-width: 70vw; padding: 10px 12px; background: #1b2637; border: 1px solid #536680; border-radius: 8px; color: #e3eaf5; font-size: 12px; font-weight: 400; line-height: 1.5; z-index: 50; box-shadow: 0 6px 20px #0006; }
+.help-tip:hover .help-tip-content, .help-tip:focus-within .help-tip-content { display: block; }
+.field-label { display: flex; align-items: center; gap: 8px; }
+.generation-tabs { margin-top: 0; gap: 8px; }
+.generation-tab { display: flex; align-items: center; gap: 6px; flex: 1; }
+.generation-tab .mode-button { flex: 1; }
+.mode-description { color: #adbed4; margin: 16px 0; font-size: 13px; line-height: 1.5; }
+.checkbox-option { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+.checkbox-option .checkbox-field { margin: 0; }
+.story-tools { margin-top: 18px; padding-top: 12px; border-top: 1px solid #304056; }
+.story-tools p { color: #adbed4; font-size: 13px; }
+.advanced > .field { margin-top: 14px; }
+.advanced > .muted-note { display: block; margin: 14px 0; line-height: 1.5; }
+.lora-row .field { min-width: 0; }
+.file-option { display: flex; align-items: center; gap: 6px; }
+.file-option .file-item { flex: 1; min-width: 0; }
+.generation-actions { flex-wrap: wrap; }
+@media (max-width: 540px) {
+  .generation-tabs { flex-direction: column; }
+  .generation-tab { width: 100%; }
+  .generation-actions .generate-button { width: 100%; }
+}
+.help-tip-content { position: fixed; top: auto; right: auto; max-width: none; box-sizing: border-box; max-height: min(50vh, 300px); overflow-y: auto; }

@@ -1944,6 +1944,15 @@ def parse_args(arguments=None):
         "megapixels", type=float, nargs="?",
         help="resolution target (default: 0.5)",
     )
+    source_mode = parser.add_mutually_exclusive_group()
+    source_mode.add_argument(
+        "--new", dest="new_run", action="store_true",
+        help="clear beats and planning checkpoints, then start from story.txt",
+    )
+    source_mode.add_argument(
+        "--existing", dest="existing_beats", action="store_true",
+        help="use beats.txt exactly as saved; never regenerate or replace its beats",
+    )
     parser.add_argument(
         "--resume",
         type=int,
@@ -2182,6 +2191,69 @@ def parse_args(arguments=None):
             args.megapixels = DEFAULT_GENERATED_PROMPT_MEGAPIXELS
     args.ff = args.ff == "ff" or args.first_frame
 
+    if args.resume <= 0:
+        parser.error("--resume must be a one-based segment number.")
+    if args.steps <= 0:
+        parser.error("--steps must be greater than zero.")
+    if args.trim_frames < 0:
+        parser.error("--trim-frames must be zero or greater.")
+    if args.refresh is not None and args.refresh <= 0:
+        parser.error("--refresh must be greater than zero.")
+    if args.vision_continuity < 0:
+        parser.error("--vision-continuity must be zero or a positive integer.")
+    if args.repair is not None and args.repair <= 0:
+        parser.error("--repair must be a positive one-based segment number.")
+    if args.repair == 1:
+        parser.error("--repair requires a middle segment; Segment 1 is not repairable.")
+    if args.repair is not None and args.resume != 1:
+        parser.error("--repair cannot be combined with --resume other than 1.")
+    if args.repair is not None and (
+        args.capture_h3_segment is not None or args.capture_h3_fixture is not None
+    ):
+        parser.error("H3 fixture capture cannot be combined with --repair.")
+    if (args.capture_h3_segment is None) != (args.capture_h3_fixture is None):
+        parser.error(
+            "--capture-h3-segment and --capture-h3-fixture must be used together."
+        )
+    if args.capture_h3_segment is not None and args.capture_h3_segment <= 0:
+        parser.error("--capture-h3-segment must be a positive one-based segment.")
+    if (
+        (args.capture_h3_validation_segment is None)
+        != (args.capture_h3_validation_fixture is None)
+    ):
+        parser.error(
+            "--capture-h3-validation-segment and "
+            "--capture-h3-validation-fixture must be used together."
+        )
+    if (
+        args.capture_h3_validation_segment is not None
+        and args.capture_h3_validation_segment <= 0
+    ):
+        parser.error(
+            "--capture-h3-validation-segment must be a positive one-based segment."
+        )
+
+    if args.new_run and (
+        args.resume != 1 or args.repair is not None or args.director_only
+    ):
+        parser.error("--new starts at segment 1 and cannot be combined with resume, repair, or director-only.")
+    if (args.new_run or args.existing_beats) and (
+        args.use_prompts is not None or args.generate_from_prompts
+    ):
+        parser.error("--new and --existing apply to planning, not render-only mode.")
+    if args.existing_beats and args.generate_beats is not None:
+        parser.error("--existing preserves beats.txt and cannot be combined with --generate-beats.")
+    if args.capture_h3_segment is not None and (
+        args.generate_prompts is not None or args.generate_all or args.director_only
+        or args.test_prompt_generation or args.use_prompts is not None
+        or args.generate_from_prompts
+    ):
+        parser.error("Rendered H3 fixture capture requires normal video generation.")
+    if args.capture_h3_validation_segment is not None and (
+        args.use_prompts is not None or args.generate_from_prompts
+    ):
+        parser.error("Post-Director fixture capture requires prompt generation.")
+
     if args.director_only:
         if (
             args.generate_beats is not None
@@ -2359,47 +2431,6 @@ def parse_args(arguments=None):
         parser.error("total_segments must be greater than 0.")
     if args.megapixels <= 0:
         parser.error("megapixels must be greater than 0.")
-    if args.resume <= 0:
-        parser.error("--resume must be a one-based segment number.")
-    if args.steps <= 0:
-        parser.error("--steps must be greater than zero.")
-    if args.trim_frames < 0:
-        parser.error("--trim-frames must be zero or greater.")
-    if args.refresh is not None and args.refresh <= 0:
-        parser.error("--refresh must be greater than zero.")
-    if args.vision_continuity < 0:
-        parser.error("--vision-continuity must be zero or a positive integer.")
-    if args.repair is not None and args.repair <= 0:
-        parser.error("--repair must be a positive one-based segment number.")
-    if args.repair == 1:
-        parser.error("--repair requires a middle segment; Segment 1 is not repairable.")
-    if args.repair is not None and args.resume != 1:
-        parser.error("--repair cannot be combined with --resume other than 1.")
-    if args.repair is not None and (
-        args.capture_h3_segment is not None or args.capture_h3_fixture is not None
-    ):
-        parser.error("H3 fixture capture cannot be combined with --repair.")
-    if (args.capture_h3_segment is None) != (args.capture_h3_fixture is None):
-        parser.error(
-            "--capture-h3-segment and --capture-h3-fixture must be used together."
-        )
-    if args.capture_h3_segment is not None and args.capture_h3_segment <= 0:
-        parser.error("--capture-h3-segment must be a positive one-based segment.")
-    if (
-        (args.capture_h3_validation_segment is None)
-        != (args.capture_h3_validation_fixture is None)
-    ):
-        parser.error(
-            "--capture-h3-validation-segment and "
-            "--capture-h3-validation-fixture must be used together."
-        )
-    if (
-        args.capture_h3_validation_segment is not None
-        and args.capture_h3_validation_segment <= 0
-    ):
-        parser.error(
-            "--capture-h3-validation-segment must be a positive one-based segment."
-        )
 
     return args
 
@@ -31210,6 +31241,41 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
 # ============================================================
 
 # Run the main generation workflow.
+def prepare_new_generation():
+    """Reset only generated planning artifacts for an explicitly requested new run."""
+    # Source files and rendered media are inputs/history, and remain available.
+    with open(BEATS_FILE, "w", encoding="utf-8") as beats_file:
+        beats_file.write("")
+    for path in (
+        STORY_ARC_FILE,
+        get_story_arc_hash_path(STORY_ARC_FILE),
+        get_beat_validation_state_path(BEATS_FILE),
+        GENERATION_STATE_FILE,
+        GENERATED_PROMPTS_FILE,
+    ):
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+    print("New run: cleared beats and generated planning checkpoints.", flush=True)
+
+
+def require_existing_beats(path, total_segments):
+    """Read user-selected beats without any fallback that rewrites the file."""
+    try:
+        beats = load_beats(path)
+    except (OSError, ValueError) as error:
+        raise BeatGenerationError(
+            f"Existing mode requires a valid beats.txt: {error}"
+        ) from error
+    if not beats or len(beats) != total_segments:
+        raise BeatGenerationError(
+            f"Existing mode requires exactly {total_segments} beats; "
+            f"beats.txt contains {len(beats)}. Update the segment count or beats.txt."
+        )
+    return beats
+
+
 def _run_main(
     summary_executor,
     director_prefetch_executor=None,
@@ -31310,7 +31376,14 @@ def _run_main(
         required=False,
     )
     subject_definitions = base_subject_definitions
+    existing_beats = (
+        require_existing_beats(BEATS_FILE, total_segments)
+        if getattr(args, "existing_beats", False)
+        else None
+    )
     canonical_data = load_canonical_data()
+    if getattr(args, "new_run", False) and recovery_resume_segment is None:
+        prepare_new_generation()
     character_canon = load_or_generate_character_canon(
         canonical_data,
         story=story,
@@ -31337,7 +31410,14 @@ def _run_main(
     )
     if resume_segment == 1:
         reset_prompt_history()
-    if director_only:
+    if existing_beats is not None:
+        beats = existing_beats
+        exclusion_issues = validate_generated_beat_exclusions(beats, phrase_exclusions)
+        if exclusion_issues:
+            raise BeatGenerationError(
+                "Existing beats violate phrase_exclusions.txt: " + " ".join(exclusion_issues)
+            )
+    elif director_only:
         try:
             beats = load_beats(BEATS_FILE)
         except Exception as error:
@@ -31359,7 +31439,8 @@ def _run_main(
                 phrase_exclusions=phrase_exclusions,
                 force_generate=(
                     generate_beats_only
-                    or (generate_prompts_only and resume_segment == 1)
+                    or (generate_prompts_only and resume_segment == 1
+                        and recovery_resume_segment is None)
                 ),
                 capture_accepted_state=True,
                 story_duration_seconds=(

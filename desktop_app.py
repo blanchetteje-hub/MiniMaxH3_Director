@@ -7,6 +7,8 @@ handling as the single source of truth.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import math
 import os
@@ -21,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from minimax import LORA_DIRECTORY
+from minimax import LORA_DIRECTORY, parse_args, require_existing_beats
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -30,12 +32,23 @@ FRONTEND_INDEX = PROJECT_DIR / "frontend" / "dist" / "index.html"
 SETTINGS_FILE = PROJECT_DIR / "gui_settings.json"
 
 DEFAULT_SETTINGS = {
+    "generation_mode": "new",
+    "vram_mode": "32",
+    "action": "generate",
+    "use_prompts": "",
+    "test_prompt_generation": False,
+    "director_only": False,
+    "generate_all": False,
+    "capture_h3_segment": "",
+    "capture_h3_fixture": "",
+    "capture_h3_validation_segment": "",
+    "capture_h3_validation_fixture": "",
     "comfyui_url": "http://127.0.0.1:8188",
     "llm_host_url": "http://127.0.0.1:1234",
     "defined_images": [],
     "segment_length": "",
     "total_segments": "",
-    "megapixels": "",
+    "megapixels": "0.5",
     "resume": "1",
     "steps": "6",
     "trim_frames": "2",
@@ -47,6 +60,7 @@ DEFAULT_SETTINGS = {
     "first_frame": False,
     "loras": [],
     "beat_count": "",
+    "beat_length": "",
     "lora_dir": LORA_DIRECTORY,
 }
 
@@ -54,6 +68,8 @@ DEFAULT_SETTINGS = {
 FILE_DEFINITIONS = {
     "story": ("Story", PROJECT_DIR / "story.txt", True),
     "beats": ("Beats", PROJECT_DIR / "beats.txt", True),
+    "generated_prompts": ("Generated prompts", PROJECT_DIR / "generated_prompts.txt", True),
+    "canonical_data": ("Canonical data", PROJECT_DIR / "canonical_data.txt", True),
     "subjects": ("Subjects", PROJECT_DIR / "subjects.txt", True),
     "phrase_exclusions": (
         "Phrase exclusions",
@@ -80,6 +96,7 @@ FILE_DEFINITIONS = {
         PROJECT_DIR / "Minimax_auto_append_API.json",
         False,
     ),
+    "repair_workflow": ("Repair workflow", PROJECT_DIR / "Minimax_auto_repair_API.json", False),
     "refresh_workflow": (
         "Refresh workflow",
         PROJECT_DIR / "Minimax_auto_refresh_API.json",
@@ -332,15 +349,18 @@ class MiniMaxBridge:
         self,
         settings: Any,
         generate_beats: bool = False,
+        action: str | None = None,
     ) -> list[str]:
         """Build the exact argv shape consumed by ``minimax.py``."""
 
         if generate_beats:
             if not isinstance(settings, dict):
                 raise ValueError("Generation settings must be an object.")
+            if str(settings.get("vram_mode", "32")) == "16":
+                raise ValueError("16GB mode only supports generating prompts or video from prompts.")
             beat_count = _positive_int(settings.get("beat_count"), "Story beats")
             beat_length = _positive_float(
-                settings.get("segment_length"),
+                settings.get("beat_length") or settings.get("segment_length"),
                 "Beat duration",
             )
             model = str(settings.get("model", "gpt")).strip().lower()
@@ -357,7 +377,40 @@ class MiniMaxBridge:
                 model,
             ]
 
-        values = self._validate_settings(settings)
+        if not isinstance(settings, dict):
+            raise ValueError("Generation settings must be an object.")
+        mode = settings.get("generation_mode", "new")
+        vram = str(settings.get("vram_mode", "32"))
+        operation = action or settings.get("action", "generate")
+        if mode not in {"new", "existing", "render_only"}:
+            raise ValueError("Choose New, Existing, or Render-Only.")
+        if vram not in {"16", "32"}:
+            raise ValueError("VRAM mode must be 16 or 32.")
+        if operation not in {"generate", "prompts", "render"}:
+            raise ValueError("Unknown generation action.")
+        render = mode == "render_only" or operation == "render"
+        custom_prompts = str(settings.get("use_prompts") or "").strip()
+        diagnostics = any(settings.get(key) for key in (
+            "test_prompt_generation", "director_only", "generate_all",
+            "capture_h3_segment", "capture_h3_fixture",
+            "capture_h3_validation_segment", "capture_h3_validation_fixture",
+        ))
+        if vram == "16":
+            if not render and operation != "prompts":
+                raise ValueError("16GB mode requires Generate Prompts (LLM) or Generate Video (ComfyUI).")
+            if diagnostics or settings.get("repair") or custom_prompts:
+                raise ValueError("16GB mode does not support diagnostics, repair, or custom prompt packages.")
+        if render and (diagnostics or settings.get("repair")):
+            raise ValueError("Render-Only cannot be combined with diagnostics or repair.")
+        if not render and custom_prompts:
+            raise ValueError("Custom prompt packages belong in Render-Only.")
+        effective = dict(settings)
+        if render:
+            effective.update(segment_length=1, total_segments=1, megapixels=0.5,
+                             steps=6, trim_frames=2, refresh=4, vision_continuity=0,
+                             model="gpt", resume=1, first_frame=False,
+                             retention=False, loras=[])
+        values = self._validate_settings(effective)
         command = [
             self.python_executable,
             "-u",
@@ -379,6 +432,25 @@ class MiniMaxBridge:
             "--model",
             values["model"],
         ]
+        if render:
+            # Timing and rendering options come from the saved prompt package.
+            command = command[:3]
+            command.extend(("--use-prompts", custom_prompts) if custom_prompts
+                           else ("--generate-from-prompts",))
+        else:
+            command.append("--new" if mode == "new" else "--existing")
+            if operation == "prompts":
+                command.extend(("--generate-prompts", str(values["total_segments"])))
+            for key in ("test_prompt_generation", "director_only", "generate_all"):
+                if settings.get(key):
+                    command.append("--" + key.replace("_", "-"))
+            for key in ("capture_h3_segment", "capture_h3_validation_segment"):
+                if settings.get(key) not in (None, ""):
+                    command.extend(("--" + key.replace("_", "-"),
+                                    str(_positive_int(settings[key], key.replace("_", " ")))))
+            for key in ("capture_h3_fixture", "capture_h3_validation_fixture"):
+                if settings.get(key):
+                    command.extend(("--" + key.replace("_", "-"), str(settings[key]).strip()))
         if values["repair"] is not None:
             command.extend(("--repair", str(values["repair"])))
         if values["first_frame"]:
@@ -393,12 +465,27 @@ class MiniMaxBridge:
             start=1,
         ):
             command.extend((f"--image{image_number}", image_path))
+        errors = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(errors):
+                parse_args(command[3:])
+        except SystemExit as error:
+            detail = errors.getvalue().strip().split("error:")[-1].strip()
+            raise ValueError(detail or "Invalid generation arguments.") from error
         return command
+
+    def _require_source(self, source: str, total_segments: int | None = None) -> None:
+        source_path = self.script_path.parent / (source + ".txt")
+        if not source_path.is_file() or not source_path.read_text(encoding="utf-8").strip():
+            raise ValueError(f"{source}.txt must contain {'a story' if source == 'story' else 'existing beats'}.")
+        if source == "beats" and total_segments is not None:
+            require_existing_beats(str(source_path), total_segments)
 
     def start_generation(
         self,
         settings: Any,
         generate_beats: bool = False,
+        action: str | None = None,
     ) -> dict[str, Any]:
         """Start ``minimax.py`` without blocking the pywebview UI thread."""
 
@@ -443,7 +530,23 @@ class MiniMaxBridge:
             command = self.build_command(
                 effective_settings,
                 generate_beats=generate_beats,
+                action=action,
             )
+            if not generate_beats:
+                mode = effective_settings.get("generation_mode", "new")
+                operation = action or effective_settings.get("action", "generate")
+                if mode == "render_only" or operation == "render":
+                    package_name = str(effective_settings.get("use_prompts") or "generated_prompts.txt").strip()
+                    package_path = Path(package_name).expanduser()
+                    if not package_path.is_absolute():
+                        package_path = self.script_path.parent / package_path
+                    if not package_path.is_file() or not package_path.read_text(encoding="utf-8").strip():
+                        raise ValueError(f"Saved prompt package is missing or empty: {package_path}. Generate prompts first.")
+                else:
+                    source = "story" if mode == "new" else "beats"
+                    self._require_source(source, _positive_int(
+                        effective_settings.get("total_segments"), "Number of segments"
+                    ) if source == "beats" else None)
             if not self.script_path.is_file():
                 raise FileNotFoundError(f"Generator not found: {self.script_path}")
 

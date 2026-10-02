@@ -16,6 +16,7 @@ import desktop_app
 
 
 BASE_SETTINGS = {
+    "generation_mode": "existing",
     "segment_length": "5",
     "total_segments": "12",
     "megapixels": "0.5",
@@ -71,6 +72,141 @@ class _RunningProcess:
 
 
 class DesktopBridgeTests(unittest.TestCase):
+    def setUp(self):
+        self.source_check = mock.patch.object(desktop_app.MiniMaxBridge, "_require_source")
+        self.source_check.start()
+        self.addCleanup(self.source_check.stop)
+
+    def test_generation_mode_and_vram_actions(self):
+        bridge = self.make_bridge()
+        for mode in ("new", "existing"):
+            for vram in ("16", "32"):
+                with self.subTest(mode=mode, vram=vram):
+                    settings = dict(BASE_SETTINGS, generation_mode=mode, vram_mode=vram)
+                    prompts = bridge.build_command(settings, action="prompts")
+                    self.assertIn("--generate-prompts", prompts)
+                    self.assertIn("--" + mode, prompts)
+                    self.assertNotIn("--generate-from-prompts", prompts)
+                    render = bridge.build_command(settings, action="render")
+                    self.assertIn("--generate-from-prompts", render)
+                    self.assertNotIn("--generate-prompts", render)
+                    self.assertNotIn("--" + mode, render)
+                    if vram == "16":
+                        with self.assertRaisesRegex(ValueError, "16GB"):
+                            bridge.build_command(settings)
+                    else:
+                        self.assertIn("--" + mode, bridge.build_command(settings))
+
+    def test_render_uses_package_without_duration_settings(self):
+        command = self.make_bridge().build_command({"generation_mode": "render_only"})
+        self.assertEqual(command[3], "--generate-from-prompts")
+        self.assertNotIn("--steps", command)
+        custom = self.make_bridge().build_command({
+            "generation_mode": "render_only", "use_prompts": "saved package.txt",
+            "segment_length": "invalid", "total_segments": "invalid",
+        })
+        self.assertEqual(custom[3:5], ["--use-prompts", "saved package.txt"])
+
+    def test_render_ignores_hidden_settings_from_previous_tabs(self):
+        settings = dict(BASE_SETTINGS, generation_mode="render_only")
+        for key in ("segment_length", "total_segments", "megapixels", "steps",
+                    "trim_frames", "refresh", "vision_continuity", "model", "resume"):
+            settings[key] = "invalid"
+        settings.update(first_frame=True, retention=True, loras="invalid")
+        command = self.make_bridge().build_command(settings)
+        self.assertIn("--generate-from-prompts", command)
+        for flag in ("--steps", "--ff", "--retention", "--lora", "--resume"):
+            self.assertNotIn(flag, command)
+
+    @mock.patch("desktop_app.subprocess.Popen")
+    def test_render_requires_saved_package_before_launch(self, popen):
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "minimax.py"
+            script.write_text("", encoding="utf-8")
+            bridge = desktop_app.MiniMaxBridge(script)
+            with mock.patch.object(bridge, "_load_settings", return_value=dict(desktop_app.DEFAULT_SETTINGS)):
+                result = bridge.start_generation({"generation_mode": "render_only"})
+            self.assertFalse(result["ok"])
+            self.assertIn("Generate prompts first", result["error"])
+            popen.assert_not_called()
+
+    @mock.patch("desktop_app.subprocess.Popen")
+    def test_render_custom_relative_package_needs_no_story(self, popen):
+        popen.return_value = _CompletedProcess()
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "minimax.py"
+            script.write_text("", encoding="utf-8")
+            (Path(directory) / "saved.txt").write_text("saved prompts", encoding="utf-8")
+            bridge = desktop_app.MiniMaxBridge(script)
+            with mock.patch.object(bridge, "_load_settings", return_value=dict(desktop_app.DEFAULT_SETTINGS)):
+                result = bridge.start_generation({"generation_mode": "render_only", "use_prompts": "saved.txt"})
+            self.assertTrue(result["ok"])
+            popen.assert_called_once()
+            bridge._require_source.assert_not_called()
+
+    def test_low_vram_rejects_mixed_or_diagnostic_modes(self):
+        for field, value in (("repair", "3"), ("director_only", True),
+                             ("generate_all", True), ("test_prompt_generation", True),
+                             ("use_prompts", "custom.txt")):
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(ValueError, "16GB"):
+                    self.make_bridge().build_command(dict(
+                        BASE_SETTINGS, vram_mode="16", action="prompts", **{field: value}))
+
+    @mock.patch("desktop_app.subprocess.Popen")
+    def test_invalid_new_run_does_not_clear_beats_or_launch(self, popen):
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "minimax.py"
+            script.write_text("", encoding="utf-8")
+            beats = Path(directory) / "beats.txt"
+            beats.write_text("Keep these beats", encoding="utf-8")
+            bridge = desktop_app.MiniMaxBridge(script)
+            result = bridge.start_generation(dict(BASE_SETTINGS,
+                generation_mode="new", total_segments="0"))
+            self.assertFalse(result["ok"])
+            popen.assert_not_called()
+            self.assertEqual(beats.read_text(), "Keep these beats")
+
+    @mock.patch("desktop_app.subprocess.Popen")
+    def test_existing_requires_nonempty_beats_before_launch(self, popen):
+        self.source_check.stop()
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "minimax.py"
+            script.write_text("", encoding="utf-8")
+            bridge = desktop_app.MiniMaxBridge(script)
+            result = bridge.start_generation(BASE_SETTINGS)
+            self.assertFalse(result["ok"])
+            self.assertIn("existing beats", result["error"])
+            popen.assert_not_called()
+
+    @mock.patch("desktop_app.subprocess.Popen")
+    def test_existing_rejects_mismatched_beats_without_rewriting(self, popen):
+        self.source_check.stop()
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "minimax.py"
+            script.write_text("", encoding="utf-8")
+            beats = Path(directory) / "beats.txt"
+            original = "1. One scene\n"
+            beats.write_text(original, encoding="utf-8")
+            bridge = desktop_app.MiniMaxBridge(script)
+            result = bridge.start_generation(BASE_SETTINGS)
+            self.assertFalse(result["ok"])
+            self.assertIn("exactly 12 beats", result["error"])
+            popen.assert_not_called()
+            self.assertEqual(beats.read_text(encoding="utf-8"), original)
+
+    def test_diagnostic_fixture_pair_validation_uses_cli(self):
+        with self.assertRaisesRegex(ValueError, "capture-h3-fixture"):
+            self.make_bridge().build_command(dict(BASE_SETTINGS, capture_h3_segment="2"))
+
+    def test_all_new_settings_are_persisted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(desktop_app, "SETTINGS_FILE", Path(directory) / "settings.json"):
+                settings = {key: value for key, value in desktop_app.DEFAULT_SETTINGS.items()
+                            if key not in BASE_SETTINGS}
+                self.assertTrue(self.make_bridge().save_settings(settings)["ok"])
+                self.assertEqual(self.make_bridge().get_settings()["generation_mode"], "new")
+
     def make_bridge(self):
         return desktop_app.MiniMaxBridge(
             script_path=Path(__file__),
