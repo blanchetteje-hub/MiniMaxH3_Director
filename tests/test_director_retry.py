@@ -267,7 +267,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_raw_subject_resolution_rejects_timestamp_drift(self):
         original = (
             "At 00:01.000, a guard enters.\n"
-            "At 00:04.000, another guard blocks the door."
+            "At 00:04.000, another guard blocks the door.\n"
+            "End continuity state: both guards remain in the room."
         )
         request = mock.Mock(return_value={
             "raw_scene": (
