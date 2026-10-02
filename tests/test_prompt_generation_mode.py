@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 import minimax
+import pytest
 
 
 def _args(**overrides):
@@ -43,7 +44,7 @@ def test_parse_args_defaults_prompt_generation_test_mode_off():
 
 
 def test_generate_all_uses_normal_video_positionals_without_comfyui():
-    args = minimax.parse_args(["8", "64", ".5", "--generate-all"])
+    args = minimax.parse_args(["8", "8", ".5", "--generate-all"])
     assert args.generate_all
     assert args.segment_length == 8
     assert args.total_length == 64
@@ -77,8 +78,10 @@ def test_director_raw_scene_retry_budget_is_five():
     assert minimax.DIRECTOR_RAW_SCENE_ATTEMPTS == 5
 
 
-def test_prompt_generation_mode_skips_comfyui_and_stitching():
-    args = _args()
+@pytest.mark.parametrize("count", [1, 5])
+def test_prompt_generation_mode_skips_comfyui_and_stitching(count):
+    args = _args(segment_length=8.0, total_segments=count, total_length=999.0)
+    durations = []
 
     def load_text(path, required=True):
         del required
@@ -89,6 +92,9 @@ def test_prompt_generation_mode_skips_comfyui_and_stitching():
         return ""
 
     def request_segment(bundle, _beats, _run_id, _run_config):
+        durations.append(bundle["current_duration"])
+        assert _run_config["total_segments"] == count
+        assert _run_config["total_length"] == 8 * count
         payload = dict(bundle)
         payload["llm_result"] = {
             "detailed_description": "[Shot 1] A scene.",
@@ -150,6 +156,7 @@ def test_prompt_generation_mode_skips_comfyui_and_stitching():
         for patcher in reversed(patches):
             patcher.stop()
 
+    assert durations == [8.0] * count
     render_mock.assert_not_called()
     stitch_mock.assert_not_called()
     verify_images_mock.assert_called_once()

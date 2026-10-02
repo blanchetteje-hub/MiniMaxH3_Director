@@ -1934,9 +1934,15 @@ def parse_args(arguments=None):
             "video story using LLM host and ComfyUI."
         )
     )
-    parser.add_argument("segment_length", type=float, nargs="?")
-    parser.add_argument("total_length", type=float, nargs="?")
-    parser.add_argument("megapixels", type=float, nargs="?")
+    parser.add_argument("segment_length", type=float, nargs="?", help="seconds per clip")
+    parser.add_argument(
+        "total_segments", type=int, nargs="?",
+        help="number of clips to generate (positive integer)",
+    )
+    parser.add_argument(
+        "megapixels", type=float, nargs="?",
+        help="resolution target (default: 0.5)",
+    )
     parser.add_argument(
         "--resume",
         type=int,
@@ -2156,6 +2162,23 @@ def parse_args(arguments=None):
         arguments = sys.argv[1:]
 
     args = parser.parse_args(normalize_command_line(arguments))
+    args.total_length = None
+    if args.segment_length is not None and (
+        not math.isfinite(args.segment_length) or args.segment_length <= 0
+    ):
+        parser.error("segment_length must be finite and greater than zero.")
+    if args.total_segments is not None and args.total_segments <= 0:
+        parser.error("total_segments must be a whole number greater than zero.")
+    if args.megapixels is not None and (
+        not math.isfinite(args.megapixels) or args.megapixels <= 0
+    ):
+        parser.error("megapixels must be finite and greater than zero.")
+    if args.segment_length is not None and args.total_segments is not None:
+        args.total_length = args.segment_length * args.total_segments
+        if not math.isfinite(args.total_length):
+            parser.error("segment duration multiplied by segment count must be finite.")
+        if args.megapixels is None:
+            args.megapixels = DEFAULT_GENERATED_PROMPT_MEGAPIXELS
     args.ff = args.ff == "ff" or args.first_frame
 
     if args.director_only:
@@ -2195,14 +2218,15 @@ def parse_args(arguments=None):
             args.segment_length = DEFAULT_GENERATED_PROMPT_SEGMENT_LENGTH
         if args.megapixels is None:
             args.megapixels = DEFAULT_GENERATED_PROMPT_MEGAPIXELS
-        if args.total_length is None:
-            args.total_length = args.segment_length * args.generate_prompts
-        expected_count = math.ceil(args.total_length / args.segment_length)
+        if args.total_segments is None:
+            args.total_segments = args.generate_prompts
+        expected_count = args.total_segments
         if expected_count != args.generate_prompts:
             parser.error(
-                "--generate-prompts COUNT must match ceil(total_length / "
-                "segment_length) when video positionals are supplied."
+                "--generate-prompts COUNT must match total_segments "
+                "when video positionals are supplied."
             )
+        args.total_length = args.segment_length * args.total_segments
         return args
 
     if args.generate_all:
@@ -2222,11 +2246,11 @@ def parse_args(arguments=None):
             )
         if any(
             value is None
-            for value in (args.segment_length, args.total_length, args.megapixels)
+            for value in (args.segment_length, args.total_segments, args.megapixels)
         ):
             parser.error(
                 "--generate-all requires normal video positionals: "
-                "segment_length, total_length, and megapixels."
+                "segment_length and total_segments (megapixels defaults to 0.5)."
             )
         return args
 
@@ -2244,7 +2268,7 @@ def parse_args(arguments=None):
             )
         if any(
             value is not None
-            for value in (args.segment_length, args.total_length, args.megapixels)
+            for value in (args.segment_length, args.total_segments, args.megapixels)
         ):
             parser.error(
                 "--use-prompts reads timing/render settings from the saved prompt "
@@ -2265,7 +2289,7 @@ def parse_args(arguments=None):
             )
         if any(
             value is not None
-            for value in (args.segment_length, args.total_length, args.megapixels)
+            for value in (args.segment_length, args.total_segments, args.megapixels)
         ):
             parser.error(
                 "--generate-from-prompts reads timing/render settings from "
@@ -2287,7 +2311,7 @@ def parse_args(arguments=None):
             parser.error("--generate-beats cannot be combined with --repair.")
         if any(
             value is not None
-            for value in (args.segment_length, args.total_length, args.megapixels)
+            for value in (args.segment_length, args.total_segments, args.megapixels)
         ):
             parser.error(
                 "--generate-beats accepts COUNT and BEAT_LENGTH only, not video "
@@ -2304,6 +2328,7 @@ def parse_args(arguments=None):
         beat_length = float(beat_length_raw)
         args.generate_beats = (beat_count, beat_length)
         args.segment_length = beat_length
+        args.total_segments = beat_count
         args.total_length = beat_count * beat_length
         return args
 
@@ -2320,17 +2345,17 @@ def parse_args(arguments=None):
 
     if any(
         value is None
-        for value in (args.segment_length, args.total_length, args.megapixels)
+        for value in (args.segment_length, args.total_segments, args.megapixels)
     ):
         parser.error(
-            "segment_length, total_length, and megapixels are required unless "
+            "segment_length and total_segments are required (megapixels defaults to 0.5) unless "
             "--generate-beats COUNT, --generate-prompts COUNT, --generate-all, "
             "--use-prompts PATH, or --generate-from-prompts is used."
         )
     if args.segment_length <= 0:
         parser.error("segment_length must be greater than 0.")
-    if args.total_length <= 0:
-        parser.error("total_length must be greater than 0.")
+    if args.total_segments <= 0:
+        parser.error("total_segments must be greater than 0.")
     if args.megapixels <= 0:
         parser.error("megapixels must be greater than 0.")
     if args.resume <= 0:
@@ -31119,9 +31144,16 @@ def _run_main(
         else (
             int(generate_prompts_count)
             if generate_prompts_count is not None
-            else math.ceil(total_length / segment_length)
+            else (
+                int(args.total_segments)
+                if getattr(args, "total_segments", None) is not None
+                # Legacy programmatic callers can still supply derived timing.
+                else math.ceil(total_length / segment_length)
+            )
         )
     )
+    if getattr(args, "total_segments", None) is not None:
+        total_length = segment_length * total_segments
     resume_segment = (
         int(recovery_resume_segment)
         if recovery_resume_segment is not None
@@ -31633,8 +31665,7 @@ def _run_main(
         opening_summary_text,
         dialogue_exclusions,
     ):
-        elapsed = (segment_number - 1) * segment_length
-        current_duration = min(segment_length, total_length - elapsed)
+        current_duration = segment_length
         active_beat_id = segment_number if beats else None
         current_phase = story_arc_phase_for_beat(macro_arc, active_beat_id)
         conditioning_mode = conditioning_mode_for_segment(

@@ -830,7 +830,7 @@ For the first test, use the desktop app's **New run** mode with:
 | GUI field | Test value |
 |---|---:|
 | Segment duration | `5` |
-| Total duration | `10` |
+| Number of segments | `2` |
 | Megapixels | `0.2` |
 
 Keep the default pipeline controls, select **Generate**, and follow the
@@ -840,7 +840,7 @@ at approximately 0.2 megapixels for the initial clip.
 The equivalent command-line test is:
 
 ```powershell
-python minimax.py 5 10 0.2
+python minimax.py 5 2 0.2
 ```
 
 ## Run from the desktop app (recommended)
@@ -850,7 +850,7 @@ The GUI is the main control surface:
 1. Start ComfyUI and start the LLM host local API server with a model loaded.
 2. Launch the app with `python desktop_app.py`.
 3. Confirm or edit the project sources under **Files & configuration**.
-4. Set **Segment duration**, **Total duration**, and **Megapixels**.
+4. Set **Segment duration**, **Number of segments**, and **Megapixels**.
 5. Choose **New run**, **Resume**, or **Repair**.
 6. If `beats.txt` is blank, enter a beat count and select **Generate Story**;
    otherwise review or write the beats yourself.
@@ -876,7 +876,7 @@ the same generation options as the CLI:
 | **Global LoRAs** | Apply any number of named LoRAs, in order, to every beat. |
 | **Defined Images** | Map up to six ordered paths to `--image1` through `--image6` and override the matching reference node in all three workflows. |
 
-Resume with the same segment duration, total duration, and megapixel values as
+Resume with the same segment duration, number of segments, and megapixel values as
 the interrupted run. If `story.txt`, `beats.txt`, or `subjects.txt` changed
 after the checkpoint, restore the original inputs or start a new run.
 
@@ -889,18 +889,23 @@ app.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--test-prompt-generation] [--vision-continuity N] [--repair SEGMENT] [--model {gpt,mistral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH SEGMENT_COUNT [MEGAPIXELS] [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--test-prompt-generation] [--vision-continuity N] [--repair SEGMENT] [--model {gpt,mistral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
-accepted, including both `python minimax.py 5, 10, .2` and
-`python minimax.py 5,10,.2`.
+accepted, including both `python minimax.py 5, 2, .2` and
+`python minimax.py 5,2,.2`.
+
+The second positional argument is a segment count, not seconds. For example,
+`python minimax.py 8 5` requests five 8-second clips (40 seconds total), using
+the default 0.5 megapixels. All requested clips use the full segment duration;
+frame alignment and stitching trims can affect the final encoded duration.
 
 | Argument | Meaning |
 |---|---|
 | `SEGMENT_LENGTH` | Target seconds generated per segment; must be greater than zero. |
-| `TOTAL_LENGTH` | Target total movie length in seconds; must be greater than zero. |
-| `MEGAPIXELS` | Initial and refresh workflow resolution target; must be greater than zero. |
+| `SEGMENT_COUNT` | Number of clips to generate; must be a whole number greater than zero. |
+| `MEGAPIXELS` | Optional initial and refresh resolution target; defaults to `0.5` and must be greater than zero. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
 | `--trim-frames FRAMES` | Trim this many leading frames from every segment after the first when stitching; defaults to `2`, and `0` disables the trim. |
@@ -929,20 +934,20 @@ For example, this applies two global LoRAs to every segment; any LoRAs declared
 on the active beat are added after them:
 
 ```powershell
-python minimax.py 5 60 0.5 --lora style.safetensors:0.7 --lora motion.safetensors:0.35
+python minimax.py 5 12 0.5 --lora style.safetensors:0.7 --lora motion.safetensors:0.35
 ```
 
 To exercise the full prompt-generation pipeline without contacting ComfyUI or
 creating video, add `--test-prompt-generation`:
 
 ```powershell
-python minimax.py 5 60 0.5 --test-prompt-generation
+python minimax.py 5 12 0.5 --test-prompt-generation
 ```
 
 ### Example: new 60-second run
 
 ```powershell
-python minimax.py 5 60 0.5
+python minimax.py 5 12 0.5
 ```
 
 This creates 12 segments. Starting a new run with the default resume value of
@@ -951,7 +956,7 @@ This creates 12 segments. Starting a new run with the default resume value of
 ### Example: refresh every fifth segment
 
 ```powershell
-python minimax.py 5 60 0.5 --refresh 5
+python minimax.py 5 12 0.5 --refresh 5
 ```
 
 Segments 5 and 10 use `Minimax_auto_refresh_API.json`. Before each refresh, the
@@ -969,7 +974,7 @@ initial workflow.
 Use the exact same first three values as the interrupted run:
 
 ```powershell
-python minimax.py 5 60 0.5 --resume 12
+python minimax.py 5 12 0.5 --resume 12
 ```
 
 Resume means segments 1–11 must already have successful checkpoint records.
@@ -1148,13 +1153,13 @@ To show a full Python traceback for an unexpected failure:
 
 ```powershell
 $env:MINIMAX_DEBUG = "1"
-python minimax.py 5 10 0.2
+python minimax.py 5 2 0.2
 ```
 
 On Linux:
 
 ```bash
-MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
+MINIMAX_DEBUG=1 python minimax.py 5 2 0.2
 ```
 
 ## Repository files

@@ -17,7 +17,7 @@ import desktop_app
 
 BASE_SETTINGS = {
     "segment_length": "5",
-    "total_length": "60",
+    "total_segments": "12",
     "megapixels": "0.5",
     "resume": "1",
     "steps": "6",
@@ -98,7 +98,7 @@ class DesktopBridgeTests(unittest.TestCase):
         command = self.make_bridge().build_command(settings)
 
         self.assertEqual(command[:3], [sys.executable, "-u", str(Path(__file__).resolve())])
-        self.assertEqual(command[3:6], ["5", "60", "0.5"])
+        self.assertEqual(command[3:6], ["5", "12", "0.5"])
         self.assertIn("--ff", command)
         self.assertEqual(
             [command[index + 1] for index, value in enumerate(command) if value == "--lora"],

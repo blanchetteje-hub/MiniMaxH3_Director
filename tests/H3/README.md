@@ -9,7 +9,7 @@ ARC/BEATS, the desktop GUI, or production generation behavior.
 Run the normal generator with both capture flags:
 
 ```text
-python3 minimax.py 6 30 0.2 \
+python3 minimax.py 6 5 0.2 \
   --capture-h3-segment 4 \
   --capture-h3-fixture tests/H3/fixtures/segment_004.json
 ```

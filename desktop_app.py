@@ -34,7 +34,7 @@ DEFAULT_SETTINGS = {
     "llm_host_url": "http://127.0.0.1:1234",
     "defined_images": [],
     "segment_length": "",
-    "total_length": "",
+    "total_segments": "",
     "megapixels": "",
     "resume": "1",
     "steps": "6",
@@ -194,6 +194,14 @@ class MiniMaxBridge:
                         and "lm_studio_url" in saved
                     ):
                         saved["llm_host_url"] = saved.pop("lm_studio_url")
+                    if "total_segments" not in saved and saved.get("total_length"):
+                        try:
+                            saved["total_segments"] = str(math.ceil(
+                                float(saved["total_length"]) / float(saved["segment_length"])
+                            ))
+                        except (ValueError, TypeError, ZeroDivisionError, KeyError):
+                            pass
+                    saved.pop("total_length", None)
                     return {**DEFAULT_SETTINGS, **saved}
             except (OSError, ValueError):
                 pass
@@ -250,8 +258,8 @@ class MiniMaxBridge:
             "segment_length": _positive_float(
                 settings.get("segment_length"), "Segment duration"
             ),
-            "total_length": _positive_float(
-                settings.get("total_length"), "Total duration"
+            "total_segments": _positive_int(
+                settings.get("total_segments"), "Number of segments"
             ),
             "megapixels": _positive_float(
                 settings.get("megapixels"), "Megapixels"
@@ -355,7 +363,7 @@ class MiniMaxBridge:
             "-u",
             str(self.script_path),
             _number_argument(values["segment_length"]),
-            _number_argument(values["total_length"]),
+            _number_argument(values["total_segments"]),
             _number_argument(values["megapixels"]),
             "--resume",
             str(values["resume"]),

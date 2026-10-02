@@ -101,6 +101,15 @@ detailed_description: world
 
         self.assertEqual(console.value, "before ? after\n")
 
+    def test_video_command_passes_segment_count_instead_of_seconds(self):
+        benchmark = run_acceptance.load_benchmark(run_acceptance.DEFAULT_BENCHMARK)
+        command, _ = run_acceptance.build_command(
+            "python", benchmark, Path("amy.jpg"), "gpt", .5, [],
+        )
+        args = __import__("minimax").parse_args(command[2:])
+        self.assertEqual(args.total_segments, len(benchmark["beats"]))
+        self.assertEqual(args.total_length, args.segment_length * len(benchmark["beats"]))
+
     def test_planning_only_command_uses_generate_beats(self):
         benchmark = run_acceptance.load_benchmark(
             run_acceptance.DEFAULT_BENCHMARK
@@ -120,6 +129,7 @@ detailed_description: world
                 "python",
                 "minimax.py",
                 "--generate-beats",
+                "8",
                 "8",
                 "--model",
                 "gpt",

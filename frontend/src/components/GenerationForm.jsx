@@ -3,7 +3,7 @@ import { invokeBridge } from '../lib/pywebview.js'
 
 const INITIAL_SETTINGS = {
   segment_length: '',
-  total_length: '',
+  total_segments: '',
   megapixels: '',
   resume: '1',
   steps: '6',
@@ -41,7 +41,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
         setSettings((current) => ({
           ...current,
           segment_length: savedSettings.segment_length ?? current.segment_length,
-          total_length: savedSettings.total_length ?? current.total_length,
+          total_segments: savedSettings.total_segments ?? current.total_segments,
           megapixels: savedSettings.megapixels ?? current.megapixels,
           resume: savedSettings.resume ?? current.resume,
           steps: savedSettings.steps ?? current.steps,
@@ -76,9 +76,9 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
 
   const totalSegments = useMemo(() => {
     const segment = Number(settings.segment_length)
-    const total = Number(settings.total_length)
-    return segment > 0 && total > 0 ? Math.ceil(total / segment) : null
-  }, [settings.segment_length, settings.total_length])
+    const total = Number(settings.total_segments)
+    return segment > 0 && Number.isInteger(total) && total > 0 ? total : null
+  }, [settings.segment_length, settings.total_segments])
 
   const setField = (field, value) => {
     setSettings((current) => {
@@ -119,7 +119,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
     setError('')
     const positiveFields = [
       ['segment_length', 'Segment duration'],
-      ['total_length', 'Total duration'],
+      ['total_segments', 'Number of segments'],
       ['megapixels', 'Megapixels'],
       ['steps', 'Steps'],
       ['refresh', 'Legacy refresh fallback'],
@@ -127,6 +127,10 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
     const invalid = positiveFields.find(([key]) => !(Number(settings[key]) > 0))
     if (invalid) {
       setError(`${invalid[1]} must be greater than zero.`)
+      return
+    }
+    if (!Number.isInteger(Number(settings.total_segments))) {
+      setError('Number of segments must be a whole number greater than zero.')
       return
     }
     if (settings.trim_frames === '' || !/^\d+$/.test(settings.trim_frames)) {
@@ -175,7 +179,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
           <h2>Generation settings</h2>
         </div>
         {totalSegments && (
-          <span className="calculated">{totalSegments} segments</span>
+          <span className="calculated">{totalSegments} segments · {Number(settings.segment_length) * totalSegments} seconds</span>
         )}
       </div>
 
@@ -193,13 +197,13 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
             disabled={disabled}
           />
           <NumberField
-            label="Total duration"
-            help="Full story length in seconds"
-            value={settings.total_length}
-            onChange={(event) => setField('total_length', event.target.value)}
-            placeholder="60"
-            min="0.01"
-            step="any"
+            label="Number of segments"
+            help="Number of clips to generate"
+            value={settings.total_segments}
+            onChange={(event) => setField('total_segments', event.target.value)}
+            placeholder="5"
+            min="1"
+            step="1"
             required
             disabled={disabled}
           />

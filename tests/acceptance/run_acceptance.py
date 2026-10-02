@@ -235,7 +235,6 @@ def build_command(
         return command, None
 
 
-    total_length = segment_length * len(beats)
     # Chapter/source-span planning owns refresh boundaries. Never feed the
     # gold benchmark's refresh locations back into the runtime; doing so could
     # mask a broken chapter planner.
@@ -245,7 +244,7 @@ def build_command(
         python_executable,
         "minimax.py",
         f"{segment_length:g}",
-        f"{total_length:g}",
+        str(len(beats)),
         f"{megapixels:g}",
         "--test-prompt-generation",
         "--vision-continuity",
