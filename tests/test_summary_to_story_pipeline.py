@@ -54,6 +54,56 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             normalized,
         )
 
+    def test_story_location_extractor_uses_expanded_story_only(self):
+        expanded = (
+            "Mara begins in the bell tower above the old harbor. "
+            "She later crosses the city and reaches the northern gate."
+        )
+        messages = minimax.build_story_location_messages(expanded)
+        prompt = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("complete expanded story", prompt)
+        self.assertIn("overall_location", prompt)
+        self.assertIn("starting_location", prompt)
+        self.assertIn("The scene starts in", prompt)
+        self.assertIn(expanded, prompt)
+
+        calls = []
+
+        def llm_request(messages, **kwargs):
+            calls.append((messages, kwargs))
+            return {
+                "overall_location": "the old harbor city",
+                "starting_location": "the bell tower above the old harbor",
+            }
+
+        result = minimax.extract_story_locations(
+            expanded,
+            llm_request=llm_request,
+            history_metadata={"run_id": "test"},
+        )
+        self.assertEqual(
+            result,
+            {
+                "overall_location": "the old harbor city",
+                "starting_location": "the bell tower above the old harbor",
+            },
+        )
+        self.assertEqual(
+            calls[0][1]["history_metadata"]["purpose"],
+            "story_location_extract",
+        )
+        self.assertEqual(
+            calls[0][1]["context_token_budget"],
+            minimax.STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+        )
+
+    def test_story_location_parser_rejects_missing_location(self):
+        with self.assertRaises(ValueError):
+            minimax.parse_story_location_result({
+                "overall_location": "the harbor city",
+                "starting_location": "",
+            })
+
     def test_story_to_beats_prompt_defers_subject_identity_to_raw(self):
         messages = minimax.build_story_to_beats_messages(
             "Mara must leave the tower and cross the bridge.",

@@ -874,6 +874,31 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         )
         self.assertNotIn("<Subject 2> Will", description)
 
+    def test_segment_one_prepends_python_owned_starting_location(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:01.000, Amy lifts a weathered seed."
+                ),
+                "overall_soundscape": "soft wind",
+                "non_diegetic_music": "quiet harp",
+            },
+            SUBJECTS,
+            segment_number=1,
+            starting_location="Amy's moonlit garden",
+        )
+        detailed = prompt.split("detailed_description:", 1)[1].split(
+            "\n\noverall_soundscape:",
+            1,
+        )[0].strip()
+        self.assertTrue(
+            detailed.startswith(
+                "[Shot 1] The scene starts in Amy's moonlit garden."
+            )
+        )
+        self.assertIn("At 00:01.000, Amy lifts a weathered seed.", detailed)
+        self.assertEqual(detailed.count("[Shot 1]"), 1)
+
     def test_spoken_dialogue_does_not_emit_none_constraint(self):
         prompt = minimax.build_h3_prompt(
             {

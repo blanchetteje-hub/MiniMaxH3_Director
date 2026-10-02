@@ -448,6 +448,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "macro_arc_majority_validate",
     "macro_arc_validate",
     "source_unit_state_effects",
+    "story_location_extract",
     "subject_continuity",
     "visual_end_state",
 })
@@ -17301,6 +17302,127 @@ def save_expanded_story(story, path=EXPANDED_STORY_FILE):
             os.remove(temporary_path)
 
 
+def build_story_location_messages(expanded_story):
+    """Build the narrow story-level location extraction request."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract only two location facts from the complete expanded story. "
+                "overall_location is the broadest useful physical setting that "
+                "contains most of the story. starting_location is the physical place "
+                "where the main character begins the story. Use concise natural-"
+                "language place phrases. Do not invent a proper name, room, building, "
+                "town, region, or world that the story does not establish. "
+                "starting_location must be phrased so it can follow the words "
+                "'The scene starts in'. If no broader setting is established, use "
+                "the most specific supported enclosing location. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "EXPANDED STORY\n"
+                f"{str(expanded_story or '').strip()}\n\n"
+                "Return exactly overall_location and starting_location."
+            ),
+        },
+    ]
+
+
+def build_story_location_response_format():
+    """Return the strict response shape for story-level location extraction."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_location_extract",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "overall_location": {"type": "string", "minLength": 1},
+                    "starting_location": {"type": "string", "minLength": 1},
+                },
+                "required": ["overall_location", "starting_location"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_story_location_result(raw_result, llm_request=None):
+    """Parse and normalize one story-level location extraction result."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(
+            candidate,
+            llm_request=llm_request,
+            repair_on_failure=False,
+        )
+    if not isinstance(candidate, dict) or set(candidate) != {
+        "overall_location", "starting_location",
+    }:
+        raise ValueError(
+            "Story location extraction must contain only overall_location "
+            "and starting_location."
+        )
+    result = {}
+    for key in ("overall_location", "starting_location"):
+        value = " ".join(str(candidate.get(key) or "").split()).strip(" .")
+        if not value or value.casefold() in {"n/a", "na", "none", "null", "unknown"}:
+            raise ValueError(f"Story location extraction returned no usable {key}.")
+        result[key] = value
+    return result
+
+
+def extract_story_locations(
+    expanded_story,
+    *,
+    llm_request=None,
+    history_metadata=None,
+    attempts=2,
+):
+    """Extract overall and opening locations once from the expanded story."""
+    if llm_request is None:
+        llm_request = ask_llm
+    expanded_story = str(expanded_story or "").strip()
+    if not expanded_story:
+        raise ValueError("Story location extraction requires expanded story text.")
+
+    last_error = None
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        try:
+            raw = llm_request(
+                build_story_location_messages(expanded_story),
+                response_format=build_story_location_response_format(),
+                parse_json_response=False,
+                max_tokens=256,
+                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "story_location_extract",
+                    "attempt": attempt,
+                },
+            )
+            return parse_story_location_result(raw, llm_request=llm_request)
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+    raise ValueError(
+        "Could not extract story locations: "
+        + str(last_error or "unknown location extraction error")
+    )
+
+
+def format_story_starting_location(starting_location):
+    """Render the Python-owned Segment-1 starting-location sentence."""
+    location = " ".join(str(starting_location or "").split()).strip(" .")
+    if not location:
+        return ""
+    return f"The scene starts in {location}."
+
+
 def build_story_to_beats_messages(
     summary_text,
     story_text,
@@ -26361,6 +26483,7 @@ def build_h3_prompt(
     retention=False,
     retention_json=None,
     character_canon=None,
+    starting_location="",
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -26423,6 +26546,29 @@ def build_h3_prompt(
             "as closely as possible."
             + (f"\n{integrated}" if integrated else "")
         )
+
+    if segment_number is not None and int(segment_number) == 1:
+        starting_location_sentence = format_story_starting_location(
+            starting_location
+        )
+        if starting_location_sentence:
+            integrated_body = re.sub(
+                r"^\s*\[\s*Shot\s+1\s*\]\s*",
+                "",
+                integrated,
+                count=1,
+                flags=re.IGNORECASE,
+            ).strip()
+            if integrated_body.casefold().startswith(
+                starting_location_sentence.casefold()
+            ):
+                integrated = "[Shot 1] " + integrated_body
+            else:
+                integrated = (
+                    "[Shot 1] "
+                    + starting_location_sentence
+                    + (f" {integrated_body}" if integrated_body else "")
+                )
 
     integrated = reconcile_h3_wardrobe_with_canonical_state(
         integrated,
@@ -31542,6 +31688,30 @@ def _run_main(
         print("Story arc and beats generated successfully.", flush=True)
         return
 
+    story_location_metadata = {}
+    if resume_segment == 1:
+        expanded_story_for_locations = load_text_file(
+            EXPANDED_STORY_FILE,
+            required=False,
+        )
+        if expanded_story_for_locations:
+            story_location_metadata = extract_story_locations(
+                expanded_story_for_locations,
+                history_metadata={"run_id": run_id},
+            )
+            print(
+                "Story location metadata: "
+                f"overall={story_location_metadata['overall_location']!r}; "
+                f"starting={story_location_metadata['starting_location']!r}",
+                flush=True,
+            )
+        else:
+            print(
+                "WARNING: expanded_story.txt is unavailable; Segment 1 will "
+                "continue without extracted location metadata.",
+                flush=True,
+            )
+
     segments_to_generate = get_segments_to_generate(
         resume_segment,
         total_segments,
@@ -31644,6 +31814,10 @@ def _run_main(
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
+        if story_location_metadata:
+            generation_state["metadata"] = copy.deepcopy(
+                story_location_metadata
+            )
         additional_subject_definitions = []
         completed_beat_ids = set()
         recent_results = []
@@ -31993,6 +32167,21 @@ def _run_main(
             structured_opening_summary,
         )
         h3_opening_summary = structured_opening_summary
+        state_metadata = generation_state.get("metadata")
+        starting_location = (
+            str(state_metadata.get("starting_location") or "").strip()
+            if isinstance(state_metadata, dict)
+            else ""
+        )
+        if segment_number == 1 and starting_location:
+            starting_location_sentence = format_story_starting_location(
+                starting_location
+            )
+            director_opening_summary = (
+                "STARTING LOCATION (authoritative)\n"
+                + starting_location_sentence
+            )
+            h3_opening_summary = director_opening_summary
         source_opening_state = format_source_authorized_opening_state(
             macro_arc,
             segment_number,
@@ -32378,6 +32567,13 @@ def _run_main(
             # continuity, but retention should expose the raw Subject fields.
             retention_json=(
                 prompt_reduced_continuity_state if retention else None
+            ),
+            starting_location=(
+                str((generation_state.get("metadata") or {}).get(
+                    "starting_location", ""
+                )).strip()
+                if isinstance(generation_state.get("metadata"), dict)
+                else ""
             ),
         )
         # detailed_description is copied directly from canonical cleaned RAW,

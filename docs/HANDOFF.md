@@ -804,3 +804,14 @@ The first 40-second production render showed a major visual-consistency improvem
 
 ## 2026-10-02 update — full Python Subject state is text-renderable on re-entry
 Dynamic/reintroduced Subject definitions now append the deterministic prose representation of the Subject's last Python-owned continuity record, rather than carrying only canonical age/gender/clothing. The renderer reuses the existing H3 continuity text path, so position, pose/action, current wardrobe, topology, body state, physical condition, held props, attached objects, injuries, substances, spatial relationships, persistent effects, and terminal absence/destruction constraints are all recoverable as real text. Canonical identity prose remains separate and comes first. The JSON continuity record remains the single source of truth; no LLM call is used to translate state back into prompt prose.
+
+
+## 2026-10-02 update — story-level location extraction
+A new narrow deterministic-analysis call now reads the complete expanded_story.txt
+once before Segment 1 and extracts exactly two fields: overall_location and
+starting_location. Python persists those values under generation_state metadata.
+The Segment-1 Director receives the starting location as authoritative opening
+context, and final H3 assembly independently prepends the Python-owned sentence
+"[Shot 1] The scene starts in {starting_location}." so the location cannot be
+dropped by the formatter. The overall location is metadata only for now; it is
+intentionally not promoted into the unfinished room-geometry/topology system.
