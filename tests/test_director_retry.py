@@ -114,7 +114,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("Soft warm piano, calm and understated.", text)
         self.assertIn("Continue the previous musical state", text)
         self.assertIn("Do not name characters, narrate scene actions", text)
-        self.assertIn("Do not narrate or synchronize", text)
+        self.assertIn("or synchronize the score to specific actions", text)
         self.assertIn("Return one musical cue sentence", text)
         self.assertIn("at most 24", text)
         self.assertIn("Do not name characters", text)
