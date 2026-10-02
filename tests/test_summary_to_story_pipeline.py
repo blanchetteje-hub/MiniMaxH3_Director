@@ -97,6 +97,24 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             minimax.STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
         )
 
+    def test_story_location_parser_strips_sentence_wrapper(self):
+        self.assertEqual(
+            minimax.parse_story_location_result({
+                "overall_location": "the village",
+                "starting_location": "The scene starts in the tavern.",
+            }),
+            {
+                "overall_location": "the village",
+                "starting_location": "the tavern",
+            },
+        )
+        self.assertEqual(
+            minimax.normalize_story_starting_location(
+                "Scene begins in the upper market."
+            ),
+            "the upper market",
+        )
+
     def test_story_location_parser_rejects_missing_location(self):
         with self.assertRaises(ValueError):
             minimax.parse_story_location_result({

@@ -874,6 +874,31 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         )
         self.assertNotIn("<Subject 2> Will", description)
 
+    def test_segment_one_does_not_repeat_starting_location_wrapper(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:01.000, Amy raises a lantern."
+                ),
+                "overall_soundscape": "quiet room tone",
+                "non_diegetic_music": "soft strings",
+            },
+            SUBJECTS,
+            segment_number=1,
+            starting_location="The scene starts in the tavern.",
+        )
+        detailed = prompt.split("detailed_description:", 1)[1].split(
+            "\n\noverall_soundscape:",
+            1,
+        )[0].strip()
+        self.assertTrue(
+            detailed.startswith("[Shot 1] The scene starts in the tavern.")
+        )
+        self.assertEqual(
+            detailed.count("The scene starts in the tavern."),
+            1,
+        )
+
     def test_segment_one_prepends_python_owned_starting_location(self):
         prompt = minimax.build_h3_prompt(
             {

@@ -17350,6 +17350,21 @@ def build_story_location_response_format():
     }
 
 
+def normalize_story_starting_location(value):
+    """Normalize extractor output to a bare place phrase."""
+    location = " ".join(str(value or "").split()).strip(" .")
+    if not location:
+        return ""
+    location = re.sub(
+        r"^(?:the\s+)?scene\s+(?:starts|begins)\s+in\s+",
+        "",
+        location,
+        count=1,
+        flags=re.IGNORECASE,
+    ).strip(" .")
+    return location
+
+
 def parse_story_location_result(raw_result, llm_request=None):
     """Parse and normalize one story-level location extraction result."""
     candidate = raw_result
@@ -17369,6 +17384,8 @@ def parse_story_location_result(raw_result, llm_request=None):
     result = {}
     for key in ("overall_location", "starting_location"):
         value = " ".join(str(candidate.get(key) or "").split()).strip(" .")
+        if key == "starting_location":
+            value = normalize_story_starting_location(value)
         if not value or value.casefold() in {"n/a", "na", "none", "null", "unknown"}:
             raise ValueError(f"Story location extraction returned no usable {key}.")
         result[key] = value
@@ -17417,7 +17434,7 @@ def extract_story_locations(
 
 def format_story_starting_location(starting_location):
     """Render the Python-owned Segment-1 starting-location sentence."""
-    location = " ".join(str(starting_location or "").split()).strip(" .")
+    location = normalize_story_starting_location(starting_location)
     if not location:
         return ""
     return f"The scene starts in {location}."
