@@ -442,6 +442,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "director_h3_formatter",
     "director_raw_scene_coherence",
     "director_raw_scene_pronoun_resolution",
+    "director_raw_scene_subject_resolution",
     "final_h3_action_preservation",
     "json_repair",
     "macro_arc_majority_validate",
@@ -651,6 +652,26 @@ DIRECTOR_PRONOUN_RESOLUTION_RESPONSE_FORMAT = {
                 "raw_scene": {"type": "string"},
             },
             "required": ["raw_scene"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_raw_subject_resolution",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "raw_scene": {"type": "string"},
+                "subject_names": {
+                    "type": "array",
+                    "items": {"type": "string", "minLength": 1},
+                },
+            },
+            "required": ["raw_scene", "subject_names"],
             "additionalProperties": False,
         },
     },
@@ -17066,16 +17087,10 @@ def build_story_to_beats_messages(
                 "distinct, concise film beats. Keep each beat one sentence and "
                 "maintain continuity and spatial awareness throughout the beats. "
                 "One beat MUST lead logically into another. No teleporting: if a "
-                "character moves, that movement has to be in the beat text. Every "
-                "distinct unnamed animate individual who performs an action, receives "
-                "an action, or appears as a foreground participant must have one stable "
-                "marked functional label such as @Guard1 or @Creature1, even if that "
-                "individual appears in only one beat. Reuse that same marked label in "
-                "later beats. The @ marker tells Python this is an animate identity "
-                "handle; it is not part of the character's final name and does not "
-                "create a new character. Keep a crowd/group collective only when its "
-                "members remain interchangeable and no member receives a distinct "
-                "action or outcome. Return JSON only."
+                "character moves, that movement has to be in the beat text. "
+                "Do not create identity labels for unnamed participants; Subject "
+                "identity is resolved later from the fully staged RAW scene. "
+                "Return JSON only."
             ),
         },
         {
@@ -17091,13 +17106,8 @@ Preserve the story's event order and outcomes. Do not summarize away an action
 that must visibly happen on screen. Each beat must be executable as one film clip.
 A terminal result belongs to one beat only: if the next beat begins with that
 result or consequence, the current beat must stop before it.
-Every distinct unnamed animate individual who acts, is acted on, or appears as
-a foreground participant must use one stable marked functional label such as
-@Guard1, @Creature1, or @Robot1, even if that individual appears in only one
-beat. Reuse the same marked label later; do not create a new story character.
-The @ marker is reserved only for these animate identity handles. Keep a group
-collective only when all members remain interchangeable and no member receives
-a distinct action or outcome.
+Do not create functional identity labels for unnamed participants. Describe the
+story event naturally; Subject identity is resolved later from the staged RAW scene.
 {extra_text}
 
 RETURN
@@ -17168,40 +17178,7 @@ def _normalize_story_derived_beats(
     return normalized
 
 
-_STORY_BEAT_FUNCTIONAL_SUBJECT_RE = re.compile(
-    r"(?<![A-Za-z0-9_])@([A-Z][A-Za-z'’.-]*[A-Za-z][1-9][0-9]*)(?![A-Za-z0-9_])"
-)
-
-
-def story_beat_functional_subject_labels(beats):
-    """Return marked animate identity handles in first-seen order.
-
-    Story-to-beats owns whether a functional label is needed. Python recognizes
-    only the documented @Role1/@Creature1 syntax, then removes the marker
-    before any Beat is validated or saved.
-    """
-    labels = []
-    seen = set()
-    for beat in beats or []:
-        for match in _STORY_BEAT_FUNCTIONAL_SUBJECT_RE.finditer(str(beat or "")):
-            label = match.group(1)
-            key = label.casefold()
-            if key in seen:
-                continue
-            seen.add(key)
-            labels.append(label)
-    return labels
-
-
-def strip_story_beat_functional_subject_markers(text):
-    """Remove only the @ marker from documented functional Subject handles."""
-    return _STORY_BEAT_FUNCTIONAL_SUBJECT_RE.sub(
-        lambda match: match.group(1),
-        str(text or ""),
-    )
-
-
-def _story_derived_macro_arc(beats, characters_introduced=None):
+def _story_derived_macro_arc(beats):
     """Build the minimal Python-owned event skeleton for downstream validation."""
     required_events = []
     for beat_number, beat in enumerate(beats, start=1):
@@ -17226,7 +17203,7 @@ def _story_derived_macro_arc(beats, characters_introduced=None):
                 "Follow the expanded story from beginning to end without "
                 "changing event order or outcomes."
             ),
-            "characters_introduced": list(characters_introduced or []),
+            "characters_introduced": [],
             "location": "As established by the expanded story.",
             "required_events": required_events,
             "required_end_state": "End at the expanded story's stated conclusion.",
@@ -17279,9 +17256,8 @@ VALIDATION ISSUE
 Rewrite only Beat {int(beat_number)}. Keep it one concise sentence. Preserve the
 same story event and outcome. Fix the stated problem while maintaining spatial
 continuity with the previous and next beats. If movement is required, show it.
-Do not pull a later story event into this beat. Preserve any stable functional
-identity labels already established in CURRENT, PREVIOUS ACCEPTED BEAT, or NEXT
-PLANNED BEAT; do not rename the same individual during repair.
+Do not pull a later story event into this beat. Do not create functional identity
+labels for unnamed participants; Subject identity is resolved later from RAW.
 A terminal result belongs to one beat only: if NEXT PLANNED BEAT begins with that
 result or consequence, stop this beat before it.
 
@@ -17462,17 +17438,7 @@ def generate_beats_via_story_expansion(
             + str(last_error or "unknown Beat-extraction error")
         )
 
-    functional_subject_labels = story_beat_functional_subject_labels(
-        extracted_beats
-    )
-    extracted_beats = [
-        strip_story_beat_functional_subject_markers(beat)
-        for beat in extracted_beats
-    ]
-    macro_arc = _story_derived_macro_arc(
-        extracted_beats,
-        characters_introduced=functional_subject_labels,
-    )
+    macro_arc = _story_derived_macro_arc(extracted_beats)
     save_story_arc(macro_arc, story_arc_source, story_arc_path)
     _preflight_required_event_state_effects(
         macro_arc,
@@ -30084,6 +30050,114 @@ def resolve_director_raw_scene_pronouns(
     return resolved
 
 
+def build_director_raw_subject_resolution_messages(
+    raw_scene,
+    subject_definitions="",
+):
+    """Build the narrow post-RAW dynamic Subject identity pass."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Resolve only unnamed foreground animate identities in one finalized "
+                "timed RAW scene. Keep every timestamp, action, action order, object, "
+                "location, sound, camera instruction, dialogue, and punctuation meaning "
+                "unchanged. Keep already-named Subjects unchanged. For each distinct "
+                "unnamed foreground animate participant who acts or is acted on, replace "
+                "its references with one stable functional name made from its role/type "
+                "plus an integer, such as Guard1 or Creature1. Reuse a KNOWN SUBJECT name "
+                "only when the RAW clearly shows the same individual continuing. Use the "
+                "next unused suffix for a new identity. Do not label interchangeable "
+                "background crowds/groups. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "KNOWN SUBJECTS\n"
+                f"{str(subject_definitions or '').strip() or 'N/A'}\n\n"
+                "RAW SCENE\n"
+                f"{str(raw_scene or '').strip()}\n\n"
+                "Return raw_scene plus subject_names containing only the functional "
+                "Subject names used in the returned RAW scene."
+            ),
+        },
+    ]
+
+
+def resolve_director_raw_scene_subjects(
+    raw_scene,
+    subject_definitions="",
+    *,
+    llm_request=ask_llm,
+    history_metadata=None,
+    segment_seconds=None,
+):
+    """Name distinct unnamed foreground animate actors after RAW is finalized."""
+    original = _canonicalize_director_timestamps(raw_scene).strip()
+    if not original:
+        return original, []
+
+    result = llm_request(
+        build_director_raw_subject_resolution_messages(
+            original,
+            subject_definitions=subject_definitions,
+        ),
+        response_format=DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_raw_scene_subject_resolution",
+        },
+        max_tokens=2048,
+    )
+    if isinstance(result, str):
+        result = parse_llm_json_content(result, repair_on_failure=False)
+    if not isinstance(result, dict) or set(result) != {"raw_scene", "subject_names"}:
+        raise ValueError(
+            "RAW Subject resolver must return only raw_scene and subject_names."
+        )
+
+    resolved = _canonicalize_director_timestamps(
+        result.get("raw_scene", "")
+    ).strip()
+    if not resolved:
+        raise ValueError("RAW Subject resolver returned empty raw_scene.")
+    if _director_timestamps(resolved) != _director_timestamps(original):
+        raise ValueError("RAW Subject resolver changed timestamps.")
+    structure_errors = _director_raw_scene_structure_errors(
+        resolved,
+        segment_seconds,
+    )
+    if structure_errors:
+        raise ValueError(
+            "RAW Subject resolver changed shot-script structure: "
+            + "; ".join(structure_errors)
+        )
+
+    names = []
+    seen = set()
+    for raw_name in result.get("subject_names", []):
+        name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
+        key = name.casefold()
+        if not name or key in seen or not _subject_name_is_promotable(name):
+            continue
+        if re.search(
+            rf"(?<![\w]){re.escape(name)}(?![\w])",
+            _h3_visual_identity_text(resolved),
+            re.I,
+        ) is None:
+            continue
+        seen.add(key)
+        names.append(name)
+
+    print(
+        "Checking RAW Subjects segment: "
+        + (", ".join(names) if names else "no dynamic Subjects"),
+        flush=True,
+    )
+    return resolved, names
+
+
 def build_director_raw_scene_coherence_messages(current_beat, raw_scene):
     """Build a narrow semantic check for Request 1 physical/order coherence."""
     return [
@@ -31652,10 +31726,33 @@ def _run_main(
 
         request2_result_for_fixture = copy.deepcopy(payload["llm_result"])
         llm_result = dict(payload["llm_result"])
-        llm_result["detailed_description"] = (
-            inject_persistent_state_into_description(
-                get_detailed_description(llm_result, ""),
+        raw_subject_names = []
+        raw_description = get_detailed_description(llm_result, "")
+        try:
+            raw_description, raw_subject_names = resolve_director_raw_scene_subjects(
+                raw_description,
+                subject_definitions=subject_definitions,
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": run_config["source_sha256"],
+                    "segment": segment,
+                },
+                segment_seconds=segment_bundle["current_duration"],
             )
+        except (
+            LLMConnectionError,
+            requests.RequestException,
+            OSError,
+            ValueError,
+            TypeError,
+        ) as error:
+            print(
+                f"WARNING: RAW Subject resolution failed for Segment {segment}; "
+                f"using accepted RAW unchanged: {error}",
+                flush=True,
+            )
+        llm_result["detailed_description"] = inject_persistent_state_into_description(
+            raw_description,
         )
         payload["llm_result"] = llm_result
         loras = payload["loras"]
@@ -31678,10 +31775,6 @@ def _run_main(
         # a stable Subject number. Planned named characters are also admitted
         # when their exact name actually appears in this segment.
         detailed_description = get_detailed_description(llm_result, "")
-        expected_new_subjects = phase_characters_introduced_for_beat(
-            macro_arc,
-            segment,
-        )
         continuity_state, dialogue_subject_names = register_inline_dialogue_subjects(
             continuity_state,
             subject_definitions,
@@ -31698,7 +31791,7 @@ def _run_main(
             continuity_state,
             subject_definitions,
             detailed_description,
-            list(dict.fromkeys(expected_new_subjects + formatter_subject_names)),
+            list(dict.fromkeys(raw_subject_names + formatter_subject_names)),
             origin_segment=segment,
             subject_genders=llm_result.get("subject_genders"),
         )
