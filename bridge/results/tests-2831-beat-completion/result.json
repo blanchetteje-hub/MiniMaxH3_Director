@@ -1,0 +1,27 @@
+{
+  "job_id": "tests-2831-beat-completion",
+  "kind": "run_tests",
+  "started_at": 1790903151.3570046,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_llm_prompt_pipeline.py::DirectorRawSceneCompletionTests::test_director_prompt_is_minimal_scene_contract"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 1 item\n\ntests/test_llm_prompt_pipeline.py::DirectorRawSceneCompletionTests::test_director_prompt_is_minimal_scene_contract PASSED [100%]\n\n============================== 1 passed in 2.77s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790903152.9228451,
+    "finished_at": 1790903156.4523973
+  },
+  "finished_at": 1790903156.4523973,
+  "status": "ok"
+}
