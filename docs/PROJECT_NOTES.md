@@ -1592,3 +1592,15 @@ Commits:
 - `f9aa9b60d7646d50db0ade54e9a2ef2e05737383` — normalize accepted Beat threat status shorthand;
 - `2e193e1e4c0078e75d72699abcc327af3933c6f4` — accepted-state shorthand regression;
 - `509fd416e52e5a4375125ed906d39cb0896d424a` — align source-span regression with full-story Beat context.
+
+
+### Functional Subject labeling refinement (2851–2853)
+
+Fresh planning runs proved the Python marker path works, but model compliance was
+incomplete. Run 2851 produced Zombie1-Zombie4 and Python carried all four into
+`characters_introduced`; runs 2852/2853 marked only Zombie1 and left later distinct
+attackers as generic prose.
+
+The beat-writing rule now requires every distinct unnamed animate foreground participant
+who acts or is acted on to receive a stable marked handle, even for a one-beat appearance.
+Only truly interchangeable collective groups may remain unlabeled.

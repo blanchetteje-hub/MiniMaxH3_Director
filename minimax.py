@@ -17066,14 +17066,16 @@ def build_story_to_beats_messages(
                 "distinct, concise film beats. Keep each beat one sentence and "
                 "maintain continuity and spatial awareness throughout the beats. "
                 "One beat MUST lead logically into another. No teleporting: if a "
-                "character moves, that movement has to be in the beat text. When a "
-                "distinct unnamed animate individual must be tracked separately, give "
-                "it one stable marked functional label such as @Guard1 or @Creature1, "
-                "and reuse that same marked label in later beats. The @ marker tells "
-                "Python this is an animate identity handle; it is not part of the "
-                "character's final name and does not create a new character. "
-                "Do not label interchangeable crowds or groups unless individuals "
-                "must be distinguished. Return JSON only."
+                "character moves, that movement has to be in the beat text. Every "
+                "distinct unnamed animate individual who performs an action, receives "
+                "an action, or appears as a foreground participant must have one stable "
+                "marked functional label such as @Guard1 or @Creature1, even if that "
+                "individual appears in only one beat. Reuse that same marked label in "
+                "later beats. The @ marker tells Python this is an animate identity "
+                "handle; it is not part of the character's final name and does not "
+                "create a new character. Keep a crowd/group collective only when its "
+                "members remain interchangeable and no member receives a distinct "
+                "action or outcome. Return JSON only."
             ),
         },
         {
@@ -17089,11 +17091,13 @@ Preserve the story's event order and outcomes. Do not summarize away an action
 that must visibly happen on screen. Each beat must be executable as one film clip.
 A terminal result belongs to one beat only: if the next beat begins with that
 result or consequence, the current beat must stop before it.
-If a distinct unnamed animate individual needs separate identity across actions
-or beats, use one stable marked functional label such as @Guard1, @Creature1,
-or @Robot1. Reuse the same marked label later; do not create a new story
-character. The @ marker is reserved only for these animate identity handles.
-Keep interchangeable groups collective when no individual identity is needed.
+Every distinct unnamed animate individual who acts, is acted on, or appears as
+a foreground participant must use one stable marked functional label such as
+@Guard1, @Creature1, or @Robot1, even if that individual appears in only one
+beat. Reuse the same marked label later; do not create a new story character.
+The @ marker is reserved only for these animate identity handles. Keep a group
+collective only when all members remain interchangeable and no member receives
+a distinct action or outcome.
 {extra_text}
 
 RETURN

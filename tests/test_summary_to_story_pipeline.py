@@ -81,6 +81,9 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
         self.assertIn("current beat must stop before it", prompt)
         self.assertIn("stable marked functional label", prompt)
         self.assertIn("@Guard1", prompt)
+        self.assertIn("even if that individual appears in only one beat", prompt)
+        self.assertIn("appears as a foreground participant", prompt)
+        self.assertIn("no member receives a distinct action or outcome", prompt)
         self.assertIn(
             "do not create a new story character",
             " ".join(prompt.split()),

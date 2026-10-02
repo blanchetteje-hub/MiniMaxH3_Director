@@ -720,14 +720,33 @@ Fix:
 - numbered locations and objects such as `Room2` are ignored by construction;
 - no new LLM stage or settings change.
 
+### 2851-2853 — marker plumbing works; prompt condition was too weak
+
+Fresh planning-only results:
+- 2851: `characters_introduced = ["Zombie1","Zombie2","Zombie3","Zombie4"]`;
+  the full intended path worked.
+- 2852: only `["Zombie1"]`; a later distinct attacker remained "another
+  intruder", and later zombies stayed collective.
+- 2853: only `["Zombie1"]`; later attackers stayed collective.
+
+Conclusion: Python extraction/marker stripping/macro-arc handoff is correct.
+The weak point is the beat-writer instruction, which previously required labels
+only when identity was needed "across actions or beats."
+
+Fix:
+- every distinct unnamed animate foreground participant who acts or is acted on
+  must receive a marked functional handle even for a one-beat appearance;
+- groups remain collective only when members are truly interchangeable and no
+  member receives a distinct action/outcome.
+
 ## Immediate next work
 
-Run the corrected functional-Subject regressions. If green, queue fresh
-planning-only runs and inspect generated Beats/story_arc.json for marked identity
-creation, stable reuse, and clean Python-derived `characters_introduced`.
+Run the strengthened prompt regression, then fresh planning-only probes. Accept
+the Subject-label path when distinct foreground attackers are consistently
+marked and Python carries the clean names into `characters_introduced`.
 
 Queued:
-- `tests-2849-functional-subject-markers`
+- `tests-2854-functional-subject-foreground-rule`
 
 ## Public repository rule
 
