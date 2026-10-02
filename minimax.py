@@ -17068,9 +17068,10 @@ def build_story_to_beats_messages(
                 "One beat MUST lead logically into another. No teleporting: if a "
                 "character moves, that movement has to be in the beat text. When a "
                 "distinct unnamed animate individual must be tracked separately, give "
-                "it one stable functional label by appending a number to its role or "
-                "type, such as Guard1 or Creature1, and reuse that same label in later "
-                "beats. The label is only an identity handle, not a new character. "
+                "it one stable marked functional label such as @Guard1 or @Creature1, "
+                "and reuse that same marked label in later beats. The @ marker tells "
+                "Python this is an animate identity handle; it is not part of the "
+                "character's final name and does not create a new character. "
                 "Do not label interchangeable crowds or groups unless individuals "
                 "must be distinguished. Return JSON only."
             ),
@@ -17089,8 +17090,9 @@ that must visibly happen on screen. Each beat must be executable as one film cli
 A terminal result belongs to one beat only: if the next beat begins with that
 result or consequence, the current beat must stop before it.
 If a distinct unnamed animate individual needs separate identity across actions
-or beats, use one stable numbered functional label such as Guard1, Creature1,
-or Robot1. Reuse the same label later; do not create a new story character.
+or beats, use one stable marked functional label such as @Guard1, @Creature1,
+or @Robot1. Reuse the same marked label later; do not create a new story
+character. The @ marker is reserved only for these animate identity handles.
 Keep interchangeable groups collective when no individual identity is needed.
 {extra_text}
 
@@ -17163,16 +17165,16 @@ def _normalize_story_derived_beats(
 
 
 _STORY_BEAT_FUNCTIONAL_SUBJECT_RE = re.compile(
-    r"(?<![A-Za-z0-9_])([A-Z][A-Za-z'’.-]*[A-Za-z][1-9][0-9]*)(?![A-Za-z0-9_])"
+    r"(?<![A-Za-z0-9_])@([A-Z][A-Za-z'’.-]*[A-Za-z][1-9][0-9]*)(?![A-Za-z0-9_])"
 )
 
 
 def story_beat_functional_subject_labels(beats):
-    """Return stable numbered animate identity handles in first-seen order.
+    """Return marked animate identity handles in first-seen order.
 
-    Story-to-beats owns whether a functional label is needed. Python only
-    recognizes the documented Role1/Creature1-style token shape and carries
-    those handles into the downstream Subject-registration path.
+    Story-to-beats owns whether a functional label is needed. Python recognizes
+    only the documented @Role1/@Creature1 syntax, then removes the marker
+    before any Beat is validated or saved.
     """
     labels = []
     seen = set()
@@ -17187,7 +17189,15 @@ def story_beat_functional_subject_labels(beats):
     return labels
 
 
-def _story_derived_macro_arc(beats):
+def strip_story_beat_functional_subject_markers(text):
+    """Remove only the @ marker from documented functional Subject handles."""
+    return _STORY_BEAT_FUNCTIONAL_SUBJECT_RE.sub(
+        lambda match: match.group(1),
+        str(text or ""),
+    )
+
+
+def _story_derived_macro_arc(beats, characters_introduced=None):
     """Build the minimal Python-owned event skeleton for downstream validation."""
     required_events = []
     for beat_number, beat in enumerate(beats, start=1):
@@ -17212,7 +17222,7 @@ def _story_derived_macro_arc(beats):
                 "Follow the expanded story from beginning to end without "
                 "changing event order or outcomes."
             ),
-            "characters_introduced": story_beat_functional_subject_labels(beats),
+            "characters_introduced": list(characters_introduced or []),
             "location": "As established by the expanded story.",
             "required_events": required_events,
             "required_end_state": "End at the expanded story's stated conclusion.",
@@ -17265,9 +17275,9 @@ VALIDATION ISSUE
 Rewrite only Beat {int(beat_number)}. Keep it one concise sentence. Preserve the
 same story event and outcome. Fix the stated problem while maintaining spatial
 continuity with the previous and next beats. If movement is required, show it.
-Do not pull a later story event into this beat. Preserve any stable numbered
-functional identity labels already established in CURRENT, PREVIOUS ACCEPTED
-BEAT, or NEXT PLANNED BEAT; do not rename the same individual during repair.
+Do not pull a later story event into this beat. Preserve any stable functional
+identity labels already established in CURRENT, PREVIOUS ACCEPTED BEAT, or NEXT
+PLANNED BEAT; do not rename the same individual during repair.
 A terminal result belongs to one beat only: if NEXT PLANNED BEAT begins with that
 result or consequence, stop this beat before it.
 
@@ -17448,7 +17458,17 @@ def generate_beats_via_story_expansion(
             + str(last_error or "unknown Beat-extraction error")
         )
 
-    macro_arc = _story_derived_macro_arc(extracted_beats)
+    functional_subject_labels = story_beat_functional_subject_labels(
+        extracted_beats
+    )
+    extracted_beats = [
+        strip_story_beat_functional_subject_markers(beat)
+        for beat in extracted_beats
+    ]
+    macro_arc = _story_derived_macro_arc(
+        extracted_beats,
+        characters_introduced=functional_subject_labels,
+    )
     save_story_arc(macro_arc, story_arc_source, story_arc_path)
     _preflight_required_event_state_effects(
         macro_arc,

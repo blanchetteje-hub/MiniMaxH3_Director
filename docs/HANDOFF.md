@@ -706,15 +706,28 @@ Fix in progress:
 - existing Subject registration remains the only downstream identity mechanism;
 - no new LLM stage and no LLM settings change.
 
+### 2848 — functional-label architecture passes except ambiguous token syntax
+
+Focused tests passed 4/5. The only failure was deterministic Python treating
+`Room2` as a Subject because plain `Word+number` is not semantically unique.
+
+Fix:
+- beat writer now marks functional animate identities explicitly as
+  `@Guard1`, `@Creature1`, etc.;
+- Python extracts only those marked handles;
+- Python removes the `@` before validation and saving, leaving ordinary
+  `Guard1`/`Creature1` beat prose;
+- numbered locations and objects such as `Room2` are ignored by construction;
+- no new LLM stage or settings change.
+
 ## Immediate next work
 
-Run focused summary->story->beats regressions for functional Subject labels and
-Python-derived `characters_introduced`. If green, run fresh planning-only probes
-instead of the old frozen 2801 plan and inspect whether distinct unnamed animate
-subjects receive stable labels without creating fake new characters.
+Run the corrected functional-Subject regressions. If green, queue fresh
+planning-only runs and inspect generated Beats/story_arc.json for marked identity
+creation, stable reuse, and clean Python-derived `characters_introduced`.
 
 Queued:
-- `tests-2848-functional-subject-labels`
+- `tests-2849-functional-subject-markers`
 
 ## Public repository rule
 

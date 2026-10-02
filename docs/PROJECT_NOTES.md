@@ -303,9 +303,11 @@ future story exposes a concrete regression. Do not continue tuning audio against
 zombie benchmark.
 
 Story-to-beats owns stable identity handles for distinct unnamed animate individuals.
-When separate identity is needed, it uses a numbered functional label such as Guard1
-or Creature1 and reuses that label. Python deterministically extracts those labels into
-the story-derived macro arc's `characters_introduced` list; this restores the existing
+When separate identity is needed, it uses an explicitly marked functional label such
+as `@Guard1` or `@Creature1` and reuses that label. Python extracts only marked
+labels, removes the `@` before Beat validation/saving, and carries the clean names into
+the story-derived macro arc's `characters_introduced` list. This avoids confusing
+numbered locations/objects such as Room2 with Subjects while restoring the existing
 pre-H3 dynamic Subject registration path without adding another LLM stage.
 Per-call sampler overrides are not used; `ask_llm()` task routing is the sole settings authority.
 
