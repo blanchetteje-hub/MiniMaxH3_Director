@@ -1,0 +1,11 @@
+{
+  "job_id": "tests-2869-cli-exit",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_resume.py::ResumeTests::test_main_does_not_retry_invalid_command_line",
+    "tests/test_resume.py::ResumeTests::test_parse_args_rejects_nonpositive_steps",
+    "tests/test_prompt_generation_mode.py"
+  ],
+  "timeout_seconds": 1800
+}
