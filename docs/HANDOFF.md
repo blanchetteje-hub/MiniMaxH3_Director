@@ -791,3 +791,7 @@ When this experiment is merged, abandoned, or replaced:
 - preserve durable architectural decisions in `PROJECT_NOTES.md`;
 - move obsolete chronology to `HANDOFF_OLD.md`;
 - update the active branch and immediate-next-work sections rather than leaving stale queued-job references.
+
+
+## 2026-10-02 update — Subject determination locked
+Acceptance 2868 confirmed the post-RAW Subject architecture is viable and stable enough to lock. Segment 2 created `Zombie1`; Segment 6 created `Zombie2` and `Zombie3`; no `Will1`/`Amber1`/`Zombie2_1` alias drift remained. Existing accepted-RAW identifiers are now immutable across Subject resolution, while genuinely new unnamed foreground actors can still receive functional identities. Final H3 subject definitions remain scene-scoped. Next work: camera choreography, now the largest remaining gold mismatch.
