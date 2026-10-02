@@ -20059,11 +20059,15 @@ def build_h3_soundscape_messages(raw_scene):
             "role": "system",
             "content": (
                 "Extract only the overall soundscape for one already-finalized "
-                "video scene. RAW SCENE is authoritative. Include every materially "
-                "audible sound explicitly supported by the RAW SCENE, and do not "
-                "invent unsupported sounds. Use concise natural-language phrasing "
-                "rather than identifier-style labels with underscores. Do not "
-                "rewrite, summarize, interpret, or add story action. Return JSON only."
+                "video scene. RAW SCENE is authoritative. Return only sounds a "
+                "microphone could hear. Include sounds explicitly stated by RAW and "
+                "sounds necessarily produced by an audible depicted event such as a "
+                "slam, crash, gunshot, or spoken line. Omit lighting, visibility, "
+                "expressions, stillness, positions, silent gestures, and other purely "
+                "visual facts. Do not invent optional or merely plausible sounds. Use "
+                "concise natural-language phrasing rather than identifier-style labels "
+                "with underscores. Do not rewrite, summarize, interpret, or add story "
+                "action. Return JSON only."
             ),
         },
         {
@@ -20092,35 +20096,47 @@ def parse_h3_soundscape_result(raw_result):
 def build_h3_music_messages(
     raw_scene,
     conditioning_mode=None,
+    previous_music="",
 ):
     """Generate only the non-diegetic score choice for finalized RAW."""
     conditioning_mode = str(conditioning_mode or "").strip().lower()
+    previous_music = str(previous_music or "").strip()
     if conditioning_mode == "continuation":
         music_rule = (
             "non_diegetic_music must begin exactly with "
-            "'continues from <Video 1>.' and then briefly describe the continued "
-            "underscore or a scene-appropriate transition."
+            "'continues from <Video 1>.' Continue the previous musical state and "
+            "transition only when the RAW SCENE's emotional state changes."
         )
     else:
         music_rule = (
             "Choose a minimal scene-appropriate non-diegetic underscore unless "
             "the RAW SCENE explicitly requires silence/no score."
         )
+    previous_music_block = (
+        "PREVIOUS MUSIC\n" + previous_music + "\n\n"
+        if conditioning_mode == "continuation" and previous_music
+        else ""
+    )
     return [
         {
             "role": "system",
             "content": (
                 "Generate only the non-diegetic music for one already-finalized "
-                "video scene. RAW SCENE is context for mood and pacing only. Do not "
-                "rewrite, summarize, interpret, or add story action. Keep the music "
-                "description concise and use natural-language phrasing rather than "
-                "identifier-style labels with underscores. Return JSON only."
+                "video scene. RAW SCENE is context for the scene's emotional arc and "
+                "ending; PREVIOUS MUSIC, when supplied, is the musical state to "
+                "continue from. Describe the underscore itself, not character actions "
+                "or individual sound effects. Do not narrate or synchronize the score "
+                "to each action. Return one concise musical cue sentence (after the "
+                "required continuation prefix when applicable). Use natural-language "
+                "phrasing rather than identifier-style labels with underscores. "
+                "Return JSON only."
             ),
         },
         {
             "role": "user",
             "content": (
                 f"{music_rule}\n\n"
+                f"{previous_music_block}"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
                 "Return exactly non_diegetic_music."
@@ -28702,6 +28718,12 @@ def repair_existing_segment(
         "is_final_story_segment": segment_number == repair["total_segments"],
         "messages": messages,
         "opening_state": director_opening_summary,
+        "previous_music": str(
+            ((repair.get("previous_record") or {}).get("llm_result") or {}).get(
+                "non_diegetic_music"
+            )
+            or ""
+        ).strip(),
         "registry_state": opening_state,
         "subject_definitions": historical_subject_definitions,
         "dialogue_exclusions": dialogue_exclusions,
@@ -30416,6 +30438,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             build_h3_music_messages(
                 raw_scene,
                 conditioning_mode=conditioning_mode,
+                previous_music=bundle.get("previous_music", ""),
             ),
             response_format=H3_MUSIC_RESPONSE_FORMAT,
             history_metadata={
@@ -31321,6 +31344,9 @@ def _run_main(
             "recent_count": recent_count,
             "opening_state": director_opening_summary,
             "previous_final_frame": director_opening_summary,
+            "previous_music": str(
+                previous_result.get("non_diegetic_music") or ""
+            ).strip(),
             "registry_state": opening_state,
             "opening_summary": director_opening_summary,
             "h3_opening_summary": h3_opening_summary,

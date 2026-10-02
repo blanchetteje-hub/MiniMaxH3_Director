@@ -58,6 +58,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         text = messages[0]["content"] + "\n" + messages[1]["content"]
         self.assertIn("Extract only the overall soundscape", text)
+        self.assertIn("only sounds a microphone could hear", text)
+        self.assertIn("Omit lighting", text)
+        self.assertIn("Do not invent optional or merely plausible sounds", text)
         self.assertIn("Do not rewrite", text)
         self.assertNotIn("non_diegetic_music", text)
         self.assertIn("Return exactly overall_soundscape", text)
@@ -66,13 +69,28 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         messages = minimax.build_h3_music_messages(
             "At 00:01.000, Amy closes the door.",
             conditioning_mode="continuation",
+            previous_music="Soft warm piano, calm and understated.",
         )
         text = messages[0]["content"] + "\n" + messages[1]["content"]
         self.assertIn("Generate only the non-diegetic music", text)
-        self.assertIn("Do not rewrite", text)
+        self.assertIn("PREVIOUS MUSIC", text)
+        self.assertIn("Soft warm piano, calm and understated.", text)
+        self.assertIn("Continue the previous musical state", text)
+        self.assertIn("not character actions", text)
+        self.assertIn("Do not narrate or synchronize", text)
+        self.assertIn("one concise musical cue sentence", text)
         self.assertNotIn("overall_soundscape", text)
         self.assertIn("continues from <Video 1>", text)
         self.assertIn("Return exactly non_diegetic_music", text)
+
+    def test_h3_soundscape_prompt_rejects_visual_only_facts(self):
+        messages = minimax.build_h3_soundscape_messages(
+            "At 00:01.000, sunlight crosses the table while Mira looks left."
+        )
+        text = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("only sounds a microphone could hear", text)
+        self.assertIn("Omit lighting", text)
+        self.assertIn("silent gestures", text)
 
     def test_h3_audio_parsers_accept_only_their_single_field(self):
         soundscape = minimax.parse_h3_soundscape_result({

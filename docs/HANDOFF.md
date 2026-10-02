@@ -580,15 +580,37 @@ Current change:
 - no per-call temperature/top-p/seed overrides remain on the H3 audio path;
 - underscore cleanup remains deterministic Python normalization after each field.
 
+### 2837 — split works; first real audio-specific failures
+
+`director-2837-h3-audio-task-split` completed all 8 segments.
+
+The responsibility split is stable, but the first real outputs exposed two narrow
+prompt defects:
+
+- soundscape extraction converted visual-only facts into sound (for example,
+  sunlight reflecting off cereal);
+- music generation became too verbose/action-synchronized and had no explicit
+  previous-score context, producing a tense final cue even when the RAW scene
+  resolved into relief.
+
+Fix:
+- soundscape prompt now permits only microphone-audible facts and explicitly
+  rejects lighting, visibility, expressions, stillness, positions, silent
+  gestures, and merely plausible optional sounds;
+- continuation music now receives the previous segment's
+  `non_diegetic_music`;
+- music output is one concise underscore cue describing the emotional arc,
+  not a narration or beat-by-beat synchronization of scene actions;
+- task profiles remain unchanged.
+
 ## Immediate next work
 
-Run the focused bridge regression for the split H3 audio path. If green, run a fresh
-Director-only acceptance from the existing frozen plan and compare the score choices
-and soundscape extraction against the gold prompts before making any additional
-Director/H3 prompt changes.
+Run focused regressions for the microphone-only soundscape rule and previous-score
+music handoff. If green, rerun Director-only acceptance from the same frozen plan and
+compare audio fields against 2837 and the gold style.
 
 Queued:
-- `tests-2836-h3-audio-task-split`
+- `tests-2838-h3-audio-quality`
 
 ## Public repository rule
 

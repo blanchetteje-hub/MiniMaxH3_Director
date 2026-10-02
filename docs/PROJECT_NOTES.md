@@ -284,12 +284,16 @@ Every production LLM stage, validator, extractor, and cleanup call should print 
 After Request 1 RAW is accepted:
 1. a tiny deterministic LLM cleanup may replace only unambiguous person pronouns with explicit names;
 2. a tiny deterministic soundscape extractor returns only `overall_soundscape`;
-3. a separate narrow creative music call returns only `non_diegetic_music`;
+3. a separate narrow creative music call receives the previous segment's music
+   when continuing and returns only `non_diegetic_music`;
 4. Python copies canonical cleaned RAW directly into `detailed_description`, uses subject metadata from the subject registry / text files, and assembles the final H3 prompt.
 
 Soundscape extraction and music generation must remain separate responsibilities because
-they require different sampling/reasoning behavior. Per-call sampler overrides are not
-used; `ask_llm()` task routing is the sole settings authority.
+they require different sampling/reasoning behavior. Soundscape output is microphone-audible
+only: visual facts such as lighting, expressions, stillness, positions, and silent gestures
+must not be converted into sound. Music should describe one concise underscore cue and
+continue the previous musical state instead of narrating or synchronizing each scene action.
+Per-call sampler overrides are not used; `ask_llm()` task routing is the sole settings authority.
 
 There is no narrative H3 formatter rewrite after RAW, no LLM-generated subject metadata, and no semantic LLM preservation check after Python copies RAW. RAW action preservation is deterministic by construction.
 
