@@ -494,9 +494,10 @@ REFRESH_VAE_ENCODE_NODE_NAME = "VAE Encode"
 
 REFRESH_FIRST_FRAME_SELECTOR_NODE_NAME = "ImageSelector"
 
-REPAIR_FIRST_FRAME_NODE_NAME = "Refresh First Frame"
+REPAIR_FIRST_FRAME_NODE_NAME = "First Frame"
 
-REPAIR_LAST_FRAME_NODE_NAME = "Repair Last Frame"
+REPAIR_LAST_FRAME_NODE_NAME = "Last Frame"
+REPAIR_LOAD_VIDEO_NODE_NAME = "Load Video"
 
 REPAIR_CONDITIONING_NODE_NAME = "MiniMax H3 Hybrid Cond (R2V + I2V)"
 
@@ -7205,19 +7206,6 @@ def validate_workflow(workflow, workflow_label, is_append=False):
     )
     for name, class_type in required:
         find_workflow_node(workflow, name, workflow_label, class_type)
-    _, lora_node = find_workflow_node(
-        workflow,
-        LORA_NODE_NAME,
-        workflow_label,
-        "LoraLoaderModelOnly",
-    )
-    for input_name in ("lora_name", "strength_model"):
-        if input_name not in lora_node["inputs"]:
-            raise RuntimeError(
-                f"Node '{LORA_NODE_NAME}' in {workflow_label} is missing "
-                f"input '{input_name}'."
-            )
-
     if not is_append:
         find_workflow_node(
             workflow,
@@ -7401,12 +7389,6 @@ def validate_repair_base_workflow(workflow, workflow_label):
     )
     find_workflow_node(
         workflow,
-        LORA_NODE_NAME,
-        workflow_label,
-        "LoraLoaderModelOnly",
-    )
-    find_workflow_node(
-        workflow,
         REPAIR_LAST_FRAME_NODE_NAME,
         workflow_label,
         "LoadImage",
@@ -7450,12 +7432,25 @@ def normalize_lora_list(loras):
 def configure_lora_chain(workflow, loras, workflow_label):
     """Replace the workflow's placeholder with an exact ordered LoRA chain."""
     loras = normalize_lora_list(loras)
-    placeholder_id, placeholder = find_workflow_node(
-        workflow,
-        LORA_NODE_NAME,
-        workflow_label,
-        "LoraLoaderModelOnly",
-    )
+    placeholder_matches = [
+        (node_id, node)
+        for node_id, node in workflow.items()
+        if isinstance(node, dict)
+        and node.get("_meta", {}).get("title") == LORA_NODE_NAME
+        and node.get("class_type") == "LoraLoaderModelOnly"
+    ]
+    if not placeholder_matches:
+        if not loras:
+            return workflow
+        raise RuntimeError(
+            f"{workflow_label} has no '{LORA_NODE_NAME}' placeholder for "
+            "user-requested LoRA injection."
+        )
+    if len(placeholder_matches) != 1:
+        raise RuntimeError(
+            f"{workflow_label} contains multiple '{LORA_NODE_NAME}' placeholders."
+        )
+    placeholder_id, placeholder = placeholder_matches[0]
     source_connection = placeholder.get("inputs", {}).get("model")
     if (
         not isinstance(source_connection, list)
@@ -28463,18 +28458,19 @@ def prepare_append_workflow(
         label,
         "VHS_LoadVideoPath",
     )
-    set_node_input(
-        workflow,
-        SAVE_CONTINUATION_VIDEO_NODE_NAME,
-        "filename_prefix",
-        (
+    continuation_save_nodes = [
+        node
+        for node in workflow.values()
+        if isinstance(node, dict)
+        and node.get("_meta", {}).get("title") == SAVE_CONTINUATION_VIDEO_NODE_NAME
+        and node.get("class_type") == "SaveVideo"
+    ]
+    if continuation_save_nodes:
+        continuation_save_nodes[0]["inputs"]["filename_prefix"] = (
             f"{output_prefix}_continuation"
             if output_prefix
             else f"video/continuation_frames/segment_{segment_number:04d}"
-        ),
-        label,
-        "SaveVideo",
-    )
+        )
     set_node_input(
         workflow, SAVE_VIDEO_NODE_NAME, "filename_prefix",
         output_prefix or f"video/segment_{segment_number:04d}",
