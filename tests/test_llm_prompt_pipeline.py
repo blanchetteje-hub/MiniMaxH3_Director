@@ -1455,6 +1455,23 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         )
 
 
+class H3AudioNormalizationTests(unittest.TestCase):
+
+    def test_audio_parser_replaces_underscores_with_spaces(self):
+        parsed = minimax.parse_h3_audio_result({
+            "overall_soundscape": "stirring_oatmeal_pot, window_rattle",
+            "non_diegetic_music": "soft_piano underscore",
+        })
+        self.assertEqual(
+            parsed["overall_soundscape"],
+            "stirring oatmeal pot, window rattle",
+        )
+        self.assertEqual(
+            parsed["non_diegetic_music"],
+            "soft piano underscore",
+        )
+
+
 class DirectorPromptCallContractTests(unittest.TestCase):
 
     def test_director_uses_baseline_creation_contract(self):
