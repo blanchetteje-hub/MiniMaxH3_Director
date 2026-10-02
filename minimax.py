@@ -20032,8 +20032,10 @@ def build_h3_audio_messages(
             "role": "system",
             "content": (
                 "Extract/generate only audio for one already-finalized video scene. "
-                "RAW SCENE is authoritative. overall_soundscape may include only "
-                "sounds supported by visible/audible RAW actions. "
+                "RAW SCENE is authoritative. overall_soundscape must include every "
+                "materially audible sound explicitly supported by the RAW SCENE, and "
+                "must not invent unsupported sounds. Use concise natural-language "
+                "phrasing rather than identifier-style labels with underscores. "
                 "non_diegetic_music is the only creative field. Do not rewrite, "
                 "summarize, interpret, or add story action. Return JSON only."
             ),
