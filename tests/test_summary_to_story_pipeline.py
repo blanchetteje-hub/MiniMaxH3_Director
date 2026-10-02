@@ -81,7 +81,10 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
         self.assertIn("current beat must stop before it", prompt)
         self.assertIn("stable marked functional label", prompt)
         self.assertIn("@Guard1", prompt)
-        self.assertIn("do not create a new story character", prompt)
+        self.assertIn(
+            "do not create a new story character",
+            " ".join(prompt.split()),
+        )
         self.assertIn("Keep interchangeable groups collective", prompt)
 
     def test_timestamp_cleanup_removes_story_clock_times_only(self):
