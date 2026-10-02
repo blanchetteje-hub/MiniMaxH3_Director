@@ -1,0 +1,14 @@
+{
+  "job_id": "tests-2861-post-raw-subject-resolution",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_to_beats_prompt_defers_subject_identity_to_raw",
+    "tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_derived_macro_arc_is_one_event_per_beat",
+    "tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_two_pass_generation_feeds_timestamp_cleaned_beats_to_validator",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_prompt_is_post_raw_and_narrow",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_accepts_only_identity_labeling",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_subject_resolution_rejects_timestamp_drift"
+  ],
+  "timeout_seconds": 1800
+}
