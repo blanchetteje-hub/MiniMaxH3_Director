@@ -266,10 +266,6 @@
         "74",
         0
       ],
-      "first_frame": [
-        "143",
-        0
-      ],
       "last_frame": [
         "144",
         0
@@ -297,6 +293,14 @@
       "ref_images.ref_image_5": [
         "139",
         0
+      ],
+      "ref_videos.ref_video_0": [
+        "145",
+        0
+      ],
+      "ref_video_audios.ref_video_audio_0": [
+        "145",
+        2
       ]
     },
     "class_type": "MiniMaxH3HybridRefAndKeyframe",
@@ -410,6 +414,22 @@
     "class_type": "LoadImage",
     "_meta": {
       "title": "Last Frame"
+    }
+  },
+  "145": {
+    "inputs": {
+      "video": "",
+      "force_rate": 0,
+      "custom_width": 0,
+      "custom_height": 0,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": "AnimateDiff"
+    },
+    "class_type": "VHS_LoadVideoPath",
+    "_meta": {
+      "title": "Load Video"
     }
   }
 }
