@@ -54,7 +54,7 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             normalized,
         )
 
-    def test_story_to_beats_prompt_keeps_summary_story_and_continuity_rule(self):
+    def test_story_to_beats_prompt_defers_subject_identity_to_raw(self):
         messages = minimax.build_story_to_beats_messages(
             "Mara must leave the tower and cross the bridge.",
             "Mara leaves the tower. Mara crosses the bridge.",
@@ -79,16 +79,9 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
         self.assertIn("exactly 8 sequential beats", prompt)
         self.assertIn("A terminal result belongs to one beat only", prompt)
         self.assertIn("current beat must stop before it", prompt)
-        self.assertIn("stable marked functional label", prompt)
-        self.assertIn("@Guard1", prompt)
-        self.assertIn("even if that individual appears in only one beat", prompt)
-        self.assertIn("appears as a foreground participant", prompt)
-        self.assertIn("no member receives a distinct action or outcome", prompt)
-        self.assertIn(
-            "do not create a new story character",
-            " ".join(prompt.split()),
-        )
-        self.assertIn("Keep a crowd/group collective only when its members remain interchangeable", prompt)
+        self.assertIn("Subject identity is resolved later", prompt)
+        self.assertNotIn("@Guard1", prompt)
+        self.assertNotIn("stable marked functional label", prompt)
 
     def test_timestamp_cleanup_removes_story_clock_times_only(self):
         cases = {
@@ -131,50 +124,6 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             for event in phase["required_events"]
         ))
         self.assertEqual(phase["characters_introduced"], [])
-
-    def test_functional_subject_labels_are_extracted_in_first_seen_order(self):
-        beats = [
-            "Mara sees @Guard1 enter while a crowd remains outside.",
-            "@Guard1 confronts Mara as @Creature1 climbs through the window.",
-            "@Creature1 retreats while @Guard1 stays behind.",
-            "@Robot12 arrives after them.",
-        ]
-        self.assertEqual(
-            minimax.story_beat_functional_subject_labels(beats),
-            ["Guard1", "Creature1", "Robot12"],
-        )
-
-    def test_functional_subject_markers_are_removed_before_downstream_beats(self):
-        beat = "Mara sees @Guard1 as @Creature1 enters Room2."
-        self.assertEqual(
-            minimax.strip_story_beat_functional_subject_markers(beat),
-            "Mara sees Guard1 as Creature1 enters Room2.",
-        )
-
-    def test_story_derived_macro_arc_carries_functional_subject_labels(self):
-        beats = [
-            "Mara sees Guard1 enter.",
-            "Guard1 turns as Creature1 appears.",
-            "Creature1 follows Guard1 outside.",
-        ]
-        phase = minimax._story_derived_macro_arc(
-            beats,
-            characters_introduced=["Guard1", "Creature1"],
-        )["phases"][0]
-        self.assertEqual(
-            phase["characters_introduced"],
-            ["Guard1", "Creature1"],
-        )
-
-    def test_functional_subject_extractor_ignores_unmarked_numbered_words(self):
-        beats = [
-            "Three guards enter Room2 while Robot4 remains outside.",
-            "Mara waits at Gate3 for 10 seconds beside Creature2.",
-        ]
-        self.assertEqual(
-            minimax.story_beat_functional_subject_labels(beats),
-            [],
-        )
 
     def test_two_pass_generation_feeds_timestamp_cleaned_beats_to_validator(self):
         expanded_story = (
