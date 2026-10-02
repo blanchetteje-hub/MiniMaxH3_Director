@@ -1,0 +1,13 @@
+{
+  "job_id": "tests-2854-functional-subject-distinction",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_to_beats_prompt_keeps_summary_story_and_continuity_rule",
+    "tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_functional_subject_labels_are_extracted_in_first_seen_order",
+    "tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_functional_subject_markers_are_removed_before_downstream_beats",
+    "tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_derived_macro_arc_carries_functional_subject_labels",
+    "tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_functional_subject_extractor_ignores_unmarked_numbered_words"
+  ],
+  "timeout_seconds": 1800
+}
