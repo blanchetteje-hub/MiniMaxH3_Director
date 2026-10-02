@@ -17,6 +17,7 @@ fix.py
 canonical_data.txt
 canonical_state.txt
 amy.jpg
+gui_settings.json
 
 # Runtime state / LLM traces
 generation_state.json
