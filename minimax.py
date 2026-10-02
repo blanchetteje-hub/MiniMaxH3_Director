@@ -351,7 +351,7 @@ BEAT_WRITING_LLM_SETTINGS = {
 }
 
 STORY_EXPANSION_LLM_SETTINGS = {
-    "temperature": 0.4,
+    "temperature": 0.8,
     "top_p": 0.95,
     "top_k": 0,
     "min_p": 0.05,
@@ -1635,6 +1635,14 @@ def get_formatter(model):
 
 
 # Select the formatter used by the existing generation pipeline.
+def configure_story_temperature(value=0.8):
+    """Set temperature only for the initial summary-to-story writing stage."""
+    value = float(value)
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("Story temperature must be finite and zero or greater.")
+    STORY_EXPANSION_LLM_SETTINGS["temperature"] = value
+
+
 def configure_formatter(model):
     """Select the formatter used by the existing generation pipeline."""
 
@@ -1944,6 +1952,10 @@ def parse_args(arguments=None):
         "megapixels", type=float, nargs="?",
         help="resolution target (default: 0.5)",
     )
+    parser.add_argument(
+        "--temp", type=float, default=0.8, metavar="N",
+        help="temperature for the initial story-writing LLM call only (default: 0.8)",
+    )
     source_mode = parser.add_mutually_exclusive_group()
     source_mode.add_argument(
         "--new", dest="new_run", action="store_true",
@@ -2173,6 +2185,8 @@ def parse_args(arguments=None):
 
     args = parser.parse_args(normalize_command_line(arguments))
     args.total_length = None
+    if not math.isfinite(args.temp) or args.temp < 0:
+        parser.error("--temp must be finite and zero or greater.")
     if args.segment_length is not None and (
         not math.isfinite(args.segment_length) or args.segment_length <= 0
     ):
@@ -31350,6 +31364,7 @@ def _run_main(
             "arc/beat generation is disabled.",
             flush=True,
         )
+    configure_story_temperature(getattr(args, "temp", 0.8))
     configure_formatter(getattr(args, "model", "gpt"))
     global_loras = normalize_lora_list(getattr(args, "lora", ()))
     lora_directory = getattr(args, "lora_dir", LORA_DIRECTORY)

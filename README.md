@@ -917,6 +917,7 @@ frame alignment and stitching trims can affect the final encoded duration.
 | `--generate-all` | Run planning and save prompts without rendering, using the timing positionals. |
 | `--use-prompts PATH` | Render the saved prompt package at PATH without LLM planning. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
+| `--temp N` | Temperature for the initial story-writing LLM call only; defaults to `0.8`. Must be finite and zero or greater. Available as **Story temperature** under New → Prompt & story options. |
 | `--steps STEPS` | BasicScheduler sampling steps for all workflows; defaults to `6`. |
 | `--trim-frames FRAMES` | Trim this many leading frames from every segment after the first when stitching; defaults to `2`, and `0` disables the trim. |
 | `--refresh SEGMENTS` | Compatibility fallback used only when no source-span chapter refresh schedule is available. |

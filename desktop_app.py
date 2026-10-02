@@ -57,6 +57,7 @@ DEFAULT_SETTINGS = {
     "retention": False,
     "repair": "",
     "model": "gpt",
+    "temp": "0.8",
     "first_frame": False,
     "loras": [],
     "beat_count": "",
@@ -107,6 +108,16 @@ FILE_DEFINITIONS = {
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _story_temperature(value: Any) -> float:
+    try:
+        value = float(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Story temperature must be a number.") from error
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("Story temperature must be finite and zero or greater.")
+    return value
 
 
 def _positive_float(value: Any, label: str) -> float:
@@ -302,6 +313,7 @@ class MiniMaxBridge:
         if model not in {"gpt", "mistral", "qwen"}:
             raise ValueError("Model formatter must be 'gpt', 'mistral', or 'qwen'.")
         validated["model"] = model
+        validated["temp"] = _story_temperature(settings.get("temp", 0.8))
 
         repair_value = settings.get("repair")
         if repair_value not in (None, ""):
@@ -375,6 +387,8 @@ class MiniMaxBridge:
                 _number_argument(beat_length),
                 "--model",
                 model,
+                "--temp",
+                _number_argument(_story_temperature(settings.get("temp", 0.8))),
             ]
 
         if not isinstance(settings, dict):
@@ -409,7 +423,7 @@ class MiniMaxBridge:
             effective.update(segment_length=1, total_segments=1, megapixels=0.5,
                              steps=6, trim_frames=2, refresh=4, vision_continuity=0,
                              model="gpt", resume=1, first_frame=False,
-                             retention=False, loras=[])
+                             retention=False, loras=[], temp=0.8)
         values = self._validate_settings(effective)
         command = [
             self.python_executable,
@@ -438,6 +452,7 @@ class MiniMaxBridge:
             command.extend(("--use-prompts", custom_prompts) if custom_prompts
                            else ("--generate-from-prompts",))
         else:
+            command.extend(("--temp", _number_argument(values["temp"])))
             command.append("--new" if mode == "new" else "--existing")
             if operation == "prompts":
                 command.extend(("--generate-prompts", str(values["total_segments"])))
