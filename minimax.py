@@ -30131,6 +30131,23 @@ def resolve_director_raw_scene_subjects(
     if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
         raise ValueError("RAW Subject resolver changed timestamps.")
 
+    # The Subject pass may label previously unnamed actors, but identifiers that
+    # already existed in accepted RAW are immutable. Restore deterministic
+    # suffixed aliases such as Will1 -> Will or Zombie2_1 -> Zombie2.
+    protected_names = {
+        name
+        for _subject_number, name in parse_defined_subjects(subject_definitions)
+    }
+    protected_names.update(
+        re.findall(r"(?<![\w])([A-Z][A-Za-z'\u2019-]*\d+)(?![\w])", timed_original)
+    )
+    for protected_name in sorted(protected_names, key=len, reverse=True):
+        alias_pattern = re.compile(
+            rf"(?<![\w]){re.escape(protected_name)}(?:_\d+|\d+)(?![\w])",
+            re.I,
+        )
+        resolved_timed = alias_pattern.sub(protected_name, resolved_timed)
+
     resolved = (resolved_timed + "\n" + end_state_original).strip()
     structure_errors = _director_raw_scene_structure_errors(
         resolved,
@@ -30144,9 +30161,23 @@ def resolve_director_raw_scene_subjects(
 
     names = []
     seen = set()
+    known_keys = {name.casefold() for name in protected_names}
     for raw_name in result.get("subject_names", []):
         name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
+        for protected_name in sorted(protected_names, key=len, reverse=True):
+            if re.fullmatch(
+                rf"{re.escape(protected_name)}(?:_\d+|\d+)",
+                name,
+                re.I,
+            ):
+                name = protected_name
+                break
         key = name.casefold()
+        if key in known_keys and any(
+            existing.casefold() == key
+            for _number, existing in parse_defined_subjects(subject_definitions)
+        ):
+            continue
         if not name or key in seen or not _subject_name_is_promotable(name):
             continue
         if re.search(
