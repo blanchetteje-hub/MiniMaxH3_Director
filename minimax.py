@@ -948,6 +948,7 @@ JOB
 
 WRITE THE SCENE
 - Show CURRENT BEAT clearly with concrete visible/audible action.
+- Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the End continuity state.
 - Use natural physical staging. Harmless local route or prop details are allowed when needed to make the action readable.
 - Prefer names when a pronoun could be ambiguous.
 - Short dialogue is allowed when it naturally supports CURRENT BEAT.
