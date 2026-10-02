@@ -7070,38 +7070,41 @@ def set_node_input(
 
 
 def find_duration_node(workflow, workflow_label, *, repair=False):
-    """Return the supported duration node regardless of ComfyUI export variant."""
+    """Return a supported duration node regardless of ComfyUI export variant."""
 
-    candidates = (
-        (REPAIR_DURATION_NODE_NAME, REPAIR_DURATION_NODE_CLASS),
-        (DURATION_NODE_NAME, DURATION_NODE_CLASS),
-    ) if repair else (
-        (DURATION_NODE_NAME, DURATION_NODE_CLASS),
-        (REPAIR_DURATION_NODE_NAME, REPAIR_DURATION_NODE_CLASS),
+    preferred_names = (
+        (REPAIR_DURATION_NODE_NAME, DURATION_NODE_NAME)
+        if repair
+        else (DURATION_NODE_NAME, REPAIR_DURATION_NODE_NAME)
     )
+    supported_classes = {DURATION_NODE_CLASS, REPAIR_DURATION_NODE_CLASS}
     matches = []
-    for node_name, class_type in candidates:
+    for preferred_rank, node_name in enumerate(preferred_names):
         for node_id, node in workflow.items():
             if not isinstance(node, dict):
                 continue
             if node.get("_meta", {}).get("title") != node_name:
                 continue
-            if node.get("class_type") != class_type:
+            class_type = node.get("class_type")
+            if class_type not in supported_classes:
                 continue
-            matches.append((node_id, node, node_name, class_type))
+            matches.append(
+                (preferred_rank, node_id, node, node_name, class_type)
+            )
     if not matches:
-        expected = " or ".join(
-            f"'{name}'/{class_type}" for name, class_type in candidates
-        )
         raise WorkflowConfigurationError(
             f"{workflow_label} is missing a supported duration node "
-            f"({expected})."
+            f"('{DURATION_NODE_NAME}' or '{REPAIR_DURATION_NODE_NAME}')."
         )
-    if len(matches) > 1:
+    best_rank = min(match[0] for match in matches)
+    best = [match for match in matches if match[0] == best_rank]
+    if len(best) > 1:
         raise WorkflowConfigurationError(
-            f"{workflow_label} contains multiple supported duration nodes."
+            f"{workflow_label} contains multiple supported duration nodes "
+            f"named '{preferred_names[best_rank]}'."
         )
-    return matches[0]
+    _rank, node_id, node, node_name, class_type = best[0]
+    return node_id, node, node_name, class_type
 
 
 def set_duration_input(workflow, workflow_label, duration, *, repair=False):
