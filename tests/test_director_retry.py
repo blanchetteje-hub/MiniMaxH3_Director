@@ -236,11 +236,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_raw_subject_resolution_accepts_only_identity_labeling(self):
         original = (
             "At 00:01.000, a guard enters the room.\n"
-            "At 00:04.000, another guard blocks the door."
+            "At 00:04.000, another guard blocks the door.\n"
+            "End continuity state: both guards remain in the room."
         )
         resolved = (
             "At 00:01.000, Guard1 enters the room.\n"
-            "At 00:04.000, Guard2 blocks the door."
+            "At 00:04.000, Guard2 blocks the door.\n"
+            "End continuity state: Guard1 and Guard2 remain in the room."
         )
         request = mock.Mock(return_value={
             "raw_scene": resolved,
