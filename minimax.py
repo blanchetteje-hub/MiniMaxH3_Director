@@ -710,6 +710,7 @@ SUBJECT_IDENTITY_FIELDS = (
 
 SUBJECT_CANONICAL_METADATA_FIELDS = (
     "persistent_structural_change",
+    "canonical_description",
 )
 
 SUBJECT_CANONICAL_STATE_FIELDS = (
@@ -4180,6 +4181,9 @@ def new_subject_continuity_record(subject):
         "persistent_structural_change": bool(
             subject.get("persistent_structural_change", False)
         ),
+        "canonical_description": " ".join(
+            str(subject.get("canonical_description") or "").split()
+        ),
         "position": "N/A",
         "pose_action": "N/A",
         "wardrobe": {
@@ -4249,6 +4253,10 @@ def continuity_state_for_registry(subject_definitions, state=None):
         record["persistent_structural_change"] = bool(
             existing.get("persistent_structural_change", False)
         )
+        if isinstance(existing.get("canonical_description"), str):
+            record["canonical_description"] = " ".join(
+                existing["canonical_description"].split()
+            )
         for field in (
             "position",
             "pose_action",
@@ -5707,7 +5715,14 @@ def derive_additional_subject_definitions(
         if record.get("picture_ids"):
             continue
         gender = normalize_subject_gender(record.get("gender"))
-        gender_clause = f", {gender}" if gender in {"male", "female"} else ""
+        canonical_description = " ".join(
+            str(record.get("canonical_description") or "").split()
+        ).strip()
+        gender_clause = (
+            ""
+            if canonical_description
+            else (f", {gender}" if gender in {"male", "female"} else "")
+        )
         speaker_id = _subject_speaker_token(
             record.get("speaker_id") or f"S{subject_id}"
         )
@@ -5715,10 +5730,13 @@ def derive_additional_subject_definitions(
             origin_segment = int(record.get("origin_segment"))
         except (TypeError, ValueError):
             origin_segment = 1
-        definitions.append(
+        definition = (
             f"<Subject {subject_id}> is {name}{gender_clause} ({speaker_id}), "
             "continued from <Video 1>."
         )
+        if canonical_description:
+            definition += " " + canonical_description
+        definitions.append(definition)
     return definitions
 
 
@@ -21565,6 +21583,105 @@ def _subject_name_is_promotable(name):
     return not (set(normalized.split()) & disallowed_words)
 
 
+# Flatten one canonical clothing value into stable garment phrases.
+def _canonical_clothing_items(value):
+    """Return deterministic garment phrases from text, arrays, or mappings."""
+    raw_items = []
+    if isinstance(value, dict):
+        preferred = ("top", "upper", "bottom", "lower", "footwear", "other")
+        used = set()
+        for key in preferred:
+            if key in value:
+                raw_items.extend(_canonical_clothing_items(value.get(key)))
+                used.add(key)
+        for key, item in value.items():
+            if key not in used:
+                raw_items.extend(_canonical_clothing_items(item))
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            raw_items.extend(_canonical_clothing_items(item))
+    else:
+        text = " ".join(str(value or "").split()).strip(" ,.;")
+        if text and text.casefold() not in {"n/a", "unknown", "unspecified", "none"}:
+            raw_items.append(text)
+
+    deduped = []
+    seen = set()
+    for item in raw_items:
+        key = item.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def _canonical_indefinite_phrase(text, *, clothing=False):
+    """Add a/an only when a short canonical phrase needs a determiner."""
+    phrase = " ".join(str(text or "").split()).strip()
+    if not phrase:
+        return ""
+    if re.match(r"(?i)^(?:a|an|the|his|her|their|its)\b", phrase):
+        return phrase
+    first = re.split(r"\s+", phrase, maxsplit=1)[0].casefold()
+    if clothing and first in {
+        "jeans", "pants", "shorts", "trousers", "leggings", "overalls",
+        "pajamas", "pyjamas", "clothes",
+    }:
+        return phrase
+    if re.match(r"^(?:8|11|18)(?:\D|$)", first):
+        article = "an"
+    else:
+        article = "an" if first[:1] in "aeiou" else "a"
+    return f"{article} {phrase}"
+
+
+def format_canonical_character_sentence(record):
+    """Render age, gender, and clothing as one deterministic natural sentence."""
+    if not isinstance(record, dict):
+        return ""
+    name = " ".join(str(record.get("name") or "").split()).strip()
+    if not name:
+        return ""
+
+    age = " ".join(str(record.get("age") or "").split()).strip()
+    age_match = re.fullmatch(
+        r"(?i)(\d+)\s*(?:-?\s*years?\s*-?\s*old)?",
+        age,
+    )
+    if age_match:
+        age = f"{age_match.group(1)}-year-old"
+    else:
+        age = re.sub(
+            r"(?i)\b(\d+)\s*-?\s*years?\s*-?\s*old\b",
+            r"\1-year-old",
+            age,
+        )
+
+    gender = normalize_subject_gender(record.get("gender"))
+    descriptors = []
+    if age and age.casefold() not in {"n/a", "unknown", "unspecified"}:
+        descriptors.append(age)
+    if gender in {"male", "female"}:
+        descriptors.append(gender)
+
+    clothing_items = _canonical_clothing_items(record.get("clothing"))
+    clothing = _english_join(clothing_items)
+    if clothing:
+        clothing = _canonical_indefinite_phrase(clothing, clothing=True)
+
+    if descriptors:
+        subject_phrase = _canonical_indefinite_phrase(" ".join(descriptors))
+        sentence = f"{name} is {subject_phrase}"
+        if clothing:
+            sentence += f" wearing {clothing}"
+    elif clothing:
+        sentence = f"{name} is wearing {clothing}"
+    else:
+        return ""
+    return sentence.rstrip(".") + "."
+
+
 # Return canonical named-character hints for deterministic Subject promotion.
 def canonical_character_subject_hints(character_canon):
     """Return canonical character names and authoritative known genders."""
@@ -21585,6 +21702,21 @@ def canonical_character_subject_hints(character_canon):
     return list(dict.fromkeys(names)), genders
 
 
+def canonical_character_subject_descriptions(character_canon):
+    """Return deterministic canonical prose keyed by character name."""
+    descriptions = {}
+    if not isinstance(character_canon, dict):
+        return descriptions
+    for record in character_canon.get("characters", []):
+        if not isinstance(record, dict):
+            continue
+        name = " ".join(str(record.get("name") or "").split()).strip()
+        sentence = format_canonical_character_sentence(record)
+        if name and sentence and _subject_name_is_promotable(name):
+            descriptions[name] = sentence
+    return descriptions
+
+
 # Register planned named characters only when they visibly appear now.
 def register_named_subject_hints(
     continuity_state,
@@ -21593,6 +21725,7 @@ def register_named_subject_hints(
     subject_hints,
     origin_segment=None,
     subject_genders=None,
+    subject_descriptions=None,
 ):
     """Register planned named characters only when they visibly appear now."""
     state = continuity_state_for_registry(
@@ -21632,6 +21765,11 @@ def register_named_subject_hints(
             "picture_id": None,
             "speaker_id": speaker_id,
             "origin_segment": origin_segment,
+            "canonical_description": (
+                subject_descriptions.get(name, "")
+                if isinstance(subject_descriptions, dict)
+                else ""
+            ),
         })
         added_names.append(name)
     return state, added_names
@@ -31184,6 +31322,9 @@ def _run_main(
     canonical_subject_names, canonical_subject_genders = (
         canonical_character_subject_hints(character_canon)
     )
+    canonical_subject_descriptions = (
+        canonical_character_subject_descriptions(character_canon)
+    )
     if canonical_character_facts:
         subject_information = (
             subject_information + "\n" + canonical_character_facts
@@ -32013,6 +32154,7 @@ def _run_main(
             )),
             origin_segment=segment,
             subject_genders=registration_subject_genders,
+            subject_descriptions=canonical_subject_descriptions,
         )
         newly_registered_names = list(dict.fromkeys(
             dialogue_subject_names + hinted_subject_names

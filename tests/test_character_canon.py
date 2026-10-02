@@ -98,6 +98,49 @@ class CharacterCanonTests(unittest.TestCase):
             self.assertEqual(result["characters"][0]["gender"], "female")
             request.assert_not_called()
 
+    def test_canonical_character_sentence_is_deterministic(self):
+        self.assertEqual(
+            minimax.format_canonical_character_sentence({
+                "name": "Amber",
+                "age": "5",
+                "clothing": {
+                    "top": "pink dress",
+                    "bottom": "pink dress",
+                },
+                "gender": "female",
+            }),
+            "Amber is a 5-year-old female wearing a pink dress.",
+        )
+        self.assertEqual(
+            minimax.format_canonical_character_sentence({
+                "name": "Will",
+                "age": "8-years-old",
+                "clothing": "blue T-shirt and shorts",
+                "gender": "male",
+            }),
+            "Will is an 8-year-old male wearing a blue T-shirt and shorts.",
+        )
+
+    def test_canonical_subject_descriptions_are_keyed_by_name(self):
+        canon = {
+            "characters": [
+                {
+                    "name": "Amber",
+                    "age": "5",
+                    "clothing": "pink dress",
+                    "gender": "female",
+                }
+            ]
+        }
+        self.assertEqual(
+            minimax.canonical_character_subject_descriptions(canon),
+            {
+                "Amber": (
+                    "Amber is a 5-year-old female wearing a pink dress."
+                )
+            },
+        )
+
     def test_character_canon_hash_tracks_fields_story_and_subjects(self):
         base = minimax._character_canon_source_hash(CANONICAL_DATA, STORY, SUBJECTS)
         self.assertNotEqual(

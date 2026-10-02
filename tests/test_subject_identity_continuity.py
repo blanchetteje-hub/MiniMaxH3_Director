@@ -340,6 +340,34 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         self.assertEqual(state["subjects"]["Will"]["gender"], "male")
         self.assertEqual(state["subjects"]["Amber"]["gender"], "female")
 
+    def test_canonical_description_survives_and_is_emitted_on_reappearance(self):
+        definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+        state = minimax.continuity_state_for_registry(definitions)
+        state, added = minimax.register_named_subject_hints(
+            state,
+            definitions,
+            "At 00:02.000, Amber enters the kitchen.",
+            ["Amber"],
+            origin_segment=2,
+            subject_genders={"Amber": "female"},
+            subject_descriptions={
+                "Amber": "Amber is a 5-year-old female wearing a pink dress."
+            },
+        )
+        self.assertEqual(added, ["Amber"])
+
+        resumed = minimax.continuity_state_for_registry(definitions, state)
+        rendered = minimax.derive_additional_subject_definitions(
+            definitions,
+            resumed,
+        )
+        amber = next(line for line in rendered if "Amber" in line)
+        self.assertIn("<Subject 2> is Amber", amber)
+        self.assertIn(
+            "Amber is a 5-year-old female wearing a pink dress.",
+            amber,
+        )
+
     def test_canonical_named_character_not_visible_is_not_promoted(self):
         canon = {
             "fields": ["gender"],
