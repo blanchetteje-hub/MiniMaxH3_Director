@@ -1,0 +1,14 @@
+{
+  "job_id": "tests-2821-pronoun-grammar",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_prompt_is_narrow",
+    "tests/test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_accepts_name_only_rewrite",
+    "tests/test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_accepts_subject_object_and_possessive_names",
+    "tests/test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_logs_replacements",
+    "tests/test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_preserves_end_state_exactly",
+    "tests/test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_rejects_timestamp_drift"
+  ],
+  "timeout_seconds": 1800
+}
