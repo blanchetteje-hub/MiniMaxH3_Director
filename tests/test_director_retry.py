@@ -239,13 +239,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:05.000, another guard blocks the door.\n"
             "End continuity state: both guards remain in the room."
         )
-        resolved = (
+        resolved_timed = (
             "At 00:01.000, Guard1 enters the room.\n"
-            "At 00:05.000, Guard2 blocks the door.\n"
-            "End continuity state: Guard1 and Guard2 remain in the room."
+            "At 00:05.000, Guard2 blocks the door."
         )
         request = mock.Mock(return_value={
-            "raw_scene": resolved,
+            "raw_scene": resolved_timed,
             "subject_names": ["Guard1", "Guard2"],
         })
         result, names = minimax.resolve_director_raw_scene_subjects(
@@ -254,7 +253,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             llm_request=request,
             segment_seconds=6.0,
         )
-        self.assertEqual(result, resolved)
+        self.assertEqual(
+            result,
+            resolved_timed
+            + "\nEnd continuity state: both guards remain in the room.",
+        )
         self.assertEqual(names, ["Guard1", "Guard2"])
         self.assertEqual(
             request.call_args.kwargs["history_metadata"]["purpose"],
