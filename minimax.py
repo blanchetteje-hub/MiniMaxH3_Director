@@ -20070,9 +20070,15 @@ def parse_h3_audio_result(raw_result):
         soundscape = "N/A"
     if not music:
         music = "N/A"
+    soundscape = " ".join(
+        _strip_formatter_metadata(soundscape).replace("_", " ").split()
+    )
+    music = " ".join(
+        _strip_formatter_metadata(music).replace("_", " ").split()
+    )
     return {
-        "overall_soundscape": _strip_formatter_metadata(soundscape),
-        "non_diegetic_music": _strip_formatter_metadata(music),
+        "overall_soundscape": soundscape,
+        "non_diegetic_music": music,
     }
 
 
