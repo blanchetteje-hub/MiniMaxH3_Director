@@ -407,6 +407,16 @@ class ResumeTests(unittest.TestCase):
         args = minimax.parse_args(["5", "20", ".5"])
         self.assertFalse(args.ff)
 
+    def test_main_does_not_retry_invalid_command_line(self):
+        with mock.patch.object(
+            minimax,
+            "_run_main",
+            side_effect=SystemExit(2),
+        ) as run_main:
+            with self.assertRaisesRegex(SystemExit, "2"):
+                minimax.main()
+        self.assertEqual(run_main.call_count, 1)
+
     def test_parse_args_rejects_nonpositive_steps(self):
         with self.assertRaises(SystemExit):
             minimax.parse_args(["5", "20", ".5", "--steps", "0"])
