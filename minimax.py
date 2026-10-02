@@ -461,7 +461,10 @@ CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
 # Stable workflow node titles and reference-image runtime overrides.
 # ------------------------------------------------------------
 
-DURATION_NODE_NAME = "Float (duration)"
+DURATION_NODE_NAME = "Length"
+DURATION_NODE_CLASS = "FloatConstant"
+REPAIR_DURATION_NODE_NAME = "Float (duration)"
+REPAIR_DURATION_NODE_CLASS = "PrimitiveFloat"
 
 PROMPT_NODE_NAME = "Prompt"
 
@@ -479,7 +482,7 @@ SCHEDULER_NODE_NAME = "BasicScheduler"
 
 MATH_NODE_NAME = "Math Expression"
 
-LOAD_VIDEO_NODE_NAME = "Load_Video"
+LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
 
 REFRESH_LOAD_VIDEO_NODE_NAME = "Load Video"
 
@@ -7195,7 +7198,7 @@ def connect_refresh_workflow_inputs(workflow, workflow_label):
 # Validate workflow.
 def validate_workflow(workflow, workflow_label, is_append=False):
     required = (
-        (DURATION_NODE_NAME, "PrimitiveFloat"),
+        (DURATION_NODE_NAME, DURATION_NODE_CLASS),
         (PROMPT_NODE_NAME, "DPRandomGenerator"),
         (NOISE_NODE_NAME, "RandomNoise"),
         (SAVE_VIDEO_NODE_NAME, "SaveVideo")
@@ -7364,28 +7367,61 @@ def validate_refresh_workflow(workflow, workflow_label):
 
 # Validate the legacy two-keyframe graph reserved for --repair.
 def validate_repair_base_workflow(workflow, workflow_label):
-    """Validate the old hybrid keyframe graph used only by repair."""
+    """Validate the repair hybrid graph used for one-segment regeneration."""
 
-    validate_workflow(workflow, workflow_label, is_append=False)
     find_workflow_node(
         workflow,
-        REPAIR_FIRST_FRAME_NODE_NAME,
+        REPAIR_DURATION_NODE_NAME,
+        workflow_label,
+        REPAIR_DURATION_NODE_CLASS,
+    )
+    find_workflow_node(
+        workflow,
+        PROMPT_NODE_NAME,
+        workflow_label,
+        "DPRandomGenerator",
+    )
+    find_workflow_node(
+        workflow,
+        NOISE_NODE_NAME,
+        workflow_label,
+        "RandomNoise",
+    )
+    find_workflow_node(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        workflow_label,
+        "SaveVideo",
+    )
+    find_workflow_node(
+        workflow,
+        RESOLUTION_NODE_NAME,
+        workflow_label,
+        "ResolutionSelector",
+    )
+    find_workflow_node(
+        workflow,
+        LORA_NODE_NAME,
+        workflow_label,
+        "LoraLoaderModelOnly",
+    )
+    find_workflow_node(
+        workflow,
+        REPAIR_LAST_FRAME_NODE_NAME,
         workflow_label,
         "LoadImage",
+    )
+    find_workflow_node(
+        workflow,
+        REPAIR_LOAD_VIDEO_NODE_NAME,
+        workflow_label,
+        "VHS_LoadVideoPath",
     )
     find_workflow_node(
         workflow,
         REPAIR_CONDITIONING_NODE_NAME,
         workflow_label,
         "MiniMaxH3HybridRefAndKeyframe",
-    )
-    validate_named_connection(
-        workflow,
-        REPAIR_CONDITIONING_NODE_NAME,
-        "first_frame",
-        REPAIR_FIRST_FRAME_NODE_NAME,
-        0,
-        workflow_label,
     )
 
 
@@ -26732,26 +26768,16 @@ def extract_video_frame(
 
 
 # Extract the two visible-neighbor anchors for one repaired bridge.
-def extract_repair_anchor_frames(
-    previous_video_path,
+def extract_repair_last_frame(
     next_video_path,
     segment_number,
     input_directory=None,
     trim_frames=TRIM_FRAMES_AFTER_FIRST,
 ):
-    """Extract the two visible-neighbor anchors for one repaired bridge."""
+    """Extract the following segment's first stitched-visible frame for repair."""
 
-    first_frame_name = f"minimax_repair_first_frame_{segment_number:04d}.png"
     last_frame_name = f"minimax_repair_last_frame_{segment_number:04d}.png"
-    first_frame_name = extract_video_frame(
-        previous_video_path,
-        first_frame_name,
-        input_directory=input_directory,
-        final_frame=True,
-        temporary_prefix=f".repair_first_{segment_number:04d}_",
-        error_label=f"the first repair anchor for segment {segment_number}",
-    )
-    last_frame_name = extract_video_frame(
+    return extract_video_frame(
         next_video_path,
         last_frame_name,
         input_directory=input_directory,
@@ -26759,7 +26785,6 @@ def extract_repair_anchor_frames(
         temporary_prefix=f".repair_last_{segment_number:04d}_",
         error_label=f"the last repair anchor for segment {segment_number}",
     )
-    return first_frame_name, last_frame_name
 
 
 # Return the decoded video-frame count using ffprobe.
@@ -27902,7 +27927,7 @@ def prepare_initial_workflow(
 
     set_node_input(
         workflow, DURATION_NODE_NAME, "value", duration,
-        label, "PrimitiveFloat"
+        label, DURATION_NODE_CLASS
     )
     set_node_input(
         workflow, PROMPT_NODE_NAME, "text", h3_prompt,
@@ -28006,7 +28031,7 @@ def prepare_refresh_workflow(
 
     set_node_input(
         workflow, DURATION_NODE_NAME, "value", duration,
-        label, "PrimitiveFloat",
+        label, DURATION_NODE_CLASS,
     )
     set_node_input(
         workflow, PROMPT_NODE_NAME, "text", h3_prompt,
@@ -28148,54 +28173,15 @@ def validate_repair_workflow(
     workflow,
     workflow_label,
     last_frame_node_name,
-    preserved_conditioning=None,
 ):
-    """Validate both repair keyframes and their conditioning connections."""
+    """Validate repair last-frame, previous-video, and reference-image wiring."""
 
     find_workflow_node(
         workflow,
-        REPAIR_FIRST_FRAME_NODE_NAME,
-        workflow_label,
-        "LoadImage",
-    )
-    find_workflow_node(
-        workflow,
         REPAIR_CONDITIONING_NODE_NAME,
         workflow_label,
         "MiniMaxH3HybridRefAndKeyframe",
     )
-    validate_named_connection(
-        workflow,
-        REPAIR_CONDITIONING_NODE_NAME,
-        "first_frame",
-        REPAIR_FIRST_FRAME_NODE_NAME,
-        0,
-        workflow_label,
-    )
-    _, conditioning = find_workflow_node(
-        workflow,
-        REPAIR_CONDITIONING_NODE_NAME,
-        workflow_label,
-        "MiniMaxH3HybridRefAndKeyframe",
-    )
-    for image_index, reference_node_name in enumerate(REFERENCE_IMAGE_NODE_NAMES):
-        input_name = f"ref_images.ref_image_{image_index}"
-        if input_name not in conditioning["inputs"]:
-            continue
-        validate_named_connection(
-            workflow,
-            REPAIR_CONDITIONING_NODE_NAME,
-            input_name,
-            reference_node_name,
-            0,
-            workflow_label,
-        )
-    for input_name, expected_value in (preserved_conditioning or {}).items():
-        if conditioning["inputs"].get(input_name) != expected_value:
-            raise RuntimeError(
-                f"Repair workflow unexpectedly changed conditioning input "
-                f"'{input_name}'."
-            )
     find_workflow_node(
         workflow,
         last_frame_node_name,
@@ -28210,29 +28196,54 @@ def validate_repair_workflow(
         0,
         workflow_label,
     )
+    validate_named_connection(
+        workflow,
+        REPAIR_CONDITIONING_NODE_NAME,
+        "ref_videos.ref_video_0",
+        REPAIR_LOAD_VIDEO_NODE_NAME,
+        0,
+        workflow_label,
+    )
+    validate_named_connection(
+        workflow,
+        REPAIR_CONDITIONING_NODE_NAME,
+        "ref_video_audios.ref_video_audio_0",
+        REPAIR_LOAD_VIDEO_NODE_NAME,
+        2,
+        workflow_label,
+    )
+
 # Prepare the legacy hybrid graph as an isolated first/last-keyframe bridge.
 def prepare_repair_workflow(
     duration,
     megapixels,
     h3_prompt,
-    first_frame_name,
+    previous_video_path,
     last_frame_name,
     segment_number,
     steps=6,
     loras=None,
     lora_override=None,
     reference_workflow=None,
+    segment_length=None,
 ):
-    """Prepare the dedicated two-keyframe repair graph."""
+    """Prepare repair from the preceding video tail plus the following first frame."""
 
     if lora_override is not None:
         if loras:
             raise ValueError("Pass loras or lora_override, not both.")
         loras = [lora_override]
-    if not isinstance(first_frame_name, str) or not first_frame_name.strip():
-        raise ValueError("A repair first-frame filename is required.")
     if not isinstance(last_frame_name, str) or not last_frame_name.strip():
         raise ValueError("A repair last-frame filename is required.")
+
+    previous_video_path = os.path.abspath(os.fspath(previous_video_path))
+    if (
+        not os.path.isfile(previous_video_path)
+        or os.path.getsize(previous_video_path) == 0
+    ):
+        raise FileNotFoundError(
+            f"Previous video is missing or empty: {previous_video_path}"
+        )
 
     workflow = load_workflow(REPAIR_WORKFLOW_FILE)
     label = f"repair workflow '{REPAIR_WORKFLOW_FILE}'"
@@ -28244,23 +28255,11 @@ def prepare_repair_workflow(
 
     set_node_input(
         workflow,
-        REPAIR_FIRST_FRAME_NODE_NAME,
-        "image",
-        _comfy_image_reference(first_frame_name),
+        REPAIR_DURATION_NODE_NAME,
+        "value",
+        duration,
         label,
-        "LoadImage",
-    )
-    set_node_input(
-        workflow,
-        REPAIR_CONDITIONING_NODE_NAME,
-        "also_ref_first_frame",
-        False,
-        label,
-        "MiniMaxH3HybridRefAndKeyframe",
-    )
-    set_node_input(
-        workflow, DURATION_NODE_NAME, "value", duration,
-        label, "PrimitiveFloat",
+        REPAIR_DURATION_NODE_CLASS,
     )
     set_node_input(
         workflow, PROMPT_NODE_NAME, "text", h3_prompt,
@@ -28278,6 +28277,34 @@ def prepare_repair_workflow(
         workflow, RESOLUTION_NODE_NAME, "megapixels", megapixels,
         label, "ResolutionSelector",
     )
+    set_node_input(
+        workflow,
+        REPAIR_LOAD_VIDEO_NODE_NAME,
+        "video",
+        previous_video_path,
+        label,
+        "VHS_LoadVideoPath",
+    )
+    context_segment_length = duration if segment_length is None else segment_length
+    set_node_input(
+        workflow,
+        REPAIR_LOAD_VIDEO_NODE_NAME,
+        "skip_first_frames",
+        h3_context_tail_skip_frames(
+            context_segment_length,
+            APPEND_CONTEXT_FRAMES,
+        ),
+        label,
+        "VHS_LoadVideoPath",
+    )
+    set_node_input(
+        workflow,
+        REPAIR_LOAD_VIDEO_NODE_NAME,
+        "frame_load_cap",
+        APPEND_CONTEXT_FRAMES,
+        label,
+        "VHS_LoadVideoPath",
+    )
 
     _, conditioning = find_workflow_node(
         workflow,
@@ -28285,18 +28312,6 @@ def prepare_repair_workflow(
         label,
         "MiniMaxH3HybridRefAndKeyframe",
     )
-    preserved_conditioning = {
-        input_name: copy.deepcopy(conditioning["inputs"].get(input_name))
-        for input_name in (
-            "also_ref_first_frame",
-            "ref_image_size",
-            *(
-                f"ref_images.ref_image_{image_index}"
-                for image_index in range(len(REFERENCE_IMAGE_NODE_NAMES))
-                if f"ref_images.ref_image_{image_index}" in conditioning["inputs"]
-            ),
-        )
-    }
     last_node_id, last_node, last_node_name = _repair_last_frame_node(
         workflow,
         conditioning,
@@ -28306,8 +28321,20 @@ def prepare_repair_workflow(
         raise RuntimeError(
             f"Last-frame LoadImage node '{last_node_name}' has no image input."
         )
-    last_node["inputs"]["image"] = last_frame_name.strip()
+    last_node["inputs"]["image"] = _comfy_image_reference(last_frame_name.strip())
     conditioning["inputs"]["last_frame"] = [last_node_id, 0]
+
+    video_node_id, _ = find_workflow_node(
+        workflow,
+        REPAIR_LOAD_VIDEO_NODE_NAME,
+        label,
+        "VHS_LoadVideoPath",
+    )
+    conditioning_inputs = conditioning.setdefault("inputs", {})
+    conditioning_inputs["ref_videos.ref_video_0"] = [video_node_id, 0]
+    conditioning_inputs["ref_video_audios.ref_video_audio_0"] = [video_node_id, 2]
+    conditioning_inputs.pop("first_frame", None)
+
     set_node_input(
         workflow,
         SAVE_VIDEO_NODE_NAME,
@@ -28321,7 +28348,6 @@ def prepare_repair_workflow(
         workflow,
         label,
         last_node_name,
-        preserved_conditioning=preserved_conditioning,
     )
     return workflow
 
@@ -28375,7 +28401,7 @@ def prepare_append_workflow(
 
     set_node_input(
         workflow, DURATION_NODE_NAME, "value", duration,
-        label, "PrimitiveFloat"
+        label, DURATION_NODE_CLASS
     )
     set_node_input(
         workflow, PROMPT_NODE_NAME, "text", h3_prompt,
@@ -28866,8 +28892,7 @@ def repair_existing_segment(
         f"Next anchor: segment {segment_number + 1} stitched frame "
         f"{repair_trim_frames}"
     )
-    first_frame_name, last_frame_name = extract_repair_anchor_frames(
-        repair["previous_record"]["video_path"],
+    last_frame_name = extract_repair_last_frame(
         repair["next_record"]["video_path"],
         segment_number,
         input_directory=input_directory,
@@ -28884,7 +28909,7 @@ def repair_existing_segment(
         duration,
         megapixels,
         h3_prompt,
-        first_frame_name,
+        repair["previous_record"]["video_path"],
         last_frame_name,
         steps,
         loras=loras,
