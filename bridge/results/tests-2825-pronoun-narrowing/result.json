@@ -1,0 +1,31 @@
+{
+  "job_id": "tests-2825-pronoun-narrowing",
+  "kind": "run_tests",
+  "started_at": 1790901452.2573953,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_clear_local_possessives",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_logs_replacements",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_end_state_exactly"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 5 items\n\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow FAILED [ 20%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_clear_local_possessives PASSED [ 40%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite PASSED [ 60%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_logs_replacements PASSED [ 80%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_end_state_exactly PASSED [100%]\n\n================================== FAILURES ===================================\n_ DirectorMicroPromptPipelineTests.test_raw_pronoun_resolution_prompt_is_narrow _\n\nself = <tests.test_director_retry.DirectorMicroPromptPipelineTests testMethod=test_raw_pronoun_resolution_prompt_is_narrow>\n\n    def test_raw_pronoun_resolution_prompt_is_narrow(self):\n        messages = minimax.build_director_pronoun_resolution_messages(\n            (\n                \"At 00:01.000, Amy pushes Will and Amber toward the closet.\\n\"\n                \"At 00:04.000, she pushes them inside.\\n\"\n                \"End continuity state: they are inside the closet.\"\n            ),\n            (\n                \"<Subject 1> is Amy.\\n\"\n                \"<Subject 2> is Will.\\n\"\n                \"<Subject 3> is Amber.\"\n            ),\n        )\n        text = messages[0][\"content\"] + \"\\n\" + messages[1][\"content\"]\n>       self.assertIn(\"Change only those pronouns\", text)\nE       AssertionError: 'Change only those pronouns' not found in 'Make ambiguous person references explicit for a video prompt. Scan the supplied timed scene and replace only clear personal subject/object pronouns whose explicit name would help identify the actor or target (especially she, he, they, him, her, them). Prefer names for standalone they/them. Leave ordinary possessive determiners unchanged when their owner is already clear from the sentence or nearby context: keep \\'her hand\\', \\'his collar\\', and \\'their bowls\\' as written. Do not rewrite a readable local possessive merely to repeat a name. Change only the pronoun itself. Preserve every timestamp, action, action order, object, location, sound, camera instruction, dialogue, and punctuation meaning. Do not add, remove, combine, split, or reinterpret actions. If a pronoun\\'s referent is uncertain, leave it unchanged. Return JSON only.\\nKNOWN SUBJECTS\\n<Subject 1> is Amy.\\n<Subject 2> is Will.\\n<Subject 3> is Amber.\\n\\nRAW SCENE\\nAt 00:01.000, Amy pushes Will and Amber toward the closet.\\nAt 00:04.000, she pushes them inside.\\nEnd continuity state: they are inside the closet.\\n\\nReturn {\"raw_scene\":\"same RAW SCENE with only unambiguous person pronouns replaced by explicit names\"}.'\n\ntests\\test_director_retry.py:94: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow - AssertionError: 'Change only those pronouns' not found in 'Make ambiguous person references explicit for a video prompt. Scan the supplied timed scene and replace only clear personal subject/object pronouns whose explicit name would help identify the actor or target (especially she, he, they, him, her, them). Prefer names for standalone they/them. Leave ordinary possessive determiners unchanged when their owner is already clear from the sentence or nearby context: keep \\'her hand\\', \\'his collar\\', and \\'their bowls\\' as written. Do not rewrite a readable local possessive merely to repeat a name. Change only the pronoun itself. Preserve every timestamp, action, action order, object, location, sound, camera instruction, dialogue, and punctuation meaning. Do not add, remove, combine, split, or reinterpret actions. If a pronoun\\'s referent is uncertain, leave it unchanged. Return JSON only.\\nKNOWN SUBJECTS\\n<Subject 1> is Amy.\\n<Subject 2> is Will.\\n<Subject 3> is Amber.\\n\\nRAW SCENE\\nAt 00:01.000, Amy pushes Will and Amber toward the closet.\\nAt 00:04.000, she pushes them inside.\\nEnd continuity state: they are inside the closet.\\n\\nReturn {\"raw_scene\":\"same RAW SCENE with only unambiguous person pronouns replaced by explicit names\"}.'\n========================= 1 failed, 4 passed in 3.05s =========================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790901453.539386,
+    "finished_at": 1790901457.376792
+  },
+  "finished_at": 1790901457.376792,
+  "status": "ok"
+}
