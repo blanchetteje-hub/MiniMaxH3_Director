@@ -88,7 +88,7 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             "do not create a new story character",
             " ".join(prompt.split()),
         )
-        self.assertIn("Keep interchangeable groups collective", prompt)
+        self.assertIn("Keep a crowd/group collective only when its members remain interchangeable", prompt)
 
     def test_timestamp_cleanup_removes_story_clock_times_only(self):
         cases = {
