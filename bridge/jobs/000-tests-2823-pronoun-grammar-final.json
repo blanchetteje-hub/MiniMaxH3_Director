@@ -1,0 +1,10 @@
+{
+  "job_id": "tests-2823-pronoun-grammar-final",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_subject_object_and_possessive_names"
+  ],
+  "timeout_seconds": 1800
+}
