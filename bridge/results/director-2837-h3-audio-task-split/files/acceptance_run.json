@@ -1,0 +1,1785 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "db249ed8880bf22a7709458e03db3a74eecdec825573ff8ea0d114ad84e40098",
+  "repository_revision": "3390858457e63ea1982a58b9868b7b4908f13f37",
+  "created_at_utc": "2026-10-02T01:50:42Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "8",
+    "64",
+    "0.5",
+    "--test-prompt-generation",
+    "--vision-continuity",
+    "0",
+    "--model",
+    "gpt",
+    "--image1",
+    "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+    "--refresh",
+    "999999",
+    "--director-only"
+  ],
+  "exit_code": 0,
+  "capture_status": {
+    "complete": true,
+    "mode": "full_prompt_generation",
+    "expected_segments": 8,
+    "captured_segments": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 8,
+        "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+        "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+        "characters_introduced": [],
+        "location": "As established by the expanded story.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "Amy cooks oatmeal while Will and Amber giggle over cereal in the sunny kitchen as a sudden groan rattles the windows.",
+            "beat_number": 1,
+            "state_effects": []
+          },
+          {
+            "id": "E2",
+            "event": "A zombie bursts through the front door, shuffling toward her; she grabs the kids by their shoulders, pushes them into the back bedroom closet, slamming the heavy door behind them.",
+            "beat_number": 2,
+            "state_effects": [],
+            "depends_on": [
+              "E1"
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "Amy sprints back to the kitchen, hearing the zombie’s clumsy footsteps echoing down the hallway.",
+            "beat_number": 3,
+            "state_effects": [],
+            "depends_on": [
+              "E2"
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "She pulls a pistol from a hollowed‑out space in the fridge wall and retrieves a gleaming katana tucked beneath her cutting board.",
+            "beat_number": 4,
+            "state_effects": [],
+            "depends_on": [
+              "E3"
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "She fires at the approaching creature, its head snapping off with a wet thud; then she swings the sword, slicing another zombie’s torso cleanly as it staggers back toward the doorway.",
+            "beat_number": 5,
+            "state_effects": [],
+            "depends_on": [
+              "E4"
+            ]
+          },
+          {
+            "id": "E6",
+            "event": "More zombies surge through cracks around the doorframe, but Amy keeps her pistol and katana poised, firing one after another until each groaning victim falls with a splash of blood onto the kitchen tiles.",
+            "beat_number": 6,
+            "state_effects": [],
+            "depends_on": [
+              "E5"
+            ]
+          },
+          {
+            "id": "E7",
+            "event": "Even as the last zombie collapses, fresh pairs emerge from the hallway’s shadow; she meets them head‑on, blasting their heads off before they can reach the closet door.",
+            "beat_number": 7,
+            "state_effects": [],
+            "depends_on": [
+              "E6"
+            ]
+          },
+          {
+            "id": "E8",
+            "event": "The final zombie lies still on the floorboards; Amy wipes her palm on her jeans and turns toward the back bedroom where Will and Amber wait in silent relief, opens the closet door wide, pulls the two kids out into the kitchen’s bright light.",
+            "beat_number": 8,
+            "state_effects": [],
+            "depends_on": [
+              "E7"
+            ]
+          }
+        ],
+        "required_end_state": "End at the expanded story's stated conclusion."
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. Amy finishes stirring her oatmeal and sets it on the stove while Will and Amber giggle over cereal, their laughter echoing through the sunny kitchen just as a sudden groan rattles the windows.\n2. A zombie bursts through the front door, shuffling toward her; she grabs the kids by their shoulders, pushes them into the back bedroom closet, slamming the heavy door behind them.\n3. Amy sprints into the kitchen, stops as the zombie’s clumsy footsteps echo down the hallway.\n4. She pulls a pistol from a hollowed‑out space in the fridge wall and retrieves a gleaming katana tucked beneath her cutting board.\n5. She fires at the approaching creature, its head snapping off with a wet thud; then she swings the sword, slicing another zombie’s torso cleanly as it staggers back toward the doorway.\n6. More zombies surge through cracks around the doorframe, but Amy keeps her pistol and katana poised, firing one after another until each groaning victim falls with a splash of blood onto the kitchen tiles.\n7. Even as the last zombie collapses, fresh pairs emerge from the hallway’s shadow; she meets them head‑on, blasting their heads off before they can reach the closet door.\n8. The final zombie lies still on the floorboards; Amy wipes her palm on her jeans and turns toward the back bedroom where Will and Amber wait in silent relief, opens the closet door wide, pulls the two kids out into the kitchen’s bright light.\n",
+  "segments": [
+    {
+      "segment_number": 1,
+      "gold_mode": "initial",
+      "pipeline_mode": "initial",
+      "gold_target": {
+        "beat": 1,
+        "mode": "initial",
+        "length_seconds": 8,
+        "gold_prompt": {
+          "subject_definitions": [
+            "<Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.",
+            "<Subject 2> is Will, a 10-year-old boy.",
+            "<Subject 3> is Amber, a 14-year-old girl."
+          ],
+          "detailed_description": "[Shot 1] Live-action, cinematic scene of Amy making breakfast for Will and Amber. She is standing over a stove cooking eggs on a frying pan with two plates on a counter next to the stove. Will and Amber are sitting patiently at an empty dinnette table. Amy is wearing a black tank top and denim jeans.\n\nAt 0:01.000, Amy (S1) says <d>The eggs are ready.</d>\nAt 0:02.000, Amy picks up a plate next to her and uses the spatula to put an egg on it and hands it to Will. Will takes the plate and puts it on the table.\nAt 0:05.000, Amy picks up the 2nd plate next to her and uses the spatula to put an egg on on it and hands it to Amber. Amber takes the plate and puts it on the table.\nAt 0:05.000, Amy puts down the spatula and the frying pan, making her hands free.\nAt 0:07.000, Amy turns a knob on the stove, turning it off.",
+          "overall_soundscape": "Eggs sizzling in the frying pan, quiet kitchen room tone, soft clinks as plates are handled, and the click of the stove knob turning off.",
+          "non_diegetic_music": "Soft, warm domestic instrumental music, calm and understated."
+        },
+        "must_happen": [
+          "Amy cooks and serves the eggs.",
+          "Will and Amber remain seated at the table.",
+          "The scene feels completely ordinary and safe.",
+          "Both children receive a plate with an egg.",
+          "Amy turns off the stove before the segment ends."
+        ],
+        "must_not_happen": [
+          "No zombies or signs of zombies.",
+          "No danger, alarm, panic, or violence.",
+          "No weapons.",
+          "No ominous music or horror cues."
+        ],
+        "expected_end_state": [
+          "Environment: intact ordinary kitchen; no damage or signs of danger.",
+          "Kitchen objects: stove is off; frying pan and spatula are set down; two plates are on the table, each holding an egg.",
+          "Amy: near the stove, hands free, calm, uninjured, wearing black tank top and denim jeans.",
+          "Will: seated at the table with a plate containing an egg; calm and uninjured.",
+          "Amber: seated at the table with a plate containing an egg; calm and uninjured.",
+          "Threat state: no zombies present; no immediate danger.",
+          "Ongoing action: breakfast has just finished being served; no significant action remains underway.",
+          "Ongoing audio: quiet kitchen ambience; frying/sizzling has ended or is fading because the stove is off.",
+          "Musical state: calm domestic underscore remains appropriate."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.\n<Subject 2> is Will, a 10-year-old boy.\n<Subject 3> is Amber, a 14-year-old girl.\n\ndetailed_description:\n\nAt 00:00.500, Amy (female, wearing a light‑sleeve t‑shirt and jeans) finishes stirring her oatmeal in a small pot on the stove; Amy lifts the spoon and places the pot gently onto the burner.\n\nAt 00:02.000, Will (10‑year‑old boy, short hair, blue T‑shirt) and Amber (14‑year‑old girl, long hair, pink hoodie) giggle over cereal bowls on the kitchen counter; their laughter echoes through the room.\n\nAt 00:04.500, sunlight pours in from a clear window, illuminating the sunny kitchen; Amy’s face is lit by the glow, and Will & Amber laugh as the bright light reflects off their cereal.\n\nAt 00:06.000, a sudden groan rattles the windows; the frame shudders slightly and a low, echoing sound ripples through the air while Will & Amber's laughter continues.\n\noverall_soundscape: stirring of oatmeal in a small pot on the stove; gentle lifting and placing of the pot onto the burner; giggling laughter from Will and Amber over cereal bowls; sunlight reflecting off their cereal; sudden groan rattling the windows; low echoing sound rippling through the air\n\nnon_diegetic_music: A gentle, bright piano arpeggio sets a sunny kitchen mood as Amy stirs oatmeal and the children giggle. Soft, airy strings weave in to echo their laughter. When the windows groan, a subtle low percussion beat punctuates the shudder while the melodic line continues, maintaining warmth with a hint of tension.\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.500, Amy (female, wearing a light‑sleeve t‑shirt and jeans) finishes stirring her oatmeal in a small pot on the stove; Amy lifts the spoon and places the pot gently onto the burner. At 00:02.000, Will (10‑year‑old boy, short hair, blue T‑shirt) and Amber (14‑year‑old girl, long hair, pink hoodie) giggle over cereal bowls on the kitchen counter; their laughter echoes through the room. At 00:04.500, sunlight pours in from a clear window, illuminating the sunny kitchen; Amy’s face is lit by the glow, and Will & Amber laugh as the bright light reflects off their cereal. At 00:06.000, a sudden groan rattles the windows; the frame shudders slightly and a low, echoing sound ripples through the air while Will & Amber's laughter continues.",
+        "overall_soundscape": "stirring of oatmeal in a small pot on the stove; gentle lifting and placing of the pot onto the burner; giggling laughter from Will and Amber over cereal bowls; sunlight reflecting off their cereal; sudden groan rattling the windows; low echoing sound rippling through the air",
+        "non_diegetic_music": "A gentle, bright piano arpeggio sets a sunny kitchen mood as Amy stirs oatmeal and the children giggle. Soft, airy strings weave in to echo their laughter. When the windows groan, a subtle low percussion beat punctuates the shudder while the melodic line continues, maintaining warmth with a hint of tension.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy stands by the stove holding the pot of oatmeal on its burner; Will and Amber sit on either side of the kitchen counter giggling with cereal bowls in front of them; sunlight streams from the window whose frame is slightly trembling."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "N/A",
+            "pose_action": "standing",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "by stove"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Will": {
+            "name": "Will",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "male",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "N/A",
+            "pose_action": "giggling",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [
+              "cereal bowl"
+            ],
+            "spatial_relationships": [
+              "on kitchen counter side"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Amber": {
+            "name": "Amber",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "female",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "N/A",
+            "pose_action": "giggling",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [
+              "cereal bowl"
+            ],
+            "spatial_relationships": [
+              "on kitchen counter side"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Will",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "male",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "3": {
+          "name": "Amber",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "female",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1
+      ]
+    },
+    {
+      "segment_number": 2,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 2,
+        "mode": "append",
+        "length_seconds": 8,
+        "gold_prompt": {
+          "subject_definitions": [
+            "<Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features, continues from <Video 1>.",
+            "<Subject 2> is Will, a 10-year-old boy, continues from <Video 1>.",
+            "<Subject 3> is Amber, a 14-year-old girl, continues from <Video 1>.",
+            "<Subject 4> is Zombie1, a decaying zombie."
+          ],
+          "detailed_description": "[Shot 1] Live-action, cinematic, continues from <Video 1>.\n\nAt 0:00.500, there is a loud crash. The camera pans over to the door leading outside. The door has shattered glass and debris falling from it as it was just smashed.\nAt 0:01.500, Zombie1 smashes Zombie1's arms and head through the glass, shattering more of the door's window. Zombie1 (S4) says <d>BRAINS!</d>\nAt 0:02.500, Amber (S3) screams <d>Ahhh!</d> Amy and Will have terrified expressions.\nAt 0:03.000, Amy (S1) yells to Will and Amber <d>Come on!</d>. Amy takes Will's hand in Amy's left hand and Amber's hand in Amy's right hand and helps Will and Amber up from their chairs and Amy, Will, and Amber start running.\nAt 0:04.500, Amy, Will, and Amber run down a corridor to a heavy steel door. The camera follows behind Amy, Will, and Amber.\nAt 0:07.000, Amy opens the door.",
+          "overall_soundscape": "continues from <Video 1>. Kitchen ambience is abruptly interrupted by a loud glass crash, falling debris, Amber's scream, hurried footsteps, Amy shouting, and the heavy metallic sound of the steel door opening.",
+          "non_diegetic_music": "continues from <Video 1>. The warm domestic music abruptly transitions into tense, urgent suspense music with a rising pulse."
+        },
+        "must_happen": [
+          "Zombie1 smashes through the kitchen door window.",
+          "Glass visibly shatters and debris falls.",
+          "Amber screams in fear.",
+          "Amy urgently gathers Will and Amber and leads Will and Amber away.",
+          "Amy, Will, and Amber run down the corridor toward the heavy steel door.",
+          "Amy opens the steel door by the end of the segment."
+        ],
+        "must_not_happen": [
+          "No combat.",
+          "Zombie1 does not fully enter the house.",
+          "Zombie1 does not reach the corridor.",
+          "Zombie1 does not appear at the steel door.",
+          "Amy does not retrieve weapons yet."
+        ],
+        "expected_end_state": [
+          "Environment: corridor at the heavy steel door; kitchen is no longer the active location.",
+          "Kitchen door: window remains shattered from Zombie1's attack.",
+          "Steel door: open.",
+          "Amy: at or immediately beside the open steel door, frightened and urgent, uninjured, not holding weapons.",
+          "Will and Amber: beside Amy near the open steel door, frightened and uninjured.",
+          "Threat state: Zombie1 remains back at the kitchen entry area and is not visible in the final frame.",
+          "Ongoing action: escape remains in progress; Amy has opened the steel door and is getting Will and Amber through it.",
+          "Ongoing audio: tense corridor movement and fading panic; no combat sounds.",
+          "Musical state: suspense music is active and has replaced the warm domestic baseline."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.\n<Subject 2> is Will, a 10-year-old boy. continued from <Video 1>.\n<Subject 3> is Amber, a 14-year-old girl. continued from <Video 1>.\n\ndetailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.\n\nAt 00:00.000, The camera opens on the front of a cozy kitchen, the stove’s pot of oatmeal steaming on the burner; Will sits on the left side of the counter and Amber on the right, both giggling with cereal bowls. The front door is slightly ajar to the left.\n\nAt 00:01.200, A zombie bursts through the front door, shuffling toward the center where Amy stands. His clumsy steps echo as he pushes forward.\n\nAt 00:02.500, Amy turns her head sharply; Amy grabs Will by his shoulder with her left hand and Amber’s right shoulder with her right, pulling them up off their seats.\n\nAt 00:04.200, Amy pushes the kids toward the back bedroom closet door at the end of the hallway, a quick shove that sends them skidding into the dim space.\n\nAt 00:06.000, Amy slams the heavy closet door behind them with a thud; the wood creaks as it shuts tight against the frame.\n\noverall_soundscape: steaming oatmeal pot on burner, giggling of Will and Amber, slight creak as front door ajar, clumsy shuffling steps of the zombie echoing toward center, thud when Amy slams heavy closet door behind them with a wood creaking sound\n\nnon_diegetic_music: continues from <Video 1>. The score tightens with a low heartbeat rhythm, swelling as Amy watches the zombie outside.\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, The camera opens on the front of a cozy kitchen, the stove’s pot of oatmeal steaming on the burner; Will sits on the left side of the counter and Amber on the right, both giggling with cereal bowls. The front door is slightly ajar to the left. At 00:01.200, A zombie bursts through the front door, shuffling toward the center where Amy stands. His clumsy steps echo as he pushes forward. At 00:02.500, Amy turns her head sharply; Amy grabs Will by his shoulder with her left hand and Amber’s right shoulder with her right, pulling them up off their seats. At 00:04.200, Amy pushes the kids toward the back bedroom closet door at the end of the hallway, a quick shove that sends them skidding into the dim space. At 00:06.000, Amy slams the heavy closet door behind them with a thud; the wood creaks as it shuts tight against the frame.",
+        "overall_soundscape": "steaming oatmeal pot on burner, giggling of Will and Amber, slight creak as front door ajar, clumsy shuffling steps of the zombie echoing toward center, thud when Amy slams heavy closet door behind them with a wood creaking sound",
+        "non_diegetic_music": "continues from <Video 1>. The score tightens with a low heartbeat rhythm, swelling as Amy watches the zombie outside.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Will and Amber are inside the closed back bedroom closet, the front door remains open with the zombie standing outside, while Amy stands on the kitchen counter slightly left of center watching from the doorway."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "watching the zombie outside",
+        "ongoing_audio": "shuffling steps of the zombie echoing toward center, creaking front door ajar",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "kitchen counter slightly left of center",
+            "pose_action": "standing watching from doorway",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "near front door"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Will": {
+            "name": "Will",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "male",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside closed back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "with Amber in closet"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Amber": {
+            "name": "Amber",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "female",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside closed back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "with Will in closet"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Will",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "male",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "3": {
+          "name": "Amber",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "female",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2
+      ]
+    },
+    {
+      "segment_number": 3,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 3,
+        "mode": "append",
+        "length_seconds": 8,
+        "gold_prompt": {
+          "subject_definitions": [
+            "<Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features, continues from <Video 1>.",
+            "<Subject 2> is Will, a 10-year-old boy, continues from <Video 1>.",
+            "<Subject 3> is Amber, a 14-year-old girl, continues from <Video 1>.",
+            "<Subject 4> is Zombie1, a decaying zombie, continues from <Video 1>."
+          ],
+          "detailed_description": "[Shot 1] Live-action, cinematic, continues from <Video 1>. Amy, still wearing her black tank top and denim jeans, has her hand on the steel door and is currently opening it.\n\nAt 0:00.500, Amy finishes opening the steel door.\nAt 0:01.000, Amy steps back into the hallway.\nAt 0:01.250, Will rushes through the steel door.\nAt 0:01.500, Amber rushes through the steel door.\nAt 0:02.000, Amy shuts the steel door, closing Will and Amber behind it.\nAt 0:03.000, Amy turns to the right.\nAt 0:03.250, Amy presses a hidden button in the wall next to the steel door.\nAt 0:03.750, a hidden wall compartment opens to reveal an arsenal of weapons including guns, knives, and a katana.\nAt 0:04.500, Amy grabs the katana from the compartment.\nAt 0:05.000, Amy slides the katana through a belt loop on her jeans, holstering the katana.\nAt 0:06.000, Amy grabs a pistol from the compartment with her left hand and holds it up.\nAt 0:06.750, the camera quickly orbits around Amy until the camera is facing the kitchen.\nAt 0:07.250, the kitchen door with the broken window and Zombie1 comes into view. Zombie1 is still crashed through the kitchen door window, the top half of his body leans through the broken glass.\nAt 0:07.500, Amy turns toward the kitchen.\nAt 0:07.750, Amy starts walking toward the kitchen.",
+          "overall_soundscape": "continues from <Video 1>. Heavy steel door movement, hurried footsteps, the metallic thud of the steel door shutting, a concealed mechanical click and sliding wall-panel sound as the hidden compartment opens, light weapon-handling sounds, faint zombie groaning from the kitchen, and Amy's footsteps resuming toward the kitchen.",
+          "non_diegetic_music": "continues from <Video 1>. The suspense cue builds into a restrained action pulse as Amy arms herself and turns back toward the kitchen."
+        },
+        "must_happen": [
+          "Will goes through the steel door.",
+          "Amber goes through the steel door.",
+          "Amy shuts the steel door, leaving Will and Amber out of sight.",
+          "Amy reveals the hidden arsenal compartment.",
+          "Amy holsters the katana.",
+          "Amy takes a pistol into Amy's left hand.",
+          "The camera returns orientation toward the kitchen.",
+          "Zombie1 comes back into view at the kitchen door area.",
+          "Amy turns back toward the kitchen and begins moving that direction."
+        ],
+        "must_not_happen": [
+          "No combat.",
+          "Will and Amber do not remain visible after the steel door is shut.",
+          "Zombie1 does not reach Amy.",
+          "Zombie1 does not enter the hallway near Amy.",
+          "Amy does not attack yet.",
+          "Amy does not lose either weapon after equipping them."
+        ],
+        "expected_end_state": [
+          "Environment: hallway outside the steel door with the kitchen back in view.",
+          "Steel door: closed.",
+          "Hidden compartment: open or clearly established as having opened.",
+          "Will and Amber: no longer visible; behind the closed steel door.",
+          "Amy: alone in the hallway, facing toward the kitchen and beginning to move toward it, uninjured.",
+          "Amy weapons: pistol in Amy's left hand; katana holstered through a belt loop on Amy's jeans.",
+          "Threat state: Zombie1 visible again at the kitchen door/window area and not yet engaged in combat.",
+          "Ongoing action: Amy is transitioning from protecting the children to confronting the threat.",
+          "Ongoing audio: tense house ambience with faint zombie presence; no combat sounds yet.",
+          "Musical state: suspense has escalated into a determined pre-combat action build."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.\n<Subject 2> is Will, a 10-year-old boy. continued from <Video 1>.\n<Subject 3> is Amber, a 14-year-old girl. continued from <Video 1>.\n\ndetailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.\n\nAt 00:00.000, Amy is standing on the kitchen counter slightly left of center, watching from the doorway while Will and Amber are inside the closed back bedroom closet; the front door remains open with a zombie outside.\n\nAt 00:01.500, Amy starts sprinting into the kitchen, her feet leaving the countertop as she moves across the hallway toward the stove.\n\nAt 00:03.000, Amy runs along the hall, passing the refrigerator and moving deeper into the kitchen; the sound of the zombie’s clumsy footsteps begins to echo down the hallway.\n\nAt 00:04.500, The zombie’s steps grow louder in the background as a shadow passes by the front door;\n\nAt 00:06.200, Amy stops mid‑sprint, turning her head toward the doorway and pausing on the floor near the kitchen counter.\n\noverall_soundscape: Amy’s rapid footsteps on the kitchen counter, her feet leaving the counter as she sprints across the hallway and into the kitchen, the clumsy echoing steps of a zombie down the hall, and a faint footstep or creak as a shadow passes by the open front door\n\nnon_diegetic_music: continues from <Video 1>. A low, pulsing bass line fades in as Amy stops mid‑sprint, then a syncopated drum rhythm rises to echo the zombie’s footsteps, building tension while she remains on the kitchen floor.\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, Amy is standing on the kitchen counter slightly left of center, watching from the doorway while Will and Amber are inside the closed back bedroom closet; the front door remains open with a zombie outside. At 00:01.500, Amy starts sprinting into the kitchen, her feet leaving the countertop as she moves across the hallway toward the stove. At 00:03.000, Amy runs along the hall, passing the refrigerator and moving deeper into the kitchen; the sound of the zombie’s clumsy footsteps begins to echo down the hallway. At 00:04.500, The zombie’s steps grow louder in the background as a shadow passes by the front door; At 00:06.200, Amy stops mid‑sprint, turning her head toward the doorway and pausing on the floor near the kitchen counter.",
+        "overall_soundscape": "Amy’s rapid footsteps on the kitchen counter, her feet leaving the counter as she sprints across the hallway and into the kitchen, the clumsy echoing steps of a zombie down the hall, and a faint footstep or creak as a shadow passes by the open front door",
+        "non_diegetic_music": "continues from <Video 1>. A low, pulsing bass line fades in as Amy stops mid‑sprint, then a syncopated drum rhythm rises to echo the zombie’s footsteps, building tension while she remains on the kitchen floor.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy stands still on the kitchen floor next to the countertop, Will and Amber remain inside the back bedroom closet, the front door is open with the zombie standing outside."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "kitchen floor next to countertop",
+            "pose_action": "standing still",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Will": {
+            "name": "Will",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "male",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Amber": {
+            "name": "Amber",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "female",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Will",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "male",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "3": {
+          "name": "Amber",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "female",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "segment_number": 4,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 4,
+        "mode": "append",
+        "length_seconds": 8,
+        "gold_prompt": {
+          "subject_definitions": [
+            "<Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features, continues from <Video 1>.",
+            "<Subject 4> is Zombie1, a decaying zombie, continues from <Video 1>.",
+            "<Subject 5> is Zombie2, a decaying male zombie.",
+            "<Subject 6> is Zombie3, a decaying female zombie."
+          ],
+          "detailed_description": "[Shot 1] Live-action, high-octane, cinematic, continues from <Video 1>. Amy is tense and fighting for her life. Her actions are smooth and deliberate.\n\nAt 0:00.500, Amy raises the pistol towards Zombie1.\nAt 0:01.000, Amy fires the pistol, shooting Zombie1 in the head.\nAt 0:01.500, Zombie1 slumps over dead.\nAt 0:02.500, the camera quickly orbits counter-clockwise around Amy, revealing Zombie2 and Zombie3 inside the kitchen. Zombie2 is close to Amy. Zombie3 is further back from Amy.\nAt 0:03.000, Zombie2 (S5) rushes towards Amy with its arms out and grunts <d>BRAINS!</d>\nAt 0:04.000, Amy kicks Zombie2 in the chest, making Zombie2 stagger back.\nAt 0:04.750, Amy lifts the pistol in her left hand.\nAt 0:05.250, Amy fires the pistol four times in quick succession, hitting Zombie2.\nAt 0:06.000, Zombie2 collapses on the ground.\nAt 0:06.500, Amy points the pistol at Zombie3.\nAt 0:07.000, the pistol makes a clicking sound because it is out of bullets.\nAt 0:07.250, Amy (S1) says <d>Damn!</d>\nAt 0:07.500, Amy tosses the pistol aside.",
+          "overall_soundscape": "continues from <Video 1>. Gunshots echo through the kitchen, Zombie1 and Zombie2 make aggressive zombie grunts, Amy's kick lands with a heavy thud, Zombie2 crashes to the floor, and the pistol gives a dry clicking sound when Amy tries to fire at Zombie3 with an empty chamber.",
+          "non_diegetic_music": "continues from <Video 1>. The restrained action-build music escalates into intense action music during the fight, then holds on a tense unresolved cue when Amy's pistol runs empty and Zombie3 remains active."
+        },
+        "must_happen": [
+          "Amy shoots Zombie1 in the head.",
+          "Zombie1 dies.",
+          "Zombie2 and Zombie3 enter the kitchen.",
+          "Zombie2 rushes Amy.",
+          "Amy kicks Zombie2 backward.",
+          "Amy shoots Zombie2 multiple times.",
+          "Zombie2 collapses dead.",
+          "Amy points the pistol at Zombie3.",
+          "The pistol is empty.",
+          "Amy discards the pistol.",
+          "Zombie3 remains alive."
+        ],
+        "must_not_happen": [
+          "No katana use yet.",
+          "Amy does not reload the pistol.",
+          "Zombie3 is not killed.",
+          "Will and Amber do not appear.",
+          "Amy does not leave the kitchen.",
+          "No additional zombies enter.",
+          "Amy does not lose the katana."
+        ],
+        "expected_end_state": [
+          "Environment: kitchen is the active combat area; broken kitchen door/window remains from the earlier breach.",
+          "Amy: standing in the kitchen facing Zombie3, tense, alert, and uninjured.",
+          "Amy weapons: pistol discarded and no longer held; katana still holstered.",
+          "Zombie1: dead near the broken kitchen door.",
+          "Zombie2: dead on the kitchen floor.",
+          "Zombie3: alive and standing in front of Amy as the remaining immediate threat.",
+          "Will and Amber: not visible; remain behind the steel door.",
+          "Threat state: one active zombie remains.",
+          "Ongoing action: Amy has just discarded the empty pistol and is still confronting Zombie3.",
+          "Ongoing audio: gunfire has stopped; zombie sounds and combat tension may continue.",
+          "Musical state: intense action music remains tense and unresolved."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.\n\ndetailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.\n\nAt 00:00.000, Amy reaches toward the hollowed‑out space in the fridge wall and pulls out a sleek pistol.\n\nAt 00:02.500, Amy grips the pistol’s handle as it gleams under kitchen light; she lifts it to her forearm.\n\nAt 00:05.200, With the pistol still held, Amy slides a hand beneath the cutting board and extracts a sharp katana with its silver blade catching the glow.\n\nAt 00:07.000, She holds both weapons in front of her—pistol in left hand, sword poised in right—and stands ready on the kitchen floor beside the countertop.\n\noverall_soundscape: metallic clink of the pistol as Amy pulls it from the fridge, a faint scrape when she slides her hand beneath the cutting board to retrieve the katana, a subtle thud as the cutting board is raised, and distant groaning from the zombie outside the open front door\n\nnon_diegetic_music: continues from <Video 1>. A low‑pitched synth arpeggio rises when Amy pulls the pistol out, then sharp percussive hits echo each weapon reveal, building tension as she stands ready.\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, Amy reaches toward the hollowed‑out space in the fridge wall and pulls out a sleek pistol. At 00:02.500, Amy grips the pistol’s handle as it gleams under kitchen light; she lifts it to her forearm. At 00:05.200, With the pistol still held, Amy slides a hand beneath the cutting board and extracts a sharp katana with its silver blade catching the glow. At 00:07.000, She holds both weapons in front of her—pistol in left hand, sword poised in right—and stands ready on the kitchen floor beside the countertop.",
+        "overall_soundscape": "metallic clink of the pistol as Amy pulls it from the fridge, a faint scrape when she slides her hand beneath the cutting board to retrieve the katana, a subtle thud as the cutting board is raised, and distant groaning from the zombie outside the open front door",
+        "non_diegetic_music": "continues from <Video 1>. A low‑pitched synth arpeggio rises when Amy pulls the pistol out, then sharp percussive hits echo each weapon reveal, building tension as she stands ready.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy is standing on the kitchen floor next to the countertop; she has a pistol in her left hand and a katana in her right hand, the cutting board slightly raised revealing its surface. The front door remains open with the zombie outside; Will and Amber stay inside the back bedroom closet."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "kitchen floor next to countertop",
+            "pose_action": "standing ready",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "beside countertop"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Will": {
+            "name": "Will",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "male",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Amber": {
+            "name": "Amber",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "female",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Will",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "male",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "3": {
+          "name": "Amber",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "female",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "segment_number": 5,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 5,
+        "mode": "append",
+        "length_seconds": 8,
+        "gold_prompt": {
+          "subject_definitions": [
+            "<Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features, continues from <Video 1>.",
+            "<Subject 5> is Zombie2, a decaying male zombie, continues from <Video 1>.",
+            "<Subject 6> is Zombie3, a decaying female zombie, continues from <Video 1>."
+          ],
+          "detailed_description": "[Shot 1] Live-action, high-octane, cinematic, continues from <Video 1>. Amy is tense and fighting for her life. Her actions are smooth and deliberate.\n\nAt 0:00.250, Amy (S1) says <d>Time to switch gears!</d>\nAt 0:00.500, Zombie3 puts her arms out and reaches for Amy.\nAt 0:01.000, Amy unsheathes her katana with her left hand.\nAt 0:01.500, Amy grips the katana with both hands.\nAt 0:01.750, Zombie3 (S6) growls at Amy.\nAt 0:02.000, Amy swings her katana at Zombie3's neck and slices her head off.\nAt 0:03.000, Amy's katana decapitates Zombie3, detaching her head from her neck.\nAt 0:03.500, Zombie3's head falls off her body and rolls onto the floor.\nAt 0:04.500, the camera zooms in on Zombie3's decapitated head.\nAt 0:05.000, Zombie3's decapitated head's eyes blink.\nAt 0:05.500, the camera zooms back to a medium shot of the kitchen.\nAt 0:05.750, Zombie3's headless body collapses onto the floor.\nAt 0:06.250, Amy (S1) screams <d>Ahh!</d>\nAt 0:06.500, the camera zooms out and turns downward at a high-angle shot to reveal Zombie2 splayed on the ground and clutching Amy's foot.\nAt 0:07.250, Amy uses her opposite leg and stomps on Zombie2's head, crushing it.",
+          "overall_soundscape": "continues from <Video 1>. Amy's opening line cuts through the kitchen tension, Zombie3 growls and lunges, the katana unsheathes with a sharp metallic sound, the blade slices through Zombie3's neck with a wet chopping impact, Zombie3's severed head hits the floor and rolls, the kitchen briefly hangs in tense silence except for subtle corpse movement, Amy screams in shock, and Zombie2's skull is crushed under Amy's stomp with a sickening impact.",
+          "non_diegetic_music": "continues from <Video 1>. The intense action cue continues as Amy switches from the empty pistol to the katana, rises sharply during the decapitation, drops into a brief gruesome suspense beat as Zombie3's severed head blinks, then surges again when Zombie2 grabs Amy's foot and Amy crushes Zombie2's skull."
+        },
+        "must_happen": [
+          "Amy speaks at the start of the segment.",
+          "Zombie3 reaches toward Amy.",
+          "Amy unsheathes the katana.",
+          "Amy grips the katana with both hands.",
+          "Zombie3 growls at Amy.",
+          "Amy swings the katana at Zombie3's neck.",
+          "Zombie3 is decapitated.",
+          "Zombie3's severed head falls to the floor.",
+          "The camera zooms in on Zombie3's severed head.",
+          "Zombie3's severed head blinks.",
+          "The camera zooms back out to the kitchen.",
+          "Zombie3's headless body collapses after the zoom back out.",
+          "Amy screams in surprise.",
+          "Zombie2 is revealed clutching Amy's foot from the floor.",
+          "Amy crushes Zombie2's skull with a stomp."
+        ],
+        "must_not_happen": [
+          "Nothing involving the pistol.",
+          "Amy does not reload or retrieve the pistol.",
+          "No additional zombies appear.",
+          "Will and Amber do not appear.",
+          "Zombie3 does not remain standing at the end.",
+          "Zombie2 does not remain an active threat at the end.",
+          "Amy does not leave the kitchen."
+        ],
+        "expected_end_state": [
+          "Environment: kitchen remains the active combat space with the fight aftermath across the floor.",
+          "Amy: standing in the kitchen after stomping Zombie2's head, tense and shaken, alive, without a clearly visible new injury.",
+          "Amy weapons: katana drawn and still in Amy's possession; pistol absent.",
+          "Zombie2: dead on the floor with a crushed head.",
+          "Zombie3: dead and decapitated; severed head and headless body are separately on the floor.",
+          "Threat state: no active zombies remain in the immediate scene.",
+          "Will and Amber: not visible; remain behind the steel door.",
+          "Ongoing action: combat has just ended but Amy remains in a heightened state.",
+          "Ongoing audio: active gunfire is gone; aftermath sounds or fading movement remain.",
+          "Musical state: action cue is resolving out of the fight with lingering gruesome tension."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.\n\ndetailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.\n\nAt 00:01.000, Amy pulls the pistol’s trigger and a burst of muzzle flash illuminates Amy's left hand as she fires at the approaching zombie.\n\nAt 00:02.500, The bullet hits the creature in front of the open doorway; its head snaps off with a wet thud, tumbling onto the kitchen floor beside Amy.\n\nAt 00:04.200, Amy lifts her katana from the raised cutting board and swings it left‑to‑right across the zombie’s torso, slicing cleanly through the midsection.\n\nAt 00:06.800, The sliced zombie staggers back toward the doorway, its body falling onto the kitchen tiles as it pushes away.\n\noverall_soundscape: gunshot with bright muzzle flash; wet thud as zombie head falls; sharp slash as katana cuts through torso; clattering and thudding as the sliced zombie stumbles onto kitchen tiles\n\nnon_diegetic_music: continues from <Video 1>. A syncopated drum pattern and rising synth arpeggios mirror the rapid gunfire, then swell into a punchy chord as Amy swings her katana and the zombie collapses.\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:01.000, Amy pulls the pistol’s trigger and a burst of muzzle flash illuminates Amy's left hand as she fires at the approaching zombie. At 00:02.500, The bullet hits the creature in front of the open doorway; its head snaps off with a wet thud, tumbling onto the kitchen floor beside Amy. At 00:04.200, Amy lifts her katana from the raised cutting board and swings it left‑to‑right across the zombie’s torso, slicing cleanly through the midsection. At 00:06.800, The sliced zombie staggers back toward the doorway, its body falling onto the kitchen tiles as it pushes away.",
+        "overall_soundscape": "gunshot with bright muzzle flash; wet thud as zombie head falls; sharp slash as katana cuts through torso; clattering and thudding as the sliced zombie stumbles onto kitchen tiles",
+        "non_diegetic_music": "continues from <Video 1>. A syncopated drum pattern and rising synth arpeggios mirror the rapid gunfire, then swell into a punchy chord as Amy swings her katana and the zombie collapses.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy stands on the floor next to the countertop with her pistol in left hand and katana ready in right; a headless zombie lies beside her and another zombie’s torso is cut cleanly as it falls toward the open front door. Will and Amber remain inside the back bedroom closet."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "floor next to countertop",
+            "pose_action": "standing, ready with pistol and katana",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "headless zombie beside her",
+              "zombie torso falling toward open front door"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Will": {
+            "name": "Will",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "male",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Amber": {
+            "name": "Amber",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "female",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Will",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "male",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "3": {
+          "name": "Amber",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "female",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "segment_number": 6,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 6,
+        "mode": "append",
+        "length_seconds": 8,
+        "gold_prompt": {
+          "subject_definitions": [
+            "<Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features, continues from <Video 1>.",
+            "<Subject 5> is Zombie2, a decaying male zombie, continues from <Video 1>.",
+            "<Subject 6> is Zombie3, a decaying female zombie, continues from <Video 1>.",
+            "<Subject 7> is Zombie4, a decaying, large, fat zombie."
+          ],
+          "detailed_description": "[Shot 1] Live-action, high-octane, cinematic, continues from <Video 1>, zoomed in on Amy's leg as she stomps a zombie's head.\n\nAt 0:00.250, the camera pans up from Amy's leg out to a medium shot of Amy holding the katana in her right hand.\nAt 0:00.500, Zombie4's arms grab Amy's shoulders.\nAt 0:01.000, Zombie4 tries to bite Amy's neck.\nAt 0:01.500, Amy (S1) yells <d>Get off me!</d>\nAt 0:01.750, Amy jerks forward, escaping Zombie4's grip.\nAt 0:02.500, the camera pans to a medium shot of Amy and Zombie4.\nAt 0:03.000, Zombie4 starts heaving and making grunting sounds. Amy has a confused expression.\nAt 0:04.000, Zombie4 pukes out a geyser of green bile and covers Amy in the vomit.\nAt 0:05.000, Amy (S1) screams <d>Ahh, Gross!</d>\nAt 0:05.500, Amy is dripping in the green, chunky liquid.\nAt 0:06.000, Amy wipes the bile from her eyes.\nAt 0:06.500, Amy raises her katana with both hands.\nAt 0:07.000, the camera orbits around to Amy's back.",
+          "overall_soundscape": "continues from <Video 1>. The scene opens with the aftermath of Amy's stomp, then Zombie4 grabs Amy with heavy struggling sounds, Zombie4 snarls and snaps at Amy's neck, Amy yells and breaks free, Zombie4 heaves and retches, then blasts Amy with a wet geyser of chunky green bile. Amy screams in disgust, the thick liquid drips off Amy's clothes and skin, Amy wipes the bile from Amy's eyes, and the scene holds on tense movement and Zombie4's labored grunting.",
+          "non_diegetic_music": "continues from <Video 1>. The resolved post-kill tension is interrupted by a sudden shock beat when Zombie4 grabs Amy, then the score shifts into grotesque horror-action music during the vomiting attack and ends on a tense action cue as Amy raises the katana to strike."
+        },
+        "must_happen": [
+          "The camera begins close on Amy's leg after the stomp aftermath.",
+          "The camera pans up to reveal Amy holding the katana.",
+          "Zombie4 grabs Amy's shoulders from behind.",
+          "Zombie4 attempts to bite Amy's neck.",
+          "Amy yells and breaks free from Zombie4's grip.",
+          "The camera reframes Amy and Zombie4 together.",
+          "Zombie4 begins heaving and grunting.",
+          "Zombie4 vomits a geyser of green bile onto Amy.",
+          "Amy is visibly covered in green bile.",
+          "Amy screams in disgust.",
+          "Amy wipes bile from Amy's eyes.",
+          "Amy raises the katana with both hands.",
+          "The camera orbits behind Amy by the end of the segment."
+        ],
+        "must_not_happen": [
+          "No pistol use.",
+          "Amy does not kill Zombie4 in this beat.",
+          "Amy does not strike with the katana yet.",
+          "No additional zombies appear.",
+          "Will and Amber do not appear.",
+          "Amy does not leave the kitchen.",
+          "Amy is not cleaned off by the end of the beat.",
+          "Zombie4 does not disappear from the confrontation."
+        ],
+        "expected_end_state": [
+          "Environment: kitchen remains the active combat area with the aftermath of the prior fight still present.",
+          "Amy: standing in the kitchen, covered in thick green bile, facing Zombie4, tense and disgusted but still in control.",
+          "Amy appearance: black tank top and denim jeans remain established and are visibly splattered/dripping with green bile.",
+          "Amy weapons: katana drawn and raised with both hands; no pistol in use.",
+          "Zombie4: alive and directly in front of Amy as the current active threat.",
+          "Zombie2 and Zombie3: remain dead on the floor.",
+          "Threat state: one active zombie remains.",
+          "Spatial relationships: camera ends behind Amy looking past Amy toward Zombie4.",
+          "Ongoing action: Amy has wiped bile from Amy's eyes and is poised to attack.",
+          "Ongoing audio: bile drips, Zombie4's heavy breathing/grunting, continued combat tension.",
+          "Musical state: horror-action tension is active and building toward Amy's counterattack."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.\n\ndetailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.\n\nAt 00:00.000, Amy stands on the kitchen floor next to the countertop with her pistol in left hand and katana poised in right; a headless zombie lies beside her and another zombie’s torso is cut cleanly as it falls toward the open front door.\n\nAt 00:01.500, a fresh zombie surges through a crack at the lower-left side of the doorframe; Amy keeps her pistol poised, fires one quick shot, and the groaning victim collapses onto the tiles with a splash of blood.\n\nAt 00:02.800, another zombie bursts into view from the right-side crack above the doorway; Amy stays still, releases a second burst from her pistol, and the zombie drops to its side on the kitchen floor, splattering more blood across two adjacent tiles.\n\nAt 00:04.200, a third zombie emerges through an upper-left crack in the doorframe; Amy’s katana glints as Amy fires another shot with her left hand, sending the victim tumbling onto the tiles and soaking them with crimson liquid.\n\nAt 00:06.300, two more zombies surge simultaneously from cracks on either side of the frame; Amy shoots again, each bullet finding its mark – both groaning figures collapse in a staggered splash as they fall, leaving pools of blood across three kitchen tiles.\n\nAt 00:07.500, the last zombie finally collapses fully beside Amy’s foot with an audible thud and a final burst of crimson splashing onto the floor; Amy remains poised, pistol steady left hand, katana ready right hand.\n\noverall_soundscape: gunshot, zombie groan, splash of blood, thud\n\nnon_diegetic_music: continues from <Video 1>. A driving low drumbeat syncs with each gunshot, building tension until a sharp chord punctuates the final zombie's collapse.\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, Amy stands on the kitchen floor next to the countertop with her pistol in left hand and katana poised in right; a headless zombie lies beside her and another zombie’s torso is cut cleanly as it falls toward the open front door. At 00:01.500, a fresh zombie surges through a crack at the lower-left side of the doorframe; Amy keeps her pistol poised, fires one quick shot, and the groaning victim collapses onto the tiles with a splash of blood. At 00:02.800, another zombie bursts into view from the right-side crack above the doorway; Amy stays still, releases a second burst from her pistol, and the zombie drops to its side on the kitchen floor, splattering more blood across two adjacent tiles. At 00:04.200, a third zombie emerges through an upper-left crack in the doorframe; Amy’s katana glints as Amy fires another shot with her left hand, sending the victim tumbling onto the tiles and soaking them with crimson liquid. At 00:06.300, two more zombies surge simultaneously from cracks on either side of the frame; Amy shoots again, each bullet finding its mark – both groaning figures collapse in a staggered splash as they fall, leaving pools of blood across three kitchen tiles. At 00:07.500, the last zombie finally collapses fully beside Amy’s foot with an audible thud and a final burst of crimson splashing onto the floor; Amy remains poised, pistol steady left hand, katana ready right hand.",
+        "overall_soundscape": "gunshot, zombie groan, splash of blood, thud",
+        "non_diegetic_music": "continues from <Video 1>. A driving low drumbeat syncs with each gunshot, building tension until a sharp chord punctuates the final zombie's collapse.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy is standing on kitchen tiles next to the countertop, pistol in her left hand and katana in her right; three fallen zombies lie beside her with blood‑spattered tiles, while Will and Amber remain inside the back bedroom closet."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "Pistol poised in left hand, katana ready in right hand",
+        "ongoing_audio": "gunshot, zombie groan, splash of blood, thud",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "standing on kitchen tiles next to the countertop",
+            "pose_action": "pistol poised in left hand, katana ready in right hand",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [
+              "blood on tiles"
+            ],
+            "spatial_relationships": [
+              "next to countertop"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Will": {
+            "name": "Will",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "male",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Amber": {
+            "name": "Amber",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "female",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Will",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "male",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "3": {
+          "name": "Amber",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "female",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "segment_number": 7,
+      "gold_mode": "refresh",
+      "pipeline_mode": "clean_refresh",
+      "gold_target": {
+        "beat": 7,
+        "mode": "refresh",
+        "length_seconds": 8,
+        "gold_prompt": {
+          "subject_definitions": [
+            "<Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.",
+            "<Subject 7> is Zombie4, a decaying, large, fat zombie."
+          ],
+          "detailed_description": "[Shot 1] Live-action, high-octane, cinematic zombie fight. Amy is standing in front of Zombie4. Amy is holding her katana above her head. Amy is wearing a black tank top and denim jeans. Amy is in her kitchen and there are two zombie corpses on the floor (not currently in view). Amy's front is covered in green vomit.\n\nAt 0:00.250, the camera pans to a high-angle shot, showing Amy and Zombie4.\nAt 0:01.000, Amy lowers the katana.\nAt 0:01.250, the camera orbits around to a medium shot with Amy on the left and Zombie4 on the right. Amy's front still drips with the green vomit.\nAt 0:01.500, Amy (S1) screams <d>Die!</d> and rushes forward.\nAt 0:02.000, Amy thrusts the katana into Zombie4's fat chest.\nAt 0:03.000, Amy tries to pull the katana back out, but it is stuck.\nAt 0:04.000, Zombie4 (S7) yells <d>Brains!</d>\nAt 0:04.500, Amy jerks the katana out of Zombie4's belly.\nAt 0:05.500, Amy rapidly stabs the katana into Zombie4's belly.\nAt 0:06.500, Zombie4 starts leaking the same green liquid from his wounds.\nAt 0:07.000, Amy stops stabbing Zombie4.",
+          "overall_soundscape": "Amy's movement and footsteps echo in the kitchen, the katana slices and thrusts into Zombie4's body with wet stabbing impacts, Zombie4 growls and bellows, Amy strains as the katana gets stuck, the blade rips free with a thick tearing sound, repeated stabs land in quick succession, and green fluid begins leaking from Zombie4's wounds.",
+          "non_diegetic_music": "The horror-action cue stays aggressive and driving as Amy presses the attack, surges when the katana gets stuck and Zombie4 cries out, and then holds on brutal sustained action tension as Zombie4 leaks green fluid and Amy ends the stabbing."
+        },
+        "must_happen": [
+          "Amy's front is still covered in green vomit.",
+          "The camera establishes Amy and Zombie4 together in the kitchen.",
+          "Amy lowers the raised katana.",
+          "The camera reframes Amy on the left and Zombie4 on the right.",
+          "Amy screams and charges Zombie4.",
+          "Amy thrusts the katana into Zombie4's chest.",
+          "The katana becomes stuck in Zombie4's body.",
+          "Amy struggles to pull the katana free.",
+          "Zombie4 yells.",
+          "Amy jerks the katana out.",
+          "Amy rapidly stabs Zombie4 in the belly.",
+          "Zombie4 begins leaking green fluid from the wounds.",
+          "Amy stops stabbing by the end of the segment."
+        ],
+        "must_not_happen": [
+          "Amy's clothing is not clean.",
+          "Amy does not lose the katana.",
+          "Zombie4 is not fully resolved as dead before the next beat.",
+          "No pistol appears or is used.",
+          "No additional zombies appear.",
+          "Will and Amber do not appear.",
+          "Amy does not leave the kitchen.",
+          "The green-vomit coverage on Amy does not disappear.",
+          "Nothing contradicts the continued presence of the two earlier zombie corpses in the kitchen."
+        ],
+        "expected_end_state": [
+          "Environment: kitchen remains the active combat area; prior fight aftermath still exists even if bodies are not in frame.",
+          "Amy: standing close to Zombie4 in active combat posture, front of black tank top and denim jeans still covered in green vomit.",
+          "Amy weapons: katana in Amy's hands and withdrawn from Zombie4 by the end of the beat.",
+          "Zombie4: still upright or otherwise still the immediate focus, visibly leaking green fluid from multiple stab wounds.",
+          "Threat state: Zombie4 remains the current active threat or active target.",
+          "Ongoing action: Amy has just stopped the rapid stabbing; the fight remains unresolved.",
+          "Ongoing audio: wet aftermath sounds, Zombie4 distress/grunts, continued combat tension.",
+          "Musical state: intense action music remains active and unresolved.",
+          "Continuity state: Amy's front remains visibly coated in green vomit and the katana is no longer stuck inside Zombie4."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.\n\ndetailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.\n\nAt 00:01.200, Amy watches the last of three fallen zombies slump forward and collapse onto a tile beside her, its head falling to the kitchen floor.\n\nAt 00:02.500, fresh pairs of zombie silhouettes emerge from the hallway’s shadow behind Amy; they stride toward the closet door in front of her.\n\nAt 00:04.000, Amy turns on her heel, pistol still left hand and katana right hand, facing the new zombies as they close in.\n\nAt 00:05.300, Amy pulls the trigger— a bright bolt from the pistol slams into one zombie’s head, blasting it off the tile and sending it flying past the closet door.\n\nAt 00:06.800, Amy swings her katana forward; the blade cuts through the second zombie’s skull, shredding the head which skids across the tiles toward the closet doorway.\n\noverall_soundscape: zombie head slumping onto tile, zombie head falling to floor clatter, zombies emerging from hallway shadow stride footsteps, Amy turning heel footstep on kitchen tiles, pistol trigger click and bang, bright bolt blasting zombie head off tile boom, katana swing slash metallic cut, skull shredding crack crunch, heads skidding across tiles scrape\n\nnon_diegetic_music: continues from <Video 1>. A low, pulsing synth underpins Amy’s poised stance as a crisp snare rhythm mirrors the zombies’ strides.\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:01.200, Amy watches the last of three fallen zombies slump forward and collapse onto a tile beside her, its head falling to the kitchen floor. At 00:02.500, fresh pairs of zombie silhouettes emerge from the hallway’s shadow behind Amy; they stride toward the closet door in front of her. At 00:04.000, Amy turns on her heel, pistol still left hand and katana right hand, facing the new zombies as they close in. At 00:05.300, Amy pulls the trigger— a bright bolt from the pistol slams into one zombie’s head, blasting it off the tile and sending it flying past the closet door. At 00:06.800, Amy swings her katana forward; the blade cuts through the second zombie’s skull, shredding the head which skids across the tiles toward the closet doorway.",
+        "overall_soundscape": "zombie head slumping onto tile, zombie head falling to floor clatter, zombies emerging from hallway shadow stride footsteps, Amy turning heel footstep on kitchen tiles, pistol trigger click and bang, bright bolt blasting zombie head off tile boom, katana swing slash metallic cut, skull shredding crack crunch, heads skidding across tiles scrape",
+        "non_diegetic_music": "continues from <Video 1>. A low, pulsing synth underpins Amy’s poised stance as a crisp snare rhythm mirrors the zombies’ strides.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy stands on kitchen tiles facing back toward the hallway, pistol raised in left hand and katana held ready in right; two zombie heads lie scattered beside her near the closet door, which remains closed."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "standing facing back toward hallway",
+        "ongoing_audio": "N/A",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "kitchen tiles facing back toward the hallway",
+            "pose_action": "standing",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "two zombie heads lie scattered beside her near the closet door, which remains closed"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Will": {
+            "name": "Will",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "male",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Amber": {
+            "name": "Amber",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "female",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Will",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "male",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "3": {
+          "name": "Amber",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "female",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "segment_number": 8,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 8,
+        "mode": "append",
+        "length_seconds": 8,
+        "gold_prompt": {
+          "subject_definitions": [
+            "<Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features, continues from <Video 1>.",
+            "<Subject 2> is Will, a 10-year-old boy.",
+            "<Subject 3> is Amber, a 14-year-old girl.",
+            "<Subject 7> is Zombie4, a decaying, large, fat zombie, continues from <Video 1>."
+          ],
+          "detailed_description": "[Shot 1] Live-action, high-octane, cinematic continues from <Video 1>.\n\nAt 0:00.250, Zombie4 falls to the ground.\nAt 0:00.750, Amy drops the katana on the floor and it clangs on the floor.\nAt 0:01.000, Amy turns around, the camera orbiting around with her.\nAt 0:01.500, Amy runs down the hallway to the steel door.\nAt 0:03.000, Amy reaches the steel door leading to the safe room and opens it.\nAt 0:04.000, Will and Amber come in through the door and hug Amy.\nAt 0:05.000, Will (S2) steps back and says <d>Eww, gross!</d>\nAt 0:06.000, Amber also steps back from Amy.\nAt 0:06.500, Amy (S1) says <d>Hazards of being a mom</d> and smiles.\nAt 0:07.500, fade to black.",
+          "overall_soundscape": "continues from <Video 1>. Zombie4 hits the floor with a heavy body impact, Amy drops the katana with a sharp metallic clang, Amy's footsteps pound down the hallway, the steel door opens with a heavy mechanical sound, Will and Amber rush in and hug Amy, and the scene settles into quieter family voices before the fade to black.",
+          "non_diegetic_music": "continues from <Video 1>. The intense action cue resolves as Zombie4 falls, then shifts into relieved, warm closing music as Amy reunites with Will and Amber, ending on a light emotional-comedic note before fading out."
+        },
+        "must_happen": [
+          "Zombie4 falls to the ground.",
+          "Amy drops the katana.",
+          "Amy leaves the kitchen and runs to the steel door.",
+          "Amy opens the steel door.",
+          "Will and Amber emerge from the safe room.",
+          "Will and Amber hug Amy.",
+          "Will reacts with disgust to the green bile covering Amy.",
+          "Amber also steps back from Amy.",
+          "Amy delivers the final line and smiles.",
+          "The segment fades to black."
+        ],
+        "must_not_happen": [
+          "No additional zombies appear.",
+          "No further combat occurs.",
+          "Amy does not pick the katana back up.",
+          "No pistol appears.",
+          "Will and Amber are not injured.",
+          "Amy does not leave Will and Amber behind.",
+          "Amy's green bile coverage does not disappear before the reunion.",
+          "The ending does not remain visually active after the fade completes."
+        ],
+        "expected_end_state": [
+          "Environment: hallway/safe-room doorway is the final visible location before the fade.",
+          "Amy: reunited with Will and Amber, alive, smiling, still visibly covered in green bile.",
+          "Amy weapons: no weapon in Amy's hands; katana left behind on the floor.",
+          "Zombie4: dead or fully neutralized on the kitchen floor.",
+          "Will: visible, safe, standing near Amy.",
+          "Amber: visible, safe, standing near Amy.",
+          "Threat state: no active zombies remain.",
+          "Spatial relationships: Amy, Will, and Amber are together at the safe-room doorway.",
+          "Ongoing action: family reunion has replaced combat; the story is complete.",
+          "Ongoing audio: dialogue and quiet aftermath only; combat sounds have ended.",
+          "Musical state: warm closing cue resolving the prior action music.",
+          "Pre-fade semantic state: Amy, Will, and Amber are safely reunited.",
+          "Literal final frame: black after the fade completes."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.\n<Subject 2> is Will, a 10-year-old boy.\n<Subject 3> is Amber, a 14-year-old girl.\n\ndetailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.\n\nAt 00:02.000, Amy wipes a palm on her jeans while keeping her pistol raised in left hand and katana ready in right, still standing on the kitchen tiles facing toward the hallway.\n\nAt 00:03.200, Amy turns her torso and shoulders smoothly to face the back bedroom doorway, letting her gaze settle over the small closet door that remains closed.\n\nAt 00:04.500, Amy lifts both hands together and pushes the closet door wide open with a quick swing of her wrist, revealing the dimly lit hallway beyond.\n\nAt 00:06.700, Will (10‑year‑old) and Amber (14‑year‑old), standing in silent relief behind the now-opened closet, step forward as Amy pulls them into the bright kitchen light; Will and Amber both fall slightly onto the tiles but stay upright.\n\noverall_soundscape: palm rubbing against jeans, a light creak as the closet door swings open, soft footfalls of Will and Amber stepping onto kitchen tiles, a faint thud when they land slightly on the floorboards\n\nnon_diegetic_music: continues from <Video 1>. A staccato brass motif pulses as Amy opens the closet, then lifts into an urgent rhythmic drive that swells when Will and Amber step forward, keeping the tense energy of the hallway alive.\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:02.000, Amy wipes a palm on her jeans while keeping her pistol raised in left hand and katana ready in right, still standing on the kitchen tiles facing toward the hallway. At 00:03.200, Amy turns her torso and shoulders smoothly to face the back bedroom doorway, letting her gaze settle over the small closet door that remains closed. At 00:04.500, Amy lifts both hands together and pushes the closet door wide open with a quick swing of her wrist, revealing the dimly lit hallway beyond. At 00:06.700, Will (10‑year‑old) and Amber (14‑year‑old), standing in silent relief behind the now-opened closet, step forward as Amy pulls them into the bright kitchen light; Will and Amber both fall slightly onto the tiles but stay upright.",
+        "overall_soundscape": "palm rubbing against jeans, a light creak as the closet door swings open, soft footfalls of Will and Amber stepping onto kitchen tiles, a faint thud when they land slightly on the floorboards",
+        "non_diegetic_music": "continues from <Video 1>. A staccato brass motif pulses as Amy opens the closet, then lifts into an urgent rhythmic drive that swells when Will and Amber step forward, keeping the tense energy of the hallway alive.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "The final zombie lies still on the floorboards beside the closed closet door. Amy stands to the left of center holding her pistol and katana, with Will and Amber now positioned in front of the camera inside the brightly lit kitchen, their arms pulled by Amy toward her."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "standing facing back toward hallway",
+        "ongoing_audio": "N/A",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "kitchen tiles facing back toward the hallway",
+            "pose_action": "standing",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "two zombie heads lie scattered beside her near the closet door, which remains closed"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Will": {
+            "name": "Will",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "male",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Amber": {
+            "name": "Amber",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "female",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "position": "inside back bedroom closet",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Will",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "male",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "3": {
+          "name": "Amber",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "female",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "character_canon.json": "generated\\character_canon.json",
+    "generation_state.json": "generated\\generation_state.json",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
