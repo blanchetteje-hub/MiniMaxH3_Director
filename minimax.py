@@ -20062,12 +20062,15 @@ def build_h3_soundscape_messages(raw_scene):
                 "video scene. RAW SCENE is authoritative. Return only sounds a "
                 "microphone could hear. Include sounds explicitly stated by RAW and "
                 "sounds necessarily produced by an audible depicted event such as a "
-                "slam, crash, gunshot, or spoken line. Omit lighting, visibility, "
-                "expressions, stillness, positions, silent gestures, and other purely "
-                "visual facts. Do not invent optional or merely plausible sounds. Use "
-                "concise natural-language phrasing rather than identifier-style labels "
-                "with underscores. Do not rewrite, summarize, interpret, or add story "
-                "action. Return JSON only."
+                "slam, crash, gunshot, or spoken line. Each listed item must itself "
+                "name an audible event or audible ambience, not a silent action. Omit "
+                "lighting, visibility, expressions, stillness, positions, silent "
+                "gestures, and other purely visual facts. Do not infer a new sound "
+                "from a state description such as 'pistol still fired', 'door open', "
+                "or 'body fallen'. Do not invent optional or merely plausible sounds. "
+                "Use concise natural-language phrasing rather than identifier-style "
+                "labels with underscores. Do not rewrite, summarize, interpret, or "
+                "add story action. Return JSON only."
             ),
         },
         {
@@ -20090,7 +20093,12 @@ def parse_h3_soundscape_result(raw_result):
         raise ValueError(
             "H3 soundscape response must contain only overall_soundscape."
         )
-    return _normalize_h3_audio_text(result.get("overall_soundscape"))
+    normalized = _normalize_h3_audio_text(result.get("overall_soundscape"))
+    if normalized != "N/A" and sum(ch.isalpha() for ch in normalized) < 3:
+        raise ValueError(
+            "H3 soundscape response must contain natural-language audible content."
+        )
+    return normalized
 
 
 def build_h3_music_messages(
@@ -20124,12 +20132,13 @@ def build_h3_music_messages(
                 "Generate only the non-diegetic music for one already-finalized "
                 "video scene. RAW SCENE is context for the scene's emotional arc and "
                 "ending; PREVIOUS MUSIC, when supplied, is the musical state to "
-                "continue from. Describe the underscore itself, not character actions "
-                "or individual sound effects. Do not narrate or synchronize the score "
-                "to each action. Return one concise musical cue sentence (after the "
-                "required continuation prefix when applicable). Use natural-language "
-                "phrasing rather than identifier-style labels with underscores. "
-                "Return JSON only."
+                "continue from. Describe only the underscore's mood, style, "
+                "instrumentation, and any broad emotional transition. Do not name "
+                "characters, narrate scene actions, describe individual sound effects, "
+                "or synchronize the score to specific actions. Return one musical cue "
+                "sentence. After any required continuation prefix, use at most 24 "
+                "words. Use natural-language phrasing rather than identifier-style "
+                "labels with underscores. Return JSON only."
             ),
         },
         {
@@ -20154,7 +20163,17 @@ def parse_h3_music_result(raw_result):
         raise ValueError(
             "H3 music response must contain only non_diegetic_music."
         )
-    return _normalize_h3_audio_text(result.get("non_diegetic_music"))
+    normalized = _normalize_h3_audio_text(result.get("non_diegetic_music"))
+    cue_text = normalized
+    continuation_prefix = "continues from <Video 1>."
+    if cue_text.startswith(continuation_prefix):
+        cue_text = cue_text[len(continuation_prefix):].strip()
+    cue_words = re.findall(r"\b[\w’'-]+\b", cue_text)
+    if len(cue_words) > 32:
+        raise ValueError(
+            "H3 music response is too verbose; return one short musical cue."
+        )
+    return normalized
 
 
 # Build Request 2 with deterministic story-ending handoff rules.
@@ -30395,79 +30414,111 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     print("=" * 64)
 
     soundscape = "N/A"
-    try:
-        raw_soundscape = ask_llm(
-            build_h3_soundscape_messages(raw_scene),
-            response_format=H3_SOUNDSCAPE_RESPONSE_FORMAT,
-            history_metadata={
-                "run_id": run_id,
-                "source_sha256": (run_config or {}).get("source_sha256"),
-                "purpose": "director_h3_soundscape",
-                "segment": segment_number,
-                "attempt": 1,
-                "conditioning_mode": conditioning_mode,
-            },
-            max_tokens=512,
-        )
-        soundscape = parse_h3_soundscape_result(raw_soundscape)
-        print(
-            f"H3 soundscape segment {segment_number}: {soundscape!r}",
-            flush=True,
-        )
-    except (
-        LLMConnectionError,
-        requests.RequestException,
-        OSError,
-        ValueError,
-        TypeError,
-    ) as error:
-        print(
-            f"WARNING: H3 soundscape segment {segment_number} failed; "
-            f"using N/A: {error}",
-            flush=True,
-        )
+    soundscape_messages = build_h3_soundscape_messages(raw_scene)
+    for audio_attempt in range(1, 3):
+        try:
+            raw_soundscape = ask_llm(
+                soundscape_messages,
+                response_format=H3_SOUNDSCAPE_RESPONSE_FORMAT,
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": (run_config or {}).get("source_sha256"),
+                    "purpose": "director_h3_soundscape",
+                    "segment": segment_number,
+                    "attempt": audio_attempt,
+                    "conditioning_mode": conditioning_mode,
+                },
+                max_tokens=512,
+            )
+            soundscape = parse_h3_soundscape_result(raw_soundscape)
+            print(
+                f"H3 soundscape segment {segment_number}: {soundscape!r}",
+                flush=True,
+            )
+            break
+        except (
+            LLMConnectionError,
+            requests.RequestException,
+            OSError,
+            ValueError,
+            TypeError,
+        ) as error:
+            if audio_attempt < 2:
+                print(
+                    f"H3 soundscape segment {segment_number} invalid "
+                    f"(attempt {audio_attempt}/2); retrying: {error}",
+                    flush=True,
+                )
+                soundscape_messages = [
+                    dict(message) for message in soundscape_messages
+                ]
+                soundscape_messages[-1]["content"] += (
+                    "\n\nRETRY: Return plain natural-language audible events only. "
+                    "Do not return punctuation-only text, silent actions, or state "
+                    "descriptions."
+                )
+                continue
+            print(
+                f"WARNING: H3 soundscape segment {segment_number} failed; "
+                f"using N/A: {error}",
+                flush=True,
+            )
 
-    print()
-    print("=" * 64)
     print(f"H3 MUSIC REQUEST - SEGMENT {segment_number}")
     print("=" * 64)
 
     music = "N/A"
-    try:
-        raw_music = ask_llm(
-            build_h3_music_messages(
-                raw_scene,
-                conditioning_mode=conditioning_mode,
-                previous_music=bundle.get("previous_music", ""),
-            ),
-            response_format=H3_MUSIC_RESPONSE_FORMAT,
-            history_metadata={
-                "run_id": run_id,
-                "source_sha256": (run_config or {}).get("source_sha256"),
-                "purpose": "director_h3_music",
-                "segment": segment_number,
-                "attempt": 1,
-                "conditioning_mode": conditioning_mode,
-            },
-            max_tokens=512,
-        )
-        music = parse_h3_music_result(raw_music)
-        print(
-            f"H3 music segment {segment_number}: {music!r}",
-            flush=True,
-        )
-    except (
-        LLMConnectionError,
-        requests.RequestException,
-        OSError,
-        ValueError,
-        TypeError,
-    ) as error:
-        print(
-            f"WARNING: H3 music segment {segment_number} failed; using N/A: "
-            f"{error}",
-            flush=True,
-        )
+    music_messages = build_h3_music_messages(
+        raw_scene,
+        conditioning_mode=conditioning_mode,
+        previous_music=bundle.get("previous_music", ""),
+    )
+    for audio_attempt in range(1, 3):
+        try:
+            raw_music = ask_llm(
+                music_messages,
+                response_format=H3_MUSIC_RESPONSE_FORMAT,
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": (run_config or {}).get("source_sha256"),
+                    "purpose": "director_h3_music",
+                    "segment": segment_number,
+                    "attempt": audio_attempt,
+                    "conditioning_mode": conditioning_mode,
+                },
+                max_tokens=512,
+            )
+            music = parse_h3_music_result(raw_music)
+            print(
+                f"H3 music segment {segment_number}: {music!r}",
+                flush=True,
+            )
+            break
+        except (
+            LLMConnectionError,
+            requests.RequestException,
+            OSError,
+            ValueError,
+            TypeError,
+        ) as error:
+            if audio_attempt < 2:
+                print(
+                    f"H3 music segment {segment_number} invalid "
+                    f"(attempt {audio_attempt}/2); retrying: {error}",
+                    flush=True,
+                )
+                music_messages = [dict(message) for message in music_messages]
+                music_messages[-1]["content"] += (
+                    "\n\nRETRY: Return one short musical cue only. After any "
+                    "required continuation prefix, use at most 24 words. Do not "
+                    "name characters, actions, or sound effects."
+                )
+                continue
+            print(
+                f"WARNING: H3 music segment {segment_number} failed; using N/A: "
+                f"{error}",
+                flush=True,
+            )
 
     audio_result = {
         "overall_soundscape": soundscape,

@@ -115,7 +115,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("Continue the previous musical state", text)
         self.assertIn("not character actions", text)
         self.assertIn("Do not narrate or synchronize", text)
-        self.assertIn("one concise musical cue sentence", text)
+        self.assertIn("Return one musical cue sentence", text)
+        self.assertIn("at most 24", text)
+        self.assertIn("Do not name characters", text)
         self.assertNotIn("overall_soundscape", text)
         self.assertIn("continues from <Video 1>", text)
         self.assertIn("Return exactly non_diegetic_music", text)
@@ -128,6 +130,43 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("only sounds a microphone could hear", text)
         self.assertIn("Omit lighting", text)
         self.assertIn("silent gestures", text)
+        self.assertIn("pistol still fired", text)
+        self.assertIn("Each listed item must itself name an audible event", text)
+
+    @mock.patch("minimax.ask_llm")
+    def test_audio_contract_retries_malformed_soundscape(self, ask_llm):
+        ask_llm.side_effect = [
+            director_response("Mark closes a door with a thud."),
+            {"overall_soundscape": ":["},
+            {"overall_soundscape": "door thud"},
+            {"non_diegetic_music": "Sparse piano."},
+        ]
+        with mock.patch("builtins.print"):
+            payload = minimax.request_segment_llm(
+                segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
+            )
+        self.assertEqual(payload["llm_result"]["overall_soundscape"], "door thud")
+        sound_calls = [
+            call for call in ask_llm.call_args_list
+            if call.kwargs["history_metadata"]["purpose"] == "director_h3_soundscape"
+        ]
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["attempt"] for call in sound_calls],
+            [1, 2],
+        )
+
+    def test_h3_soundscape_parser_rejects_punctuation_only_output(self):
+        with self.assertRaises(ValueError):
+            minimax.parse_h3_soundscape_result({
+                "overall_soundscape": ":[",
+            })
+
+    def test_h3_music_parser_rejects_overlong_cue(self):
+        overlong = " ".join(["music"] * 33)
+        with self.assertRaises(ValueError):
+            minimax.parse_h3_music_result({
+                "non_diegetic_music": overlong,
+            })
 
     def test_h3_audio_parsers_accept_only_their_single_field(self):
         soundscape = minimax.parse_h3_soundscape_result({

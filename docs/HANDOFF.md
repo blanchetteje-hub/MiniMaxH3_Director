@@ -625,14 +625,38 @@ retry unit test: it tried to feed coherence-validator replies through a patched
 The test now mocks the validator directly and leaves the Director request mock responsible
 only for RAW scene responses.
 
+### 2841 — audio quality improved, remaining contract failures isolated
+
+`director-2841-h3-audio-quality` completed all 8 segments.
+
+Observed:
+- microphone-only wording removed the Segment 1 visual-only sunlight sound from
+  2837;
+- previous-score handoff fixed the major Segment 8 musical direction: the score
+  now resolves from tension into warm relief;
+- music is still too verbose and action-synchronized despite the word
+  `concise`;
+- Segment 7 produced malformed soundscape text `:[`;
+- Segment 8 incorrectly inferred a gunshot from the state phrase
+  `pistol still fired`.
+
+Fix:
+- soundscape contract now requires each item to name an audible event/ambience
+  and forbids deriving sounds from persistent state descriptions;
+- punctuation-only/non-language soundscape output is rejected;
+- music is limited to one cue sentence, at most 24 words after the continuation
+  prefix, with no character/action/sound-effect narration;
+- malformed/overlong audio output gets one bounded retry;
+- task-based LLM profiles remain unchanged.
+
 ## Immediate next work
 
-Rerun the one remaining coherence-retry regression with the semantic validator
-mocked at its own boundary. If green, run Director-only acceptance from the same frozen
-plan and compare audio fields against 2837 and the gold style.
+Run focused audio-contract regressions for malformed soundscape rejection,
+state-to-sound prevention wording, short music cues, and bounded retries. If green,
+rerun the frozen-plan Director acceptance.
 
 Queued:
-- `tests-2840-director-coherence-regression`
+- `tests-2842-h3-audio-contract`
 
 ## Public repository rule
 
