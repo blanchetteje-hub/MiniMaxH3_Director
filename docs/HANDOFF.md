@@ -720,33 +720,62 @@ Fix:
 - numbered locations and objects such as `Room2` are ignored by construction;
 - no new LLM stage or settings change.
 
-### 2851-2853 — marker plumbing works; prompt condition was too weak
+### 2851-2858 — Beat-owned Subject labels rejected
 
-Fresh planning-only results:
-- 2851: `characters_introduced = ["Zombie1","Zombie2","Zombie3","Zombie4"]`;
-  the full intended path worked.
-- 2852: only `["Zombie1"]`; a later distinct attacker remained "another
-  intruder", and later zombies stayed collective.
-- 2853: only `["Zombie1"]`; later attackers stayed collective.
+Planning probes established that the marker plumbing itself worked, but the
+responsibility was in the wrong stage.
 
-Conclusion: Python extraction/marker stripping/macro-arc handoff is correct.
-The weak point is the beat-writer instruction, which previously required labels
-only when identity was needed "across actions or beats."
+Evidence:
+- 2851 produced several functional zombie handles successfully;
+- 2852/2853 collapsed later distinct attackers into one label or collective prose;
+- the strengthened rule passed focused regressions in 2855;
+- fresh production runs 2856/2857/2858 still produced only `Zombie1` while later
+  foreground attackers remained collective or reused that one identity.
 
-Fix:
-- every distinct unnamed animate foreground participant who acts or is acted on
-  must receive a marked functional handle even for a one-beat appearance;
-- groups remain collective only when members are truly interchangeable and no
-  member receives a distinct action/outcome.
+Decision:
+- stop asking story-to-beats to invent H3 Subject identities;
+- Beats return to natural story-event description only;
+- `characters_introduced` is no longer populated from temporary `@` markers.
+
+### Post-RAW dynamic Subject ownership
+
+Dynamic identity now begins after Request 1 RAW has been accepted and before final
+H3 assembly.
+
+Current design:
+- the accepted staged RAW is authoritative;
+- a narrow deterministic-analysis call sees RAW plus existing Subject definitions;
+- it labels distinct unnamed foreground animate participants with stable functional
+  names such as `Guard1` or `Creature1`;
+- it reuses an existing dynamic name only when RAW clearly continues the same
+  individual;
+- Python keeps ownership of numeric Subject IDs, speaker IDs, persistence, and
+  registration through the existing Subject registry;
+- malformed/timestamp-changing/structurally invalid Subject resolution fails soft
+  to the accepted RAW.
+
+Beat prompts and Beat repair no longer carry dynamic-Subject labeling rules.
+
+Relevant commits:
+- `b79c71e00e1ca8856e666547a70058aa3505db3b` — resolve dynamic Subjects from accepted RAW;
+- `ec53cdadcd1db9cc1f40520506f450ab39fa6715` — move Subject identity regressions out of Beats;
+- `35e47416b376515743b79a79d3803d17292e9edf` — cover post-RAW Subject resolution;
+- `a56e35fbf540f370828349cce86e947ade1e2067` — update project architecture notes.
 
 ## Immediate next work
 
-Run the strengthened prompt regression, then fresh planning-only probes. Accept
-the Subject-label path when distinct foreground attackers are consistently
-marked and Python carries the clean names into `characters_introduced`.
+Run focused regressions for:
+- story-to-beats no longer emitting/depending on functional Subject handles;
+- post-RAW Subject prompt shape;
+- stable functional naming from RAW;
+- timestamp/shot-structure protection.
+
+If green, run a fresh full Director acceptance and inspect whether final H3 prompts
+contain distinct dynamic Subject definitions for concretely staged unnamed actors.
+Do not tune camera choreography until this Subject ownership change is verified.
 
 Queued:
-- `tests-2854-functional-subject-foreground-rule`
+- none yet
 
 ## Public repository rule
 
