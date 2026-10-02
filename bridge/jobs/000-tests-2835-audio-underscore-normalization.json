@@ -1,0 +1,9 @@
+{
+  "job_id": "tests-2835-audio-underscore-normalization",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_llm_prompt_pipeline.py::H3AudioNormalizationTests::test_audio_parser_replaces_underscores_with_spaces"
+  ],
+  "timeout_seconds": 1800
+}
