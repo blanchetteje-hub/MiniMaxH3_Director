@@ -1,0 +1,32 @@
+{
+  "job_id": "tests-2822-pronoun-grammar",
+  "kind": "run_tests",
+  "started_at": 1790900752.0967433,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_subject_object_and_possessive_names",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_logs_replacements",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_end_state_exactly",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_rejects_timestamp_drift"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 6 items\n\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow FAILED [ 16%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite PASSED [ 33%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_subject_object_and_possessive_names PASSED [ 50%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_logs_replacements PASSED [ 66%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_end_state_exactly PASSED [ 83%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_rejects_timestamp_drift PASSED [100%]\n\n================================== FAILURES ===================================\n_ DirectorMicroPromptPipelineTests.test_raw_pronoun_resolution_prompt_is_narrow _\n\nself = <tests.test_director_retry.DirectorMicroPromptPipelineTests testMethod=test_raw_pronoun_resolution_prompt_is_narrow>\n\n    def test_raw_pronoun_resolution_prompt_is_narrow(self):\n        messages = minimax.build_director_pronoun_resolution_messages(\n            (\n                \"At 00:01.000, Amy pushes Will and Amber toward the closet.\\n\"\n                \"At 00:04.000, she pushes them inside.\\n\"\n                \"End continuity state: they are inside the closet.\"\n            ),\n            (\n                \"<Subject 1> is Amy.\\n\"\n                \"<Subject 2> is Will.\\n\"\n                \"<Subject 3> is Amber.\"\n            ),\n        )\n        text = messages[0][\"content\"] + \"\\n\" + messages[1][\"content\"]\n>       self.assertIn(\"Change only personal pronouns\", text)\nE       AssertionError: 'Change only personal pronouns' not found in 'Make person references explicit for a video prompt. Scan the entire supplied timed scene and replace every personal pronoun whose referent is clear (especially they, them, their, she, her, he, him, his) with the explicit person name or names. Preserve grammatical case: subject pronouns become names (she -> Amy), object pronouns become names (her -> Amy), and possessives become possessive names (her palm -> Amy\\'s palm; their bowls -> Will and Amber\\'s bowls). Never put a bare name before a possessed noun: \\'Amy palm\\' is invalid. Change only those pronouns. Preserve every timestamp, action, action order, object, location, sound, camera instruction, dialogue, and punctuation meaning. Do not add, remove, combine, split, or reinterpret actions. If a pronoun\\'s referent is uncertain, leave it unchanged. Return JSON only.\\nKNOWN SUBJECTS\\n<Subject 1> is Amy.\\n<Subject 2> is Will.\\n<Subject 3> is Amber.\\n\\nRAW SCENE\\nAt 00:01.000, Amy pushes Will and Amber toward the closet.\\nAt 00:04.000, she pushes them inside.\\nEnd continuity state: they are inside the closet.\\n\\nReturn {\"raw_scene\":\"same RAW SCENE with only unambiguous person pronouns replaced by explicit names\"}.'\n\ntests\\test_director_retry.py:94: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow - AssertionError: 'Change only personal pronouns' not found in 'Make person references explicit for a video prompt. Scan the entire supplied timed scene and replace every personal pronoun whose referent is clear (especially they, them, their, she, her, he, him, his) with the explicit person name or names. Preserve grammatical case: subject pronouns become names (she -> Amy), object pronouns become names (her -> Amy), and possessives become possessive names (her palm -> Amy\\'s palm; their bowls -> Will and Amber\\'s bowls). Never put a bare name before a possessed noun: \\'Amy palm\\' is invalid. Change only those pronouns. Preserve every timestamp, action, action order, object, location, sound, camera instruction, dialogue, and punctuation meaning. Do not add, remove, combine, split, or reinterpret actions. If a pronoun\\'s referent is uncertain, leave it unchanged. Return JSON only.\\nKNOWN SUBJECTS\\n<Subject 1> is Amy.\\n<Subject 2> is Will.\\n<Subject 3> is Amber.\\n\\nRAW SCENE\\nAt 00:01.000, Amy pushes Will and Amber toward the closet.\\nAt 00:04.000, she pushes them inside.\\nEnd continuity state: they are inside the closet.\\n\\nReturn {\"raw_scene\":\"same RAW SCENE with only unambiguous person pronouns replaced by explicit names\"}.'\n========================= 1 failed, 5 passed in 2.63s =========================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790900753.187866,
+    "finished_at": 1790900756.5761902
+  },
+  "finished_at": 1790900756.5761902,
+  "status": "ok"
+}
