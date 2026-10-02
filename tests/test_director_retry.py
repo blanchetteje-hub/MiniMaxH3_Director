@@ -264,6 +264,36 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "director_raw_scene_subject_resolution",
         )
 
+    def test_raw_subject_resolution_preserves_existing_identifiers(self):
+        original = (
+            "At 00:01.000, Will and Amber watch Zombie2 enter.\n"
+            "At 00:05.000, Zombie2 falls beside Amy.\n"
+            "End continuity state: Will and Amber remain nearby; Zombie2 is down."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": (
+                "At 00:01.000, Will1 and Amber1 watch Zombie2_1 enter.\n"
+                "At 00:05.000, Zombie2_1 falls beside Amy."
+            ),
+            "subject_names": ["Will1", "Amber1", "Zombie2_1"],
+        })
+        result, names = minimax.resolve_director_raw_scene_subjects(
+            original,
+            (
+                "<Subject 1> is Amy.\n"
+                "<Subject 2> is Will.\n"
+                "<Subject 3> is Amber."
+            ),
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertIn("Will and Amber watch Zombie2 enter.", result)
+        self.assertIn("Zombie2 falls beside Amy.", result)
+        self.assertNotIn("Will1", result)
+        self.assertNotIn("Amber1", result)
+        self.assertNotIn("Zombie2_1", result)
+        self.assertEqual(names, ["Zombie2"])
+
     def test_raw_subject_resolution_rejects_timestamp_drift(self):
         original = (
             "At 00:01.000, a guard enters.\n"
