@@ -305,6 +305,66 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             else minimax.derive_additional_subject_definitions(SUBJECTS, state),
         )
 
+    def test_canonical_named_characters_promote_only_when_visibly_present(self):
+        canon = {
+            "fields": ["age", "clothing", "gender"],
+            "characters": [
+                {"name": "Amy", "age": "30", "clothing": "black tank top", "gender": "female"},
+                {"name": "Will", "age": "8", "clothing": "blue shirt", "gender": "male"},
+                {"name": "Amber", "age": "5", "clothing": "pink dress", "gender": "female"},
+            ],
+        }
+        names, genders = minimax.canonical_character_subject_hints(canon)
+        self.assertEqual(names, ["Amy", "Will", "Amber"])
+        self.assertEqual(genders, {"Amy": "female", "Will": "male", "Amber": "female"})
+
+        state = minimax.continuity_state_for_registry(
+            "<Subject 1> is Amy, referenced in <Picture 1>."
+        )
+        state, added = minimax.register_named_subject_hints(
+            state,
+            "<Subject 1> is Amy, referenced in <Picture 1>.",
+            (
+                "At 00:01.000, Amy cooks.\n"
+                "At 00:02.500, Will laughs while Amber eats cereal.\n"
+                "At 00:03.200, Zombie1 enters."
+            ),
+            names + ["Zombie1"],
+            origin_segment=1,
+            subject_genders={**genders, "Zombie1": "unknown"},
+        )
+        self.assertEqual(added, ["Will", "Amber", "Zombie1"])
+        self.assertEqual(state["subjects"]["Will"]["subject_id"], 2)
+        self.assertEqual(state["subjects"]["Amber"]["subject_id"], 3)
+        self.assertEqual(state["subjects"]["Zombie1"]["subject_id"], 4)
+        self.assertEqual(state["subjects"]["Will"]["gender"], "male")
+        self.assertEqual(state["subjects"]["Amber"]["gender"], "female")
+
+    def test_canonical_named_character_not_visible_is_not_promoted(self):
+        canon = {
+            "fields": ["gender"],
+            "characters": [
+                {"name": "Amy", "gender": "female"},
+                {"name": "Will", "gender": "male"},
+                {"name": "Amber", "gender": "female"},
+            ],
+        }
+        names, genders = minimax.canonical_character_subject_hints(canon)
+        state = minimax.continuity_state_for_registry(
+            "<Subject 1> is Amy, referenced in <Picture 1>."
+        )
+        state, added = minimax.register_named_subject_hints(
+            state,
+            "<Subject 1> is Amy, referenced in <Picture 1>.",
+            "At 00:01.000, Amy stands alone.",
+            names,
+            origin_segment=1,
+            subject_genders=genders,
+        )
+        self.assertEqual(added, [])
+        self.assertNotIn("Will", state["subjects"])
+        self.assertNotIn("Amber", state["subjects"])
+
     def test_dynamic_subject_gender_comes_from_formatter_for_explicit_male(self):
         state = minimax.continuity_state_for_registry(SUBJECTS)
         state, added = minimax.register_named_subject_hints(

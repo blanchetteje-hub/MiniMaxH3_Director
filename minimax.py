@@ -21540,6 +21540,26 @@ def _subject_name_is_promotable(name):
     return not (set(normalized.split()) & disallowed_words)
 
 
+# Return canonical named-character hints for deterministic Subject promotion.
+def canonical_character_subject_hints(character_canon):
+    """Return canonical character names and authoritative known genders."""
+    names = []
+    genders = {}
+    if not isinstance(character_canon, dict):
+        return names, genders
+    for record in character_canon.get("characters", []):
+        if not isinstance(record, dict):
+            continue
+        name = " ".join(str(record.get("name") or "").split()).strip()
+        if not name or not _subject_name_is_promotable(name):
+            continue
+        names.append(name)
+        gender = normalize_subject_gender(record.get("gender"))
+        if gender != "unknown":
+            genders[name] = gender
+    return list(dict.fromkeys(names)), genders
+
+
 # Register planned named characters only when they visibly appear now.
 def register_named_subject_hints(
     continuity_state,
@@ -31129,6 +31149,9 @@ def _run_main(
     )
     subject_information = format_beat_generation_subjects(subject_definitions)
     canonical_character_facts = format_character_canon_for_beats(character_canon)
+    canonical_subject_names, canonical_subject_genders = (
+        canonical_character_subject_hints(character_canon)
+    )
     if canonical_character_facts:
         subject_information = (
             subject_information + "\n" + canonical_character_facts
@@ -31940,18 +31963,25 @@ def _run_main(
             origin_segment=segment,
             subject_genders=llm_result.get("subject_genders"),
         )
-        formatter_subject_names = (
-            list(llm_result.get("subject_genders", {}))
+        formatter_subject_genders = (
+            dict(llm_result.get("subject_genders", {}))
             if isinstance(llm_result.get("subject_genders"), dict)
-            else []
+            else {}
         )
+        formatter_subject_names = list(formatter_subject_genders)
+        registration_subject_genders = dict(formatter_subject_genders)
+        registration_subject_genders.update(canonical_subject_genders)
         continuity_state, hinted_subject_names = register_named_subject_hints(
             continuity_state,
             subject_definitions,
             detailed_description,
-            list(dict.fromkeys(raw_subject_names + formatter_subject_names)),
+            list(dict.fromkeys(
+                raw_subject_names
+                + formatter_subject_names
+                + canonical_subject_names
+            )),
             origin_segment=segment,
-            subject_genders=llm_result.get("subject_genders"),
+            subject_genders=registration_subject_genders,
         )
         newly_registered_names = list(dict.fromkeys(
             dialogue_subject_names + hinted_subject_names
