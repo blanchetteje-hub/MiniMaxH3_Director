@@ -32930,20 +32930,10 @@ def main():
             # Deterministic programming/state-application defects cannot repair
             # themselves by replaying the same saved arc/checkpoint.
             raise
-        except SystemExit as error:
-            # Explicit successful exits such as --help remain user-controlled.
-            if getattr(error, "code", 0) in (0, None):
-                raise
-            # argparse/setup rejection occurs before a trustworthy current-run
-            # checkpoint exists. Retry setup rather than consuming stale state.
-            recovery_resume_segment = 1
-            print(
-                f"WARNING: setup rejected the current attempt ({error}); "
-                "retrying setup from the beginning.",
-                file=sys.stderr,
-                flush=True,
-            )
-            time.sleep(1)
+        except SystemExit:
+            # argparse and explicit command-line exits are user-controlled.
+            # Never retry invalid or missing arguments.
+            raise
         except Exception as error:
             if fail_fast_generation:
                 print(
