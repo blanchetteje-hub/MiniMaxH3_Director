@@ -712,6 +712,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("concrete visible/audible action", normalized)
         self.assertIn("natural physical staging", normalized)
         self.assertIn("Camera movement may clarify action", normalized)
+        self.assertIn("Prefer continuous camera movement and reframing over cuts", normalized)
         self.assertIn("NEXT BEAT is boundary context only", normalized)
         self.assertNotIn("Do not invent persistent changes", normalized)
     def test_completion_prompt_disallows_implicit_mover_barrier_crossing(self):
