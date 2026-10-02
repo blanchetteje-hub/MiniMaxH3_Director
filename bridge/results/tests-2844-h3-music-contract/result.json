@@ -1,0 +1,27 @@
+{
+  "job_id": "tests-2844-h3-music-contract",
+  "kind": "run_tests",
+  "started_at": 1790907871.2542088,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 1 item\n\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only PASSED [100%]\n\n============================== 1 passed in 2.61s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790907872.625164,
+    "finished_at": 1790907875.9824555
+  },
+  "finished_at": 1790907875.9824555,
+  "status": "ok"
+}
