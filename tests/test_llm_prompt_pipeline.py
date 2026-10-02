@@ -1508,6 +1508,8 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "finishing choice",
             initial[0]["content"],
         )
+        self.assertIn("every materially audible sound", initial[0]["content"])
+        self.assertIn("identifier-style labels with underscores", initial[0]["content"])
 
     def test_previous_visible_subjects_resolve_plain_names_for_video_origin(self):
         definitions = (
