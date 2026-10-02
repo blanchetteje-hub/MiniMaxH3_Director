@@ -710,6 +710,8 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         )
         normalized = " ".join(rules.split())
         self.assertIn("concrete visible/audible action", normalized)
+        self.assertIn("Complete every finite action explicitly assigned by CURRENT BEAT", normalized)
+        self.assertIn("every named person or target", normalized)
         self.assertIn("natural physical staging", normalized)
         self.assertIn("Camera movement may clarify action", normalized)
         self.assertIn("Explicitly locate every named subject whose final position matters", normalized)
