@@ -28608,7 +28608,14 @@ def prepare_refresh_workflow(
         label,
         "MiniMaxH3VideoExtendPatched",
     )
-    if picture_slot_map:
+    if len(picture_slot_map) == 1:
+        # ImageBatchMulti requires at least two inputs. A single IMAGE output
+        # already has the batch shape expected by the Conditioner.
+        _, reference_batch = find_workflow_node(
+            workflow, REFRESH_REFERENCE_BATCH_NODE_NAME, label, "ImageBatchMulti",
+        )
+        extend["inputs"]["ref_images"] = list(reference_batch["inputs"]["image_1"])
+    elif picture_slot_map:
         connect_named_connection(
             workflow,
             REFRESH_EXTEND_NODE_NAME,

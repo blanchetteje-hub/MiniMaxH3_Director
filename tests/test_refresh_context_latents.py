@@ -64,6 +64,40 @@ class RefreshContextLatentTests(unittest.TestCase):
         )
         self.assertEqual(duration["inputs"]["value"], 8.0)
 
+    def test_refresh_routes_zero_one_and_multiple_references(self):
+        with tempfile.TemporaryDirectory() as directory:
+            previous_video = os.path.join(directory, "previous.mp4")
+            with open(previous_video, "wb") as handle:
+                handle.write(b"video")
+            for number in (1, 3):
+                with open(os.path.join(directory, f"reference_{number}.png"), "wb") as handle:
+                    handle.write(VALID_PNG)
+            for selected in ((), (3,), (1, 3)):
+                with self.subTest(selected=selected):
+                    overrides = {number: f"reference_{number}.png" for number in selected}
+                    with mock.patch("minimax.COMFY_INPUT", directory), mock.patch.dict(
+                        minimax.REFERENCE_IMAGE_OVERRIDES, overrides, clear=True,
+                    ):
+                        workflow = minimax.prepare_refresh_workflow(
+                            8.0, 0.3, "prompt", previous_video, 7, noise_seed=123,
+                        )
+                    _, conditioner = minimax.find_workflow_node(
+                        workflow, minimax.REFRESH_EXTEND_NODE_NAME, "test",
+                    )
+                    if not selected:
+                        self.assertNotIn("ref_images", conditioner["inputs"])
+                    elif len(selected) == 1:
+                        image_id, _ = minimax.find_workflow_node(
+                            workflow, "Reference Image 3", "test", "LoadImage",
+                        )
+                        self.assertEqual(conditioner["inputs"]["ref_images"], [image_id, 0])
+                    else:
+                        batch_id, batch = minimax.find_workflow_node(
+                            workflow, minimax.REFRESH_REFERENCE_BATCH_NODE_NAME, "test", "ImageBatchMulti",
+                        )
+                        self.assertEqual(conditioner["inputs"]["ref_images"], [batch_id, 0])
+                        self.assertEqual(batch["inputs"]["inputcount"], 2)
+
     def test_refresh_reference_batch_compacts_and_returns_picture_map(self):
         workflow = minimax.load_workflow(minimax.REFRESH_WORKFLOW_FILE)
         enable_all_references(workflow, "refresh")
