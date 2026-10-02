@@ -1,0 +1,9 @@
+{
+  "job_id": "tests-2831-beat-completion",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_llm_prompt_pipeline.py::DirectorRawSceneCompletionTests::test_director_prompt_is_minimal_scene_contract"
+  ],
+  "timeout_seconds": 1800
+}
