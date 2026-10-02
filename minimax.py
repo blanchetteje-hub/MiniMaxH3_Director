@@ -486,7 +486,11 @@ LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
 
 REFRESH_LOAD_VIDEO_NODE_NAME = "Load Video"
 
-REFRESH_EXTEND_NODE_NAME = "MiniMax H3 Video Extend (Backported)"
+CONDITIONER_NODE_NAME = "Conditioner"
+QUALITY_NODE_NAME = "Quality"
+STEPS_NODE_NAME = "Steps"
+
+REFRESH_EXTEND_NODE_NAME = CONDITIONER_NODE_NAME
 
 REFRESH_REFERENCE_BATCH_NODE_NAME = "Image Batch Multi"
 
@@ -499,12 +503,12 @@ REPAIR_FIRST_FRAME_NODE_NAME = "First Frame"
 REPAIR_LAST_FRAME_NODE_NAME = "Last Frame"
 REPAIR_LOAD_VIDEO_NODE_NAME = "Load Video"
 
-REPAIR_CONDITIONING_NODE_NAME = "MiniMax H3 Hybrid Cond (R2V + I2V)"
+REPAIR_CONDITIONING_NODE_NAME = CONDITIONER_NODE_NAME
 
 # Compatibility alias retained for external callers; refresh now means Extend.
 REFRESH_CONDITIONING_NODE_NAME = REFRESH_EXTEND_NODE_NAME
 
-INITIAL_REFERENCE_CONDITIONING_NODE_NAME = "MiniMax H3 Reference to Video"
+INITIAL_REFERENCE_CONDITIONING_NODE_NAME = CONDITIONER_NODE_NAME
 
 REFERENCE_IMAGE_NODE_NAMES = tuple(
     f"Reference Image {image_number}"
@@ -7024,6 +7028,16 @@ def find_workflow_node(workflow, node_name, workflow_label, expected_class_type=
         if isinstance(meta, dict) and meta.get("title") == node_name:
             matches.append((node_id, node))
 
+    if not matches and node_name in {
+        LOAD_VIDEO_NODE_NAME, REFRESH_LOAD_VIDEO_NODE_NAME, REPAIR_LOAD_VIDEO_NODE_NAME
+    }:
+        matches = [
+            (node_id, node)
+            for node_id, node in workflow.items()
+            if isinstance(node, dict)
+            and node.get("class_type") == "VHS_LoadVideoPath"
+            and isinstance(node.get("inputs"), dict)
+        ]
     if not matches:
         raise WorkflowConfigurationError(
             f"{workflow_label} is missing the ComfyUI node named '{node_name}'."
@@ -7072,11 +7086,7 @@ def set_node_input(
 def find_duration_node(workflow, workflow_label, *, repair=False):
     """Return a supported duration node regardless of ComfyUI export variant."""
 
-    preferred_names = (
-        (REPAIR_DURATION_NODE_NAME, DURATION_NODE_NAME)
-        if repair
-        else (DURATION_NODE_NAME, REPAIR_DURATION_NODE_NAME)
-    )
+    preferred_names = (DURATION_NODE_NAME, REPAIR_DURATION_NODE_NAME)
     supported_classes = {DURATION_NODE_CLASS, REPAIR_DURATION_NODE_CLASS}
     matches = []
     for preferred_rank, node_name in enumerate(preferred_names):
@@ -7249,8 +7259,23 @@ def connect_refresh_workflow_inputs(workflow, workflow_label):
         )
 
 
+def validate_workflow_controls(workflow, workflow_label):
+    """Check shared render controls without replacing their downstream links."""
+    find_workflow_node(workflow, QUALITY_NODE_NAME, workflow_label, "FloatConstant")
+    find_workflow_node(workflow, STEPS_NODE_NAME, workflow_label, "INTConstant")
+    validate_named_connection(
+        workflow, RESOLUTION_NODE_NAME, "megapixels", QUALITY_NODE_NAME, 0,
+        workflow_label,
+    )
+    validate_named_connection(
+        workflow, SCHEDULER_NODE_NAME, "steps", STEPS_NODE_NAME, 0,
+        workflow_label,
+    )
+
+
 # Validate workflow.
 def validate_workflow(workflow, workflow_label, is_append=False):
+    validate_workflow_controls(workflow, workflow_label)
     _duration_id, duration_node, duration_name, _duration_class = find_duration_node(
         workflow, workflow_label
     )
@@ -7416,6 +7441,7 @@ def validate_refresh_workflow(workflow, workflow_label):
 def validate_repair_base_workflow(workflow, workflow_label):
     """Validate the repair hybrid graph used for one-segment regeneration."""
 
+    validate_workflow_controls(workflow, workflow_label)
     find_duration_node(workflow, workflow_label, repair=True)
     find_workflow_node(
         workflow,
@@ -26278,8 +26304,23 @@ def build_h3_prompt(
                 )
                 if part
             )
+    canonical_prompt_text = ""
+    if segment_number is not None and int(segment_number) == 1:
+        try:
+            with open(CANONICAL_DATA_FILE, "r", encoding="utf-8", newline="") as canonical_file:
+                canonical_prompt_text = canonical_file.read()
+        except FileNotFoundError:
+            pass
+    # Insert the raw file after sanitization and identity repair so its text
+    # (including whitespace, markdown, and line endings) remains verbatim.
+    canonical_marker = "CANONICAL_DATA_VERBATIM_INSERTION_POINT"
     sections = []
     _append_h3_prompt_section(sections, "subject_definitions", subject_text)
+    if canonical_prompt_text:
+        if sections:
+            sections[0] += "\n" + canonical_marker
+        else:
+            sections.append("subject_definitions: " + canonical_marker)
     # Continuity is an input to Request 2, not a trailing H3 prompt section.
     # In particular, do not append retention_analysis or a second opening
     # summary after detailed_description; that resurrects omitted stale facts.
@@ -26305,11 +26346,14 @@ def build_h3_prompt(
             _strip_formatter_metadata("\n\n".join(sections))
         )
     )
-    return _assert_h3_subject_identity(
+    final_prompt = _assert_h3_subject_identity(
         final_prompt,
         subject_definitions,
         continuity_state=continuity_state,
     )
+    if canonical_prompt_text:
+        final_prompt = final_prompt.replace(canonical_marker, canonical_prompt_text, 1)
+    return final_prompt
 
 
 # ============================================================
@@ -27548,6 +27592,8 @@ def _h3_workflow_input_snapshot(workflow):
             NOISE_NODE_NAME,
             SCHEDULER_NODE_NAME,
             DURATION_NODE_NAME,
+            QUALITY_NODE_NAME,
+            STEPS_NODE_NAME,
             RESOLUTION_NODE_NAME,
             SAVE_VIDEO_NODE_NAME,
         }:
@@ -27602,23 +27648,20 @@ def capture_h3_fixture(
         "captured H3 workflow",
         "RandomNoise",
     )
-    _, duration_node = find_workflow_node(
-        workflow,
-        DURATION_NODE_NAME,
-        "captured H3 workflow",
-        "PrimitiveFloat",
+    _, duration_node, _, _ = find_duration_node(
+        workflow, "captured H3 workflow"
     )
     _, scheduler_node = find_workflow_node(
         workflow,
-        SCHEDULER_NODE_NAME,
+        STEPS_NODE_NAME,
         "captured H3 workflow",
-        "BasicScheduler",
+        "INTConstant",
     )
     _, resolution_node = find_workflow_node(
         workflow,
-        RESOLUTION_NODE_NAME,
+        QUALITY_NODE_NAME,
         "captured H3 workflow",
-        "ResolutionSelector",
+        "FloatConstant",
     )
     segment = int(context["segment_number"])
     output_path = os.path.abspath(os.fspath(path))
@@ -27677,8 +27720,8 @@ def capture_h3_fixture(
             "workflow_sha256": _sha256_file(workflow_file),
             "duration": duration_node["inputs"].get("value"),
             "segment_length": context.get("segment_length"),
-            "megapixels": resolution_node["inputs"].get("megapixels"),
-            "steps": scheduler_node["inputs"].get("steps"),
+            "megapixels": resolution_node["inputs"].get("value"),
+            "steps": scheduler_node["inputs"].get("value"),
             "seed": noise_node["inputs"].get("noise_seed"),
             "loras": copy.deepcopy(context.get("loras") or []),
             "previous_video_path": (
@@ -27986,8 +28029,8 @@ def prepare_initial_workflow(
         label, "DPRandomGenerator"
     )
     set_node_input(
-        workflow, SCHEDULER_NODE_NAME, "steps", steps,
-        label, "BasicScheduler"
+        workflow, STEPS_NODE_NAME, "value", steps,
+        label, "INTConstant"
     )
     set_node_input(
         workflow, NOISE_NODE_NAME, "noise_seed",
@@ -27995,8 +28038,8 @@ def prepare_initial_workflow(
         label, "RandomNoise"
     )
     set_node_input(
-        workflow, RESOLUTION_NODE_NAME, "megapixels", megapixels,
-        label, "ResolutionSelector"
+        workflow, QUALITY_NODE_NAME, "value", megapixels,
+        label, "FloatConstant"
     )
     set_node_input(
         workflow, SAVE_VIDEO_NODE_NAME, "filename_prefix",
@@ -28087,8 +28130,8 @@ def prepare_refresh_workflow(
         label, "DPRandomGenerator",
     )
     set_node_input(
-        workflow, SCHEDULER_NODE_NAME, "steps", steps,
-        label, "BasicScheduler",
+        workflow, STEPS_NODE_NAME, "value", steps,
+        label, "INTConstant",
     )
     set_node_input(
         workflow, NOISE_NODE_NAME, "noise_seed",
@@ -28096,8 +28139,8 @@ def prepare_refresh_workflow(
         label, "RandomNoise",
     )
     set_node_input(
-        workflow, RESOLUTION_NODE_NAME, "megapixels", megapixels,
-        label, "ResolutionSelector",
+        workflow, QUALITY_NODE_NAME, "value", megapixels,
+        label, "FloatConstant",
     )
     set_node_input(
         workflow,
@@ -28308,16 +28351,16 @@ def prepare_repair_workflow(
         label, "DPRandomGenerator",
     )
     set_node_input(
-        workflow, SCHEDULER_NODE_NAME, "steps", steps,
-        label, "BasicScheduler",
+        workflow, STEPS_NODE_NAME, "value", steps,
+        label, "INTConstant",
     )
     set_node_input(
         workflow, NOISE_NODE_NAME, "noise_seed", generate_random_seed(),
         label, "RandomNoise",
     )
     set_node_input(
-        workflow, RESOLUTION_NODE_NAME, "megapixels", megapixels,
-        label, "ResolutionSelector",
+        workflow, QUALITY_NODE_NAME, "value", megapixels,
+        label, "FloatConstant",
     )
     set_node_input(
         workflow,
@@ -28455,8 +28498,8 @@ def prepare_append_workflow(
         label, "DPRandomGenerator"
     )
     set_node_input(
-        workflow, SCHEDULER_NODE_NAME, "steps", steps,
-        label, "BasicScheduler"
+        workflow, STEPS_NODE_NAME, "value", steps,
+        label, "INTConstant"
     )
     set_node_input(
         workflow,

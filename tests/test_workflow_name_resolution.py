@@ -46,11 +46,76 @@ def renumber_workflow(workflow):
     return renumbered
 
 
+def workflow_with_lora_placeholder(template):
+    """Build the optional injection graph explicitly for LoRA behavior tests."""
+    workflow = copy.deepcopy(template)
+    if any(node.get("class_type") == "LoraLoaderModelOnly" for node in workflow.values()):
+        return workflow
+    source_id, _ = minimax.find_workflow_node(
+        workflow, "MiniMax-H3 Turbo LoRA", "LoRA fixture", "MiniMaxH3TurboLoRA"
+    )
+    placeholder_id = str(max(map(int, workflow)) + 1)
+    for node in workflow.values():
+        if node.get("inputs", {}).get("model") == [source_id, 0]:
+            node["inputs"]["model"] = [placeholder_id, 0]
+    workflow[placeholder_id] = {
+        "class_type": "LoraLoaderModelOnly",
+        "_meta": {"title": minimax.LORA_NODE_NAME},
+        "inputs": {"model": [source_id, 0], "lora_name": "", "strength_model": 1.0},
+    }
+    return workflow
+
+
+def connect_all_reference_images(workflow):
+    """Make reference coverage independent of the saved export's active slots."""
+    _, conditioner = minimax.find_workflow_node(workflow, "Conditioner", "reference fixture")
+    for number in range(1, 7):
+        node_id, _ = minimax.find_workflow_node(workflow, f"Reference Image {number}", "reference fixture")
+        conditioner["inputs"][f"ref_images.ref_image_{number - 1}"] = [node_id, 0]
+
+
 class WorkflowNameResolutionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.initial = load_json(minimax.INITIAL_WORKFLOW_FILE)
         cls.append = load_json(minimax.APPEND_WORKFLOW_FILE)
+
+    def test_all_preparations_preserve_shared_control_connections(self):
+        paths = {
+            "initial": minimax.INITIAL_WORKFLOW_FILE,
+            "append": minimax.APPEND_WORKFLOW_FILE,
+            "refresh": minimax.REFRESH_WORKFLOW_FILE,
+            "repair": minimax.REPAIR_WORKFLOW_FILE,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            video = os.path.join(directory, "previous.mp4")
+            with open(video, "wb") as file:
+                file.write(b"test video")
+            for kind, path in paths.items():
+                with self.subTest(workflow=kind):
+                    workflow = renumber_workflow(load_json(path))
+                    with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
+                        "minimax.prune_missing_reference_images",
+                        return_value=([], {}),
+                    ):
+                        if kind == "initial":
+                            prepared = minimax.prepare_initial_workflow(8, .45, "prompt", 2, steps=11)
+                        elif kind == "append":
+                            prepared = minimax.prepare_append_workflow(8, "prompt", video, 2, steps=11)
+                        elif kind == "refresh":
+                            prepared = minimax.prepare_refresh_workflow(8, .45, "prompt", video, 2, steps=11)
+                        else:
+                            prepared = minimax.prepare_repair_workflow(8, .45, "prompt", video, "last.png", 2, steps=11)
+                    minimax.validate_workflow_controls(prepared, kind)
+                    _, steps = minimax.find_workflow_node(prepared, "Steps", kind)
+                    _, quality = minimax.find_workflow_node(prepared, "Quality", kind)
+                    _, prompt = minimax.find_workflow_node(prepared, "Prompt", kind)
+                    _, duration, _, _ = minimax.find_duration_node(prepared, kind)
+                    self.assertEqual(steps["inputs"]["value"], 11)
+                    if kind != "append":
+                        self.assertEqual(quality["inputs"]["value"], .45)
+                    self.assertEqual(duration["inputs"]["value"], 8)
+                    self.assertEqual(prompt["inputs"]["text"], "prompt")
 
     def test_initial_validation_is_independent_of_exported_node_ids(self):
         workflow = renumber_workflow(self.initial)
@@ -251,7 +316,6 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         )
         self.assertIn("<Subject 2> Jenny", prompt)
         self.assertIn("Jenny moves above Amy", prompt)
-        self.assertIn("retention_analysis:", prompt)
 
     def test_append_validation_is_independent_of_exported_node_ids(self):
         workflow = renumber_workflow(self.append)
@@ -266,12 +330,12 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         workflow = copy.deepcopy(self.append)
         conditioning_id, conditioning = minimax.find_workflow_node(
             workflow,
-            "MiniMax H3 Reference to Video",
+            minimax.CONDITIONER_NODE_NAME,
             "append workflow",
         )
         load_video_id, _ = minimax.find_workflow_node(
             workflow,
-            "Load_Video",
+            minimax.LOAD_VIDEO_NODE_NAME,
             "append workflow",
         )
         _, guider = minimax.find_workflow_node(
@@ -335,6 +399,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             initial = copy.deepcopy(self.initial)
             append = copy.deepcopy(self.append)
             for workflow in (initial, append):
+                connect_all_reference_images(workflow)
                 for image_number in range(1, 7):
                     _, node = minimax.find_workflow_node(
                         workflow,
@@ -380,9 +445,11 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         append = copy.deepcopy(self.append)
         _, initial_target = minimax.find_workflow_node(
             initial,
-            "MiniMax H3 Reference to Video",
+            minimax.CONDITIONER_NODE_NAME,
             "initial workflow",
         )
+        connect_all_reference_images(initial)
+        connect_all_reference_images(append)
         del initial_target["inputs"]["ref_images.ref_image_3"]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -449,7 +516,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
                 )
 
     def test_initial_preparation_updates_nodes_by_title_after_renumbering(self):
-        workflow = renumber_workflow(self.initial)
+        workflow = renumber_workflow(workflow_with_lora_placeholder(self.initial))
         with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
             "minimax.secrets.randbelow", return_value=123456
         ):
@@ -485,15 +552,15 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         self.assertEqual(lora["inputs"]["strength_model"], 0.42)
         _, scheduler = minimax.find_workflow_node(
             prepared,
-            minimax.SCHEDULER_NODE_NAME,
+            minimax.STEPS_NODE_NAME,
             "prepared initial",
         )
-        self.assertEqual(scheduler["inputs"]["steps"], 12)
+        self.assertEqual(scheduler["inputs"]["value"], 12)
 
     def test_zero_loras_remove_placeholder_and_bypass_it_in_both_workflows(self):
         for template in (self.initial, self.append):
             with self.subTest(workflow=template):
-                workflow = copy.deepcopy(template)
+                workflow = workflow_with_lora_placeholder(template)
                 placeholder_id, placeholder = minimax.find_workflow_node(
                     workflow,
                     minimax.LORA_NODE_NAME,
@@ -527,7 +594,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         ]
         for template in (self.initial, self.append):
             with self.subTest(workflow=template):
-                workflow = copy.deepcopy(template)
+                workflow = workflow_with_lora_placeholder(template)
                 placeholder_id, placeholder = minimax.find_workflow_node(
                     workflow,
                     minimax.LORA_NODE_NAME,

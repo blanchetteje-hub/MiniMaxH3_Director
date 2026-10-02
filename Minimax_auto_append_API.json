@@ -358,7 +358,7 @@
     },
     "class_type": "MiniMaxH3ReferenceToVideo",
     "_meta": {
-      "title": "MiniMax H3 Reference to Video"
+      "title": "Conditioner"
     }
   },
   "167": {
@@ -374,7 +374,7 @@
     },
     "class_type": "VHS_LoadVideoPath",
     "_meta": {
-      "title": "Load Video (Path) 🎥🅥🅗🅢"
+      "title": "Load Video (Path)"
     }
   },
   "173": {

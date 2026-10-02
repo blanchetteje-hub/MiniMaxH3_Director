@@ -122,7 +122,7 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
 
         _, load_video = minimax.find_workflow_node(
             prepared,
-            "Load_Video",
+            minimax.LOAD_VIDEO_NODE_NAME,
             "prepared append workflow",
             "VHS_LoadVideoPath",
         )

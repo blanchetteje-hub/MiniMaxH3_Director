@@ -201,6 +201,9 @@ class H3HarnessTests(unittest.TestCase):
             "detailed_description: [Shot 1] Captured.",
         )
         self.assertEqual(payload["render"]["seed"], 77)
+        self.assertEqual(payload["render"]["duration"], 6.0)
+        self.assertEqual(payload["render"]["steps"], 6)
+        self.assertEqual(payload["render"]["megapixels"], 0.2)
         self.assertEqual(payload["render"]["workflow_type"], "initial")
 
 

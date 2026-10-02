@@ -58,11 +58,8 @@ class RefreshContextLatentTests(unittest.TestCase):
         )
         self.assertEqual(extend["inputs"]["context_frames"], 7)
 
-        _, duration = minimax.find_workflow_node(
-            workflow,
-            minimax.DURATION_NODE_NAME,
-            "prepared refresh",
-            "PrimitiveFloat",
+        _, duration, _, _ = minimax.find_duration_node(
+            workflow, "prepared refresh"
         )
         self.assertEqual(duration["inputs"]["value"], 8.0)
 

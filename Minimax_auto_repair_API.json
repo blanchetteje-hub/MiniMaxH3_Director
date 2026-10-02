@@ -5,7 +5,7 @@
     },
     "class_type": "PrimitiveFloat",
     "_meta": {
-      "title": "Float (duration)"
+      "title": "Length"
     }
   },
   "73": {
@@ -62,7 +62,10 @@
   "79": {
     "inputs": {
       "scheduler": "beta",
-      "steps": 6,
+      "steps": [
+        "200",
+        0
+      ],
       "denoise": 1,
       "model": [
         "140",
@@ -305,7 +308,7 @@
     },
     "class_type": "MiniMaxH3HybridRefAndKeyframe",
     "_meta": {
-      "title": "MiniMax H3 Hybrid Cond (R2V + I2V)"
+      "title": "Conditioner"
     }
   },
   "114": {
@@ -390,7 +393,10 @@
   "141": {
     "inputs": {
       "aspect_ratio": "16:9 (Widescreen)",
-      "megapixels": 0.2,
+      "megapixels": [
+        "199",
+        0
+      ],
       "multiple": 64
     },
     "class_type": "ResolutionSelector",
@@ -430,6 +436,24 @@
     "class_type": "VHS_LoadVideoPath",
     "_meta": {
       "title": "Load Video"
+    }
+  },
+  "199": {
+    "inputs": {
+      "value": 0.2
+    },
+    "class_type": "FloatConstant",
+    "_meta": {
+      "title": "Quality"
+    }
+  },
+  "200": {
+    "inputs": {
+      "value": 6
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "Steps"
     }
   }
 }
