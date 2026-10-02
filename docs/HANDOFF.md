@@ -617,14 +617,22 @@ Test cleanup:
   independent audio fail-soft coverage;
 - the pronoun prompt assertion now matches the already-adopted narrowing rule.
 
+### 2839 — 102/103 pass; final failure is test injection drift
+
+The broad regression slice passed 102/103. The remaining failure was the physical/order
+retry unit test: it tried to feed coherence-validator replies through a patched
+`ask_llm`, but `validate_director_raw_scene_coherence()` owns that semantic boundary.
+The test now mocks the validator directly and leaves the Director request mock responsible
+only for RAW scene responses.
+
 ## Immediate next work
 
-Rerun the broad Director/audio regression slice after updating stale tests. If green,
-run Director-only acceptance from the same frozen plan and compare audio fields against
-2837 and the gold style.
+Rerun the one remaining coherence-retry regression with the semantic validator
+mocked at its own boundary. If green, run Director-only acceptance from the same frozen
+plan and compare audio fields against 2837 and the gold style.
 
 Queued:
-- `tests-2839-director-audio-regressions`
+- `tests-2840-director-coherence-regression`
 
 ## Public repository rule
 

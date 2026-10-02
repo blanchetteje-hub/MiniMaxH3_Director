@@ -316,16 +316,26 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             bad,
-            {"valid": False, "issue": "The door closes before Will enters."},
             good,
-            {"valid": True, "issue": ""},
         ]))
-        with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
+        coherence = mock.Mock(side_effect=[
+            {"valid": False, "issue": "The door closes before Will enters."},
+            {"valid": True, "issue": ""},
+        ])
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch(
+                "minimax.validate_director_raw_scene_coherence",
+                coherence,
+            ),
+            mock.patch("builtins.print"),
+        ):
             payload = minimax.request_segment_llm(
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 4)
+        self.assertEqual(len(semantic_calls), 2)
+        self.assertEqual(coherence.call_count, 2)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
         request_prompts = [
             call.args[0][-1]["content"]
