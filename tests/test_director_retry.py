@@ -72,6 +72,13 @@ def pipeline_llm_side_effect(
                 "\n\nReturn {", 1
             )[0].strip()
             return {"raw_scene": raw}
+        if purpose == "director_raw_scene_subject_resolution":
+            messages = args[0] if args else []
+            user_text = str(messages[-1].get("content", "")) if messages else ""
+            raw = user_text.split("RAW SCENE\n", 1)[-1].split(
+                "\n\nReturn raw_scene", 1
+            )[0].strip()
+            return {"raw_scene": raw, "subject_names": []}
         return next(queued)
 
     return respond
@@ -208,6 +215,69 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "overall_soundscape": "Door slam.",
                 "non_diegetic_music": "Low strings.",
             })
+
+    def test_raw_subject_resolution_prompt_is_post_raw_and_narrow(self):
+        messages = minimax.build_director_raw_subject_resolution_messages(
+            (
+                "At 00:01.000, a guard enters.\n"
+                "At 00:04.000, another guard blocks the door."
+            ),
+            "<Subject 1> is Mara.\n<Subject 2> is Guard1, continued from <Video 1>.",
+        )
+        text = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("unnamed foreground animate identities", text)
+        self.assertIn("finalized timed RAW scene", text)
+        self.assertIn("Keep already-named Subjects unchanged", text)
+        self.assertIn("Guard1 or Creature1", text)
+        self.assertIn("Reuse a KNOWN SUBJECT name", text)
+        self.assertIn("Do not label interchangeable background crowds/groups", text)
+        self.assertIn("KNOWN SUBJECTS", text)
+
+    def test_raw_subject_resolution_accepts_only_identity_labeling(self):
+        original = (
+            "At 00:01.000, a guard enters the room.\n"
+            "At 00:04.000, another guard blocks the door."
+        )
+        resolved = (
+            "At 00:01.000, Guard1 enters the room.\n"
+            "At 00:04.000, Guard2 blocks the door."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": resolved,
+            "subject_names": ["Guard1", "Guard2"],
+        })
+        result, names = minimax.resolve_director_raw_scene_subjects(
+            original,
+            "<Subject 1> is Mara.",
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(result, resolved)
+        self.assertEqual(names, ["Guard1", "Guard2"])
+        self.assertEqual(
+            request.call_args.kwargs["history_metadata"]["purpose"],
+            "director_raw_scene_subject_resolution",
+        )
+
+    def test_raw_subject_resolution_rejects_timestamp_drift(self):
+        original = (
+            "At 00:01.000, a guard enters.\n"
+            "At 00:04.000, another guard blocks the door."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": (
+                "At 00:01.000, Guard1 enters.\n"
+                "At 00:05.000, Guard2 blocks the door."
+            ),
+            "subject_names": ["Guard1", "Guard2"],
+        })
+        with self.assertRaisesRegex(ValueError, "changed timestamps"):
+            minimax.resolve_director_raw_scene_subjects(
+                original,
+                "",
+                llm_request=request,
+                segment_seconds=6.0,
+            )
 
     def test_raw_pronoun_resolution_prompt_is_narrow(self):
         messages = minimax.build_director_pronoun_resolution_messages(
