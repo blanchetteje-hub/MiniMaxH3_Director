@@ -30098,9 +30098,15 @@ def resolve_director_raw_scene_subjects(
     if not original:
         return original, []
 
+    end_match = _DIRECTOR_END_CONTINUITY_RE.search(original)
+    if not end_match:
+        raise ValueError("RAW Subject resolver requires End continuity state.")
+    timed_original = original[:end_match.start()].rstrip()
+    end_state_original = original[end_match.start():].strip()
+
     result = llm_request(
         build_director_raw_subject_resolution_messages(
-            original,
+            timed_original,
             subject_definitions=subject_definitions,
         ),
         response_format=DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT,
@@ -30117,13 +30123,15 @@ def resolve_director_raw_scene_subjects(
             "RAW Subject resolver must return only raw_scene and subject_names."
         )
 
-    resolved = _canonicalize_director_timestamps(
+    resolved_timed = _canonicalize_director_timestamps(
         result.get("raw_scene", "")
     ).strip()
-    if not resolved:
+    if not resolved_timed:
         raise ValueError("RAW Subject resolver returned empty raw_scene.")
-    if _director_timestamps(resolved) != _director_timestamps(original):
+    if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
         raise ValueError("RAW Subject resolver changed timestamps.")
+
+    resolved = (resolved_timed + "\n" + end_state_original).strip()
     structure_errors = _director_raw_scene_structure_errors(
         resolved,
         segment_seconds,
@@ -30143,7 +30151,7 @@ def resolve_director_raw_scene_subjects(
             continue
         if re.search(
             rf"(?<![\w]){re.escape(name)}(?![\w])",
-            _h3_visual_identity_text(resolved),
+            _h3_visual_identity_text(resolved_timed),
             re.I,
         ) is None:
             continue
