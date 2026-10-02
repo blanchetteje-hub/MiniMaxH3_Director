@@ -24122,7 +24122,7 @@ def build_generation_messages(
 
     subject_text = str(subject_definitions or "").strip() or "N/A"
     canonical_starting_block = ""
-    starting_facts = str(canonical_data or canonical_character_facts or "").strip()
+    starting_facts = str(canonical_character_facts or canonical_data or "").strip()
     if int(current_segment) == 1 and starting_facts:
         canonical_starting_block = (
             "\n\nCANONICAL STARTING CHARACTER FACTS — ESTABLISH THESE "
