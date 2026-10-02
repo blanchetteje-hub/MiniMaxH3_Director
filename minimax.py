@@ -32190,18 +32190,36 @@ def _run_main(
         if source_opening_state:
             director_context = director_opening_summary or "N/A"
             h3_context = h3_opening_summary or "N/A"
-            director_opening_summary = (
-                source_opening_state
-                + "\n\nPREVIOUS SHOT END (primary adjacent-shot continuity; "
-                "do not override source-authorized facts)\n"
-                + director_context
-            )
-            h3_opening_summary = (
-                source_opening_state
-                + "\n\nRENDERED CONTINUITY (supplemental; do not override "
-                "source-authorized facts)\n"
-                + h3_context
-            )
+            if segment_number == 1:
+                director_opening_summary = (
+                    source_opening_state
+                    + (
+                        "\n\n" + director_context
+                        if director_context != "N/A"
+                        else ""
+                    )
+                )
+                h3_opening_summary = (
+                    source_opening_state
+                    + (
+                        "\n\n" + h3_context
+                        if h3_context != "N/A"
+                        else ""
+                    )
+                )
+            else:
+                director_opening_summary = (
+                    source_opening_state
+                    + "\n\nPREVIOUS SHOT END (primary adjacent-shot continuity; "
+                    "do not override source-authorized facts)\n"
+                    + director_context
+                )
+                h3_opening_summary = (
+                    source_opening_state
+                    + "\n\nRENDERED CONTINUITY (supplemental; do not override "
+                    "source-authorized facts)\n"
+                    + h3_context
+                )
         excluded_picture_ids = (
             get_conditioning_excluded_picture_ids(
                 opening_state,
