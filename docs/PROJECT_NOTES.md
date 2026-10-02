@@ -291,8 +291,10 @@ After Request 1 RAW is accepted:
 Soundscape extraction and music generation must remain separate responsibilities because
 they require different sampling/reasoning behavior. Soundscape output is microphone-audible
 only: visual facts such as lighting, expressions, stillness, positions, silent gestures,
-and persistent state wording must not be converted into sound. Punctuation-only or otherwise
-non-language soundscape results are rejected and retried once. Music should describe one
+persistent state wording, and merely visible motion must not be converted into sound.
+Explicit RAW audio cues such as footsteps, laughter, groans, echoes, impacts, or gunshots
+must not collapse to N/A; that omission is rejected and retried once. Punctuation-only or
+otherwise non-language soundscape results are also rejected and retried once. Music should describe one
 short underscore cue, continue the previous musical state, and avoid character/action
 narration; overlong music results are rejected and retried once.
 Per-call sampler overrides are not used; `ask_llm()` task routing is the sole settings authority.

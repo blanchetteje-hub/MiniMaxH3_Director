@@ -132,6 +132,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("silent gestures", text)
         self.assertIn("pistol still fired", text)
         self.assertIn("Each listed item must itself name an audible event", text)
+        self.assertIn("Do not turn motion verbs into sounds", text)
+        self.assertIn("rising steam", text)
 
     @mock.patch("minimax.ask_llm")
     def test_audio_contract_retries_malformed_soundscape(self, ask_llm):
@@ -153,6 +155,25 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(
             [call.kwargs["history_metadata"]["attempt"] for call in sound_calls],
             [1, 2],
+        )
+
+    def test_h3_soundscape_parser_rejects_na_when_raw_has_explicit_audio(self):
+        with self.assertRaises(ValueError):
+            minimax.parse_h3_soundscape_result(
+                {"overall_soundscape": "N/A"},
+                raw_scene=(
+                    "At 00:01.000, footsteps echo down the corridor. "
+                    "At 00:03.000, a groan rattles the door."
+                ),
+            )
+
+    def test_h3_soundscape_parser_allows_na_without_audio_cues(self):
+        self.assertEqual(
+            minimax.parse_h3_soundscape_result(
+                {"overall_soundscape": "N/A"},
+                raw_scene="At 00:01.000, Mira silently turns toward the window.",
+            ),
+            "N/A",
         )
 
     def test_h3_soundscape_parser_rejects_punctuation_only_output(self):

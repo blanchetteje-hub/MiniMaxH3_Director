@@ -649,14 +649,39 @@ Fix:
 - malformed/overlong audio output gets one bounded retry;
 - task-based LLM profiles remain unchanged.
 
+### 2845 — hardened audio contract works; final soundscape-only issue
+
+`director-2845-h3-audio-contract` completed all 8 segments.
+
+Validated fixes:
+- malformed Segment 7 soundscape was rejected automatically and succeeded on
+  bounded retry;
+- Segment 8 no longer invents a gunshot from the persistent state phrase
+  `pistol still fired`;
+- music is now short enough to resemble the gold cue style while preserving
+  previous-score continuity;
+- Segment 8 correctly resolves to relieved/warm closing music.
+
+Remaining repeatable audio defect is isolated to soundscape extraction:
+- silent motion is still sometimes verbalized as sound (`arms swing`,
+  `hand slides`, `sword lifts`);
+- one segment with explicit echoed footsteps returned `N/A`.
+
+Final soundscape-only change:
+- explicitly distinguish stated audible events from visible motion verbs;
+- reject `N/A` when RAW contains deterministic lexical evidence of explicit
+  audio such as footsteps, echoes, laughter, groans, impacts, or gunshots;
+- leave music and all task-based LLM settings unchanged.
+
 ## Immediate next work
 
-Run focused audio-contract regressions for malformed soundscape rejection,
-state-to-sound prevention wording, short music cues, and bounded retries. If green,
-rerun the frozen-plan Director acceptance.
+Run focused soundscape regressions for silent-motion wording and N/A rejection when
+RAW contains explicit audio. If green, run one final frozen-plan Director acceptance.
+If that acceptance is clean, stop tuning audio and move to the next non-audio gold
+difference.
 
 Queued:
-- `tests-2842-h3-audio-contract`
+- `tests-2846-h3-soundscape-final`
 
 ## Public repository rule
 

@@ -20062,8 +20062,12 @@ def build_h3_soundscape_messages(raw_scene):
                 "video scene. RAW SCENE is authoritative. Return only sounds a "
                 "microphone could hear. Include sounds explicitly stated by RAW and "
                 "sounds necessarily produced by an audible depicted event such as a "
-                "slam, crash, gunshot, or spoken line. Each listed item must itself "
-                "name an audible event or audible ambience, not a silent action. Omit "
+                "slam, crash, gunshot, spoken line, explicitly described footsteps, "
+                "laughter, groans, or other stated audio. Each listed item must itself "
+                "name an audible event or audible ambience, not a silent action. Do "
+                "not turn motion verbs into sounds: sliding a hand, swinging an arm or "
+                "blade, lifting, reaching, turning, emerging, surging, or rising steam "
+                "are silent unless RAW explicitly states an audible result. Omit "
                 "lighting, visibility, expressions, stillness, positions, silent "
                 "gestures, and other purely visual facts. Do not infer a new sound "
                 "from a state description such as 'pistol still fired', 'door open', "
@@ -20084,7 +20088,17 @@ def build_h3_soundscape_messages(raw_scene):
     ]
 
 
-def parse_h3_soundscape_result(raw_result):
+_H3_EXPLICIT_AUDIO_CUE_RE = re.compile(
+    r"(?i)\b(?:sound|hear(?:s|ing)?|echo(?:es|ing|ed)?|footsteps?|steps?\s+echo|"
+    r"groan(?:s|ing|ed)?|laugh(?:s|ing|ed)?|giggl(?:e|es|ing|ed)|scream(?:s|ing|ed)?|"
+    r"yell(?:s|ing|ed)?|thud(?:s|ding|ded)?|bang(?:s|ing|ed)?|crash(?:es|ing|ed)?|"
+    r"creak(?:s|ing|ed)?|rattle(?:s|ing|ed)?|slam(?:s|ming|med)?|clink(?:s|ing|ed)?|"
+    r"click(?:s|ing|ed)?|gunshot(?:s)?|fires?\s+(?:a|one|two|three|four)?\s*shots?|"
+    r"shot\s+(?:rings?|echoes?)|snarl(?:s|ing|ed)?|growl(?:s|ing|ed)?)\b"
+)
+
+
+def parse_h3_soundscape_result(raw_result, raw_scene=""):
     """Parse the deterministic post-RAW soundscape extraction."""
     result = raw_result
     if isinstance(result, str):
@@ -20097,6 +20111,13 @@ def parse_h3_soundscape_result(raw_result):
     if normalized != "N/A" and sum(ch.isalpha() for ch in normalized) < 3:
         raise ValueError(
             "H3 soundscape response must contain natural-language audible content."
+        )
+    if (
+        normalized == "N/A"
+        and _H3_EXPLICIT_AUDIO_CUE_RE.search(str(raw_scene or ""))
+    ):
+        raise ValueError(
+            "H3 soundscape omitted explicit audible content from RAW SCENE."
         )
     return normalized
 
@@ -30430,7 +30451,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 },
                 max_tokens=512,
             )
-            soundscape = parse_h3_soundscape_result(raw_soundscape)
+            soundscape = parse_h3_soundscape_result(
+                raw_soundscape,
+                raw_scene=raw_scene,
+            )
             print(
                 f"H3 soundscape segment {segment_number}: {soundscape!r}",
                 flush=True,
