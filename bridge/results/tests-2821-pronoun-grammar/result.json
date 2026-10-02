@@ -1,0 +1,32 @@
+{
+  "job_id": "tests-2821-pronoun-grammar",
+  "kind": "run_tests",
+  "started_at": 1790900019.4076033,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_prompt_is_narrow",
+      "tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_accepts_name_only_rewrite",
+      "tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_accepts_subject_object_and_possessive_names",
+      "tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_logs_replacements",
+      "tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_preserves_end_state_exactly",
+      "tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_rejects_timestamp_drift"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 4,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... ERROR: not found: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_prompt_is_narrow\n(no match in any of [<Module test_director_retry.py>])\n\nERROR: not found: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_accepts_name_only_rewrite\n(no match in any of [<Module test_director_retry.py>])\n\nERROR: not found: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_accepts_subject_object_and_possessive_names\n(no match in any of [<Module test_director_retry.py>])\n\nERROR: not found: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_logs_replacements\n(no match in any of [<Module test_director_retry.py>])\n\nERROR: not found: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_preserves_end_state_exactly\n(no match in any of [<Module test_director_retry.py>])\n\nERROR: not found: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_director_retry.py::DirectorRetryTests::test_raw_pronoun_resolution_rejects_timestamp_drift\n(no match in any of [<Module test_director_retry.py>])\n\ncollected 0 items\n\n============================ no tests ran in 0.81s ============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790900020.7917593,
+    "finished_at": 1790900022.0433793
+  },
+  "finished_at": 1790900022.0433793,
+  "status": "ok"
+}
