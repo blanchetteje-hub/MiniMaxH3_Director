@@ -1,0 +1,30 @@
+{
+  "job_id": "tests-2827-camera-coherence",
+  "kind": "run_tests",
+  "started_at": 1790901978.63799,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_clear_local_possessives",
+      "tests\\test_llm_prompt_pipeline.py::DirectorRawSceneCompletionTests::test_director_prompt_is_minimal_scene_contract",
+      "tests\\test_llm_prompt_pipeline.py::DirectorMicroPromptPipelineTests::test_raw_scene_coherence_does_not_invent_entity_multiplicity"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 4,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... ERROR: not found: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\\tests\\test_llm_prompt_pipeline.py::DirectorMicroPromptPipelineTests::test_raw_scene_coherence_does_not_invent_entity_multiplicity\n(no match in any of [<Module test_llm_prompt_pipeline.py>])\n\ncollected 3 items\n\n============================ no tests ran in 1.00s ============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790901980.0620582,
+    "finished_at": 1790901981.4803696
+  },
+  "finished_at": 1790901981.4803696,
+  "status": "ok"
+}
