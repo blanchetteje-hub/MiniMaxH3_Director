@@ -1,0 +1,90 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-86e771_v\repo\beats.txt with 8 creative story beats.
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-86e771_v\repo\expanded_story.txt.
+Expanded story:
+Amy stirred eggs on a sunny kitchen counter while Will and Amber giggled over pancakes, the scent of butter filling the small home. The front door slammed open; a zombie lunged in, its rotting fingers reaching for her. She grabbed Will’s hand, pulled him toward the back stairwell, then scooped up Amber into her arms as they ran to the basement safe room. Amy sprinted back through the hallway, heart pounding, and slotted the kitchen counter down for cover. In the pantry she found a hidden pocket: a pistol gleamed beside a katana blade; she drew them with shaking fingers. One by one zombies crashed at the door—she fired the pistol, then sliced with the katana, each strike sending bodies to the floor. New undead surged from every crack in the walls. The last zombie staggered and fell as Amy’s final shot rang out. Breathing hard, she pushed open the basement hatch and carried Will and Amber back into her kitchen.
+Story-derived Beat framework created with 8 beats.
+Beat 1 created: Amy cooks breakfast while Will and Amber giggle over pancakes on the sunny kitchen counter.
+Beat 2 created: The front door slams open and Zombie1 lunges in, its rotting fingers reaching for her.
+Beat 3 created: She grabs Will’s hand, pulls him toward the back stairwell, scoops up Amber into her arms, and they run to the basement safe room.
+Beat 4 created: Amy sprints back through the hallway, heart pounding, slotted the kitchen counter down for cover, then in the pantry finds a hidden pocket with a pistol beside a katana blade.
+Beat 5 created: She draws them with shaking fingers as Zombie2 crashes at the door, firing the pistol to kill it.
+Beat 6 created: New undead surge from every crack; she slices Zombie3 with the katana, sending bodies to the floor.
+Beat 7 created: The last zombie, Zombie4, staggers and falls as Amy’s final shot rings out.
+Beat 8 created: Breathing hard, she pushes open the basement hatch and carries Will and Amber back into her kitchen.
+Beat 1 jobs: current=E1 - Amy cooks breakfast while Will and Amber giggle over pancakes on the sunny kitchen counter.; next=E2 - The front door slams open and Zombie1 lunges in, its rotting fingers reaching for her.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Beat 1 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+Validating Beat 1 (attempt 2/10) with the single beat validator.
+Beat 1 validation attempt 2/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 2/10).
+Beat 1 coherence attempt 2/10: VALID.
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "kitchen"}, "Will": {"location": "kitchen"}, "Amber": {"location": "kitchen"}}}
+Beat 1 accepted: Amy sets the stove down after cooking breakfast while Will and Amber giggle over pancakes on the sunny kitchen counter.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - The front door slams open and Zombie1 lunges in, its rotting fingers reaching for her.; next=E3 - She grabs Will’s hand, pulls him toward the back stairwell, scoops up Amber into her arms, and they run to the basement safe room.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+Beat 2 coherence attempt 1/10: VALID.
+Beat 2 observed persistent state: {"characters": {"Zombie1": {"location": "kitchen"}}, "environment": {"doors": {"front_door": "open"}}}
+Beat 2 accepted: The front door slams open and Zombie1 lunges in, its rotting fingers reaching for her.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - She grabs Will’s hand, pulls him toward the back stairwell, scoops up Amber into her arms, and they run to the basement safe room.; next=E4 - Amy sprints back through the hallway, heart pounding, slotted the kitchen counter down for cover, then in the pantry finds a hidden pocket with a pistol beside a katana blade.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+Beat 3 coherence attempt 1/10: VALID.
+Beat 3 observed persistent state: {"characters": {"Amy": {"location": "basement safe room", "held_objects": ["Will", "Amber"]}, "Will": {"location": "basement safe room"}, "Amber": {"location": "basement safe room"}}}
+Beat 3 accepted: She grabs Will’s hand, pulls him toward the back stairwell, scoops up Amber into her arms, and they run to the basement safe room.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - Amy sprints back through the hallway, heart pounding, slotted the kitchen counter down for cover, then in the pantry finds a hidden pocket with a pistol beside a katana blade.; next=E5 - She draws them with shaking fingers as Zombie2 crashes at the door, firing the pistol to kill it.; completed before=E1, E2, E3; pending before=E4, E5, E6, E7, E8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+Beat 4 coherence attempt 1/10: VALID.
+Beat 4 accepted-state observation ignored: State effects cannot nest canonical state root 'story.persistent_facts.characters.Amy.location'; roots must remain top-level.
+Beat 4 accepted: Amy sprints back through the hallway, heart pounding, slotted the kitchen counter down for cover, then in the pantry finds a hidden pocket with a pistol beside a katana blade.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - She draws them with shaking fingers as Zombie2 crashes at the door, firing the pistol to kill it.; next=E6 - New undead surge from every crack; she slices Zombie3 with the katana, sending bodies to the floor.; completed before=E1, E2, E3, E4; pending before=E5, E6, E7, E8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: INVALID; issue: Amy does not possess the pistol in her current state, yet the beat requires her to draw and fire it.
+Validating Beat 5 (attempt 2/10) with the single beat validator.
+Beat 5 validation attempt 2/10: VALID; issue: none
+Checking Beat 5 within-beat physical coherence (attempt 2/10).
+Beat 5 coherence attempt 2/10: VALID.
+Beat 5 observed persistent state: {"characters": {"Amy": {"held_objects": ["Will", "Amber", "pistol", "katana"]}}}
+Beat 5 accepted: Pulling the pistol and katana from the pantry pocket, Amy draws them with shaking fingers as Zombie 2 crashes at the kitchen doorway, firing the pistol to kill it.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - New undead surge from every crack; she slices Zombie3 with the katana, sending bodies to the floor.; next=E7 - The last zombie, Zombie4, staggers and falls as Amy’s final shot rings out.; completed before=E1, E2, E3, E4, E5; pending before=E6, E7, E8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: INVALID; issue: Amy must be in the same location as Zombie3 to slice it with her katana.
+Validating Beat 6 (attempt 2/10) with the single beat validator.
+Beat 6 validation attempt 2/10: INVALID; issue: Amy must be in the hallway to slice Zombie 3, but her current location is the basement safe room.
+Validating Beat 6 (attempt 3/10) with the single beat validator.
+Beat 6 validation attempt 3/10: VALID; issue: none
+Checking Beat 6 within-beat physical coherence (attempt 3/10).
+Beat 6 coherence attempt 3/10: VALID.
+Beat 6 observed persistent state: {"characters": {"Amy": {"location": "hallway"}, "Zombie3": {"location": "hallway", "status": "dead"}}}
+Beat 6 accepted: She steps from the basement hatch into the hallway and slices Zombie 3 emerging from a wall crack with her katana.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+Beat 7 jobs: current=E7 - The last zombie, Zombie4, staggers and falls as Amy’s final shot rings out.; next=E8 - Breathing hard, she pushes open the basement hatch and carries Will and Amber back into her kitchen.; completed before=E1, E2, E3, E4, E5, E6; pending before=E7, E8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Checking Beat 7 within-beat physical coherence (attempt 1/10).
+Beat 7 coherence attempt 1/10: VALID.
+Beat 7 observed persistent state: {"characters": {"Zombie4": {"status": "dead", "location": "hallway"}}}
+Beat 7 accepted: The last zombie, Zombie4, staggers and falls as Amy’s final shot rings out.
+Beat 7 accepted and finalized; committed required events: E7; completed after=E1, E2, E3, E4, E5, E6, E7
+Beat 8 jobs: current=E8 - Breathing hard, she pushes open the basement hatch and carries Will and Amber back into her kitchen.; next=none; completed before=E1, E2, E3, E4, E5, E6, E7; pending before=E8
+Validating Beat 8 (attempt 1/10) with the single beat validator.
+Beat 8 validation attempt 1/10: VALID; issue: none
+Checking Beat 8 within-beat physical coherence (attempt 1/10).
+Beat 8 coherence attempt 1/10: VALID.
+Beat 8 observed persistent state: {"characters": {"Amy": {"location": "kitchen"}, "Will": {"location": "kitchen"}, "Amber": {"location": "kitchen"}}, "environment": {"doors": {"basement_hatch": "open"}}}
+Beat 8 accepted: Breathing hard, she pushes open the basement hatch and carries Will and Amber back into her kitchen.
+Beat 8 accepted and finalized; committed required events: E8; completed after=E1, E2, E3, E4, E5, E6, E7, E8
+Story arc and beats generated successfully.
