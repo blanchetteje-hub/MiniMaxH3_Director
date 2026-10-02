@@ -108,3 +108,23 @@ Keep the same general pattern used by current continuity invariants:
 5. If overloaded, repair/regenerate the earliest responsible stage rather than compressing unrelated actions into unrealistic timestamps.
 
 This may become especially important for dialogue-heavy genres, where semantic beat structure can be correct while spoken content alone exceeds the available 5–30 second segment.
+
+
+## Persistent room geometry / navigable topology
+
+Observed production failure: a character can place other characters into one enclosed space and later use the same modeled door as though it leads somewhere incompatible, such as putting children in a closet and then opening that same door to enter a hallway.
+
+Future continuity work should give Python a persistent representation of **actual room geometry and doorway connectivity**, rather than relying only on prose location labels.
+
+Potential direction:
+- Track stable spaces/rooms as entities.
+- Track barriers/doors as connections between exactly two spaces.
+- Preserve which side of a barrier each Subject occupies.
+- Preserve containment relationships such as closet -> bedroom -> house.
+- Prevent one established doorway from silently changing its destination.
+- Allow geometry to expand only when the story introduces a previously unknown connection.
+- Render the relevant local topology back into Director/H3 context when needed.
+
+Keep this deterministic and structural where possible. The purpose is not to build a full 3D scene graph; it is to prevent impossible navigation and identity reuse of doors/rooms across segments.
+
+Status: deferred. Current production work should not be blocked on this.

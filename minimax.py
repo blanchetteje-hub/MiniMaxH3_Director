@@ -20391,8 +20391,14 @@ def build_h3_music_messages(
     if conditioning_mode == "continuation":
         music_rule = (
             "non_diegetic_music must begin exactly with "
-            "'continues from <Video 1>.' Continue the previous musical state and "
-            "transition only when the RAW SCENE's emotional state changes."
+            "'continues from <Video 1>.' PREVIOUS MUSIC describes only the musical "
+            "state at the instant this segment begins; it does not determine the "
+            "rest of the segment. Read the full RAW SCENE and make the score follow "
+            "its emotional arc. If the scene becomes materially more threatening, "
+            "violent, frightening, sad, joyful, calm, or otherwise changes tone, "
+            "the cue MUST explicitly transition to match that new tone. Keep the "
+            "previous musical state unchanged only when the RAW SCENE stays in the "
+            "same emotional state throughout."
         )
     else:
         music_rule = (
@@ -20409,9 +20415,11 @@ def build_h3_music_messages(
             "role": "system",
             "content": (
                 "Generate only the non-diegetic music for one already-finalized "
-                "video scene. RAW SCENE is context for the scene's emotional arc and "
-                "ending; PREVIOUS MUSIC, when supplied, is the musical state to "
-                "continue from. Describe only the underscore's mood, style, "
+                "video scene. RAW SCENE is authoritative for this segment's emotional "
+                "arc and ending; PREVIOUS MUSIC, when supplied, defines only how the "
+                "score begins. The score should evolve when the RAW SCENE's tone "
+                "changes instead of preserving an outdated mood. Describe only the "
+                "underscore's mood, style, "
                 "instrumentation, and any broad emotional transition. Do not name "
                 "characters, narrate scene actions, describe individual sound effects, "
                 "or synchronize the score to specific actions. Return one musical cue "

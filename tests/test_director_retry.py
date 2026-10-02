@@ -119,7 +119,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("Generate only the non-diegetic music", text)
         self.assertIn("PREVIOUS MUSIC", text)
         self.assertIn("Soft warm piano, calm and understated.", text)
-        self.assertIn("Continue the previous musical state", text)
+        self.assertIn("defines only how the score begins", text)
+        self.assertIn("make the score follow its emotional arc", text)
+        self.assertIn("MUST explicitly transition", text)
+        self.assertIn("same emotional state throughout", text)
         self.assertIn("Do not name characters, narrate scene actions", text)
         self.assertIn("or synchronize the score to specific actions", text)
         self.assertIn("Return one musical cue sentence", text)
@@ -128,6 +131,23 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertNotIn("overall_soundscape", text)
         self.assertIn("continues from <Video 1>", text)
         self.assertIn("Return exactly non_diegetic_music", text)
+
+    def test_h3_music_continuation_treats_previous_music_as_start_only(self):
+        messages = minimax.build_h3_music_messages(
+            (
+                "At 00:00.000, breakfast remains calm.\n"
+                "At 00:03.000, an attacker crashes through the window.\n"
+                "At 00:06.000, the room erupts into a violent struggle."
+            ),
+            conditioning_mode="continuation",
+            previous_music="Cheerful light piano and playful strings.",
+        )
+        text = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("Cheerful light piano and playful strings.", text)
+        self.assertIn("PREVIOUS MUSIC describes only the musical state", text)
+        self.assertIn("more threatening, violent, frightening", text)
+        self.assertIn("MUST explicitly transition", text)
+        self.assertNotIn("transition only when", text)
 
     def test_h3_soundscape_prompt_rejects_visual_only_facts(self):
         messages = minimax.build_h3_soundscape_messages(
