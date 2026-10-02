@@ -27834,15 +27834,16 @@ def render_repair_segment_with_retries(
     duration,
     requested_megapixels,
     h3_prompt,
-    first_frame_name,
+    previous_video_path,
     last_frame_name,
     steps,
     loras=None,
     continuity_summary="",
     subject_definitions="",
     continuity_state=None,
+    segment_length=None,
 ):
-    """Render an isolated two-keyframe bridge with normal ComfyUI retries."""
+    """Render one repaired segment from prior-video context to the next anchor."""
 
     h3_prompt = _assert_h3_subject_identity(
         h3_prompt,
@@ -27865,11 +27866,12 @@ def render_repair_segment_with_retries(
             duration,
             current_megapixels,
             h3_prompt,
-            first_frame_name,
+            previous_video_path,
             last_frame_name,
             segment_number,
             steps=steps,
             loras=loras,
+            segment_length=segment_length,
         )
         try:
             continuity_summary = _assert_h3_prompt_contains_continuity(
@@ -28282,6 +28284,14 @@ def prepare_repair_workflow(
         REPAIR_LOAD_VIDEO_NODE_NAME,
         "video",
         previous_video_path,
+        label,
+        "VHS_LoadVideoPath",
+    )
+    set_node_input(
+        workflow,
+        REPAIR_LOAD_VIDEO_NODE_NAME,
+        "format",
+        "H3",
         label,
         "VHS_LoadVideoPath",
     )
@@ -28916,6 +28926,7 @@ def repair_existing_segment(
         continuity_summary=director_opening_summary,
         subject_definitions=historical_subject_definitions,
         continuity_state=opening_state,
+        segment_length=segment_length,
     )
     repaired_video_path = os.path.abspath(repaired_video_path)
     if (
