@@ -100,7 +100,7 @@
   },
   "114": {
     "inputs": {
-      "image": "amy.jpg"
+      "image": "0.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -109,7 +109,7 @@
   },
   "116": {
     "inputs": {
-      "image": "rabbit1.jpg"
+      "image": "0.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -118,7 +118,7 @@
   },
   "137": {
     "inputs": {
-      "image": "0.png"
+      "image": "0.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -127,7 +127,7 @@
   },
   "138": {
     "inputs": {
-      "image": "0.png"
+      "image": "0.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -136,7 +136,7 @@
   },
   "139": {
     "inputs": {
-      "image": "0.png"
+      "image": "0.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -379,7 +379,7 @@
   },
   "173": {
     "inputs": {
-      "image": "caterpillar1.webp"
+      "image": "0.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {

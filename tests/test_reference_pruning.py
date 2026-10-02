@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import minimax
 
@@ -19,6 +20,14 @@ def load_json(path):
         return json.load(file)
 
 
+def enable_all_references(workflow, kind):
+    _, destination, names = minimax._reference_destination(workflow, "test", kind)
+    for number, name in enumerate(names, start=1):
+        node_id, _ = minimax.find_workflow_node(workflow, f"Reference Image {number}", "test", "LoadImage")
+        container, key = minimax._reference_input_container(destination, name)
+        container[key] = [node_id, 0]
+
+
 class MissingReferenceImageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -26,7 +35,10 @@ class MissingReferenceImageTests(unittest.TestCase):
             "initial": load_json(minimax.INITIAL_WORKFLOW_FILE),
             "append": load_json(minimax.APPEND_WORKFLOW_FILE),
             "refresh": load_json(minimax.REFRESH_WORKFLOW_FILE),
+            "repair": load_json(minimax.REPAIR_WORKFLOW_FILE),
         }
+        for kind, workflow in cls.workflows.items():
+            enable_all_references(workflow, kind)
 
     def test_missing_reference_connections_are_removed_from_all_workflows(self):
         with tempfile.TemporaryDirectory() as input_directory:
@@ -137,6 +149,8 @@ class MissingReferenceImageTests(unittest.TestCase):
                         image_node["inputs"]["image"] = "valid.png"
                         destination["inputs"].pop(input_name, None)
 
+                        with mock.patch.dict(minimax.REFERENCE_IMAGE_OVERRIDES, {image_number: "valid.png"}, clear=True):
+                            minimax.apply_reference_image_overrides(workflow, "test")
                         minimax.prune_missing_reference_images(
                             workflow,
                             f"{workflow_kind} test workflow",
@@ -158,6 +172,67 @@ class MissingReferenceImageTests(unittest.TestCase):
                                 destination["inputs"][input_name],
                                 [node_id, 0],
                             )
+
+    def test_disconnected_valid_caterpillar_is_not_reconnected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with open(os.path.join(directory, "caterpillar1.webp"), "wb") as image:
+                image.write(VALID_PNG)
+            for kind, source in self.workflows.items():
+                with self.subTest(workflow=kind):
+                    workflow = copy.deepcopy(source)
+                    _, node = minimax.find_workflow_node(workflow, "Reference Image 3", "test", "LoadImage")
+                    node["inputs"]["image"] = "caterpillar1.webp"
+                    _, destination, names = minimax._reference_destination(workflow, "test", kind)
+                    container, key = minimax._reference_input_container(destination, names[2])
+                    container.pop(key, None)
+                    removed = minimax.prune_missing_reference_images(workflow, "test", kind, input_directory=directory)
+                    self.assertIn(3, removed)
+                    if kind == "refresh":
+                        self.assertEqual(destination["inputs"]["inputcount"], 0)
+                    else:
+                        self.assertNotIn(key, container)
+
+    def test_copy_preserves_source_selection_across_workflows(self):
+        source = copy.deepcopy(self.workflows["initial"])
+        _, destination, names = minimax._reference_destination(source, "test", "initial")
+        for name in names[1:]:
+            container, key = minimax._reference_input_container(destination, name)
+            container.pop(key, None)
+        _, stale = minimax.find_workflow_node(source, "Reference Image 3", "test", "LoadImage")
+        stale["inputs"]["image"] = "caterpillar1.webp"
+        for kind in ("append", "refresh", "repair"):
+            with self.subTest(workflow=kind):
+                target = copy.deepcopy(self.workflows[kind])
+                minimax.copy_reference_image_inputs(source, target, "test")
+                _, destination, names = minimax._reference_destination(target, "test", kind)
+                for number, name in enumerate(names, start=1):
+                    container, key = minimax._reference_input_container(destination, name)
+                    self.assertEqual(key in container, number == 1)
+
+    def test_sparse_cli_override_enables_only_requested_slot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with open(os.path.join(directory, "chosen.png"), "wb") as image:
+                image.write(VALID_PNG)
+            for kind in self.workflows:
+                with self.subTest(workflow=kind):
+                    path = {"initial": minimax.INITIAL_WORKFLOW_FILE, "append": minimax.APPEND_WORKFLOW_FILE,
+                            "refresh": minimax.REFRESH_WORKFLOW_FILE, "repair": minimax.REPAIR_WORKFLOW_FILE}[kind]
+                    workflow = load_json(path)
+                    with mock.patch.dict(minimax.REFERENCE_IMAGE_OVERRIDES, {3: "chosen.png"}, clear=True):
+                        minimax.apply_reference_image_overrides(workflow, "test")
+                    removed, mapping = minimax.prune_missing_reference_images(
+                        workflow, "test", kind, input_directory=directory, return_picture_slot_map=True)
+                    self.assertEqual(removed, [1, 2, 4, 5, 6])
+                    self.assertEqual(mapping, {3: 1 if kind == "refresh" else 3})
+
+    def test_existing_placeholder_is_never_connected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with open(os.path.join(directory, "0.jpg"), "wb") as image:
+                image.write(VALID_PNG)
+            for kind, source in self.workflows.items():
+                with self.subTest(workflow=kind):
+                    removed = minimax.prune_missing_reference_images(copy.deepcopy(source), "test", kind, input_directory=directory)
+                    self.assertEqual(removed, list(range(1, 7)))
 
     def test_existing_but_undecodable_image_is_disconnected(self):
         with tempfile.TemporaryDirectory() as input_directory:

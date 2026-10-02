@@ -2645,12 +2645,28 @@ def apply_reference_image_overrides(workflow, workflow_label):
             "LoadImage",
         )
         image_node.setdefault("inputs", {})["image"] = image_path
+        # An explicit CLI override enables this numbered reference slot.
+        for kind in ("initial", "refresh", "repair"):
+            try:
+                _, destination, input_names = _reference_destination(
+                    workflow, workflow_label, kind,
+                )
+            except WorkflowConfigurationError:
+                continue
+            container, key = _reference_input_container(
+                destination, input_names[image_number - 1],
+            )
+            node_id, _ = find_workflow_node(
+                workflow, node_name, workflow_label, "LoadImage",
+            )
+            container[key] = [node_id, 0]
+            break
     return workflow
 
 
-# Copy all six named reference-image filenames between workflows.
+# Copy reference filenames and selected slots between workflows.
 def copy_reference_image_inputs(source_workflow, destination_workflow, label):
-    """Copy all six named reference-image filenames between workflows."""
+    """Copy reference filenames and selected slots between workflows."""
 
     for node_name in REFERENCE_IMAGE_NODE_NAMES:
         _, source = find_workflow_node(
@@ -2672,6 +2688,36 @@ def copy_reference_image_inputs(source_workflow, destination_workflow, label):
             label,
             "LoadImage",
         )
+
+    for source_kind in ("initial", "refresh", "repair"):
+        try:
+            _, source_destination, source_inputs = _reference_destination(
+                source_workflow, "reference source workflow", source_kind,
+            )
+            break
+        except WorkflowConfigurationError:
+            continue
+    else:
+        raise WorkflowConfigurationError("Reference source has no reference conditioner.")
+    for kind in ("initial", "refresh", "repair"):
+        try:
+            _, destination, input_names = _reference_destination(
+                destination_workflow, label, kind,
+            )
+        except WorkflowConfigurationError:
+            continue
+        for number, input_name in enumerate(input_names, start=1):
+            source_container, source_key = _reference_input_container(
+                source_destination, source_inputs[number - 1],
+            )
+            container, key = _reference_input_container(destination, input_name)
+            container.pop(key, None)
+            if source_container.get(source_key) is not None:
+                node_id, _ = find_workflow_node(
+                    destination_workflow, f"Reference Image {number}", label, "LoadImage",
+                )
+                container[key] = [node_id, 0]
+        break
 
 
 # Resolve a LoadImage value while tolerating ComfyUI's folder suffix.
@@ -2748,7 +2794,13 @@ def _reference_input_container(destination, input_name):
     return inputs, input_name
 
 
-# Connect decodable references and disconnect unusable ones before queueing.
+def _is_reference_placeholder(image_name):
+    """Template images never condition generated subjects."""
+    cleaned = re.sub(r"\s+\[(?:input|output|temp)\]\s*$", "", str(image_name or ""), flags=re.I)
+    return cleaned.strip().replace("\\", "/").rsplit("/", 1)[-1].lower() in {"0.jpg", "0.png"}
+
+
+# Preserve selected references and disconnect unusable ones before queueing.
 def prune_missing_reference_images(
     workflow,
     workflow_label,
@@ -2757,7 +2809,7 @@ def prune_missing_reference_images(
     excluded_picture_ids=None,
     return_picture_slot_map=False,
 ):
-    """Connect decodable references and disconnect unusable ones before queueing."""
+    """Preserve selected references and disconnect unusable ones before queueing."""
 
     input_directory = os.path.abspath(input_directory or COMFY_INPUT)
     destination_name, destination, input_names = _reference_destination(
@@ -2776,6 +2828,12 @@ def prune_missing_reference_images(
     # references must be compacted while preserving canonical->packed Picture
     # numbering for the render-only H3 prompt.
     if workflow_kind == "refresh":
+        selected_nodes = {
+            str(value[0])
+            for key, value in destination["inputs"].items()
+            if re.fullmatch(r"image_\d+", key)
+            and isinstance(value, list) and len(value) == 2 and value[1] == 0
+        }
         retained = []
         for image_number, node_name in enumerate(
             REFERENCE_IMAGE_NODE_NAMES,
@@ -2792,6 +2850,10 @@ def prune_missing_reference_images(
                 image_name,
                 input_directory,
             )
+            if str(node_id) not in selected_nodes:
+                decode_error = "reference slot is disconnected"
+            if _is_reference_placeholder(image_name):
+                decode_error = "placeholder image"
             if image_number in excluded:
                 decode_error = "excluded by continuity state"
             if decode_error is None:
@@ -2829,6 +2891,10 @@ def prune_missing_reference_images(
             image_name,
             input_directory,
         )
+        if container.get(leaf_name) is None:
+            decode_error = "reference slot is disconnected"
+        if _is_reference_placeholder(image_name):
+            decode_error = "placeholder image"
         if image_number in excluded:
             decode_error = "excluded by continuity state"
         if decode_error is None:

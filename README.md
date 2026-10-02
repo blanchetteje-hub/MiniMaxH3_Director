@@ -935,7 +935,7 @@ frame alignment and stitching trims can affect the final encoded duration.
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
 | `--model {gpt,mistral,qwen}` | Select the response formatter for the user-loaded LLM host model; defaults to `gpt`. |
 | `--lora_dir DIRECTORY` | Directory containing LoRA files; defaults to `/mnt/h/StableDiffusion/loras` in this checkout. |
-| `--image1 PATH` through `--image6 PATH` | Override the corresponding numbered reference image in the initial, append, and refresh workflows. |
+| `--image1 PATH` through `--image6 PATH` | Set and enable the corresponding numbered reference image. Workflow defaults use inactive `0.jpg` placeholders. Disconnected slots stay disabled unless explicitly overridden; refresh and repair preserve the source workflow selection. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
 | `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |
 

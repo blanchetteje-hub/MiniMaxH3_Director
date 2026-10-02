@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 
 import minimax
+from tests.test_reference_pruning import enable_all_references
 
 
 VALID_PNG = base64.b64decode(
@@ -65,6 +66,7 @@ class RefreshContextLatentTests(unittest.TestCase):
 
     def test_refresh_reference_batch_compacts_and_returns_picture_map(self):
         workflow = minimax.load_workflow(minimax.REFRESH_WORKFLOW_FILE)
+        enable_all_references(workflow, "refresh")
         with tempfile.TemporaryDirectory() as directory:
             for number in (1, 3, 5):
                 name = f"reference_{number}.png"
