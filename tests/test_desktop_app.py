@@ -146,7 +146,7 @@ class DesktopBridgeTests(unittest.TestCase):
 
     def test_low_vram_rejects_mixed_or_diagnostic_modes(self):
         for field, value in (("repair", "3"), ("director_only", True),
-                             ("generate_all", True), ("test_prompt_generation", True),
+                             ("test_prompt_generation", True),
                              ("use_prompts", "custom.txt")):
             with self.subTest(field=field):
                 with self.assertRaisesRegex(ValueError, "16GB"):

@@ -1346,6 +1346,32 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(payload["llm_result"]["non_diegetic_music"], "Sparse piano.")
 
     @mock.patch("minimax.ask_llm")
+    def test_no_music_skips_music_request(self, ask_llm):
+        for mode in ("initial", "continuation"):
+            with self.subTest(conditioning_mode=mode):
+                ask_llm.reset_mock()
+                ask_llm.side_effect = pipeline_llm_side_effect(
+                    [director_response("Mark enters the room quietly.")],
+                    soundscape="Quiet room tone.",
+                    music="Sparse piano.",
+                )
+                bundle = segment_bundle()
+                bundle["conditioning_mode"] = mode
+                bundle["previous_music"] = "Sparse piano."
+                with mock.patch("builtins.print"):
+                    payload = minimax.request_segment_llm(
+                        bundle, [], "run-id", {"no_music": True}
+                    )
+                self.assertEqual(payload["llm_result"]["non_diegetic_music"], "N/A")
+                self.assertEqual(payload["llm_result"]["overall_soundscape"], "Quiet room tone.")
+                purposes = [
+                    call.kwargs.get("history_metadata", {}).get("purpose")
+                    for call in ask_llm.call_args_list
+                ]
+                self.assertNotIn("director_h3_music", purposes)
+                self.assertIn("director_h3_soundscape", purposes)
+
+    @mock.patch("minimax.ask_llm")
 
     def test_music_failure_does_not_block_soundscape(self, ask_llm):
         raw_scene = "Mark enters the room quietly."

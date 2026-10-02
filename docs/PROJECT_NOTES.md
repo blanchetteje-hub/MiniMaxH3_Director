@@ -1463,9 +1463,9 @@ Support a two-phase unattended workflow for long runs and single-GPU systems whe
 
 Preferred interface:
 
-- `minimax.py <segment_length> <segment_count> [<megapixels>] --generate-all` runs the complete normal LLM pipeline (story expansion/planning, Beats, Director Request 1, Request 2, final H3 validation), saves finalized render-ready prompts to `generated_prompts.txt`, and never contacts ComfyUI.
+- `minimax.py <segment_length> <segment_count> [<megapixels>] --generate-prompts COUNT` runs the complete normal LLM pipeline (story expansion/planning, Beats, Director Request 1, Request 2, final H3 validation), saves finalized render-ready prompts to `generated_prompts.txt`, and never contacts ComfyUI.
 - `minimax.py --use-prompts PATH` loads that exact saved prompt package, performs no LLM/planning work, renders all saved prompts through ComfyUI, and stitches the result.
-- This permits a one-video-card workflow: run `--generate-all` with the local LLM loaded, unload the LLM/start ComfyUI, then run `--use-prompts`.
+- This permits a one-video-card workflow: run `--generate-prompts COUNT` with the local LLM loaded, unload the LLM/start ComfyUI, then run `--use-prompts`.
 - The prompt package is the complete render handoff contract. It stores timing, workflow mode, continuity metadata, per-segment LoRAs, and reference-image overrides required to reproduce the generated run. Explicit render-time `--imageN` flags may override saved image paths.
 
 Legacy compatibility:

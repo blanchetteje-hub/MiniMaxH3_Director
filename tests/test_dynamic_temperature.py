@@ -6,7 +6,7 @@ import desktop_app
 import minimax
 
 
-@pytest.mark.parametrize('mode', [[], ['--generate-all'], ['--generate-prompts', '5']])
+@pytest.mark.parametrize('mode', [[], ['--generate-prompts', '5']])
 def test_temperature_default_and_override(mode):
     assert minimax.parse_args(['8', '5', *mode]).temp == .8
     assert minimax.parse_args(['8', '5', '--temp', '1.2', *mode]).temp == 1.2

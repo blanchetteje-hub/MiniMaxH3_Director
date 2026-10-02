@@ -22,7 +22,7 @@ def test_segment_count_requires_positive_integer(count):
         minimax.parse_args(['8', count])
 
 
-@pytest.mark.parametrize('mode', [[], ['--generate-all'], ['--director-only'], ['--test-prompt-generation']])
+@pytest.mark.parametrize('mode', [[], ['--director-only'], ['--test-prompt-generation']])
 def test_count_semantics_in_all_positional_modes(mode):
     args = minimax.parse_args(['2.5', '3', '.2', *mode])
     assert args.total_segments == 3
@@ -60,3 +60,9 @@ def test_desktop_rejects_fractional_segment_count():
         desktop_app.MiniMaxBridge._validate_settings({
             'segment_length': '8', 'total_segments': '1.5', 'megapixels': '.5'
         })
+
+
+def test_no_music_cli_flag():
+    assert minimax.parse_args(['8', '5', '--no-music']).no_music is True
+    assert minimax.parse_args(['8', '5']).no_music is False
+    assert minimax.build_run_config(8, 40, .5, 5, no_music=True)['no_music'] is True

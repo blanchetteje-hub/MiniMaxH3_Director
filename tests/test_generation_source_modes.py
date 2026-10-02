@@ -6,7 +6,7 @@ import minimax
 
 
 @pytest.mark.parametrize('source', ['--new', '--existing'])
-@pytest.mark.parametrize('mode', [[], ['--generate-prompts', '5'], ['--generate-all']])
+@pytest.mark.parametrize('mode', [[], ['--generate-prompts', '5']])
 def test_source_modes_support_full_or_prompt_only_pipeline(source, mode):
     args = minimax.parse_args(['8', '5', source, *mode])
     assert args.new_run == (source == '--new')

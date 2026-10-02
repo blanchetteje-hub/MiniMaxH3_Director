@@ -1,3 +1,4 @@
+import copy
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from unittest import mock
@@ -10,7 +11,6 @@ def _args(**overrides):
     values = {
         "generate_beats": None,
         "generate_prompts": None,
-        "generate_all": False,
         "use_prompts": None,
         "generate_from_prompts": False,
         "director_only": False,
@@ -43,12 +43,9 @@ def test_parse_args_defaults_prompt_generation_test_mode_off():
     ).test_prompt_generation
 
 
-def test_generate_all_uses_normal_video_positionals_without_comfyui():
-    args = minimax.parse_args(["8", "8", ".5", "--generate-all"])
-    assert args.generate_all
-    assert args.segment_length == 8
-    assert args.total_length == 64
-    assert args.megapixels == 0.5
+def test_removed_save_flag_is_rejected():
+    with pytest.raises(SystemExit):
+        minimax.parse_args(["8", "8", ".5", "--generate-all"])
 
 
 def test_use_prompts_accepts_explicit_package_path_without_video_positionals(tmp_path):
@@ -78,9 +75,11 @@ def test_director_raw_scene_retry_budget_is_five():
     assert minimax.DIRECTOR_RAW_SCENE_ATTEMPTS == 5
 
 
-@pytest.mark.parametrize("count", [1, 5])
-def test_prompt_generation_mode_skips_comfyui_and_stitching(count):
-    args = _args(segment_length=8.0, total_segments=count, total_length=999.0)
+@pytest.mark.parametrize("count, render_enabled", [(1, False), (5, False), (1, True)])
+def test_prompts_are_saved_automatically_before_rendering(count, render_enabled):
+    args = _args(segment_length=8.0, total_segments=count, total_length=999.0,
+                 test_prompt_generation=not render_enabled)
+    saved_packages = []
     durations = []
 
     def load_text(path, required=True):
@@ -108,7 +107,8 @@ def test_prompt_generation_mode_skips_comfyui_and_stitching(count):
         assert kwargs["character_canon"]["characters"][0]["name"] == "Amy"
         return "H3 prompt"
 
-    render = mock.patch("minimax.render_segment_with_retries")
+    render = mock.patch("minimax.render_segment_with_retries",
+                        side_effect=RuntimeError("stop at rendering") if render_enabled else None)
     stitch = mock.patch("minimax.stitch_videos")
     verify_images = mock.patch("minimax.verify_reference_images")
     verify_loras = mock.patch("minimax.verify_global_loras")
@@ -131,6 +131,8 @@ def test_prompt_generation_mode_skips_comfyui_and_stitching(count):
         mock.patch("minimax.load_or_generate_beats", return_value=[]),
         mock.patch("minimax.load_story_arc", return_value={"phases": []}),
         mock.patch("minimax.save_generation_state"),
+        mock.patch("minimax.validate_runtime_environment"),
+        mock.patch("minimax.save_generated_prompts_file", side_effect=lambda payload: saved_packages.append(copy.deepcopy(payload))),
         mock.patch("minimax.request_segment_llm", side_effect=request_segment),
         mock.patch(
             "minimax.request_combined_continuity",
@@ -154,14 +156,23 @@ def test_prompt_generation_mode_skips_comfyui_and_stitching(count):
     for patcher in patches[:-4]:
         patcher.start()
     try:
-        with ThreadPoolExecutor(max_workers=1) as summary_executor:
-            minimax._run_main(summary_executor, None, None)
+        with ThreadPoolExecutor(max_workers=1) as summary_executor, ThreadPoolExecutor(max_workers=1) as render_executor:
+            if render_enabled:
+                with pytest.raises(RuntimeError, match="stop at rendering"):
+                    minimax._run_main(summary_executor, None, render_executor if render_enabled else None)
+            else:
+                minimax._run_main(summary_executor, None, render_executor if render_enabled else None)
     finally:
         for patcher in reversed(patches):
             patcher.stop()
 
     assert durations == [8.0] * count
-    render_mock.assert_not_called()
+    assert len(saved_packages[-1]["prompts"]) == count
+    assert saved_packages[-1]["prompts"][0]["h3_prompt"] == "H3 prompt"
+    if render_enabled:
+        render_mock.assert_called_once()
+    else:
+        render_mock.assert_not_called()
     stitch_mock.assert_not_called()
     verify_images_mock.assert_called_once()
     verify_loras_mock.assert_called_once()

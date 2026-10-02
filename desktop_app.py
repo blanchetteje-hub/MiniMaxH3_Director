@@ -38,7 +38,6 @@ DEFAULT_SETTINGS = {
     "use_prompts": "",
     "test_prompt_generation": False,
     "director_only": False,
-    "generate_all": False,
     "capture_h3_segment": "",
     "capture_h3_fixture": "",
     "capture_h3_validation_segment": "",
@@ -230,6 +229,7 @@ class MiniMaxBridge:
                         except (ValueError, TypeError, ZeroDivisionError, KeyError):
                             pass
                     saved.pop("total_length", None)
+                    saved.pop("generate_all", None)
                     return {**DEFAULT_SETTINGS, **saved}
             except (OSError, ValueError):
                 pass
@@ -405,7 +405,7 @@ class MiniMaxBridge:
         render = mode == "render_only" or operation == "render"
         custom_prompts = str(settings.get("use_prompts") or "").strip()
         diagnostics = any(settings.get(key) for key in (
-            "test_prompt_generation", "director_only", "generate_all",
+            "test_prompt_generation", "director_only",
             "capture_h3_segment", "capture_h3_fixture",
             "capture_h3_validation_segment", "capture_h3_validation_fixture",
         ))
@@ -456,7 +456,7 @@ class MiniMaxBridge:
             command.append("--new" if mode == "new" else "--existing")
             if operation == "prompts":
                 command.extend(("--generate-prompts", str(values["total_segments"])))
-            for key in ("test_prompt_generation", "director_only", "generate_all"):
+            for key in ("test_prompt_generation", "director_only"):
                 if settings.get(key):
                     command.append("--" + key.replace("_", "-"))
             for key in ("capture_h3_segment", "capture_h3_validation_segment"):

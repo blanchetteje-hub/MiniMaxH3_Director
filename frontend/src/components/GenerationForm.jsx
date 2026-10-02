@@ -7,7 +7,7 @@ const INITIAL_SETTINGS = {
   megapixels: '0.5', resume: '1', steps: '6', trim_frames: '2', refresh: '6',
   vision_continuity: '0', retention: false, repair: '', model: 'gpt', temp: '0.8', first_frame: false,
   loras: [], beat_count: '', beat_length: '', use_prompts: '',
-  test_prompt_generation: false, director_only: false, generate_all: false,
+  test_prompt_generation: false, director_only: false,
   capture_h3_segment: '', capture_h3_fixture: '', capture_h3_validation_segment: '',
   capture_h3_validation_fixture: '',
 }
@@ -50,11 +50,11 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
     if (action !== 'render' && !rendering && settings.loras.some(lora => !lora.name.trim() || !Number.isFinite(Number(lora.strength)) || lora.strength === '')) {
       setError('Each LoRA needs a filename and a numeric strength.'); return
     }
-    const selectedDiagnostics = ['test_prompt_generation', 'director_only', 'generate_all'].filter(key => settings[key])
+    const selectedDiagnostics = ['test_prompt_generation', 'director_only'].filter(key => settings[key])
     if (!limited && !rendering && selectedDiagnostics.length > 1) { setError('Choose only one advanced prompt generation alternative.'); return }
     onGenerate(action === 'render' || rendering
-      ? { generation_mode: 'render_only', vram_mode: settings.vram_mode, action: 'render', use_prompts: limited ? '' : settings.use_prompts, test_prompt_generation: false, director_only: false, generate_all: false, capture_h3_segment: '', capture_h3_fixture: '', capture_h3_validation_segment: '', capture_h3_validation_fixture: '', repair: null, resume: '1', first_frame: false, loras: [] }
-      : { ...settings, use_prompts: '', director_only: mode === 'existing' && settings.director_only, ...(limited ? { test_prompt_generation: false, director_only: false, generate_all: false, capture_h3_segment: '', capture_h3_fixture: '', capture_h3_validation_segment: '', capture_h3_validation_fixture: '', vision_continuity: '0', use_prompts: '' } : {}), action, resume: mode === 'new' || limited ? '1' : settings.resume, repair: mode === 'new' || limited ? null : settings.repair || null })
+      ? { generation_mode: 'render_only', vram_mode: settings.vram_mode, action: 'render', use_prompts: limited ? '' : settings.use_prompts, test_prompt_generation: false, director_only: false, capture_h3_segment: '', capture_h3_fixture: '', capture_h3_validation_segment: '', capture_h3_validation_fixture: '', repair: null, resume: '1', first_frame: false, loras: [] }
+      : { ...settings, use_prompts: '', director_only: mode === 'existing' && settings.director_only, ...(limited ? { test_prompt_generation: false, director_only: false, capture_h3_segment: '', capture_h3_fixture: '', capture_h3_validation_segment: '', capture_h3_validation_fixture: '', vision_continuity: '0', use_prompts: '' } : {}), action, resume: mode === 'new' || limited ? '1' : settings.resume, repair: mode === 'new' || limited ? null : settings.repair || null })
   }
   const updateLora = (index, key, value) => setField('loras', settings.loras.map((item, n) => n === index ? { ...item, [key]: value } : item))
   const generateBeats = async () => {
@@ -104,7 +104,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
         {mode === 'existing' && !limited && <details className="advanced"><summary>Resume & repair</summary><div className="field-grid">{input('resume', 'Resume at segment', 'Continue from this one-based segment. Earlier segments must exist in generation_state.json.', 'number', { min: '1' })}{input('repair', 'Repair segment', 'Rerender only an existing middle segment with clips on both sides. Leave blank for normal generation.', 'number', { min: '2' })}</div></details>}
         {(!limited || !rendering) && <details className="advanced"><summary>Advanced & development</summary>
           {!limited && rendering && input('use_prompts', 'Saved prompt package', 'Custom prompt package path for Render-Only or Generate Video. Leave blank to use generated_prompts.txt.', 'text', { placeholder: 'generated_prompts.txt' })}
-          {!limited && !rendering && <><p className="muted-note">These alternatives replace normal video generation and do not render. Choose at most one.</p>{check('test_prompt_generation', 'Preview prompts in the log', 'Generate and print all prompts without submitting to ComfyUI.')}{mode === 'existing' && check('director_only', 'Director only', 'Use existing story_arc.json and beats.txt; run only the Director prompt pipeline.')}{check('generate_all', 'Save all prompts only', 'Run the story-to-prompts pipeline, save generated_prompts.txt, and exit before rendering.')}</>}
+          {!limited && !rendering && <><p className="muted-note">These alternatives replace normal video generation and do not render. Choose at most one.</p>{check('test_prompt_generation', 'Preview prompts in the log', 'Generate and print all prompts without submitting to ComfyUI.')}{mode === 'existing' && check('director_only', 'Director only', 'Use existing story_arc.json and beats.txt; run only the Director prompt pipeline.')}</>}
           {!limited && !rendering && <div className="field-grid">{input('capture_h3_segment', 'Capture rendered segment', 'Development fixture: one-based segment number to capture. Requires a fixture path.', 'number', { min: '1' })}{input('capture_h3_fixture', 'Rendered fixture path', 'Destination for the captured development H3 fixture.', 'text')}{input('capture_h3_validation_segment', 'Capture validation segment', 'One-based segment whose accepted scene and final H3 prompt are saved for replay.', 'number', { min: '1' })}{input('capture_h3_validation_fixture', 'Validation fixture path', 'Destination for the captured final-prompt validation fixture.', 'text')}</div>}
         </details>}
       </div>

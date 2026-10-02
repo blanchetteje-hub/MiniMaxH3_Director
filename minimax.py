@@ -1956,6 +1956,10 @@ def parse_args(arguments=None):
         "--temp", type=float, default=0.8, metavar="N",
         help="temperature for the initial story-writing LLM call only (default: 0.8)",
     )
+    parser.add_argument(
+        "--no-music", action="store_true",
+        help="skip music generation and set non_diegetic_music to N/A",
+    )
     source_mode = parser.add_mutually_exclusive_group()
     source_mode.add_argument(
         "--new", dest="new_run", action="store_true",
@@ -2100,16 +2104,6 @@ def parse_args(arguments=None):
         help=(
             "generate COUNT beats and final H3 prompts, save them to "
             "generated_prompts.txt, then exit without running ComfyUI"
-        ),
-    )
-    parser.add_argument(
-        "--generate-all",
-        action="store_true",
-        default=False,
-        help=(
-            "run the normal story -> beats -> Director -> final H3 prompt pipeline "
-            "using the supplied video positionals, save generated_prompts.txt, and "
-            "exit without contacting ComfyUI"
         ),
     )
     parser.add_argument(
@@ -2258,7 +2252,7 @@ def parse_args(arguments=None):
     if args.existing_beats and args.generate_beats is not None:
         parser.error("--existing preserves beats.txt and cannot be combined with --generate-beats.")
     if args.capture_h3_segment is not None and (
-        args.generate_prompts is not None or args.generate_all or args.director_only
+        args.generate_prompts is not None or args.director_only
         or args.test_prompt_generation or args.use_prompts is not None
         or args.generate_from_prompts
     ):
@@ -2285,9 +2279,9 @@ def parse_args(arguments=None):
     if args.generate_prompts is not None:
         if args.generate_prompts <= 0:
             parser.error("--generate-prompts must be greater than zero.")
-        if args.generate_from_prompts or args.use_prompts is not None or args.generate_all:
+        if args.generate_from_prompts or args.use_prompts is not None:
             parser.error(
-                "--generate-prompts cannot be combined with --generate-all, "
+                "--generate-prompts cannot be combined with "
                 "--use-prompts, or --generate-from-prompts."
             )
         if args.generate_beats is not None:
@@ -2314,31 +2308,6 @@ def parse_args(arguments=None):
                 "when video positionals are supplied."
             )
         args.total_length = args.segment_length * args.total_segments
-        return args
-
-    if args.generate_all:
-        if args.generate_beats is not None:
-            parser.error("--generate-all cannot be combined with --generate-beats.")
-        if args.use_prompts is not None or args.generate_from_prompts:
-            parser.error(
-                "--generate-all cannot be combined with --use-prompts or "
-                "--generate-from-prompts."
-            )
-        if args.repair is not None:
-            parser.error("--generate-all cannot be combined with --repair.")
-        if args.test_prompt_generation:
-            parser.error(
-                "--generate-all already performs the complete prompt-only pipeline; "
-                "do not combine it with --test-prompt-generation."
-            )
-        if any(
-            value is None
-            for value in (args.segment_length, args.total_segments, args.megapixels)
-        ):
-            parser.error(
-                "--generate-all requires normal video positionals: "
-                "segment_length and total_segments (megapixels defaults to 0.5)."
-            )
         return args
 
     if args.use_prompts is not None:
@@ -2436,7 +2405,7 @@ def parse_args(arguments=None):
     ):
         parser.error(
             "segment_length and total_segments are required (megapixels defaults to 0.5) unless "
-            "--generate-beats COUNT, --generate-prompts COUNT, --generate-all, "
+            "--generate-beats COUNT, --generate-prompts COUNT, "
             "--use-prompts PATH, or --generate-from-prompts is used."
         )
     if args.segment_length <= 0:
@@ -3125,6 +3094,7 @@ def build_run_config(
     trim_frames=TRIM_FRAMES_AFTER_FIRST,
     retention=False,
     test_prompt_generation=False,
+    no_music=False,
 ):
     # Auto-discovered video subjects are durable continuity metadata, not a
     # user edit to the creative source. Excluding those appended lines keeps a
@@ -3162,6 +3132,7 @@ def build_run_config(
         "trim_frames": int(trim_frames),
         "retention": bool(retention),
         "test_prompt_generation": bool(test_prompt_generation),
+        "no_music": bool(no_music),
         "source_sha256": hashlib.sha256(source_payload).hexdigest(),
     }
 
@@ -29012,6 +28983,7 @@ def repair_existing_segment(
     beats_path=BEATS_FILE,
     story_path=STORY_FILE,
     input_directory=None,
+    no_music=False,
 ):
     """Rerender one checkpointed middle segment without changing semantic state."""
 
@@ -29167,6 +29139,8 @@ def repair_existing_segment(
         ).hexdigest(),
     }
     director_run_config = dict(repair["config"])
+    if no_music:
+        director_run_config["no_music"] = True
     repair_trim_frames = director_run_config.get(
         "trim_frames",
         TRIM_FRAMES_AFTER_FIRST,
@@ -31025,61 +30999,62 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 flush=True,
             )
 
-    print(f"H3 MUSIC REQUEST - SEGMENT {segment_number}")
-    print("=" * 64)
-
     music = "N/A"
-    music_messages = build_h3_music_messages(
-        raw_scene,
-        conditioning_mode=conditioning_mode,
-        previous_music=bundle.get("previous_music", ""),
-    )
-    for audio_attempt in range(1, 3):
-        try:
-            raw_music = ask_llm(
-                music_messages,
-                response_format=H3_MUSIC_RESPONSE_FORMAT,
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": (run_config or {}).get("source_sha256"),
-                    "purpose": "director_h3_music",
-                    "segment": segment_number,
-                    "attempt": audio_attempt,
-                    "conditioning_mode": conditioning_mode,
-                },
-                max_tokens=512,
-            )
-            music = parse_h3_music_result(raw_music)
-            print(
-                f"H3 music segment {segment_number}: {music!r}",
-                flush=True,
-            )
-            break
-        except (
-            LLMConnectionError,
-            requests.RequestException,
-            OSError,
-            ValueError,
-            TypeError,
-        ) as error:
-            if audio_attempt < 2:
+    if not (run_config or {}).get("no_music", False):
+        print(f"H3 MUSIC REQUEST - SEGMENT {segment_number}")
+        print("=" * 64)
+
+        music_messages = build_h3_music_messages(
+            raw_scene,
+            conditioning_mode=conditioning_mode,
+            previous_music=bundle.get("previous_music", ""),
+        )
+        for audio_attempt in range(1, 3):
+            try:
+                raw_music = ask_llm(
+                    music_messages,
+                    response_format=H3_MUSIC_RESPONSE_FORMAT,
+                    history_metadata={
+                        "run_id": run_id,
+                        "source_sha256": (run_config or {}).get("source_sha256"),
+                        "purpose": "director_h3_music",
+                        "segment": segment_number,
+                        "attempt": audio_attempt,
+                        "conditioning_mode": conditioning_mode,
+                    },
+                    max_tokens=512,
+                )
+                music = parse_h3_music_result(raw_music)
                 print(
-                    f"H3 music segment {segment_number} invalid "
-                    f"(attempt {audio_attempt}/2); retrying: {error}",
+                    f"H3 music segment {segment_number}: {music!r}",
                     flush=True,
                 )
-                music_messages = [dict(message) for message in music_messages]
-                music_messages[-1]["content"] += (
-                    "\n\nRETRY: Return one short musical cue only. After any "
-                    "required continuation prefix, use at most 24 words. Do not "
-                    "name characters, actions, or sound effects."
+                break
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+            ) as error:
+                if audio_attempt < 2:
+                    print(
+                        f"H3 music segment {segment_number} invalid "
+                        f"(attempt {audio_attempt}/2); retrying: {error}",
+                        flush=True,
+                    )
+                    music_messages = [dict(message) for message in music_messages]
+                    music_messages[-1]["content"] += (
+                        "\n\nRETRY: Return one short musical cue only. After any "
+                        "required continuation prefix, use at most 24 words. Do not "
+                        "name characters, actions, or sound effects."
+                    )
+                    continue
+                print(
+                    f"WARNING: H3 music segment {segment_number} failed; using N/A: "
+                    f"{error}",
+                    flush=True,
                 )
-                continue
-            print(
-                f"WARNING: H3 music segment {segment_number} failed; using N/A: "
-                f"{error}",
-                flush=True,
-            )
 
     audio_result = {
         "overall_soundscape": soundscape,
@@ -31139,7 +31114,7 @@ def load_generated_prompts_file(path=GENERATED_PROMPTS_FILE):
             payload = json.load(handle)
     except FileNotFoundError:
         raise FileNotFoundError(
-            f"Generated prompt file not found: {path}. Run --generate-prompts first."
+            f"Generated prompt file not found: {path}. Generate prompts or run normal generation first."
         ) from None
     except json.JSONDecodeError as error:
         raise ValueError(
@@ -31331,8 +31306,7 @@ def _run_main(
         else None
     )
     generate_prompts_count = getattr(args, "generate_prompts", None)
-    generate_all = bool(getattr(args, "generate_all", False))
-    generate_prompts_only = generate_prompts_count is not None or generate_all
+    generate_prompts_only = generate_prompts_count is not None
     director_only = bool(getattr(args, "director_only", False))
     if generate_beats_only:
         print(
@@ -31362,6 +31336,7 @@ def _run_main(
             repair_segment,
             steps=args.steps,
             global_loras=global_loras,
+            no_music=getattr(args, "no_music", False),
         )
     run_id = str(uuid.uuid4())
 
@@ -31536,45 +31511,43 @@ def _run_main(
             ) from error
         raise
 
-    generated_prompts_payload = None
-    if generate_prompts_only:
-        saved_prompt_prefix = []
-        if resume_segment > 1 and os.path.isfile(GENERATED_PROMPTS_FILE):
-            try:
-                previous_payload = load_generated_prompts_file(
-                    GENERATED_PROMPTS_FILE
-                )
-                saved_prompt_prefix = [
-                    copy.deepcopy(record)
-                    for record in previous_payload.get("prompts", [])
-                    if int(record.get("segment", 0)) < resume_segment
-                ]
-            except Exception as error:
-                print(
-                    f"WARNING: could not reuse saved prompt prefix during "
-                    f"recovery: {error}. Regenerating the prompt file from the "
-                    "current resume point.",
-                    flush=True,
-                )
-        generated_prompts_payload = {
-            "version": 1,
-            "config": {
-                "segment_length": segment_length,
-                "total_length": total_length,
-                "megapixels": megapixels,
-                "steps": args.steps,
-                "trim_frames": trim_frames,
-                "refresh_interval": refresh_interval,
-                "total_segments": total_segments,
-                "reference_image_overrides": {
-                    str(number): path
-                    for number, path in REFERENCE_IMAGE_OVERRIDES.items()
-                },
+    saved_prompt_prefix = []
+    if resume_segment > 1 and os.path.isfile(GENERATED_PROMPTS_FILE):
+        try:
+            previous_payload = load_generated_prompts_file(
+                GENERATED_PROMPTS_FILE
+            )
+            saved_prompt_prefix = [
+                copy.deepcopy(record)
+                for record in previous_payload.get("prompts", [])
+                if int(record.get("segment", 0)) < resume_segment
+            ]
+        except Exception as error:
+            print(
+                f"WARNING: could not reuse saved prompt prefix during "
+                f"recovery: {error}. Regenerating the prompt file from the "
+                "current resume point.",
+                flush=True,
+            )
+    generated_prompts_payload = {
+        "version": 1,
+        "config": {
+            "segment_length": segment_length,
+            "total_length": total_length,
+            "megapixels": megapixels,
+            "steps": args.steps,
+            "trim_frames": trim_frames,
+            "refresh_interval": refresh_interval,
+            "total_segments": total_segments,
+            "reference_image_overrides": {
+                str(number): path
+                for number, path in REFERENCE_IMAGE_OVERRIDES.items()
             },
-            "macro_arc": copy.deepcopy(macro_arc),
-            "prompts": saved_prompt_prefix,
-        }
-        save_generated_prompts_file(generated_prompts_payload)
+        },
+        "macro_arc": copy.deepcopy(macro_arc),
+        "prompts": saved_prompt_prefix,
+    }
+    save_generated_prompts_file(generated_prompts_payload)
 
     # Beat generation deliberately happens before external runtime and workflow
     # validation so an empty beats.txt is populated before normal startup work.
@@ -31601,6 +31574,7 @@ def _run_main(
         trim_frames=trim_frames,
         retention=retention,
         test_prompt_generation=test_prompt_generation,
+        no_music=getattr(args, "no_music", False),
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
@@ -32348,29 +32322,28 @@ def _run_main(
             "observations": [],
         }
 
-        if generate_prompts_only:
-            generated_prompts_payload["prompts"].append({
-                "segment": int(segment),
-                "duration": float(segment_bundle["current_duration"]),
-                "conditioning_mode": segment_bundle["conditioning_mode"],
-                "h3_prompt": h3_prompt,
-                "subject_definitions": subject_definitions,
-                "continuity_state": copy.deepcopy(continuity_state),
-                "continuity_summary": payload.get(
-                    "h3_opening_summary",
-                    segment_bundle.get("h3_opening_summary", ""),
-                ),
-                "loras": [
-                    list(item)
-                    for item in normalize_lora_list(loras)
-                ],
-            })
-            save_generated_prompts_file(generated_prompts_payload)
-            print(
-                f"Saved finalized H3 prompt {segment}/{total_segments} to "
-                f"{os.path.basename(GENERATED_PROMPTS_FILE)}.",
-                flush=True,
-            )
+        generated_prompts_payload["prompts"].append({
+            "segment": int(segment),
+            "duration": float(segment_bundle["current_duration"]),
+            "conditioning_mode": segment_bundle["conditioning_mode"],
+            "h3_prompt": h3_prompt,
+            "subject_definitions": subject_definitions,
+            "continuity_state": copy.deepcopy(continuity_state),
+            "continuity_summary": payload.get(
+                "h3_opening_summary",
+                segment_bundle.get("h3_opening_summary", ""),
+            ),
+            "loras": [
+                list(item)
+                for item in normalize_lora_list(loras)
+            ],
+        })
+        save_generated_prompts_file(generated_prompts_payload)
+        print(
+            f"Saved finalized H3 prompt {segment}/{total_segments} to "
+            f"{os.path.basename(GENERATED_PROMPTS_FILE)}.",
+            flush=True,
+        )
 
         if (
             getattr(args, "capture_h3_validation_segment", None) == segment
@@ -33328,7 +33301,6 @@ def main():
         normalized_args.intersection({
             "--test-prompt-generation",
             "--generate-prompts",
-            "--generate-all",
             "--director-only",
             "--generate-beats",
         })

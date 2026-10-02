@@ -922,10 +922,10 @@ frame alignment and stitching trims can affect the final encoded duration.
 | `--existing` | Require and use existing beats, without regenerating them. |
 | `--generate-prompts COUNT` | Save final H3 prompts to `generated_prompts.txt` without contacting ComfyUI; supply timing positionals for custom segment length. |
 | `--generate-from-prompts` | Render `generated_prompts.txt` through ComfyUI without LLM planning. |
-| `--generate-all` | Run planning and save prompts without rendering, using the timing positionals. |
 | `--use-prompts PATH` | Render the saved prompt package at PATH without LLM planning. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--temp N` | Temperature for the initial story-writing LLM call only; defaults to `0.8`. Must be finite and zero or greater. Available as **Story temperature** under New → Prompt & story options. |
+| `--no-music` | Skip the music LLM request and set `non_diegetic_music` to `N/A`; soundscape generation still runs. |
 | `--steps STEPS` | BasicScheduler sampling steps for all workflows; defaults to `6`. |
 | `--trim-frames FRAMES` | Trim this many leading frames from every segment after the first when stitching; defaults to `2`, and `0` disables the trim. |
 | `--refresh SEGMENTS` | Compatibility fallback used only when no source-span chapter refresh schedule is available; defaults to `6`. |
@@ -1208,3 +1208,6 @@ MINIMAX_DEBUG=1 python minimax.py 5 2 0.2
 | `story_example.txt`, `subjects_example.txt`, `additional_states_example.txt` | Example input formats. |
 | `stitch.bat` | Optional Windows-only FFmpeg concat helper. |
 | `requirements.txt` | Python package requirements. |
+
+Finalized prompts are saved automatically to `generated_prompts.txt` during
+normal generation and prompt-only runs. No save flag is needed.
