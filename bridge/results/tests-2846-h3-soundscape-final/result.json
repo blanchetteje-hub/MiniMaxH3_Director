@@ -1,0 +1,34 @@
+{
+  "job_id": "tests-2846-h3-soundscape-final",
+  "kind": "run_tests",
+  "started_at": 1790908533.3101933,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_is_extraction_only",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_rejects_visual_only_facts",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_parser_rejects_na_when_raw_has_explicit_audio",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_parser_allows_na_without_audio_cues",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_parser_rejects_punctuation_only_output",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_audio_contract_retries_malformed_soundscape",
+      "tests\\test_llm_prompt_pipeline.py::H3AudioNormalizationTests",
+      "tests\\test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_soundscape_remains_deterministic"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 8 items\n\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_is_extraction_only PASSED [ 12%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_rejects_visual_only_facts PASSED [ 25%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_parser_rejects_na_when_raw_has_explicit_audio PASSED [ 37%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_parser_allows_na_without_audio_cues PASSED [ 50%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_parser_rejects_punctuation_only_output PASSED [ 62%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_audio_contract_retries_malformed_soundscape PASSED [ 75%]\ntests/test_llm_prompt_pipeline.py::H3AudioNormalizationTests::test_audio_parsers_replace_underscores_with_spaces PASSED [ 87%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_soundscape_remains_deterministic PASSED [100%]\n\n============================== 8 passed in 3.09s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790908534.7626328,
+    "finished_at": 1790908538.5968754
+  },
+  "finished_at": 1790908538.5968754,
+  "status": "ok"
+}
