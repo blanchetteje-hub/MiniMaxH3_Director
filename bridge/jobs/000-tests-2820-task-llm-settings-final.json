@@ -1,0 +1,10 @@
+{
+  "job_id": "tests-2820-task-llm-settings-final",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests",
+    "tests/test_gpt_formatter.py::GPTFormatterTests::test_gpt_formatter_is_available_and_is_default_runtime_formatter"
+  ],
+  "timeout_seconds": 1800
+}
