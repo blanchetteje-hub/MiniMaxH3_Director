@@ -297,6 +297,16 @@ must not collapse to N/A; that omission is rejected and retried once. Punctuatio
 otherwise non-language soundscape results are also rejected and retried once. Music should describe one
 short underscore cue, continue the previous musical state, and avoid character/action
 narration; overlong music results are rejected and retried once.
+
+After the 2847 frozen-plan acceptance, treat the H3 audio path as locked unless a
+future story exposes a concrete regression. Do not continue tuning audio against the
+zombie benchmark.
+
+Story-to-beats owns stable identity handles for distinct unnamed animate individuals.
+When separate identity is needed, it uses a numbered functional label such as Guard1
+or Creature1 and reuses that label. Python deterministically extracts those labels into
+the story-derived macro arc's `characters_introduced` list; this restores the existing
+pre-H3 dynamic Subject registration path without adding another LLM stage.
 Per-call sampler overrides are not used; `ask_llm()` task routing is the sole settings authority.
 
 There is no narrative H3 formatter rewrite after RAW, no LLM-generated subject metadata, and no semantic LLM preservation check after Python copies RAW. RAW action preservation is deterministic by construction.

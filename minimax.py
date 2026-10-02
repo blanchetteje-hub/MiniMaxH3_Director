@@ -17066,8 +17066,13 @@ def build_story_to_beats_messages(
                 "distinct, concise film beats. Keep each beat one sentence and "
                 "maintain continuity and spatial awareness throughout the beats. "
                 "One beat MUST lead logically into another. No teleporting: if a "
-                "character moves, that movement has to be in the beat text. "
-                "Return JSON only."
+                "character moves, that movement has to be in the beat text. When a "
+                "distinct unnamed animate individual must be tracked separately, give "
+                "it one stable functional label by appending a number to its role or "
+                "type, such as Guard1 or Creature1, and reuse that same label in later "
+                "beats. The label is only an identity handle, not a new character. "
+                "Do not label interchangeable crowds or groups unless individuals "
+                "must be distinguished. Return JSON only."
             ),
         },
         {
@@ -17083,6 +17088,10 @@ Preserve the story's event order and outcomes. Do not summarize away an action
 that must visibly happen on screen. Each beat must be executable as one film clip.
 A terminal result belongs to one beat only: if the next beat begins with that
 result or consequence, the current beat must stop before it.
+If a distinct unnamed animate individual needs separate identity across actions
+or beats, use one stable numbered functional label such as Guard1, Creature1,
+or Robot1. Reuse the same label later; do not create a new story character.
+Keep interchangeable groups collective when no individual identity is needed.
 {extra_text}
 
 RETURN
@@ -17153,6 +17162,31 @@ def _normalize_story_derived_beats(
     return normalized
 
 
+_STORY_BEAT_FUNCTIONAL_SUBJECT_RE = re.compile(
+    r"(?<![A-Za-z0-9_])([A-Z][A-Za-z'’.-]*[A-Za-z][1-9][0-9]*)(?![A-Za-z0-9_])"
+)
+
+
+def story_beat_functional_subject_labels(beats):
+    """Return stable numbered animate identity handles in first-seen order.
+
+    Story-to-beats owns whether a functional label is needed. Python only
+    recognizes the documented Role1/Creature1-style token shape and carries
+    those handles into the downstream Subject-registration path.
+    """
+    labels = []
+    seen = set()
+    for beat in beats or []:
+        for match in _STORY_BEAT_FUNCTIONAL_SUBJECT_RE.finditer(str(beat or "")):
+            label = match.group(1)
+            key = label.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            labels.append(label)
+    return labels
+
+
 def _story_derived_macro_arc(beats):
     """Build the minimal Python-owned event skeleton for downstream validation."""
     required_events = []
@@ -17178,7 +17212,7 @@ def _story_derived_macro_arc(beats):
                 "Follow the expanded story from beginning to end without "
                 "changing event order or outcomes."
             ),
-            "characters_introduced": [],
+            "characters_introduced": story_beat_functional_subject_labels(beats),
             "location": "As established by the expanded story.",
             "required_events": required_events,
             "required_end_state": "End at the expanded story's stated conclusion.",
@@ -17231,9 +17265,11 @@ VALIDATION ISSUE
 Rewrite only Beat {int(beat_number)}. Keep it one concise sentence. Preserve the
 same story event and outcome. Fix the stated problem while maintaining spatial
 continuity with the previous and next beats. If movement is required, show it.
-Do not pull a later story event into this beat. A terminal result belongs to one
-beat only: if NEXT PLANNED BEAT begins with that result or consequence, stop this
-beat before it.
+Do not pull a later story event into this beat. Preserve any stable numbered
+functional identity labels already established in CURRENT, PREVIOUS ACCEPTED
+BEAT, or NEXT PLANNED BEAT; do not rename the same individual during repair.
+A terminal result belongs to one beat only: if NEXT PLANNED BEAT begins with that
+result or consequence, stop this beat before it.
 
 RETURN
 {{"beat_number":{int(beat_number)},"beat_text":"one sentence"}}""".strip(),

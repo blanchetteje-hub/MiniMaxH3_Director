@@ -79,6 +79,10 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
         self.assertIn("exactly 8 sequential beats", prompt)
         self.assertIn("A terminal result belongs to one beat only", prompt)
         self.assertIn("current beat must stop before it", prompt)
+        self.assertIn("stable functional label", prompt)
+        self.assertIn("Guard1", prompt)
+        self.assertIn("do not create a new story character", prompt)
+        self.assertIn("Keep interchangeable groups collective", prompt)
 
     def test_timestamp_cleanup_removes_story_clock_times_only(self):
         cases = {
@@ -120,6 +124,41 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             event["state_effects"] == []
             for event in phase["required_events"]
         ))
+        self.assertEqual(phase["characters_introduced"], [])
+
+    def test_functional_subject_labels_are_extracted_in_first_seen_order(self):
+        beats = [
+            "Mara sees Guard1 enter while a crowd remains outside.",
+            "Guard1 confronts Mara as Creature1 climbs through the window.",
+            "Creature1 retreats while Guard1 stays behind.",
+            "Robot12 arrives after them.",
+        ]
+        self.assertEqual(
+            minimax.story_beat_functional_subject_labels(beats),
+            ["Guard1", "Creature1", "Robot12"],
+        )
+
+    def test_story_derived_macro_arc_carries_functional_subject_labels(self):
+        beats = [
+            "Mara sees Guard1 enter.",
+            "Guard1 turns as Creature1 appears.",
+            "Creature1 follows Guard1 outside.",
+        ]
+        phase = minimax._story_derived_macro_arc(beats)["phases"][0]
+        self.assertEqual(
+            phase["characters_introduced"],
+            ["Guard1", "Creature1"],
+        )
+
+    def test_functional_subject_extractor_ignores_plain_numbers_and_groups(self):
+        beats = [
+            "Three guards enter Room2 while 2 crowds remain outside.",
+            "Mara waits at Gate 3 for 10 seconds.",
+        ]
+        self.assertEqual(
+            minimax.story_beat_functional_subject_labels(beats),
+            [],
+        )
 
     def test_two_pass_generation_feeds_timestamp_cleaned_beats_to_validator(self):
         expanded_story = (

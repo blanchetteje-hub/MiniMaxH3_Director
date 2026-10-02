@@ -673,15 +673,48 @@ Final soundscape-only change:
   audio such as footsteps, echoes, laughter, groans, impacts, or gunshots;
 - leave music and all task-based LLM settings unchanged.
 
+### 2847 — audio locked; next gold mismatch is dynamic Subjects
+
+`director-2847-h3-audio-final` completed all 8 segments.
+
+Audio result:
+- explicit footsteps/groans/impacts no longer collapse to N/A;
+- malformed output remains protected by the bounded retry;
+- persistent state no longer creates fake gunshots;
+- silent motion over-conversion is materially reduced;
+- music remains short, continuous across append segments, and resolves with the
+  scene's emotional state.
+
+Decision: lock the H3 audio path. Do not keep tuning it against this benchmark
+unless a new story exposes a concrete regression.
+
+Next larger gold mismatch:
+- combat RAW contains visible zombie subjects in Segments 2-8;
+- final H3 `subject_definitions` contains only file-backed Amy/Will/Amber;
+- camera movement is also absent, but missing Subject identity is the larger
+  structural mismatch.
+
+Root cause: the simplified story->beats path builds its Python macro arc with
+`characters_introduced: []`, removing the input used by the existing pre-H3
+dynamic Subject registry.
+
+Fix in progress:
+- beat writing assigns stable numbered functional labels only to distinct
+  unnamed animate individuals that require separate identity;
+- Python extracts those labels deterministically into
+  `characters_introduced`;
+- existing Subject registration remains the only downstream identity mechanism;
+- no new LLM stage and no LLM settings change.
+
 ## Immediate next work
 
-Run focused soundscape regressions for silent-motion wording and N/A rejection when
-RAW contains explicit audio. If green, run one final frozen-plan Director acceptance.
-If that acceptance is clean, stop tuning audio and move to the next non-audio gold
-difference.
+Run focused summary->story->beats regressions for functional Subject labels and
+Python-derived `characters_introduced`. If green, run fresh planning-only probes
+instead of the old frozen 2801 plan and inspect whether distinct unnamed animate
+subjects receive stable labels without creating fake new characters.
 
 Queued:
-- `tests-2846-h3-soundscape-final`
+- `tests-2848-functional-subject-labels`
 
 ## Public repository rule
 
