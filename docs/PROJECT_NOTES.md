@@ -283,10 +283,12 @@ Every production LLM stage, validator, extractor, and cleanup call should print 
 
 After Request 1 RAW is accepted:
 1. a tiny deterministic LLM cleanup may replace only unambiguous person pronouns with explicit names;
-2. a tiny deterministic soundscape extractor returns only `overall_soundscape`;
-3. a separate narrow creative music call receives the previous segment's music
+2. a narrow post-RAW Subject resolver names distinct unnamed foreground animate participants, reusing an established dynamic Subject only when continuity clearly requires it;
+3. Python registers those resolved names in the existing Subject registry before H3 assembly;
+4. a tiny deterministic soundscape extractor returns only `overall_soundscape`;
+5. a separate narrow creative music call receives the previous segment's music
    when continuing and returns only `non_diegetic_music`;
-4. Python copies canonical cleaned RAW directly into `detailed_description`, uses subject metadata from the subject registry / text files, and assembles the final H3 prompt.
+6. Python copies canonical cleaned RAW directly into `detailed_description` and assembles the final H3 prompt from the Subject registry plus audio fields.
 
 Soundscape extraction and music generation must remain separate responsibilities because
 they require different sampling/reasoning behavior. Soundscape output is microphone-audible
@@ -302,16 +304,25 @@ After the 2847 frozen-plan acceptance, treat the H3 audio path as locked unless 
 future story exposes a concrete regression. Do not continue tuning audio against the
 zombie benchmark.
 
-Story-to-beats owns stable identity handles for distinct unnamed animate individuals.
-When separate identity is needed, it uses an explicitly marked functional label such
-as `@Guard1` or `@Creature1` and reuses that label. Python extracts only marked
-labels, removes the `@` before Beat validation/saving, and carries the clean names into
-the story-derived macro arc's `characters_introduced` list. This avoids confusing
-numbered locations/objects such as Room2 with Subjects while restoring the existing
-pre-H3 dynamic Subject registration path without adding another LLM stage.
+Story-to-beats does **not** own dynamic Subject identity. Beats should describe
+unnamed participants naturally and should not create `@Guard1`/`Zombie1`-style
+identity handles merely for H3.
+
+Dynamic Subject determination begins only after Request 1 has produced an accepted,
+fully staged RAW scene. A narrow deterministic-analysis call may replace distinct
+unnamed foreground animate references with stable functional names such as
+`Guard1` or `Creature1`. It receives the existing Subject definitions so a known
+dynamic identity can be reused when the RAW clearly continues the same individual.
+Python then registers those names through the existing Subject registry, which owns
+numeric Subject IDs, speaker IDs, persistence, and prompt rendering.
+
+If the post-RAW Subject resolver changes timestamps/shot-script structure or otherwise
+fails, keep the accepted RAW unchanged rather than blocking the scene.
+
 Per-call sampler overrides are not used; `ask_llm()` task routing is the sole settings authority.
 
-There is no narrative H3 formatter rewrite after RAW, no LLM-generated subject metadata, and no semantic LLM preservation check after Python copies RAW. RAW action preservation is deterministic by construction.
+There is no narrative H3 formatter rewrite after RAW and no semantic LLM preservation
+check after Python copies RAW. RAW action preservation remains deterministic by construction.
 
 ## Chapter-first planning architecture
 
