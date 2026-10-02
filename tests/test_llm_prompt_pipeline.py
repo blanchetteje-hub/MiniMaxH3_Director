@@ -547,7 +547,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
 
     @patch("minimax.requests.post")
-    def test_qwen_beat_validation_transport_matches_benchmark(self, post):
+    def test_beat_validation_transport_does_not_follow_active_formatter(self, post):
         response = Mock()
         response.status_code = 200
         response.raise_for_status = Mock()
@@ -584,9 +584,12 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             self.assertNotIn("chat_template", request_json)
             self.assertNotIn("jinja", request_json)
         finally:
-            minimax.configure_formatter(
-                "qwen" if isinstance(original, minimax.QwenFormatter) else "mistral"
-            )
+            if isinstance(original, minimax.QwenFormatter):
+                minimax.configure_formatter("qwen")
+            elif isinstance(original, minimax.GPTFormatter):
+                minimax.configure_formatter("gpt")
+            else:
+                minimax.configure_formatter("mistral")
 
 
     def test_beat_validation_prompt_does_not_follow_active_model(self):
