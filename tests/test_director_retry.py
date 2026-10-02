@@ -50,6 +50,43 @@ def director_response(raw_scene, beat_complete=True):
     }
 
 
+def pipeline_llm_side_effect(
+    non_audio_responses,
+    *,
+    soundscape="Room tone.",
+    music="N/A",
+):
+    """Return current Director pipeline responses without coupling unrelated tests."""
+    queued = iter(non_audio_responses)
+
+    def respond(*args, **kwargs):
+        purpose = str((kwargs.get("history_metadata") or {}).get("purpose", ""))
+        if purpose == "director_h3_soundscape":
+            return {"overall_soundscape": soundscape}
+        if purpose == "director_h3_music":
+            return {"non_diegetic_music": music}
+        if purpose == "director_raw_scene_pronoun_resolution":
+            messages = args[0] if args else []
+            user_text = str(messages[-1].get("content", "")) if messages else ""
+            raw = user_text.split("RAW SCENE\n", 1)[-1].split(
+                "\n\nReturn {", 1
+            )[0].strip()
+            return {"raw_scene": raw}
+        return next(queued)
+
+    return respond
+
+
+def non_audio_llm_calls(request):
+    """Return request calls except the two independent post-RAW audio jobs."""
+    return [
+        call
+        for call in request.call_args_list
+        if str((call.kwargs.get("history_metadata") or {}).get("purpose", ""))
+        not in {"director_h3_soundscape", "director_h3_music"}
+    ]
+
+
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_h3_soundscape_prompt_is_extraction_only(self):
@@ -127,7 +164,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         text = messages[0]["content"] + "\n" + messages[1]["content"]
         self.assertIn("Change only the pronoun itself", text)
-        self.assertIn("especially they, them, their", text)
+        self.assertIn("especially she, he, they, him, her, them", text)
         self.assertIn("replace only clear personal subject/object pronouns", text)
         self.assertIn("Prefer names for standalone they/them", text)
         self.assertIn("keep 'her hand', 'his collar', and 'their bowls' as written", text)
@@ -263,6 +300,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("closing a barrier before someone passes through it", text)
         self.assertIn("Read the timed actions literally in order", text)
 
+
     def test_request_one_retries_physically_incoherent_raw_scene(self):
         bundle = segment_bundle()
         bundle["current_beat_text"] = (
@@ -276,25 +314,22 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:01.000, Will steps into the closet.\n"
             "At 00:04.500, Amy closes the closet door behind him."
         )
-        request = mock.Mock(side_effect=[
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
             bad,
             {"valid": False, "issue": "The door closes before Will enters."},
             good,
             {"valid": True, "issue": ""},
-            formatter_response(
-                "[Shot 1] At 00:01.000, Will steps into the closet. "
-                "At 00:04.500, Amy closes the closet door behind him."
-            ),
-        ])
+        ]))
         with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(request.call_count, 5)
+        semantic_calls = non_audio_llm_calls(request)
+        self.assertEqual(len(semantic_calls), 4)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
         request_prompts = [
             call.args[0][-1]["content"]
-            for call in request.call_args_list
+            for call in semantic_calls
             if call.args and isinstance(call.args[0], list) and call.args[0]
             and isinstance(call.args[0][-1], dict)
         ]
@@ -305,30 +340,28 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         ))
 
     def test_request_one_completion_self_report_is_non_blocking(self):
-        formatted = formatter_response("[Shot 1] At 00:00.000, Mark starts the action.")
-        request = mock.Mock(side_effect=[
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
             director_response("Mark starts the action.", beat_complete=False),
-            formatted,
-        ])
+        ]))
         with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(request.call_count, 2)
+        self.assertEqual(len(non_audio_llm_calls(request)), 1)
         self.assertFalse(payload["request1_result"]["beat_complete"])
         self.assertIn("Mark starts the action.", payload["raw_scene"])
 
+
     def test_request_one_retries_only_when_raw_scene_is_unusable(self):
-        request = mock.Mock(side_effect=[
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
             {"raw_scene": ""},
             director_response("Mark completes the action."),
-            formatter_response("[Shot 1] At 00:00.000, Mark completes the action."),
-        ])
+        ]))
         with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(request.call_count, 3)
+        self.assertEqual(len(non_audio_llm_calls(request)), 2)
         self.assertIn("Mark completes the action.", payload["raw_scene"])
 
     def test_request_one_retries_missing_end_state_marker(self):
@@ -342,16 +375,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "activity_tools_settled": True,
             "beat_complete": True,
         }
-        request = mock.Mock(side_effect=[
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
             malformed,
             director_response("Mark closes the hatch."),
-            formatter_response("[Shot 1] At 00:00.000, Mark closes the hatch."),
-        ])
+        ]))
         with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(request.call_count, 3)
+        self.assertEqual(len(non_audio_llm_calls(request)), 2)
         self.assertIn("End continuity state:", payload["raw_scene"])
 
     def test_request_one_does_not_repair_semantic_omission_during_baseline(self):
@@ -364,16 +396,16 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             ),
         }]
         omitted_scene = "Amy opens the panel and retrieves only two tools."
-        request = mock.Mock(side_effect=[
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
             director_response(omitted_scene, beat_complete=False),
-            formatter_response("[Shot 1] At 00:00.000, Amy retrieves two tools."),
-        ])
+        ]))
         with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(request.call_count, 2)
+        self.assertEqual(len(non_audio_llm_calls(request)), 1)
         self.assertIn("only two tools", payload["raw_scene"])
+
     def test_request_two_result_does_not_contain_completion_metadata(self):
         parsed = minimax.parse_h3_formatter_result(formatter_response("[Shot 1] Mark waits."))
         self.assertNotIn("completed_beat_ids", parsed)
@@ -474,19 +506,17 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(parsed["subject_genders"], {"Werewolf": "unknown"})
 
     @mock.patch("minimax.ask_llm")
-    def test_request_2_removes_non_speaking_subject_ids_before_handoff(
+
+    def test_python_h3_copy_does_not_add_non_speaking_subject_ids(
         self, ask_llm
     ):
         bundle = segment_bundle()
         bundle["subject_definitions"] = (
             "<Subject 1> is Alice, referenced in <Picture 1>."
         )
-        ask_llm.side_effect = [
+        ask_llm.side_effect = pipeline_llm_side_effect([
             director_response("Alice walks over to the window."),
-            formatter_response(
-                "[Shot 1] At 00:00.000, Alice (S1) walked over to the window."
-            ),
-        ]
+        ])
 
         payload = minimax.request_segment_llm(
             bundle,
@@ -496,14 +526,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
 
         description = payload["llm_result"]["detailed_description"]
-        self.assertIn("Alice walked over to the window.", description)
+        self.assertIn("Alice walks over to the window.", description)
         self.assertNotIn("Alice (S1)", description)
-
-        speaking = minimax.parse_h3_formatter_result(
-            formatter_response("[Shot 1] Alice (S1) says: <d>[English] Hi.</d>"),
-            subject_definitions=bundle["subject_definitions"],
-        )
-        self.assertIn("Alice (S1) says:", speaking["detailed_description"])
 
     @mock.patch("minimax.append_prompt_history")
     @mock.patch("minimax.requests.post")
@@ -921,7 +945,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     @mock.patch("minimax.format_mistral_prompt")
     @mock.patch("minimax.request_valid_mistral_prompt", create=True)
     @mock.patch("minimax.ask_llm")
-    def test_segment_llm_runs_two_requests_without_legacy_seams(
+
+    def test_segment_llm_runs_raw_soundscape_music_without_legacy_seams(
         self,
         ask_llm,
         legacy_director,
@@ -929,15 +954,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         validator,
     ):
         raw_scene = (
-            "Mark enters—quietly in a white T-shirt—and reacts to the "
-            "environment without performing the active beat's listed events."
+            "Mark enters—quietly in a white T-shirt—and reacts to the environment."
         )
-        formatted = formatter_response(
-            "[Shot 1] At 00:00.000, Mark enters and reacts to the environment."
+        ask_llm.side_effect = pipeline_llm_side_effect(
+            [director_response(raw_scene)],
+            soundscape="Quiet room tone.",
+            music="Low restrained strings.",
         )
-        # Even with the structured response format, LLM host may return the
-        # formatter object as JSON text rather than a decoded Python dict.
-        ask_llm.side_effect = [director_response(raw_scene), json.dumps(formatted)]
 
         payload = minimax.request_segment_llm(
             segment_bundle(),
@@ -946,7 +969,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             {"source_sha256": "source-hash"},
         )
 
-        self.assertEqual(ask_llm.call_count, 2)
+        self.assertEqual(ask_llm.call_count, 3)
         legacy_director.assert_not_called()
         formatter.assert_not_called()
         validator.assert_not_called()
@@ -957,34 +980,28 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         ]
         self.assertEqual(
             purposes,
-            ["director_raw_scene", "director_h3_formatter"],
+            [
+                "director_raw_scene",
+                "director_h3_soundscape",
+                "director_h3_music",
+            ],
         )
         self.assertEqual(
             ask_llm.call_args_list[1].kwargs["response_format"],
-            minimax.H3_FORMATTER_RESPONSE_FORMAT,
-        )
-        # The micro-prompt pipeline performs no Director correction attempts.
-        self.assertEqual(
-            [
-                call.kwargs["history_metadata"]["attempt"]
-                for call in ask_llm.call_args_list
-            ],
-            [1, 1],
+            minimax.H3_SOUNDSCAPE_RESPONSE_FORMAT,
         )
         self.assertEqual(
-            payload["llm_result"]["detailed_description"],
-            formatted["detailed_description"],
-        )
-        # Python owns beat completion metadata; no semantic gates ran.
-        self.assertNotIn("completed_beat_ids", payload["llm_result"])
-        self.assertTrue(payload["request1_result"]["beat_complete"])
-        self.assertEqual(
-            payload["raw_scene"],
-            director_response(raw_scene)["raw_scene"],
+            ask_llm.call_args_list[2].kwargs["response_format"],
+            minimax.H3_MUSIC_RESPONSE_FORMAT,
         )
         self.assertIn(
             "enters—quietly in a white T-shirt",
-            ask_llm.call_args_list[1].args[0][1]["content"],
+            payload["llm_result"]["detailed_description"],
+        )
+        self.assertEqual(payload["llm_result"]["overall_soundscape"], "Quiet room tone.")
+        self.assertEqual(
+            payload["llm_result"]["non_diegetic_music"],
+            "Low restrained strings.",
         )
         self.assertEqual(payload["h3_mode"], "T2VA")
 
@@ -1005,17 +1022,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         combined_call = llm_request.call_args_list[0]
         self.assertIsNone(combined_call.kwargs["response_format"])
 
+
     def test_segment_llm_carries_request_one_completion_claim(self):
         bundle = segment_bundle()
         bundle["active_beat_id"] = None
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            director_response("A quiet scene."),
+        ]))
 
-        with mock.patch(
-            "minimax.ask_llm",
-            side_effect=[
-                director_response("A quiet scene."),
-                formatter_response("[Shot 1] At 00:00.000, ..."),
-            ],
-        ), mock.patch("builtins.print"):
+        with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 bundle,
                 [],
@@ -1027,127 +1042,134 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertTrue(payload["request1_result"]["beat_complete"])
 
     @mock.patch("minimax.ask_llm")
-    def test_segment_llm_retries_director_request_2_on_missing_description(
-        self, ask_llm):
+
+    def test_audio_field_failures_fall_back_independently(self, ask_llm):
         raw_scene = "Mark enters the room quietly."
-        missing_description = {
-            "overall_soundscape": "Room tone.",
-            "non_diegetic_music": "N/A",
-        }
-        formatted = formatter_response(
-            "[Shot 1] At 00:00.000, Mark enters the room quietly."
-        )
-        ask_llm.side_effect = [
-            director_response(raw_scene),
-            missing_description,
-            formatted,
-        ]
 
-        payload = minimax.request_segment_llm(
-            segment_bundle(),
-            [],
-            "run-id",
-            {"source_sha256": "source-hash"},
-        )
+        def respond(*args, **kwargs):
+            purpose = str((kwargs.get("history_metadata") or {}).get("purpose", ""))
+            if purpose == "director_h3_soundscape":
+                return {"unexpected": "bad field"}
+            if purpose == "director_h3_music":
+                return {"non_diegetic_music": "Soft low strings."}
+            return director_response(raw_scene)
 
-        # request 1 plus two request 2 attempts (the first formatter
-        # reply omitted the description field and was re-prompted).
-        self.assertEqual(ask_llm.call_count, 3)
+        ask_llm.side_effect = respond
+        with mock.patch("builtins.print"):
+            payload = minimax.request_segment_llm(
+                segment_bundle(),
+                [],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(payload["llm_result"]["overall_soundscape"], "N/A")
         self.assertEqual(
-            [
-                call.kwargs["history_metadata"]["attempt"]
-                for call in ask_llm.call_args_list
-            ],
-            [1, 2, 2],
+            payload["llm_result"]["non_diegetic_music"],
+            "Soft low strings.",
         )
-        self.assertEqual(
+        self.assertIn(
+            "Mark enters the room quietly.",
             payload["llm_result"]["detailed_description"],
-            formatted["detailed_description"],
         )
-        self.assertEqual(payload["llm_result"]["overall_soundscape"], "Room tone.")
-
 
     @mock.patch("minimax.ask_llm")
-    def test_segment_llm_timestamp_mismatch_is_diagnostic_only(self, ask_llm):
+
+    def test_python_h3_copy_uses_canonical_raw_timestamps(self, ask_llm):
         raw_scene = (
             "At 00:00.0, Mark enters the room.\n"
-            "At 00:02.500, Mark looks toward the window."
+            "At 00:04.500, Mark looks toward the window."
         )
-        missing_timestamp = formatter_response(
-            "[Shot 1] Mark enters the room. At 00:00.000 seconds, "
-            "Mark looks toward the window."
-        )
-        ask_llm.side_effect = [director_response(raw_scene), missing_timestamp]
+        ask_llm.side_effect = pipeline_llm_side_effect([
+            director_response(raw_scene),
+        ])
         with mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(ask_llm.call_count, 2)
-        self.assertIn("Mark enters the room", payload["llm_result"]["detailed_description"])
+        description = payload["llm_result"]["detailed_description"]
+        self.assertIn("At 00:00.000, Mark enters the room.", description)
+        self.assertIn("At 00:04.500, Mark looks toward the window.", description)
 
     @mock.patch("minimax.ask_llm")
-    def test_segment_llm_missing_formatter_timestamp_is_diagnostic_only(self, ask_llm):
+
+    def test_python_h3_copy_preserves_raw_timestamps(self, ask_llm):
         raw_scene = "At 00:00.000, Mark enters the room."
-        missing_timestamp = formatter_response("[Shot 1] Mark enters the room.")
-        ask_llm.side_effect = [director_response(raw_scene), missing_timestamp]
+        ask_llm.side_effect = pipeline_llm_side_effect([
+            director_response(raw_scene),
+        ])
         with mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(ask_llm.call_count, 2)
-        self.assertIn("Mark enters the room", payload["llm_result"]["detailed_description"])
+        self.assertIn(
+            "At 00:00.000, Mark enters the room.",
+            payload["llm_result"]["detailed_description"],
+        )
 
     @mock.patch("minimax.ask_llm")
-    def test_segment_llm_timestamp_mismatch_never_blocks_generation(self, ask_llm):
+
+    def test_audio_generation_never_rewrites_raw_actions(self, ask_llm):
         raw_scene = (
             "At 00:00.000, Mark enters the room.\n"
-            "At 00:02.000, Mark looks toward the window."
+            "At 00:04.500, Mark looks toward the window."
         )
-        invalid = formatter_response(
-            "[Shot 1] Mark enters the room. At 00:00.000 seconds, Mark enters."
+        ask_llm.side_effect = pipeline_llm_side_effect(
+            [director_response(raw_scene)],
+            soundscape="Footsteps and quiet room tone.",
+            music="Sparse strings.",
         )
-        ask_llm.side_effect = [director_response(raw_scene), invalid]
         with mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(ask_llm.call_count, 2)
-        self.assertIn("Mark enters", payload["llm_result"]["detailed_description"])
+        description = payload["llm_result"]["detailed_description"]
+        self.assertIn("Mark enters the room.", description)
+        self.assertIn("Mark looks toward the window.", description)
+        self.assertNotIn("Footsteps and quiet room tone.", description)
 
     @mock.patch("minimax.ask_llm")
-    def test_segment_llm_salvages_after_three_formatter_failures(self, ask_llm):
+
+    def test_soundscape_failure_does_not_block_music(self, ask_llm):
         raw_scene = "Mark enters the room quietly."
-        missing_description = {
-            "overall_soundscape": "Room tone.",
-            "non_diegetic_music": "N/A",
-        }
-        ask_llm.side_effect = [
-            director_response(raw_scene),
-            missing_description,
-            missing_description,
-            missing_description,
-        ]
+
+        def respond(*args, **kwargs):
+            purpose = str((kwargs.get("history_metadata") or {}).get("purpose", ""))
+            if purpose == "director_h3_soundscape":
+                return ""
+            if purpose == "director_h3_music":
+                return {"non_diegetic_music": "Sparse piano."}
+            return director_response(raw_scene)
+
+        ask_llm.side_effect = respond
         with mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(ask_llm.call_count, 4)
-        self.assertIn("Mark enters the room quietly", payload["llm_result"]["detailed_description"])
-        self.assertEqual(payload["llm_result"]["overall_soundscape"], "Room tone.")
+        self.assertEqual(payload["llm_result"]["overall_soundscape"], "N/A")
+        self.assertEqual(payload["llm_result"]["non_diegetic_music"], "Sparse piano.")
 
     @mock.patch("minimax.ask_llm")
-    def test_segment_llm_salvages_last_free_text_after_three_formatter_failures(
-        self, ask_llm
-    ):
+
+    def test_music_failure_does_not_block_soundscape(self, ask_llm):
         raw_scene = "Mark enters the room quietly."
-        last_text = "[Shot 1] At 00:00.000, Mark enters the room quietly."
-        ask_llm.side_effect = [director_response(raw_scene), "", "", last_text]
+
+        def respond(*args, **kwargs):
+            purpose = str((kwargs.get("history_metadata") or {}).get("purpose", ""))
+            if purpose == "director_h3_soundscape":
+                return {"overall_soundscape": "Quiet room tone."}
+            if purpose == "director_h3_music":
+                return ""
+            return director_response(raw_scene)
+
+        ask_llm.side_effect = respond
         with mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(ask_llm.call_count, 4)
-        self.assertEqual(payload["llm_result"]["detailed_description"], last_text)
+        self.assertEqual(payload["llm_result"]["overall_soundscape"], "Quiet room tone.")
+        self.assertEqual(payload["llm_result"]["non_diegetic_music"], "N/A")
+
     def test_wrong_bound_guard_allows_small_route_details_with_correct_door(self):
         binding = {"entity": "door", "destination": "basement", "state": "locked"}
         raw = (

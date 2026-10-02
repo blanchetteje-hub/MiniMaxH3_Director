@@ -603,14 +603,28 @@ Fix:
   not a narration or beat-by-beat synchronization of scene actions;
 - task profiles remain unchanged.
 
+### 2838 — audio-quality regressions pass; stale Director tests exposed
+
+The new soundscape/music prompt tests and task-routing tests passed. The broader
+`test_director_retry.py` slice exposed stale unit tests that still mocked the
+retired Request-2 formatter call shape. Those failures were test-harness drift,
+not production-path failures.
+
+Test cleanup:
+- RAW-focused tests now use an audio-aware responder so independent soundscape
+  and music calls do not consume unrelated mock responses;
+- retired formatter-retry tests were replaced with current RAW-copy and
+  independent audio fail-soft coverage;
+- the pronoun prompt assertion now matches the already-adopted narrowing rule.
+
 ## Immediate next work
 
-Run focused regressions for the microphone-only soundscape rule and previous-score
-music handoff. If green, rerun Director-only acceptance from the same frozen plan and
-compare audio fields against 2837 and the gold style.
+Rerun the broad Director/audio regression slice after updating stale tests. If green,
+run Director-only acceptance from the same frozen plan and compare audio fields against
+2837 and the gold style.
 
 Queued:
-- `tests-2838-h3-audio-quality`
+- `tests-2839-director-audio-regressions`
 
 ## Public repository rule
 
