@@ -174,6 +174,7 @@
       "fps": 24,
       "bit_depth": 8,
       "color_space": "sRGB",
+      "codec": "none",
       "images": [
         "85",
         0
@@ -235,18 +236,6 @@
   },
   "105": {
     "inputs": {
-      "clip": [
-        "77",
-        0
-      ],
-      "vae": [
-        "76",
-        0
-      ],
-      "audio_vae": [
-        "74",
-        0
-      ],
       "prompt": [
         "118",
         0
@@ -264,32 +253,48 @@
         1
       ],
       "ref_image_size": "max",
+      "also_ref_first_frame": false,
+      "clip": [
+        "77",
+        0
+      ],
+      "vae": [
+        "76",
+        0
+      ],
+      "audio_vae": [
+        "74",
+        0
+      ],
       "first_frame": [
         "143",
         0
       ],
-      "also_ref_first_frame": false,
+      "last_frame": [
+        "144",
+        0
+      ],
       "ref_images.ref_image_0": [
         "114",
         0
       ],
-	  "ref_images.ref_image_1": [
+      "ref_images.ref_image_1": [
         "116",
         0
       ],
-	  "ref_images.ref_image_2": [
+      "ref_images.ref_image_2": [
         "120",
         0
       ],
-	  "ref_images.ref_image_3": [
+      "ref_images.ref_image_3": [
         "137",
         0
       ],
-	  "ref_images.ref_image_4": [
+      "ref_images.ref_image_4": [
         "138",
         0
       ],
-	  "ref_images.ref_image_5": [
+      "ref_images.ref_image_5": [
         "139",
         0
       ]
@@ -297,17 +302,6 @@
     "class_type": "MiniMaxH3HybridRefAndKeyframe",
     "_meta": {
       "title": "MiniMax H3 Hybrid Cond (R2V + I2V)"
-    }
-  },
-  "118": {
-    "inputs": {
-      "text": "",
-      "seed": 922,
-      "autorefresh": "No"
-    },
-    "class_type": "DPRandomGenerator",
-    "_meta": {
-      "title": "Prompt"
     }
   },
   "114": {
@@ -326,6 +320,17 @@
     "class_type": "LoadImage",
     "_meta": {
       "title": "Reference Image 2"
+    }
+  },
+  "118": {
+    "inputs": {
+      "text": "",
+      "seed": 922,
+      "autorefresh": "No"
+    },
+    "class_type": "DPRandomGenerator",
+    "_meta": {
+      "title": "Prompt"
     }
   },
   "120": {
@@ -395,7 +400,16 @@
     },
     "class_type": "LoadImage",
     "_meta": {
-      "title": "Refresh First Frame"
+      "title": "First Frame"
+    }
+  },
+  "144": {
+    "inputs": {
+      "image": "0.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Last Frame"
     }
   }
 }

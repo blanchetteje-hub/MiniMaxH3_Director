@@ -1,18 +1,9 @@
 {
-  "72": {
-    "inputs": {
-      "value": 8
-    },
-    "class_type": "PrimitiveFloat",
-    "_meta": {
-      "title": "Float (duration)"
-    }
-  },
   "73": {
     "inputs": {
       "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
       "values.a": [
-        "72",
+        "198",
         0
       ]
     },
@@ -61,7 +52,7 @@
   },
   "81": {
     "inputs": {
-      "noise_seed": 29
+      "noise_seed": 290
     },
     "class_type": "RandomNoise",
     "_meta": {
@@ -70,7 +61,7 @@
   },
   "82": {
     "inputs": {
-      "unet_name": "minimaxH3INT8INT4_ref2vaINT8Pruned.safetensors",
+      "unet_name": "h3ErosMax_beta5_fp8.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",
@@ -109,7 +100,7 @@
   },
   "114": {
     "inputs": {
-      "image": "0.png"
+      "image": "amy.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -118,7 +109,7 @@
   },
   "116": {
     "inputs": {
-      "image": "0.png"
+      "image": "rabbit1.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -155,7 +146,10 @@
   "141": {
     "inputs": {
       "aspect_ratio": "16:9 (Widescreen)",
-      "megapixels": 1,
+      "megapixels": [
+        "199",
+        0
+      ],
       "multiple": 64
     },
     "class_type": "ResolutionSelector",
@@ -165,8 +159,8 @@
   },
   "163": {
     "inputs": {
-      "text": "",
-      "seed": 1069,
+      "text": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.\n<Subject 2> is Will (S2).\n<Subject 3> is Amber (S3).\n<Subject 4> is Zombie1 (S4).\n\ndetailed_description:\n\nAt 00:01.000, Zombie1 crashes through the front door with a thud and splat of blood.\n\nAt 00:02.500, Amy flips bright yellow eggs in a skillet while Will giggles at cereal on a side table; both laugh as Zombie1 shambles past.\n\nAt 00:04.200, Amy grabs Amber’s wrist and pulls Will toward the back closet door, her eyes narrowed.\n\nAt 00:06.300, Amy slams the heavy closet panel shut behind Amy and Will, closing it with a thud that echoes through the kitchen.\n\noverall_soundscape: front door crashes with a thud and splat of blood, eggs sizzle in the skillet, Will giggles while eating cereal, laughter from Amy and Will as the zombie shambles past, heavy closet panel slams shut with an echoing thud\n\nnon_diegetic_music: A syncopated drum beat with muted brass underscores the zombie’s thud, swelling to a tense snare roll as the closet panel slams shut.\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+      "seed": 110,
       "autorefresh": "No"
     },
     "class_type": "DPRandomGenerator",
@@ -176,23 +170,23 @@
   },
   "167": {
     "inputs": {
-      "video": "",
+      "video": "/home/j/AI/ComfyUI/output/video/ComfyUI_00018_.mp4",
       "force_rate": 0,
       "custom_width": 0,
       "custom_height": 0,
-      "frame_load_cap": 22,
-      "skip_first_frames": 170,
+      "frame_load_cap": 0,
+      "skip_first_frames": 314,
       "select_every_nth": 1,
       "format": "H3"
     },
     "class_type": "VHS_LoadVideoPath",
     "_meta": {
-      "title": "Load Video"
+      "title": "Load Video (Path) 🎥🅥🅗🅢"
     }
   },
   "173": {
     "inputs": {
-      "image": "0.png"
+      "image": "caterpillar1.webp"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -210,6 +204,18 @@
     "class_type": "ImageSelector",
     "_meta": {
       "title": "ImageSelector"
+    }
+  },
+  "181": {
+    "inputs": {
+      "images": [
+        "180",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
     }
   },
   "182": {
@@ -255,11 +261,11 @@
         0
       ],
       "first_frame": [
-        "180",
+        "181",
         0
       ],
       "ref_images": [
-        "274",
+        "188",
         0
       ],
       "ref_audio": [
@@ -286,6 +292,20 @@
     "class_type": "VAEEncode",
     "_meta": {
       "title": "VAE Encode"
+    }
+  },
+  "188": {
+    "inputs": {
+      "inputcount": 3,
+      "Update inputs": null,
+      "image_1": [
+        "114",
+        0
+      ]
+    },
+    "class_type": "ImageBatchMulti",
+    "_meta": {
+      "title": "Image Batch Multi"
     }
   },
   "190": {
@@ -325,6 +345,7 @@
       "fps": 24,
       "bit_depth": 8,
       "color_space": "sRGB",
+      "codec": "none",
       "images": [
         "191",
         0
@@ -342,7 +363,10 @@
   "193": {
     "inputs": {
       "scheduler": "simple",
-      "steps": 20,
+      "steps": [
+        "200",
+        0
+      ],
       "denoise": 1,
       "model": [
         "197",
@@ -416,7 +440,7 @@
   },
   "197": {
     "inputs": {
-      "lora_name": "",
+      "lora_name": "MiniMaxH3/deept_v02.safetensors",
       "strength_model": 0.8,
       "model": [
         "90",
@@ -428,38 +452,31 @@
       "title": "Load LoRA"
     }
   },
-  "274": {
+  "198": {
     "inputs": {
-      "inputcount": 6,
-      "Update inputs": null,
-      "image_1": [
-        "114",
-        0
-      ],
-      "image_2": [
-        "116",
-        0
-      ],
-      "image_3": [
-        "173",
-        0
-      ],
-      "image_4": [
-        "137",
-        0
-      ],
-      "image_5": [
-        "138",
-        0
-      ],
-      "image_6": [
-        "139",
-        0
-      ]
+      "value": 8
     },
-    "class_type": "ImageBatchMulti",
+    "class_type": "FloatConstant",
     "_meta": {
-      "title": "Image Batch Multi"
+      "title": "Length"
+    }
+  },
+  "199": {
+    "inputs": {
+      "value": 0.3
+    },
+    "class_type": "FloatConstant",
+    "_meta": {
+      "title": "Quality"
+    }
+  },
+  "200": {
+    "inputs": {
+      "value": 6
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "Steps"
     }
   }
 }
