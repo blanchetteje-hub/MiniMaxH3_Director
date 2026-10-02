@@ -91,7 +91,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             ),
         )
         text = messages[0]["content"] + "\n" + messages[1]["content"]
-        self.assertIn("Change only personal pronouns", text)
+        self.assertIn("Change only those pronouns", text)
         self.assertIn("especially they, them, their", text)
         self.assertIn("Preserve grammatical case", text)
         self.assertIn("her palm -> Amy's palm", text)
