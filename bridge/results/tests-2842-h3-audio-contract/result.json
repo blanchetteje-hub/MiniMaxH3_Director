@@ -1,0 +1,35 @@
+{
+  "job_id": "tests-2842-h3-audio-contract",
+  "kind": "run_tests",
+  "started_at": 1790907431.444421,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_is_extraction_only",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_rejects_visual_only_facts",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_parser_rejects_punctuation_only_output",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_parser_rejects_overlong_cue",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_audio_contract_retries_malformed_soundscape",
+      "tests\\test_llm_prompt_pipeline.py::H3AudioNormalizationTests",
+      "tests\\test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_music_uses_narrow_creative_profile",
+      "tests\\test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_soundscape_remains_deterministic"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 9 items\n\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_is_extraction_only PASSED [ 11%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_prompt_rejects_visual_only_facts PASSED [ 22%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only FAILED [ 33%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_soundscape_parser_rejects_punctuation_only_output PASSED [ 44%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_parser_rejects_overlong_cue PASSED [ 55%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_audio_contract_retries_malformed_soundscape PASSED [ 66%]\ntests/test_llm_prompt_pipeline.py::H3AudioNormalizationTests::test_audio_parsers_replace_underscores_with_spaces PASSED [ 77%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_music_uses_narrow_creative_profile PASSED [ 88%]\ntests/test_llm_prompt_pipeline.py::LLMSamplingRoutingTests::test_h3_soundscape_remains_deterministic PASSED [100%]\n\n================================== FAILURES ===================================\n__ DirectorMicroPromptPipelineTests.test_h3_music_prompt_is_generation_only ___\n\nself = <tests.test_director_retry.DirectorMicroPromptPipelineTests testMethod=test_h3_music_prompt_is_generation_only>\n\n    def test_h3_music_prompt_is_generation_only(self):\n        messages = minimax.build_h3_music_messages(\n            \"At 00:01.000, Amy closes the door.\",\n            conditioning_mode=\"continuation\",\n            previous_music=\"Soft warm piano, calm and understated.\",\n        )\n        text = messages[0][\"content\"] + \"\\n\" + messages[1][\"content\"]\n        self.assertIn(\"Generate only the non-diegetic music\", text)\n        self.assertIn(\"PREVIOUS MUSIC\", text)\n        self.assertIn(\"Soft warm piano, calm and understated.\", text)\n        self.assertIn(\"Continue the previous musical state\", text)\n>       self.assertIn(\"not character actions\", text)\nE       AssertionError: 'not character actions' not found in \"Generate only the non-diegetic music for one already-finalized video scene. RAW SCENE is context for the scene's emotional arc and ending; PREVIOUS MUSIC, when supplied, is the musical state to continue from. Describe only the underscore's mood, style, instrumentation, and any broad emotional transition. Do not name characters, narrate scene actions, describe individual sound effects, or synchronize the score to specific actions. Return one musical cue sentence. After any required continuation prefix, use at most 24 words. Use natural-language phrasing rather than identifier-style labels with underscores. Return JSON only.\\nnon_diegetic_music must begin exactly with 'continues from <Video 1>.' Continue the previous musical state and transition only when the RAW SCENE's emotional state changes.\\n\\nPREVIOUS MUSIC\\nSoft warm piano, calm and understated.\\n\\nRAW SCENE\\nAt 00:01.000, Amy closes the door.\\n\\nReturn exactly non_diegetic_music.\"\n\ntests\\test_director_retry.py:116: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_music_prompt_is_generation_only - AssertionError: 'not character actions' not found in \"Generate only the non-diegetic music for one already-finalized video scene. RAW SCENE is context for the scene's emotional arc and ending; PREVIOUS MUSIC, when supplied, is the musical state to continue from. Describe only the underscore's mood, style, instrumentation, and any broad emotional transition. Do not name characters, narrate scene actions, describe individual sound effects, or synchronize the score to specific actions. Return one musical cue sentence. After any required continuation prefix, use at most 24 words. Use natural-language phrasing rather than identifier-style labels with underscores. Return JSON only.\\nnon_diegetic_music must begin exactly with 'continues from <Video 1>.' Continue the previous musical state and transition only when the RAW SCENE's emotional state changes.\\n\\nPREVIOUS MUSIC\\nSoft warm piano, calm and understated.\\n\\nRAW SCENE\\nAt 00:01.000, Amy closes the door.\\n\\nReturn exactly non_diegetic_music.\"\n========================= 1 failed, 8 passed in 3.17s =========================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790907432.787602,
+    "finished_at": 1790907436.727552
+  },
+  "finished_at": 1790907436.727552,
+  "status": "ok"
+}
