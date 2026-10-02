@@ -380,6 +380,21 @@ STORY_TO_BEATS_LLM_SETTINGS = {
     "enable_thinking": True,
 }
 
+MUSIC_GENERATION_LLM_SETTINGS = {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0.05,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "repeat_penalty": 1.15,
+    "seed": None,
+    "reasoning_effort": "medium",
+    "thinking_budget_tokens": 256,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
+}
+
 DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "temperature": 0,
     "top_p": None,
@@ -408,6 +423,10 @@ CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
     "director_raw_scene",
 })
 
+MUSIC_GENERATION_LLM_PURPOSES = frozenset({
+    "director_h3_music",
+})
+
 DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "accepted_beat_state_extract",
     "beat_coherence_validation",
@@ -419,7 +438,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "continuity_attachment_extract",
     "continuity_combined_reduced_state",
     "continuity_phase_2_h3_opening",
-    "director_h3_audio",
+    "director_h3_soundscape",
     "director_h3_formatter",
     "director_raw_scene_coherence",
     "director_raw_scene_pronoun_resolution",
@@ -557,26 +576,37 @@ H3_FORMATTER_RESPONSE_FORMAT = {
     },
 }
 
-H3_AUDIO_RESPONSE_FORMAT = {
+H3_SOUNDSCAPE_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
-        "name": "h3_audio",
+        "name": "h3_soundscape",
         "strict": True,
         "schema": {
             "type": "object",
             "properties": {
                 "overall_soundscape": {"type": "string"},
-                "non_diegetic_music": {"type": "string"},
             },
-            "required": [
-                "overall_soundscape",
-                "non_diegetic_music",
-            ],
+            "required": ["overall_soundscape"],
             "additionalProperties": False,
         },
     },
 }
 
+H3_MUSIC_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "h3_music",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "non_diegetic_music": {"type": "string"},
+            },
+            "required": ["non_diegetic_music"],
+            "additionalProperties": False,
+        },
+    },
+}
 
 DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
     "type": "json_schema",
@@ -8461,6 +8491,8 @@ def ask_llm(
         llm_settings = STORY_EXPANSION_LLM_SETTINGS
     elif history_purpose == "story_to_beats":
         llm_settings = STORY_TO_BEATS_LLM_SETTINGS
+    elif history_purpose in MUSIC_GENERATION_LLM_PURPOSES:
+        llm_settings = MUSIC_GENERATION_LLM_SETTINGS
     elif history_purpose in BEAT_WRITING_LLM_PURPOSES:
         llm_settings = BEAT_WRITING_LLM_SETTINGS
     elif history_purpose in CREATIVE_GENERATION_LLM_PURPOSES:
@@ -20010,11 +20042,58 @@ def _verify_authoritative_opening_state_handoff(
         )
 
 
-def build_h3_audio_messages(
+def _normalize_h3_audio_text(value):
+    """Normalize one H3 audio field to concise natural-language text."""
+    normalized = " ".join(
+        _strip_formatter_metadata(str(value or "").strip())
+        .replace("_", " ")
+        .split()
+    )
+    return normalized or "N/A"
+
+
+def build_h3_soundscape_messages(raw_scene):
+    """Extract only the materially supported soundscape from finalized RAW."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract only the overall soundscape for one already-finalized "
+                "video scene. RAW SCENE is authoritative. Include every materially "
+                "audible sound explicitly supported by the RAW SCENE, and do not "
+                "invent unsupported sounds. Use concise natural-language phrasing "
+                "rather than identifier-style labels with underscores. Do not "
+                "rewrite, summarize, interpret, or add story action. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "RAW SCENE\n"
+                f"{str(raw_scene or '').strip()}\n\n"
+                "Return exactly overall_soundscape."
+            ),
+        },
+    ]
+
+
+def parse_h3_soundscape_result(raw_result):
+    """Parse the deterministic post-RAW soundscape extraction."""
+    result = raw_result
+    if isinstance(result, str):
+        result = parse_llm_json_content(result, repair_on_failure=False)
+    if not isinstance(result, dict) or set(result) != {"overall_soundscape"}:
+        raise ValueError(
+            "H3 soundscape response must contain only overall_soundscape."
+        )
+    return _normalize_h3_audio_text(result.get("overall_soundscape"))
+
+
+def build_h3_music_messages(
     raw_scene,
     conditioning_mode=None,
 ):
-    """Ask the LLM only for the two audio fields Python cannot derive."""
+    """Generate only the non-diegetic score choice for finalized RAW."""
     conditioning_mode = str(conditioning_mode or "").strip().lower()
     if conditioning_mode == "continuation":
         music_rule = (
@@ -20031,13 +20110,11 @@ def build_h3_audio_messages(
         {
             "role": "system",
             "content": (
-                "Extract/generate only audio for one already-finalized video scene. "
-                "RAW SCENE is authoritative. overall_soundscape must include every "
-                "materially audible sound explicitly supported by the RAW SCENE, and "
-                "must not invent unsupported sounds. Use concise natural-language "
-                "phrasing rather than identifier-style labels with underscores. "
-                "non_diegetic_music is the only creative field. Do not rewrite, "
-                "summarize, interpret, or add story action. Return JSON only."
+                "Generate only the non-diegetic music for one already-finalized "
+                "video scene. RAW SCENE is context for mood and pacing only. Do not "
+                "rewrite, summarize, interpret, or add story action. Keep the music "
+                "description concise and use natural-language phrasing rather than "
+                "identifier-style labels with underscores. Return JSON only."
             ),
         },
         {
@@ -20046,40 +20123,22 @@ def build_h3_audio_messages(
                 f"{music_rule}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
-                "Return exactly overall_soundscape and non_diegetic_music."
+                "Return exactly non_diegetic_music."
             ),
         },
     ]
 
 
-def parse_h3_audio_result(raw_result):
-    """Parse the narrow post-RAW audio/music response."""
+def parse_h3_music_result(raw_result):
+    """Parse the creative post-RAW music generation."""
     result = raw_result
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
-    if not isinstance(result, dict) or set(result) != {
-        "overall_soundscape", "non_diegetic_music"
-    }:
+    if not isinstance(result, dict) or set(result) != {"non_diegetic_music"}:
         raise ValueError(
-            "H3 audio response must contain only overall_soundscape and "
-            "non_diegetic_music."
+            "H3 music response must contain only non_diegetic_music."
         )
-    soundscape = str(result.get("overall_soundscape") or "").strip()
-    music = str(result.get("non_diegetic_music") or "").strip()
-    if not soundscape:
-        soundscape = "N/A"
-    if not music:
-        music = "N/A"
-    soundscape = " ".join(
-        _strip_formatter_metadata(soundscape).replace("_", " ").split()
-    )
-    music = " ".join(
-        _strip_formatter_metadata(music).replace("_", " ").split()
-    )
-    return {
-        "overall_soundscape": soundscape,
-        "non_diegetic_music": music,
-    }
+    return _normalize_h3_audio_text(result.get("non_diegetic_music"))
 
 
 # Build Request 2 with deterministic story-ending handoff rules.
@@ -30310,39 +30369,27 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     print()
     print("=" * 64)
-    print(f"H3 AUDIO REQUEST - SEGMENT {segment_number}")
+    print(f"H3 SOUNDSCAPE REQUEST - SEGMENT {segment_number}")
     print("=" * 64)
 
-    audio_result = {
-        "overall_soundscape": "N/A",
-        "non_diegetic_music": "N/A",
-    }
+    soundscape = "N/A"
     try:
-        raw_audio = ask_llm(
-            build_h3_audio_messages(
-                raw_scene,
-                conditioning_mode=conditioning_mode,
-            ),
-            response_format=H3_AUDIO_RESPONSE_FORMAT,
+        raw_soundscape = ask_llm(
+            build_h3_soundscape_messages(raw_scene),
+            response_format=H3_SOUNDSCAPE_RESPONSE_FORMAT,
             history_metadata={
                 "run_id": run_id,
                 "source_sha256": (run_config or {}).get("source_sha256"),
-                "purpose": "director_h3_audio",
+                "purpose": "director_h3_soundscape",
                 "segment": segment_number,
                 "attempt": 1,
                 "conditioning_mode": conditioning_mode,
             },
-            temperature=0,
-            top_p=1,
             max_tokens=512,
-            seed=42,
-            repeat_penalty=1.15,
         )
-        audio_result = parse_h3_audio_result(raw_audio)
+        soundscape = parse_h3_soundscape_result(raw_soundscape)
         print(
-            f"H3 audio segment {segment_number}: "
-            f"soundscape={audio_result['overall_soundscape']!r}; "
-            f"music={audio_result['non_diegetic_music']!r}",
+            f"H3 soundscape segment {segment_number}: {soundscape!r}",
             flush=True,
         )
     except (
@@ -30353,10 +30400,56 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         TypeError,
     ) as error:
         print(
-            f"WARNING: H3 audio segment {segment_number} failed; using N/A: "
+            f"WARNING: H3 soundscape segment {segment_number} failed; "
+            f"using N/A: {error}",
+            flush=True,
+        )
+
+    print()
+    print("=" * 64)
+    print(f"H3 MUSIC REQUEST - SEGMENT {segment_number}")
+    print("=" * 64)
+
+    music = "N/A"
+    try:
+        raw_music = ask_llm(
+            build_h3_music_messages(
+                raw_scene,
+                conditioning_mode=conditioning_mode,
+            ),
+            response_format=H3_MUSIC_RESPONSE_FORMAT,
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": (run_config or {}).get("source_sha256"),
+                "purpose": "director_h3_music",
+                "segment": segment_number,
+                "attempt": 1,
+                "conditioning_mode": conditioning_mode,
+            },
+            max_tokens=512,
+        )
+        music = parse_h3_music_result(raw_music)
+        print(
+            f"H3 music segment {segment_number}: {music!r}",
+            flush=True,
+        )
+    except (
+        LLMConnectionError,
+        requests.RequestException,
+        OSError,
+        ValueError,
+        TypeError,
+    ) as error:
+        print(
+            f"WARNING: H3 music segment {segment_number} failed; using N/A: "
             f"{error}",
             flush=True,
         )
+
+    audio_result = {
+        "overall_soundscape": soundscape,
+        "non_diegetic_music": music,
+    }
 
     # RAW is the narrative authority. Python copies its canonical timed actions
     # directly into the final H3 description; subject metadata already comes

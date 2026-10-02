@@ -235,6 +235,94 @@ class ContinuityCallContractTests(unittest.TestCase):
 class LLMSamplingRoutingTests(unittest.TestCase):
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
+    def test_h3_music_uses_narrow_creative_profile(
+        self,
+        post,
+        random_seed,
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.raise_for_status = Mock()
+        response.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"non_diegetic_music":"soft strings"}'
+                    },
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+        post.return_value = response
+
+        result = minimax.ask_llm(
+            [{"role": "user", "content": "score this scene"}],
+            response_format=None,
+            history_metadata={"purpose": "director_h3_music"},
+        )
+
+        self.assertEqual(result, {"non_diegetic_music": "soft strings"})
+        request_json = post.call_args.kwargs["json"]
+        for name in (
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+            "presence_penalty",
+            "frequency_penalty",
+            "repeat_penalty",
+        ):
+            self.assertEqual(
+                request_json[name],
+                minimax.MUSIC_GENERATION_LLM_SETTINGS[name],
+            )
+        self.assertEqual(request_json["seed"], 777)
+        self.assertEqual(request_json["reasoning_effort"], "medium")
+        self.assertEqual(request_json["thinking_budget_tokens"], 256)
+        random_seed.assert_called_once_with()
+
+    @patch("minimax.generate_random_llm_seed", return_value=777)
+    @patch("minimax.requests.post")
+    def test_h3_soundscape_remains_deterministic(
+        self,
+        post,
+        random_seed,
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.raise_for_status = Mock()
+        response.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"overall_soundscape":"door slam"}'
+                    },
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+        post.return_value = response
+
+        result = minimax.ask_llm(
+            [{"role": "user", "content": "extract sound"}],
+            response_format=None,
+            history_metadata={"purpose": "director_h3_soundscape"},
+        )
+
+        self.assertEqual(result, {"overall_soundscape": "door slam"})
+        request_json = post.call_args.kwargs["json"]
+        self.assertEqual(request_json["temperature"], 0)
+        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertEqual(request_json["repeat_penalty"], 1.15)
+        self.assertNotIn("top_p", request_json)
+        self.assertNotIn("top_k", request_json)
+        self.assertNotIn("min_p", request_json)
+        self.assertEqual(request_json["reasoning_effort"], "low")
+        self.assertEqual(request_json["thinking_budget_tokens"], 128)
+        random_seed.assert_not_called()
+
+    @patch("minimax.generate_random_llm_seed", return_value=777)
+    @patch("minimax.requests.post")
     def test_beat_generation_uses_temperature_zero_with_large_reasoning_budget(
         self,
         post,
@@ -1457,17 +1545,19 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
 
 class H3AudioNormalizationTests(unittest.TestCase):
 
-    def test_audio_parser_replaces_underscores_with_spaces(self):
-        parsed = minimax.parse_h3_audio_result({
+    def test_audio_parsers_replace_underscores_with_spaces(self):
+        soundscape = minimax.parse_h3_soundscape_result({
             "overall_soundscape": "stirring_oatmeal_pot, window_rattle",
+        })
+        music = minimax.parse_h3_music_result({
             "non_diegetic_music": "soft_piano underscore",
         })
         self.assertEqual(
-            parsed["overall_soundscape"],
+            soundscape,
             "stirring oatmeal pot, window rattle",
         )
         self.assertEqual(
-            parsed["non_diegetic_music"],
+            music,
             "soft piano underscore",
         )
 

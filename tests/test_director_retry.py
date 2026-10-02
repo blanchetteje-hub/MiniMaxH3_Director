@@ -52,29 +52,46 @@ def director_response(raw_scene, beat_complete=True):
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
-    def test_h3_audio_prompt_has_no_rewrite_or_subject_job(self):
-        messages = minimax.build_h3_audio_messages(
+    def test_h3_soundscape_prompt_is_extraction_only(self):
+        messages = minimax.build_h3_soundscape_messages(
+            "At 00:01.000, Amy closes the door."
+        )
+        text = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("Extract only the overall soundscape", text)
+        self.assertIn("Do not rewrite", text)
+        self.assertNotIn("non_diegetic_music", text)
+        self.assertIn("Return exactly overall_soundscape", text)
+
+    def test_h3_music_prompt_is_generation_only(self):
+        messages = minimax.build_h3_music_messages(
             "At 00:01.000, Amy closes the door.",
             conditioning_mode="continuation",
         )
         text = messages[0]["content"] + "\n" + messages[1]["content"]
-        self.assertIn("only audio", text)
+        self.assertIn("Generate only the non-diegetic music", text)
         self.assertIn("Do not rewrite", text)
-        self.assertNotIn("subject_genders", text)
+        self.assertNotIn("overall_soundscape", text)
         self.assertIn("continues from <Video 1>", text)
+        self.assertIn("Return exactly non_diegetic_music", text)
 
-    def test_h3_audio_parser_accepts_only_two_fields(self):
-        parsed = minimax.parse_h3_audio_result({
+    def test_h3_audio_parsers_accept_only_their_single_field(self):
+        soundscape = minimax.parse_h3_soundscape_result({
             "overall_soundscape": "Door slam.",
+        })
+        music = minimax.parse_h3_music_result({
             "non_diegetic_music": "Low strings.",
         })
-        self.assertEqual(parsed["overall_soundscape"], "Door slam.")
-        self.assertEqual(parsed["non_diegetic_music"], "Low strings.")
+        self.assertEqual(soundscape, "Door slam.")
+        self.assertEqual(music, "Low strings.")
         with self.assertRaises(ValueError):
-            minimax.parse_h3_audio_result({
+            minimax.parse_h3_soundscape_result({
                 "overall_soundscape": "Door slam.",
                 "non_diegetic_music": "Low strings.",
-                "detailed_description": "Amy closes the door.",
+            })
+        with self.assertRaises(ValueError):
+            minimax.parse_h3_music_result({
+                "overall_soundscape": "Door slam.",
+                "non_diegetic_music": "Low strings.",
             })
 
     def test_raw_pronoun_resolution_prompt_is_narrow(self):

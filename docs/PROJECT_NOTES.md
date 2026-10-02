@@ -67,10 +67,12 @@ Current task profiles:
   reasoning, seed `42`.
 - `STORY_TO_BEATS_LLM_SETTINGS`: derive Beats from an expanded story;
   temperature `0`, medium reasoning, seed `42`.
+- `MUSIC_GENERATION_LLM_SETTINGS`: short non-diegetic score generation;
+  temperature `0.6`, medium/256-token reasoning, randomized seed.
 - `DETERMINISTIC_ANALYSIS_LLM_SETTINGS`: validators, semantic extractors,
-  continuity observers, JSON repair, pronoun cleanup, H3 audio, and every
-  unclassified LLM purpose; temperature `0`, low/128-token reasoning, seed
-  `42`.
+  continuity observers, JSON repair, pronoun cleanup, H3 soundscape
+  extraction, and every unclassified LLM purpose; temperature `0`,
+  low/128-token reasoning, seed `42`.
 
 All profiles use repeat penalty `1.15`. Creative profiles may sample; the
 others are deterministic. `ask_llm()` routes from `history_metadata.purpose`
@@ -281,8 +283,13 @@ Every production LLM stage, validator, extractor, and cleanup call should print 
 
 After Request 1 RAW is accepted:
 1. a tiny deterministic LLM cleanup may replace only unambiguous person pronouns with explicit names;
-2. a tiny LLM audio call returns only `overall_soundscape` and `non_diegetic_music`;
-3. Python copies canonical cleaned RAW directly into `detailed_description`, uses subject metadata from the subject registry / text files, and assembles the final H3 prompt.
+2. a tiny deterministic soundscape extractor returns only `overall_soundscape`;
+3. a separate narrow creative music call returns only `non_diegetic_music`;
+4. Python copies canonical cleaned RAW directly into `detailed_description`, uses subject metadata from the subject registry / text files, and assembles the final H3 prompt.
+
+Soundscape extraction and music generation must remain separate responsibilities because
+they require different sampling/reasoning behavior. Per-call sampler overrides are not
+used; `ask_llm()` task routing is the sole settings authority.
 
 There is no narrative H3 formatter rewrite after RAW, no LLM-generated subject metadata, and no semantic LLM preservation check after Python copies RAW. RAW action preservation is deterministic by construction.
 

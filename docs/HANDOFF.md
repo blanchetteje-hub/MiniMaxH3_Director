@@ -514,7 +514,8 @@ The former Request 2 formatter no longer owns narrative conversion.
 
 Current post-RAW path:
 - pronoun-resolution LLM: explicit-name cleanup only;
-- audio/music LLM: returns only `overall_soundscape` and `non_diegetic_music`;
+- deterministic soundscape extractor: returns only `overall_soundscape`;
+- narrow creative music generator: returns only `non_diegetic_music`;
 - Python: strips RAW end-state metadata, copies canonical timed RAW into `detailed_description`, uses subject metadata already sourced from text/registry state, and builds the final H3 prompt.
 
 The old final-H3 action-preservation LLM is skipped because copied RAW is preserved by construction.
@@ -551,27 +552,43 @@ Refactor:
   `STORY_EXPANSION_LLM_SETTINGS`,
   `CREATIVE_GENERATION_LLM_SETTINGS`,
   `BEAT_WRITING_LLM_SETTINGS`,
-  `STORY_TO_BEATS_LLM_SETTINGS`, or
+  `STORY_TO_BEATS_LLM_SETTINGS`,
+  `MUSIC_GENERATION_LLM_SETTINGS`, or
   `DETERMINISTIC_ANALYSIS_LLM_SETTINGS`;
 - Beat validation uses the same system/user prompt shape and deterministic
   request profile regardless of GPT/Qwen/Mistral formatter selection;
 - stale per-call ARC/Beat sampler splats were removed so purpose routing is the
   single authority.
 
+### 2834–2836 — H3 audio responsibility split
+
+`director-2834-audio-completeness` completed all 8 prompt-generation segments.
+`tests-2835-audio-underscore-normalization` passed.
+
+The remaining settings mismatch was architectural: one LLM call was being asked to
+perform deterministic sound extraction and creative music generation, so both fields
+were forced through the deterministic-analysis profile.
+
+Current change:
+- soundscape extraction is its own `director_h3_soundscape` task and stays on
+  `DETERMINISTIC_ANALYSIS_LLM_SETTINGS` (temperature 0, low/128 reasoning,
+  seed 42);
+- non-diegetic music is its own `director_h3_music` task using
+  `MUSIC_GENERATION_LLM_SETTINGS` (temperature 0.6, medium/256 reasoning,
+  randomized seed);
+- each call has a one-field strict schema and one semantic responsibility;
+- no per-call temperature/top-p/seed overrides remain on the H3 audio path;
+- underscore cleanup remains deterministic Python normalization after each field.
+
 ## Immediate next work
 
-Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.
-
-Next:
-1. reuse the saved 2776 plan so Beat sampling does not change underneath the Director test;
-2. run Director-only acceptance from that exact story_arc.json + beats.txt;
-3. inspect Request 1 / RAW scene output from Segment 1 forward;
-4. identify the earliest real Beat -> RAW scene failure;
-5. explain that failure and proposed fix before changing code or prompts;
-6. do not resume accepted-state cleanup unless the RAW failure demonstrably depends on bad/missing canonical state.
+Run the focused bridge regression for the split H3 audio path. If green, run a fresh
+Director-only acceptance from the existing frozen plan and compare the score choices
+and soundscape extraction against the gold prompts before making any additional
+Director/H3 prompt changes.
 
 Queued:
-- director-2777-beat-to-raw
+- `tests-2836-h3-audio-task-split`
 
 ## Public repository rule
 
