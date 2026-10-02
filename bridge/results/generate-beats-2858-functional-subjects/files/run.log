@@ -1,0 +1,242 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-f16_3wxi\repo\beats.txt with 8 creative story beats.
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-f16_3wxi\repo\expanded_story.txt.
+Expanded story:
+We must produce final story with 8 beats. Let's write it as continuous narrative:
+
+- Start cooking breakfast.
+
+- Zombie breaks into house.
+
+- Amy rushes kids to safe location.
+
+- She returns to kitchen.
+
+- Retrieves arsenal (pistol and katana).
+
+- Fights zombies one by one, more continue attack.
+
+- After kills last zombie, she returns to safe location.
+
+- Brings Will and Amber back out with her.
+
+We need to ensure each movement is clear. We can mention the kids' names when they move: "Will" and "Amber".
+
+Let's decide on safe location: maybe a locked closet behind pantry or basement hatch. Let's choose "the pantry closet". It's inside kitchen; but if she goes there, it's not far from door? But we need to show movement. She rushes them into the pantry closet (closed). Then returns to kitchen.
+
+Alternatively safe location could be "the back stairwell" leading to a locked basement. That would require moving down stairs. Let's pick "a small room behind the living room wall, where she had bolted a door." But we need to mention it explicitly: "She shoved Will and Amber into the pantry closet, slamming the heavy door behind them."
+
+Ok.
+
+Now after fighting zombies in kitchen, she returns to safe location (the pantry closet). Then brings kids out with her. So final event is bringing them back out from that safe location; maybe they exit through front door? But we need to bring them "back out" meaning out of the house or out of safe location into street.
+
+Let's craft: She goes back to pantry, opens door, pulls Will and Amber out onto the porch, then together step outside. That is final event.
+
+Ok.
+
+Now we must write in a continuous story with enough detail for each beat but not too long; maybe 200-300 words? But within 64 seconds timeframe of film: So it's about 8 beats, so maybe ~1 minute of action. The narrative can be around 150-180 words. Let's aim for 170-190 words.
+
+We need to preserve explicit events and outcomes in the same order. Each beat must appear sequentially. No new major plot event or named character.
+
+Let's write:
+
+"Amy stirred a pot of oatmeal as Will's laughter bounced off the kitchen tiles and Amber hummed beside her, filling the morning with ordinary cheer. The front door slammed open with a hollow thud, and a zombie—its skin mottled, eyes vacant—staggered in, clutching its own head."
+
+Then: "Amy grabbed Will’s small hand, pulled him toward the back stairwell, and shoved Amber into the pantry closet, slamming the heavy door behind them. She breathed hard as they hurried down the narrow stairs to a locked hatch beneath the floorboards."
+
+But we need safe location inside house; maybe the basement hatch is below kitchen? But it's fine.
+
+Then: "She turned back toward the kitchen, wiping sweat from her brow, and slid under the counter where she had hidden a pistol in a hollowed. She pulled it out with shaking fingers and tucked a katana into its sheath beside the stove."
+
+Wait we need to mention retrieving arsenal consisting of a pistol and a katana; we can say "She retrieved her hidden arsenal: a pistol and a katana." So maybe:
+
+"She returned to the kitchen, slid under the counter where she had stashed a pistol in a hollowed drawer, pulled it out with shaking fingers. Beside it, tucked into its sheath, was a gleaming katana."
+
+Ok.
+
+Then fight: "One after another, she dispatched them—pistol shots followed by swift slashes of her katana—but every time she thought she'd cleared the room, fresh zombies kept crashing through the kitchen door." That covers majority of film.
+
+After kills last zombie: "When the final groaning figure fell to its knees and dissolved into a pile of flesh, Amy wiped the dust from her forearm."
+
+Then returns to safe location: "She turned toward the pantry closet she’d saved them in, opened the heavy door, and pulled Will and Amber out onto the porch." That is final event.
+
+But we need to mention that after killing last zombie, she returns to safe location. Then brings kids back out with her. So:
+
+"After the last zombie collapsed, Amy turned toward the pantry closet and slipped inside again, pulling Will and Amber out of their hiding place."
+
+We must end at "bringing them back out with her." That is final event.
+
+Let's craft a continuous paragraph with these beats in order.
+
+Be careful not to skip transitions. For example: She rushes kids to safe location; she returns to kitchen; retrieves arsenal; fights zombies one by one, more continue attack; after kills last zombie, she returns to safe location and brings Will and Amber back out with her.
+
+We need to ensure each event is explicit:
+
+- Amy cooking breakfast for kids (explicit).
+- Zombie breaks into house (explicit).
+- Amy rushes two kids to safe location (explicit).
+- She returns to kitchen (explicit).
+- Retrieves hidden arsenal consisting of pistol and katana (explicit).
+- Majority: fights zombies one by one, more continue attack (explicit).
+- After kills last zombie, she returns to safe location (explicit).
+- Brings Will and Amber back out with her (explicit).
+
+We must preserve order. So we should not mention kids after safe location before retrieving arsenal; they are in safe location until she comes back.
+
+Ok.
+
+Let's write:
+
+"Amy stirred a pot of oatmeal as the sun warmed the kitchen tiles, while Will’s laughter bounced off the walls and Amber hummed beside her." That's first beat: cooking breakfast for kids. Good.
+
+"Suddenly the front door slammed open with a hollow thud; a zombie—its skin mottled, eyes vacant—staggered in clutching its own head." Beat 2: Zombie breaks into house.
+
+"Amy grabbed Will’s small hand, pulled him toward the back stairwell and shoved Amber into the pantry closet, slamming the heavy door behind them." Beat 3: Rush kids to safe location. Good.
+
+"She breathed hard as they hurried down the narrow stairs to a locked hatch beneath the floorboards." Actually we said safe location is pantry; but she goes to pantry? Wait we moved them to pantry closet, so no need for stairs. Let's keep it simple: "They huddled in the pantry closet until Amy could breathe again." But we can mention they are inside the pantry.
+
+But we also used back stairwell earlier; maybe it's too many moves. Let's decide safe location is pantry closet behind kitchen counter. So she pushes kids into that closet and slams door. They stay there.
+
+So beat 3: "Amy grabbed Will’s small hand, pulled him toward the pantry closet, shoved Amber inside, and slammed the heavy door." Good.
+
+Beat 4: She returns to kitchen. So after pushing them in, she goes back to kitchen.
+
+"Amy turned back toward the kitchen, wiping sweat from her brow as she slipped under the counter where she had hidden a pistol in a hollowed drawer." Beat 5: Retrieve arsenal (pistol). But we also need katana; maybe "She pulled out the pistol and then slid a gleaming katana into its sheath beside it."
+
+Beat 6: Majority fight zombies one by one, more continue attack. So:
+
+"One after another she dispatched them—pistols shots followed by swift slashes of her katana—but every time she thought she'd cleared the room, fresh zombies kept crashing through the kitchen door." Good.
+
+Beat 7: After kills last zombie, she returns to safe location. So:
+
+"When the final groaning figure collapsed and dissolved into a pile of flesh, Amy wiped the dust from her forearm and turned toward the pantry closet."
+
+Beat 8: Brings Will and Amber back out with her. So:
+
+"She opened the heavy door, pulled Will and Amber out onto the porch, and together stepped into the morning light." That is final event.
+
+We need to ensure each beat is explicit; no skipping transitions. We mention safe location (pantry closet) for kids until she returns after last zombie. Good.
+
+Now we must write continuous story with these beats in order. Let's craft:
+
+"Amy stirred a pot of oatmeal as the sun warmed the kitchen tiles, while Will’s laughter bounced off the walls and Amber hummed beside her." Good opening.
+
+"Suddenly the front door slammed open with a hollow thud; a zombie—its skin mottled, eyes vacant—staggered in clutching its own head."
+
+"Amy grabbed Will’s small hand, pulled him toward the pantry closet, shoved Amber inside, and slammed the heavy door behind them." Good.
+
+"They huddled in the dim glow of the pantry until Amy could breathe again." (Optional but not necessary; just to show they are there.)
+
+"She turned back toward the kitchen, wiping sweat from her brow as she slipped under the counter where she had hidden a pistol in a hollowed drawer."
+
+"She pulled out the pistol and then slid a gleaming katana into its sheath beside it."
+
+"One after another she dispatched them—pistols shots followed by swift slashes of her katana—but every time she thought she'd cleared the room, fresh zombies kept crashing through the kitchen door." Good.
+
+"When the final groaning figure collapsed and dissolved into a pile of flesh, Amy wiped the dust from her forearm and turned toward the pantry closet."
+
+"She opened the heavy door, pulled Will and Amber out onto the porch, and together stepped into the morning light." End.
+
+We must ensure no new major plot event or named character. We used "Will" and "Amber". Good.
+
+Now we need to preserve explicit events in same order: cooking breakfast (beat 1), zombie breaks in (beat 2), Amy rushes kids to safe location (beat3), she returns to kitchen (beat4), retrieves arsenal pistol & katana (beat5?), fights zombies one by one, more continue attack (beat6), after kills last zombie returns to safe location (beat7), brings Will and Amber back out with her (beat8). Good.
+
+We need to ensure each event is visible. For example: "Amy grabbed Will’s small hand" shows she grabs him; "pulled him toward the pantry closet, shoved Amber inside" shows moving them; "slammed heavy door behind them." That's safe location movement.
+
+Then "She turned back toward the kitchen" shows returning.
+
+"Retrieved hidden arsenal consisting of pistol and katana" we mention retrieving both: "pistol from drawer, then a gleaming katana".
+
+Fight zombies one by one: "One after another she dispatched them—pistols shots followed by swift slashes of her katana—but every time she thought she'd cleared the room, fresh zombies kept crashing through the kitchen door." That covers majority.
+
+After kills last zombie returns to safe location: "When the final groaning figure collapsed... Amy turned toward pantry closet."
+
+Brings kids back out: "She opened heavy door, pulled Will and Amber out onto porch, together stepped into morning light." Good.
+
+Now we need a continuous story. Let's write it as one paragraph or multiple? The instruction says "Write one continuous story, not an outline, beat list, screenplay, or analysis."
+
+So we can have paragraphs but it's still continuous narrative. That's fine.
+
+We also need to preserve the 64-second timeframe: We don't mention time explicitly; just that events happen quickly.
+
+Let's produce final answer.Amy stirred a pot of oatmeal as the sun warmed the kitchen tiles, while Will’s laughter bounced off the walls and Amber hummed beside her. Suddenly the front door slammed open with a hollow thud; a zombie—its skin mottled, eyes vacant—staggered in clutching its own head. Amy grabbed Will’s small hand, pulled him toward the pantry closet, shoved Amber inside, and slammed the heavy door behind them. She turned back toward the kitchen, wiping sweat from her brow as she slipped under the counter where she had hidden a pistol in a hollowed drawer. She pulled out the pistol and then slid a gleaming katana into its sheath beside it. One after another she dispatched them—pistols shots followed by swift slashes of her katana—but every time she thought she'd cleared the room, fresh zombies kept crashing through the kitchen door. When the final groaning figure collapsed and dissolved into a pile of flesh, Amy wiped the dust from her forearm and turned toward the pantry closet. She opened the heavy door, pulled Will and Amber out onto the porch, and together stepped into the morning light.
+Story-derived Beat framework created with 8 beats.
+Beat 1 created: Amy stirred oatmeal while Will laughed and Amber hummed beside her.
+Beat 2 created: Suddenly Zombie1 burst through the front door with a hollow thud.
+Beat 3 created: Amy grabbed Will’s small hand, pulled him into the pantry closet, shoved Amber inside, and slammed the heavy door behind them.
+Beat 4 created: She turned back toward the kitchen, wiping sweat from her brow.
+Beat 5 created: Amy slid under the counter, pulled out a pistol from its drawer, then tucked a gleaming katana into its sheath beside it.
+Beat 6 created: She dispatched each zombie with quick shots and slashes—pistol fire followed by swift katana cuts—but fresh undead kept crashing through the kitchen door.
+Beat 7 created: When the final groaning figure collapsed, Amy wiped her forearm and turned toward the pantry closet.
+Beat 8 created: She opened the heavy door, pulled Will and Amber onto the porch, and together stepped into the morning light.
+Beat 1 jobs: current=E1 - Amy stirred oatmeal while Will laughed and Amber hummed beside her.; next=E2 - Suddenly Zombie1 burst through the front door with a hollow thud.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+Beat 1 coherence attempt 1/10: VALID.
+Beat 1 accepted: Amy stirred oatmeal while Will laughed and Amber hummed beside her.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - Suddenly Zombie1 burst through the front door with a hollow thud.; next=E3 - Amy grabbed Will’s small hand, pulled him into the pantry closet, shoved Amber inside, and slammed the heavy door behind them.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+Beat 2 coherence attempt 1/10: VALID.
+Beat 2 observed persistent state: {"characters": {"Zombie1": {"location": "front door"}}, "environment": {"doors": {"front_door": {"status": "open", "damage": "broken"}}}, "threats": {"threat_1": {"type": "zombie"}}}
+Beat 2 accepted: Suddenly Zombie1 burst through the front door with a hollow thud.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - Amy grabbed Will’s small hand, pulled him into the pantry closet, shoved Amber inside, and slammed the heavy door behind them.; next=E4 - She turned back toward the kitchen, wiping sweat from her brow.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+Beat 3 coherence attempt 1/10: VALID.
+Beat 3 observed persistent state: {"characters": {"Amy": {"location": "pantry closet", "contained_in": "pantry closet", "held_objects": ["Will’s small hand"]}, "Will": {"location": "pantry closet", "contained_in": "pantry closet"}, "Amber": {"location": "pantry closet", "contained_in": "pantry closet"}}, "environment": {"doors.pantry_closet.status": "closed"}}
+Beat 3 accepted: Amy grabbed Will’s small hand, pulled him into the pantry closet, shoved Amber inside, and slammed the heavy door behind them.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - She turned back toward the kitchen, wiping sweat from her brow.; next=E5 - Amy slid under the counter, pulled out a pistol from its drawer, then tucked a gleaming katana into its sheath beside it.; completed before=E1, E2, E3; pending before=E4, E5, E6, E7, E8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+Beat 4 coherence attempt 1/10: VALID.
+Beat 4 accepted: She turned back toward the kitchen, wiping sweat from her brow.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - Amy slid under the counter, pulled out a pistol from its drawer, then tucked a gleaming katana into its sheath beside it.; next=E6 - She dispatched each zombie with quick shots and slashes—pistol fire followed by swift katana cuts—but fresh undead kept crashing through the kitchen door.; completed before=E1, E2, E3, E4; pending before=E5, E6, E7, E8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: INVALID; issue: Amy’s location changes to under the counter but the state shows her still in the pantry closet; the beat does not reflect that move.
+Beat 5 validation attempt 2/10: INVALID; issue: Beat failed structural validation: Beat dropped named Subject(s) explicitly required by CURRENT JOB: Amy
+Validating Beat 5 (attempt 3/10) with the single beat validator.
+Beat 5 validation attempt 3/10: VALID; issue: none
+Checking Beat 5 within-beat physical coherence (attempt 3/10).
+Beat 5 coherence attempt 3/10: VALID.
+Beat 5 observed persistent state: {"characters": {"Amy": {"location": "kitchen", "held_objects": ["pistol", "katana"]}}}
+Beat 5 accepted: Amy stepped out of the pantry closet into the kitchen, slid beneath the counter, and pulled a pistol from its drawer while tucking a gleaming katana into its sheath beside it.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - She dispatched each zombie with quick shots and slashes—pistol fire followed by swift katana cuts—but fresh undead kept crashing through the kitchen door.; next=E7 - When the final groaning figure collapsed, Amy wiped her forearm and turned toward the pantry closet.; completed before=E1, E2, E3, E4, E5; pending before=E6, E7, E8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: VALID; issue: none
+Beat 6 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+Validating Beat 6 (attempt 2/10) with the single beat validator.
+Beat 6 validation attempt 2/10: VALID; issue: none
+Checking Beat 6 within-beat physical coherence (attempt 2/10).
+Beat 6 coherence attempt 2/10: VALID.
+Beat 6 observed persistent state: {"characters": {"Amy": {"contained_in": null}}, "environment": {"doors.front_door.status": "open", "doors.front_door.damage": "broken"}, "threats": {"threat_1": {"status": "dead"}}}
+Beat 6 accepted: She fired her pistol and sliced with the katana, dispatching each zombie as fresh ones crashed through the kitchen door.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+Beat 7 jobs: current=E7 - When the final groaning figure collapsed, Amy wiped her forearm and turned toward the pantry closet.; next=E8 - She opened the heavy door, pulled Will and Amber onto the porch, and together stepped into the morning light.; completed before=E1, E2, E3, E4, E5, E6; pending before=E7, E8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Checking Beat 7 within-beat physical coherence (attempt 1/10).
+Beat 7 coherence attempt 1/10: VALID.
+Beat 7 observed persistent state: {"characters": {"Amy": {"current_injuries": ["forearm"]}}}
+Beat 7 accepted: When the final groaning figure collapsed, Amy wiped her forearm and turned toward the pantry closet.
+Beat 7 accepted and finalized; committed required events: E7; completed after=E1, E2, E3, E4, E5, E6, E7
+Beat 8 jobs: current=E8 - She opened the heavy door, pulled Will and Amber onto the porch, and together stepped into the morning light.; next=none; completed before=E1, E2, E3, E4, E5, E6, E7; pending before=E8
+Validating Beat 8 (attempt 1/10) with the single beat validator.
+Beat 8 validation attempt 1/10: VALID; issue: none
+Checking Beat 8 within-beat physical coherence (attempt 1/10).
+Beat 8 coherence attempt 1/10: VALID.
+Beat 8 observed persistent state: {"characters": {"Amy": {"location": "porch"}, "Will": {"location": "porch", "contained_in": null}, "Amber": {"location": "porch", "contained_in": null}}}
+Beat 8 accepted: She opened the heavy door, pulled Will and Amber onto the porch, and together stepped into the morning light.
+Beat 8 accepted and finalized; committed required events: E8; completed after=E1, E2, E3, E4, E5, E6, E7, E8
+Story arc and beats generated successfully.
