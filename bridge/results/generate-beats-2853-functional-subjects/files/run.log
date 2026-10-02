@@ -1,0 +1,86 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-64dw82nt\repo\beats.txt with 8 creative story beats.
+LLM response/content was unusable (attempt 1/10); retrying: LLM host truncated the response at the configured max_tokens=12000 before completion.
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-64dw82nt\repo\expanded_story.txt.
+Expanded story:
+Morning light spills across the kitchen as Amy slices eggs for Will and Amber’s toast, humming a lullaby while flipping pancakes on the stove. A sudden groan cracks through the front door; a zombie shuffles in, its eyes glazed with hunger. She grabs Will’s hand, pushes Amber into the closet, and hurries them to the basement stairs. Amy returns to the kitchen, wiping sweat from her brow as she flips another pancake. In a hidden drawer beneath the fridge, she pulls out a pistol and a gleaming katana, both bristling with dust. The zombie lunges; Amy fires the pistol, then slashes with the katana—one by one each undead falls as more surge from the hallway. With the last groaning body crumpled to the floorboards, she strides back up the stairs and opens the basement door. Will’s eyes widen; Amber squeals in relief as Amy pulls them both out into her arms, breathing heavy but alive.
+Story-derived Beat framework created with 8 beats.
+Beat 1 created: Amy slices eggs for Will and Amber’s toast while humming a lullaby in the bright kitchen.
+Beat 2 created: A groan cracks through the front door as Zombie1 shuffles inside with glazed eyes.
+Beat 3 created: She grabs Will's hand, pushes Amber into the closet, and hurries them to the basement stairs.
+Beat 4 created: Amy returns to the kitchen, wipes sweat from her brow, and flips another pancake while the zombie lurches toward her.
+Beat 5 created: In a hidden drawer beneath the fridge, she pulls out a dusty pistol and a gleaming katana.
+Beat 6 created: She fires the pistol at Zombie1 then slashes with the katana, sending him crashing to the floorboards.
+Beat 7 created: More zombies surge from the hallway; Amy kills each one in succession until only the last groaning body remains.
+Beat 8 created: With the final zombie crumpled, she strides up the stairs, opens the basement door, and pulls Will and Amber out into her arms.
+Beat 1 jobs: current=E1 - Amy slices eggs for Will and Amber’s toast while humming a lullaby in the bright kitchen.; next=E2 - A groan cracks through the front door as Zombie1 shuffles inside with glazed eyes.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+Beat 1 coherence attempt 1/10: VALID.
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "bright kitchen"}}}
+Beat 1 accepted: Amy slices eggs for Will and Amber’s toast while humming a lullaby in the bright kitchen.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - A groan cracks through the front door as Zombie1 shuffles inside with glazed eyes.; next=E3 - She grabs Will's hand, pushes Amber into the closet, and hurries them to the basement stairs.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Beat 2 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+Validating Beat 2 (attempt 2/10) with the single beat validator.
+Beat 2 validation attempt 2/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 2/10).
+Beat 2 coherence attempt 2/10: VALID.
+Beat 2 observed persistent state: {"characters": {"Zombie1": {"location": "bright kitchen"}}}
+Beat 2 accepted: A groan cracks through the front door as Zombie1 shuffles in, its glazed eyes fixed on Amy.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - She grabs Will's hand, pushes Amber into the closet, and hurries them to the basement stairs.; next=E4 - Amy returns to the kitchen, wipes sweat from her brow, and flips another pancake while the zombie lurches toward her.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: INVALID; issue: Amber cannot be simultaneously pushed into the closet and hurried with Will to the basement stairs; the beat implies two distinct locations for her.
+Validating Beat 3 (attempt 2/10) with the single beat validator.
+Beat 3 validation attempt 2/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 2/10).
+Beat 3 coherence attempt 2/10: VALID.
+Beat 3 observed persistent state: {"characters": {"Will": {"location": "basement stairs"}, "Amber": {"location": "basement stairs"}, "Amy": {"held_objects": ["Will's hand"]}}}
+Beat 3 accepted: She grabs Will’s hand, shoves Amber into the closet, then pulls both of them up the basement stairs.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - Amy returns to the kitchen, wipes sweat from her brow, and flips another pancake while the zombie lurches toward her.; next=E5 - In a hidden drawer beneath the fridge, she pulls out a dusty pistol and a gleaming katana.; completed before=E1, E2, E3; pending before=E4, E5, E6, E7, E8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+Beat 4 coherence attempt 1/10: VALID.
+Beat 4 observed persistent state: {"threats": {"threat_1": {"type": "zombie", "status": "hostile"}}}
+Beat 4 accepted: Amy returns to the kitchen, wipes sweat from her brow, and flips another pancake while the zombie lurches toward her.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - In a hidden drawer beneath the fridge, she pulls out a dusty pistol and a gleaming katana.; next=E6 - She fires the pistol at Zombie1 then slashes with the katana, sending him crashing to the floorboards.; completed before=E1, E2, E3, E4; pending before=E5, E6, E7, E8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: VALID; issue: none
+Checking Beat 5 within-beat physical coherence (attempt 1/10).
+Beat 5 coherence attempt 1/10: VALID.
+Beat 5 observed persistent state: {"environment": {"objects": {"dusty pistol": "hidden drawer beneath the fridge", "gleaming katana": "hidden drawer beneath the fridge"}}}
+Beat 5 accepted: In a hidden drawer beneath the fridge, she pulls out a dusty pistol and a gleaming katana.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - She fires the pistol at Zombie1 then slashes with the katana, sending him crashing to the floorboards.; next=E7 - More zombies surge from the hallway; Amy kills each one in succession until only the last groaning body remains.; completed before=E1, E2, E3, E4, E5; pending before=E6, E7, E8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: VALID; issue: none
+Checking Beat 6 within-beat physical coherence (attempt 1/10).
+Beat 6 coherence attempt 1/10: VALID.
+Beat 6 accepted: She fires the pistol at Zombie1 then slashes with the katana, sending him crashing to the floorboards.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+Beat 7 jobs: current=E7 - More zombies surge from the hallway; Amy kills each one in succession until only the last groaning body remains.; next=E8 - With the final zombie crumpled, she strides up the stairs, opens the basement door, and pulls Will and Amber out into her arms.; completed before=E1, E2, E3, E4, E5, E6; pending before=E7, E8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Checking Beat 7 within-beat physical coherence (attempt 1/10).
+Beat 7 coherence attempt 1/10: VALID.
+Beat 7 observed persistent state: {"threats": {"threat_2": {"type": "zombie", "status": "hostile", "location": "bright kitchen", "injuries": [], "body_topology": "N/A", "has_exited": false}}}
+Beat 7 accepted: More zombies surge from the hallway; Amy kills each one in succession until only the last groaning body remains.
+Beat 7 accepted and finalized; committed required events: E7; completed after=E1, E2, E3, E4, E5, E6, E7
+Beat 8 jobs: current=E8 - With the final zombie crumpled, she strides up the stairs, opens the basement door, and pulls Will and Amber out into her arms.; next=none; completed before=E1, E2, E3, E4, E5, E6, E7; pending before=E8
+Validating Beat 8 (attempt 1/10) with the single beat validator.
+Beat 8 validation attempt 1/10: VALID; issue: none
+Checking Beat 8 within-beat physical coherence (attempt 1/10).
+Beat 8 coherence attempt 1/10: VALID.
+Beat 8 observed persistent state: {"characters": {"Amy": {"location": "basement stairs"}, "Will": {"contained_in": "Amy"}, "Amber": {"contained_in": "Amy"}}}
+Beat 8 accepted: With the final zombie crumpled, she strides up the stairs, opens the basement door, and pulls Will and Amber out into her arms.
+Beat 8 accepted and finalized; committed required events: E8; completed after=E1, E2, E3, E4, E5, E6, E7, E8
+Story arc and beats generated successfully.
