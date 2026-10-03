@@ -418,8 +418,8 @@ class LlmHostIntegrationTests(unittest.TestCase):
     def test_non_append_h3_prompts_do_not_add_video_one_subject_suffix(self):
         result = response("[Shot 1] Mark and Jill walk together.", [])
         suffix_fragment = (
-            "pose, wardrobe, position, and physical state at the "
-            "beginning of the target video come from <Video 1>."
+            "opening pose, wardrobe, position, and physical state are "
+            "anchored by the supplied opening guide."
         )
 
         initial = minimax.build_h3_prompt(
