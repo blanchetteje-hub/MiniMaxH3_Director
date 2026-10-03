@@ -1683,3 +1683,37 @@ Bridge job `tests-20261003-boundary-v1` targets
 `summary-to-story-test` and the postmortem/requested-prompt regression suites.
 At documentation time the bridge result had not yet been published; do not mark
 this checkpoint test-green until that result exists.
+
+
+## 2026-10-03 update — local-only acceptance workflow
+
+The GitHub mailbox bridge is retired from the active development loop unless the
+user explicitly decides to resurrect it. Do not queue bridge jobs or wait for
+`gpt-runtime` results during normal iteration.
+
+Current acceptance loop:
+
+1. ChatGPT edits and commits focused changes to `summary-to-story-test`.
+2. The user pulls/runs the program locally.
+3. The user uploads the resulting video/log/state/prompt files directly into chat.
+4. ChatGPT analyzes those local-run artifacts and makes the next focused changes.
+
+Historical bridge code/results remain repository history/evidence only and are
+not the default execution path.
+
+
+## 2026-10-03 workflow update — bridge retired
+
+The GitHub mailbox/bridge is no longer part of the active development or
+acceptance workflow unless explicitly resurrected later.
+
+Current workflow:
+- ChatGPT edits and commits the active repository branch.
+- The user pulls/runs the program locally.
+- The user uploads generated prompts, state/history artifacts, videos, and other
+  local results directly into chat.
+- Those uploaded local-run artifacts are the acceptance/debugging source of
+  truth.
+
+Do not queue new `gpt-runtime` bridge jobs or wait for bridge results unless the
+user explicitly asks to restore the bridge workflow.
