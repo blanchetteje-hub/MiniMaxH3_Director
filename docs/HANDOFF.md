@@ -1053,3 +1053,23 @@ message.
 Next acceptance target: rerun the tavern torture test, especially Segment 2→3
 and 4→5, verify Griffin1 survives Segment 4's final-frame state, and compare
 camera continuity/runtime against the Ref2V-tail experiments.
+
+
+## 2026-10-03 handoff — latest native-Guide postmortem
+
+Active branch is `h3-add-guidance-test`. The latest 48-second tavern render showed good
+visual continuation into Segments 2 and 3, an audio discontinuity into Segment 2, and hard
+visual cuts at the exact Segment 4 and 5 joins. The cuts matched a prompt conflict: the
+hidden 22-frame Guide carried the real close composition, while the continuation 00:00
+RAW line reconstructed all semantic-state Subjects into a different composition.
+
+Implemented next test:
+- Add Guide receives the aligned previous audio tail plus audio VAE as well as the 22 video frames;
+- continuation frame 0 is deterministically rewritten to a generic Guide-authority anchor,
+  so prompt-derived PREVIOUS SHOT END cannot force off-camera Subjects into the opening frame;
+- Guide length remains 22 frames.
+
+Next acceptance: rerun the same tavern torture test and inspect 1→2 audio plus 3→4 and
+4→5 visual/camera seams. If hard cuts remain after the prompt conflict is removed, the
+next architectural candidate is a preserved/masked AV overlap rather than adding more
+Director wording or immediately increasing reference length.

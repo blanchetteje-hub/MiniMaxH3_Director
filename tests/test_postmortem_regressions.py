@@ -116,14 +116,16 @@ class PostmortemRegressionTests(unittest.TestCase):
             total_segments=6,
             subject_definitions="",
             segment_number=3,
+            conditioning_mode="continuation",
         )
         self.assertIn(
             "first timed micro-beat MUST be at 00:00.000",
             rules,
         )
         self.assertIn("00:00.000 is an inherited-frame anchor", rules)
-        self.assertIn("Do not introduce a new subject", rules)
-        self.assertIn("Start CURRENT BEAT immediately after that anchor", rules)
+        self.assertIn("guide—not PREVIOUS SHOT END—owns the visible frame-0 composition", rules)
+        self.assertIn("generic continuation anchor", rules)
+        self.assertIn("Start CURRENT BEAT at or after 00:01.000", rules)
 
     def test_director_structure_rejects_nonzero_first_timestamp(self):
         errors = minimax._director_raw_scene_structure_errors(

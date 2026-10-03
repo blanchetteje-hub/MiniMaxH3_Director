@@ -120,7 +120,7 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
                     2,
                 )
 
-        _, load_video = minimax.find_workflow_node(
+        load_video_id, load_video = minimax.find_workflow_node(
             prepared,
             minimax.LOAD_VIDEO_NODE_NAME,
             "prepared append workflow",
@@ -136,6 +136,15 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
             "MiniMaxH3AddGuide",
         )
         self.assertEqual(guide["inputs"]["frame_idx"], 0)
+        self.assertEqual(guide["inputs"]["image"], [load_video_id, 0])
+        self.assertEqual(guide["inputs"]["audio"], [load_video_id, 2])
+        audio_vae_id, _ = minimax.find_workflow_node(
+            prepared,
+            minimax.AUDIO_VAE_NODE_NAME,
+            "prepared append workflow",
+            "VAELoader",
+        )
+        self.assertEqual(guide["inputs"]["audio_vae"], [audio_vae_id, 0])
 
         _, batch_after = minimax.find_workflow_node(
             prepared,
@@ -151,6 +160,20 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
             },
             batch_connections,
         )
+
+    def test_continuation_frame_zero_uses_guide_instead_of_reconstructing_cast(self):
+        raw = (
+            "At 00:00.000, Amy, Goblin1, and Dragon1 fill a reconstructed wide shot.\n\n"
+            "At 00:01.000, Griffin1 enters from the far end.\n\n"
+            "End continuity state: Griffin1 stands beside Amy."
+        )
+        anchored = minimax._anchor_continuation_frame_zero_to_guide(raw)
+        first_line = anchored.splitlines()[0]
+        self.assertIn("supplied opening guide", first_line)
+        self.assertNotIn("Goblin1", first_line)
+        self.assertNotIn("Dragon1", first_line)
+        self.assertIn("At 00:01.000, Griffin1 enters", anchored)
+        self.assertIn("End continuity state: Griffin1 stands beside Amy.", anchored)
 
     def test_append_guide_render_budget_preserves_eight_second_delivery(self):
         self.assertEqual(minimax.h3_frame_count_for_duration(8.0), 192)

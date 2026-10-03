@@ -541,6 +541,7 @@ REFRESH_LOAD_VIDEO_NODE_NAME = "Load Video"
 CONDITIONER_NODE_NAME = "Conditioner"
 H3_GUIDE_NODE_NAME = "Add Guide for MiniMax H3"
 VIDEO_VAE_NODE_NAME = "Load Video VAE"
+AUDIO_VAE_NODE_NAME = "Load Audio VAE"
 QUALITY_NODE_NAME = "Quality"
 STEPS_NODE_NAME = "Steps"
 
@@ -1068,7 +1069,7 @@ WRITE THE SCENE
 - Short dialogue is allowed when it naturally supports CURRENT BEAT.
 {camera_choreography_rules}
 - Keep all timed action inside the {segment_seconds}-second clip.
-- The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor: describe the same subjects, positions, props, and opening composition already present there. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. For continuation segments, obey the CONTINUATION AIRLOCK timing in CAMERA CHOREOGRAPHY before starting CURRENT BEAT; otherwise start CURRENT BEAT at the next timestamp. A subject introduced by CURRENT BEAT may enter or be revealed only after that handoff. For the opening segment, stage frame 0 normally.
+- The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor. PREVIOUS SHOT END is semantic physical state and may include subjects that are off camera; never infer that every listed subject must be visible at frame 0. When a continuation guide is supplied, the guide—not PREVIOUS SHOT END—owns the visible frame-0 composition. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. For continuation segments, obey the CONTINUATION AIRLOCK timing in CAMERA CHOREOGRAPHY before starting CURRENT BEAT; otherwise start CURRENT BEAT at the next timestamp. A subject introduced by CURRENT BEAT may enter or be revealed only after that handoff. For the opening segment, stage frame 0 normally.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
 - After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Preserve only cut-relevant positions/containment, held props, door/barrier state, and unresolved active threats needed to start the next shot. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state or add a new event.
@@ -7484,6 +7485,9 @@ def connect_append_workflow_inputs(workflow, workflow_label):
     video_vae_id, _ = find_workflow_node(
         workflow, VIDEO_VAE_NODE_NAME, workflow_label, "VAELoader",
     )
+    audio_vae_id, _ = find_workflow_node(
+        workflow, AUDIO_VAE_NODE_NAME, workflow_label, "VAELoader",
+    )
     guide_id, guide = _ensure_append_guide_node(workflow, workflow_label)
 
     inputs = conditioning.setdefault("inputs", {})
@@ -7497,8 +7501,10 @@ def connect_append_workflow_inputs(workflow, workflow_label):
     guide["inputs"].update({
         "positive": [conditioning_id, 0],
         "vae": [video_vae_id, 0],
+        "audio_vae": [audio_vae_id, 0],
         "latent": [conditioning_id, 1],
         "image": [load_video_id, 0],
+        "audio": [load_video_id, 2],
         "frame_idx": 0,
     })
     connect_named_connection(
@@ -19285,11 +19291,14 @@ def build_director_camera_choreography_rules(segment_number, conditioning_mode=N
         lines.append(
             "- CONTINUATION AIRLOCK: the opening 22 frames (about 0.92 seconds) "
             "are pinned from the previous rendered clip and removed before delivery. "
-            "At 00:00.000 inherit the exact previous composition. Through 00:00.917 "
-            "keep that composition and ongoing motion continuous; only small natural "
-            "continuation motion may continue. Do not start CURRENT BEAT, introduce a "
-            "new subject, relocate an established subject, or begin a new reframe "
-            "before 00:01.000. Start CURRENT BEAT at or after 00:01.000."
+            "The supplied opening guide is the visual authority for frame 0. At "
+            "00:00.000 use only a generic continuation anchor; do not enumerate or "
+            "reconstruct visible subjects, props, or camera composition from PREVIOUS "
+            "SHOT END. Through 00:00.917 keep the guide composition and ongoing motion "
+            "continuous; only small natural continuation motion may continue. Do not "
+            "start CURRENT BEAT, introduce a new subject, relocate an established "
+            "subject, or begin a new reframe before 00:01.000. Start CURRENT BEAT at "
+            "or after 00:01.000."
         )
 
     # Every third segment after Segment 1 deliberately changes composition
@@ -19786,6 +19795,25 @@ def _director_timestamps(value):
             )
         )
     return timestamps
+
+
+_CONTINUATION_FRAME_ZERO_RE = re.compile(
+    r"(?im)^[ \t]*At 00:00\.000,[^\r\n]*"
+)
+
+
+def _anchor_continuation_frame_zero_to_guide(raw_scene):
+    """Make the native Guide, not prompt-derived state, own visible frame zero."""
+    replacement = (
+        "At 00:00.000, The shot continues exactly from the supplied opening guide, "
+        "preserving its camera composition, currently visible subjects, positions, "
+        "poses, props, lighting, and ongoing motion."
+    )
+    return _CONTINUATION_FRAME_ZERO_RE.sub(
+        replacement,
+        str(raw_scene or ""),
+        count=1,
+    )
 
 
 def _canonicalize_director_timestamps(value):
@@ -31455,6 +31483,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         raw_scene = _canonicalize_director_timestamps(
             request1_result.get("raw_scene", "")
         ).strip()
+        if continuation_airlock and raw_scene:
+            raw_scene = _anchor_continuation_frame_zero_to_guide(raw_scene)
 
         if raw_scene and raw_scene != "N/A":
             request1_result["raw_scene"] = raw_scene

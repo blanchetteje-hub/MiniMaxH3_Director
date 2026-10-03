@@ -1848,3 +1848,29 @@ stated occupant movement.
 Dependency: no new custom node. ComfyUI core must include native
 `MiniMaxH3AddGuide` ("Add Guide for MiniMax H3"). A missing node is treated as
 a fatal configuration error instead of a recoverable render retry.
+
+
+## 2026-10-03 update — Guide audio + frame-zero authority fix
+
+The first native-Guide acceptance improved visual continuity substantially, but the
+stitched render still had hard boundary cuts at the starts of Segments 4 and 5 and an
+audible score discontinuity entering Segment 2.
+
+Postmortem found two separate causes:
+
+1. The native Add Guide node was receiving the 22-frame video tail but not the matching
+   audio tail. Append now sends both the aligned video frames and their soundtrack to
+   MiniMaxH3AddGuide, with both video and audio VAEs connected. This follows the native
+   H3 continuation contract and gives generated audio an actual preceding waveform rather
+   than only a text instruction to continue the score.
+2. Request 1 was reconstructing frame 0 from prompt-derived PREVIOUS SHOT END. Once the
+   tavern accumulated several Subjects, that semantic state listed off-camera characters;
+   the final H3 prompt therefore competed with the real Guide image and encouraged a new
+   wide composition exactly when the hidden Guide overlap ended. For continuation only,
+   Python now replaces the 00:00.000 line with a generic Guide-authority anchor. PREVIOUS
+   SHOT END remains semantic physical context but no longer claims which Subjects are
+   visible or how the camera is framed at the seam.
+
+The 22-frame Guide length is unchanged for this test. Do not widen it yet; first determine
+whether removing the text/Guide conflict plus carrying audio resolves the remaining seams.
+Active branch: h3-add-guidance-test.
