@@ -2512,11 +2512,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         prompt = minimax.build_h3_prompt(
             {
                 "detailed_description": (
-                    "[Shot 1] Live-action, cinematic, continues from <Video 1>. "
+                    "[Shot 1] Live-action, cinematic, seamless continuation. "
                     "Mark crosses the room."
                 ),
                 "overall_soundscape": "Footsteps.",
-                "non_diegetic_music": "continues from <Video 1>. Quiet underscore.",
+                "non_diegetic_music": (
+                    "Continue the established score seamlessly. Quiet underscore."
+                ),
             },
             "<Subject 1> is Mark, referenced in <Picture 1>.",
             segment_number=2,
@@ -2526,7 +2528,8 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         description = prompt.split("detailed_description: ", 1)[1].split(
             "\n\noverall_soundscape:", 1
         )[0]
-        self.assertEqual(description.count("continues from <Video 1>."), 1)
+        self.assertEqual(description.count("seamless continuation."), 1)
+        self.assertNotIn("<Video 1>", description)
         self.assertIn("Mark crosses the room.", description)
 
     def test_h3_prompt_initial_and_continuation_have_distinct_contracts(self):
@@ -2561,7 +2564,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn("Mark remains at the door.", continuation)
         self.assertTrue(
             continuation.split("detailed_description: ", 1)[1].startswith(
-                "[Shot 1] Live-action, cinematic, continues from <Video 1>."
+                "[Shot 1] Live-action, cinematic, seamless continuation."
             )
         )
         self.assertIn("SPOKEN DIALOGUE: None.", continuation)
