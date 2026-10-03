@@ -126,10 +126,10 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
             "prepared append workflow",
             "VHS_LoadVideoPath",
         )
-        self.assertEqual(load_video["inputs"]["skip_first_frames"], 0)
-        self.assertEqual(load_video["inputs"]["frame_load_cap"], 158)
+        self.assertEqual(load_video["inputs"]["skip_first_frames"], 102)
+        self.assertEqual(load_video["inputs"]["frame_load_cap"], 56)
         self.assertEqual(minimax.h3_frame_count_for_duration(6.0), 158)
-        self.assertEqual(minimax.h3_reference_video_window(6.0), (0, 158))
+        self.assertEqual(minimax.h3_reference_video_window(6.0), (102, 56))
 
         _, batch_after = minimax.find_workflow_node(
             prepared,
@@ -146,12 +146,16 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
             batch_connections,
         )
 
-    def test_reference_video_window_caps_long_clips_to_recent_fifteen_seconds(self):
-        self.assertEqual(minimax.h3_frame_count_for_duration(20.0), 481)
+    def test_reference_video_window_uses_recent_56_frames(self):
+        self.assertEqual(minimax.h3_frame_count_for_duration(8.0), 192)
         self.assertEqual(
-            minimax.h3_reference_video_window(20.0),
-            (121, 360),
+            minimax.h3_reference_video_window(8.0),
+            (136, 56),
         )
+
+    def test_reference_video_window_uses_full_clip_when_shorter_than_56_frames(self):
+        self.assertEqual(minimax.h3_frame_count_for_duration(2.0), 56)
+        self.assertEqual(minimax.h3_reference_video_window(2.0), (0, 56))
 
 
 if __name__ == "__main__":

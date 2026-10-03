@@ -234,9 +234,10 @@ TRIM_FRAMES_AFTER_FIRST = 2
 
 TRIM_SECONDS_AFTER_FIRST = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
 
-# Append/repair reference-video conditioning should see the complete previous
-# clip whenever H3 supports it. Longer clips use the most recent 15 seconds.
-MAX_H3_REFERENCE_VIDEO_SECONDS = 15.0
+# Append/repair reference-video conditioning uses a bounded recent tail. 56
+# frames is about 2.33 seconds at 24 fps: enough history to recover subjects
+# that just left frame without the VRAM/runtime cost of a full 8-second clip.
+REFERENCE_VIDEO_CONTEXT_FRAMES = 56
 
 # Clean refresh is intentionally different: it keeps the proven short latent
 # context window so the refresh boundary can reset accumulated generation drift.
@@ -1969,13 +1970,12 @@ def h3_context_tail_skip_frames(duration, context_frames=REFRESH_CONTEXT_FRAMES)
 # Return the frame window used by H3 reference-video conditioning.
 def h3_reference_video_window(
     duration,
-    max_seconds=MAX_H3_REFERENCE_VIDEO_SECONDS,
+    context_frames=REFERENCE_VIDEO_CONTEXT_FRAMES,
 ):
-    """Use the full previous clip, capped to the most recent H3-supported window."""
+    """Use the most recent bounded reference-video tail."""
 
     total_frames = h3_frame_count_for_duration(duration)
-    max_frames = max(5, round(float(max_seconds) * FRAME_RATE))
-    frame_load_cap = min(total_frames, max_frames)
+    frame_load_cap = min(total_frames, max(5, int(context_frames)))
     skip_first_frames = max(0, total_frames - frame_load_cap)
     return skip_first_frames, frame_load_cap
 
@@ -19632,9 +19632,34 @@ def _director_raw_scene_structure_errors(raw_scene, segment_seconds=None):
     if not ending_state:
         return ["End continuity state must be non-empty."]
     timed_scene = text_value[:marker.start()]
+    timestamp_matches = list(_DIRECTOR_TIMESTAMP_RE.finditer(timed_scene))
     timestamps = _director_timestamps(timed_scene)
     if not timestamps:
         return ["RAW SCENE must contain at least one timed micro-beat before the end state."]
+
+    # A timestamp embedded inside prose/list wrappers (for example
+    # "Frame 0 (At 00:00.000, ):" followed by bullets) is not a valid H3
+    # micro-beat even though the timestamp itself is parseable. Reject it here
+    # so Request 1 retries instead of allowing malformed RAW to be copied into
+    # the final H3 detailed_description.
+    for match in timestamp_matches:
+        line_start = timed_scene.rfind("\n", 0, match.start()) + 1
+        if timed_scene[line_start:match.start()].strip():
+            return [
+                "Every RAW SCENE timed micro-beat must begin directly with its "
+                "timestamp on a new line; do not wrap timestamps in labels such "
+                "as 'Frame 0 (...)'."
+            ]
+        line_end = timed_scene.find("\n", match.end())
+        if line_end < 0:
+            line_end = len(timed_scene)
+        action_text = timed_scene[match.end():line_end]
+        if not re.search(r"[A-Za-z0-9]", action_text):
+            return [
+                "Every RAW SCENE timestamp must have its visible/audible action "
+                "on the same line; do not put the action in bullets below it."
+            ]
+
     if timestamps[0] != (0, 0):
         return [
             "RAW SCENE must begin its first timed micro-beat at 00:00.000 so "

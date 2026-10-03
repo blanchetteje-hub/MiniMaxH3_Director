@@ -1012,3 +1012,19 @@ Change:
 Next local acceptance should specifically inspect boundaries where a character or
 room participant leaves frame before the cut, because those are the cases this
 change is intended to improve.
+
+
+## 2026-10-03 update — 56-frame reference tail + RAW wrapper rejection
+
+The full 8-second reference-video experiment was a mixed quality result and raised
+runtime/VRAM substantially. Append and repair now use the most recent 56 frames
+(~2.33 seconds) instead. For the normal 8-second/192-frame source this means
+`skip_first_frames=136`, `frame_load_cap=56`. Clean refresh stays at 22 frames.
+
+A separate Segment-3 prompt defect was traced upstream, not to H3 formatting:
+Request 1 returned `Frame 0 (At 00:00.000, ):` and bullet-listed the action below
+the timestamp. The old structure check found the embedded timestamp and accepted
+the malformed RAW, which Python later copied into final H3 output. Request-1
+structure validation now rejects timestamps wrapped by labels/prose and rejects
+timestamp-only lines whose action is moved to following bullets. The Director must
+retry with normal `At mm:ss.mmm, action` lines.

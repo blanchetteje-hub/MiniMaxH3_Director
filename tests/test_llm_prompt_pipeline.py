@@ -2264,6 +2264,28 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             [],
         )
 
+    def test_director_raw_scene_structure_rejects_frame_zero_timestamp_wrapper(self):
+        malformed = (
+            "Frame 0 (At 00:00.000, ):\n"
+            "- Amy stands beside the counter.\n"
+            "At 00:06.000, Amy turns toward the door.\n"
+            "End continuity state: Amy faces the door."
+        )
+        errors = minimax._director_raw_scene_structure_errors(malformed, 8)
+        self.assertTrue(errors)
+        self.assertIn("begin directly with its timestamp", errors[0])
+
+    def test_director_raw_scene_structure_rejects_bulleted_action_below_timestamp(self):
+        malformed = (
+            "At 00:00.000, :\n"
+            "- Amy stands beside the counter.\n"
+            "At 00:06.000, Amy turns toward the door.\n"
+            "End continuity state: Amy faces the door."
+        )
+        errors = minimax._director_raw_scene_structure_errors(malformed, 8)
+        self.assertTrue(errors)
+        self.assertIn("action on the same line", errors[0])
+
     def test_h3_formatter_prompt_is_a_conservative_raw_scene_translator(self):
         messages = minimax.build_h3_formatter_messages(
             (

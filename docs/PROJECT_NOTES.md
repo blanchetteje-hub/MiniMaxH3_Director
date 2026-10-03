@@ -722,21 +722,19 @@ Repair rendering remains a separate concern and is not a user-selectable refresh
 
 ## Append video context
 
-For an append beat, pass the complete previous video into the H3 reference-video
-path whenever the previous clip is at most 15 seconds long. This preserves
-off-camera subject appearance, wardrobe, and room layout that may have left the
-frame near the end of the preceding shot.
+For an append beat, pass the most recent **56 frames** of the previous video into
+the H3 reference-video path. At 24 fps this is about 2.33 seconds: materially more
+visual history than the original 22-frame tail without the VRAM/runtime cost of
+conditioning on a complete 8-second segment.
 
-For clips longer than 15 seconds, keep the most recent 15 seconds rather than
-feeding an unsupported/unbounded reference window.
+Use the same H3-aligned frame-count calculation as the render workflow. For a
+normal 8-second segment (192 frames), use `skip_first_frames = 136` and
+`frame_load_cap = 56`. If the source clip has 56 or fewer aligned frames, use
+the whole clip.
 
-Use the same H3-aligned frame-count calculation as the render workflow. For an
-8-second segment this means all 192 frames: `skip_first_frames = 0` and
-`frame_load_cap = 192`.
-
-Repair reference-video conditioning follows the same full/capped previous-video
-window. Clean refresh remains separate and continues using its proven 22-frame
-latent context so refresh still acts as a quality reset.
+Repair reference-video conditioning follows the same 56-frame window. Clean
+refresh remains separate and continues using its proven 22-frame latent context
+so refresh still acts as a quality reset.
 
 ## Refresh video context
 
@@ -1799,3 +1797,19 @@ Picture-backed continuation Subjects now state that their beginning-of-target-vi
 `wardrobe` comes from `<Video 1>`, replacing the weaker phrase `clothing
 condition`, which could be interpreted as damage/cleanliness rather than the
 underlying outfit.
+
+
+## 2026-10-03 update — continuation reference reduced to 56 frames
+
+The full-previous-clip experiment improved some off-camera continuity but roughly
+doubled runtime and saturated GPU VRAM, while visual improvement was mixed. Append
+and repair therefore use the most recent 56 frames (~2.33 seconds at 24 fps).
+For an 8-second/192-frame segment this is `skip_first_frames = 136` and
+`frame_load_cap = 56`. Refresh remains 22 frames.
+
+The same acceptance exposed malformed Request-1 RAW of the form
+`Frame 0 (At 00:00.000, ):` with actions moved into following bullets. Timestamp
+parsing previously saw the embedded timestamp and accepted the structure. Request-1
+structure validation now requires every timed micro-beat to begin directly with
+its timestamp on a new line and to contain action text on that same line. This is
+an upstream RAW validator fix; no formatter rule was added.
