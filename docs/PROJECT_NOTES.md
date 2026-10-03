@@ -722,19 +722,24 @@ Repair rendering remains a separate concern and is not a user-selectable refresh
 
 ## Append video context
 
-For an append beat, pass the most recent **56 frames** of the previous video into
-the H3 reference-video path. At 24 fps this is about 2.33 seconds: materially more
-visual history than the original 22-frame tail without the VRAM/runtime cost of
-conditioning on a complete 8-second segment.
+For a normal append beat, the preceding rendered video is **not** a Ref2V source.
+Ref2V is reserved for persistent reference media such as character Pictures.
 
-Use the same H3-aligned frame-count calculation as the render workflow. For a
-normal 8-second segment (192 frames), use `skip_first_frames = 136` and
-`frame_load_cap = 56`. If the source clip has 56 or fewer aligned frames, use
-the whole clip.
+Load the exact final **22 frames** of the preceding rendered clip and connect that
+IMAGE batch to ComfyUI core's native `MiniMaxH3AddGuide` at `frame_idx = 0`.
+Those frames are a protected overlap on the target timeline. They carry local
+composition and motion into the new generation instead of asking H3 to interpret
+the previous clip as a separate semantic video reference.
 
-Repair reference-video conditioning follows the same 56-frame window. Clean
-refresh remains separate and continues using its proven 22-frame latent context
-so refresh still acts as a quality reset.
+The append render budget includes the duplicated overlap. For a normal 8-second
+delivery, render 226 raw H3 frames, remove 20 guide frames immediately after
+render, then let the existing two-frame stitch trim remove the remaining overlap.
+The delivered clip is still 8 seconds and begins immediately after all 22 guide
+frames.
+
+Repair remains on its isolated legacy hybrid workflow and may use a 56-frame
+previous-video reference. Clean refresh remains separate and continues using its
+22-frame latent context path so refresh still acts as a quality reset.
 
 ## Refresh video context
 
