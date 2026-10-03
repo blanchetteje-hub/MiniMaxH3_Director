@@ -1015,6 +1015,7 @@ WRITE THE SCENE
 - Short dialogue is allowed when it naturally supports CURRENT BEAT.
 {camera_choreography_rules}
 - Keep all timed action inside the {segment_seconds}-second clip.
+- The first timed micro-beat MUST be at 00:00.000. For continuation/refresh segments, begin from PREVIOUS SHOT END/frame 0 and start any needed subject or camera movement from there; do not leave an unstaged opening gap.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
 - After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Preserve only cut-relevant positions/containment, held props, door/barrier state, and unresolved active threats needed to start the next shot. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state or add a new event.
@@ -19550,6 +19551,11 @@ def _director_raw_scene_structure_errors(raw_scene, segment_seconds=None):
     timestamps = _director_timestamps(timed_scene)
     if not timestamps:
         return ["RAW SCENE must contain at least one timed micro-beat before the end state."]
+    if timestamps[0] != (0, 0):
+        return [
+            "RAW SCENE must begin its first timed micro-beat at 00:00.000 so "
+            "frame 0 is explicitly staged instead of left for H3 to invent."
+        ]
     range_errors = _director_timestamp_range_errors(
         timed_scene,
         segment_seconds=segment_seconds,
@@ -23990,6 +23996,19 @@ def request_continuity_opening_state(
     state_for_opening = _prune_phase2_continuity_placeholders(
         state_for_opening
     )
+    meaningful_state = {
+        key: value
+        for key, value in state_for_opening.items()
+        if key != "version"
+    } if isinstance(state_for_opening, dict) else {}
+    if not meaningful_state:
+        _print_continuity_phase_result(
+            2,
+            "H3 OPENING STATE (NO KNOWN FACTS)",
+            "",
+        )
+        return ""
+
     state_text = _continuity_json_text(state_for_opening)
     phase2_messages = [
         {"role": "system", "content": PHASE_2_CONTINUITY_H3_SYSTEM},
@@ -26143,6 +26162,22 @@ def _filter_h3_subject_definitions(
         visible.update(
             _h3_visual_subject_ids(modified_description, registry)
         )
+        # Dynamic video-only Subjects have no Picture anchor to recover from if
+        # their definition is filtered out. Keep them whenever their canonical
+        # name appears in the scene prose. Strip tagged dialogue first so a name
+        # mentioned only in spoken words does not create visual presence.
+        non_dialogue_description = _DIALOGUE_BLOCK_PATTERN.sub(
+            " ",
+            str(modified_description or ""),
+        )
+        for subject_id, name, record in _subject_registry_records(registry):
+            if record.get("picture_ids"):
+                continue
+            if re.search(
+                rf"(?i)(?<!\w){re.escape(str(name).strip())}(?!\w)",
+                non_dialogue_description,
+            ):
+                visible.add(int(subject_id))
 
     # Now render lines: include only those subject definition lines with ids
     # in visible. Preserve original order. For visible ids without an original
@@ -26514,10 +26549,7 @@ def format_h3_spoken_dialogue_constraint(detailed_description):
     """Return the deterministic H3 speech constraint for one segment."""
     if _h3_contains_spoken_dialogue(detailed_description):
         return ""
-    return (
-        "SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized "
-        "language, or singing occur in this segment."
-    )
+    return "No intelligible speech or singing is heard in this segment."
 
 
 # Open a continuation description as the canonical ``[Shot 1]`` form.
@@ -30934,7 +30966,11 @@ def resolve_director_raw_scene_subjects(
     return resolved, names
 
 
-def build_director_raw_scene_coherence_messages(current_beat, raw_scene):
+def build_director_raw_scene_coherence_messages(
+    current_beat,
+    raw_scene,
+    previous_shot_end="",
+):
     """Build a narrow semantic check for Request 1 physical/order coherence."""
     return [
         {
@@ -30949,7 +30985,13 @@ def build_director_raw_scene_coherence_messages(current_beat, raw_scene):
                 "action. Do not infer that two differently worded references to an "
                 "unnamed person, creature, object, or body must be different entities; "
                 "require explicit evidence of distinct identities or counts before "
-                "calling that a contradiction. The trailing End continuity state is part "
+                "calling that a contradiction. PREVIOUS SHOT END, when supplied, is the "
+                "physical frame-0 starting state. The first timed action must be reachable "
+                "from it without an omitted subject move, teleport, unexplained prop/state "
+                "change, or hidden location transition. Ordinary continuous camera motion "
+                "may reveal another part of the same established space, but do not accept "
+                "a new subject location that requires unstated travel before the first "
+                "timed action. The trailing End continuity state is part "
                 "of this check and MUST describe the state produced by the final timed "
                 "action. Reject an End continuity state that moves a subject/object back "
                 "to an earlier location, restores an earlier held prop or pose, reverses "
@@ -30965,10 +31007,14 @@ def build_director_raw_scene_coherence_messages(current_beat, raw_scene):
             "content": (
                 "CURRENT BEAT\n"
                 f"{str(current_beat or '').strip()}\n\n"
+                "PREVIOUS SHOT END\n"
+                f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
-                "Read the timed actions literally in order, then explicitly compare "
-                "the final timed action/result with End continuity state.\n"
+                "First compare PREVIOUS SHOT END with the first timed action and reject "
+                "any omitted physical transition. Then read the timed actions literally "
+                "in order and explicitly compare the final timed action/result with "
+                "End continuity state.\n"
                 "If coherent: {\"valid\": true, \"issue\": \"\"}\n"
                 "If incoherent: {\"valid\": false, \"issue\": "
                 "\"short concrete explanation\"}"
@@ -30981,6 +31027,7 @@ def validate_director_raw_scene_coherence(
     current_beat,
     raw_scene,
     *,
+    previous_shot_end="",
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -30988,7 +31035,11 @@ def validate_director_raw_scene_coherence(
     if not str(current_beat or "").strip():
         return {"valid": True, "issue": ""}
     result = llm_request(
-        build_director_raw_scene_coherence_messages(current_beat, raw_scene),
+        build_director_raw_scene_coherence_messages(
+            current_beat,
+            raw_scene,
+            previous_shot_end=previous_shot_end,
+        ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
         history_metadata={
@@ -31098,10 +31149,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     request1_messages[-1] = dict(request1_messages[-1])
                     request1_messages[-1]["content"] = (
                         f"{request1_messages[-1].get('content', '')}\n\n"
-                        "RETRY: Return the complete timed shot script with exactly "
-                        "one trailing End continuity state matching the final timed "
-                        "frame. Keep every timestamp inside the clip and do not "
-                        "begin NEXT BEAT."
+                        "RETRY: Return the complete timed shot script beginning at "
+                        "00:00.000, with exactly one trailing End continuity state "
+                        "matching the final timed frame. Keep every timestamp inside "
+                        "the clip and do not begin NEXT BEAT."
                     )
                 continue
 
@@ -31111,6 +31162,11 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     coherence = validate_director_raw_scene_coherence(
                         current_beat_text,
                         raw_scene,
+                        previous_shot_end=(
+                            bundle.get("previous_final_frame", "")
+                            if segment_number > 1
+                            else ""
+                        ),
                         history_metadata={
                             "run_id": run_id,
                             "source_sha256": (run_config or {}).get("source_sha256"),
