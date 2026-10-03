@@ -30802,12 +30802,7 @@ def resolve_director_raw_scene_pronouns(
     if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
         raise ValueError("RAW pronoun resolver changed timestamps.")
 
-    resolved_end_state = _canonicalize_end_continuity_functional_subjects(
-        end_state_original,
-        subject_definitions,
-        resolved_subject_names,
-    )
-    resolved = (resolved_timed + "\n" + resolved_end_state).strip()
+    resolved = (resolved_timed + "\n" + end_state_original).strip()
     structure_errors = _director_raw_scene_structure_errors(
         resolved,
         segment_seconds,
@@ -31022,7 +31017,12 @@ def resolve_director_raw_scene_subjects(
         )
         resolved_subject_names[index] = canonical_name
 
-    resolved = (resolved_timed + "\n" + end_state_original).strip()
+    resolved_end_state = _canonicalize_end_continuity_functional_subjects(
+        end_state_original,
+        subject_definitions,
+        resolved_subject_names,
+    )
+    resolved = (resolved_timed + "\n" + resolved_end_state).strip()
     structure_errors = _director_raw_scene_structure_errors(
         resolved,
         segment_seconds,
