@@ -985,3 +985,30 @@ inherited frame-zero line may truthfully say a subject remains/stays beside an
 already-open/closed object without being rejected as padding. Every later timed
 micro-beat still must advance visible action. This completes the inherited-frame
 anchor contract without weakening later-shot pacing validation.
+
+
+## 2026-10-03 update — continuation reference window widened
+
+The latest 8x6 local render was substantially better overall, but exposed two
+off-camera continuity failures at append boundaries: a Picture-backed character
+reverted to the Picture outfit when absent from the preceding clip's final moment,
+and a later wide shot rebuilt subject placement after the preceding clip ended
+close on only two subjects.
+
+Root cause: append conditioning intentionally loaded only the final 22 frames
+(~0.92 seconds at 24 fps), even though H3 reference-video conditioning can use a
+longer video history.
+
+Change:
+- append and repair now pass the full previous clip when it is <=15 seconds;
+- longer previous clips use only the most recent 15 seconds;
+- an 8-second H3 clip therefore supplies all 192 aligned frames with no leading
+  skip;
+- clean refresh remains on the proven final-22-frame latent-context path;
+- Picture-backed continuation Subjects now say their `wardrobe`, position, pose,
+  and physical state come from `<Video 1>` rather than only their `clothing
+  condition`.
+
+Next local acceptance should specifically inspect boundaries where a character or
+room participant leaves frame before the cut, because those are the cases this
+change is intended to improve.

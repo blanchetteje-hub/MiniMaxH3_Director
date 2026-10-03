@@ -234,9 +234,13 @@ TRIM_FRAMES_AFTER_FIRST = 2
 
 TRIM_SECONDS_AFTER_FIRST = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
 
-# The H3 reference-video node only needs the short continuation tail. Keep the
-# decoded input bounded so append conditioning never receives the full prior clip.
-APPEND_CONTEXT_FRAMES = 22
+# Append/repair reference-video conditioning should see the complete previous
+# clip whenever H3 supports it. Longer clips use the most recent 15 seconds.
+MAX_H3_REFERENCE_VIDEO_SECONDS = 15.0
+
+# Clean refresh is intentionally different: it keeps the proven short latent
+# context window so the refresh boundary can reset accumulated generation drift.
+REFRESH_CONTEXT_FRAMES = 22
 
 DEFAULT_CONTEXT_FRAMES = 7
 
@@ -1953,13 +1957,27 @@ def h3_frame_count_for_duration(duration):
 
 
 # Return how many leading frames to skip to keep only the final context tail.
-def h3_context_tail_skip_frames(duration, context_frames=APPEND_CONTEXT_FRAMES):
+def h3_context_tail_skip_frames(duration, context_frames=REFRESH_CONTEXT_FRAMES):
     """Return the leading-frame skip required for a final context tail."""
 
     return max(
         0,
         h3_frame_count_for_duration(duration) - int(context_frames),
     )
+
+
+# Return the frame window used by H3 reference-video conditioning.
+def h3_reference_video_window(
+    duration,
+    max_seconds=MAX_H3_REFERENCE_VIDEO_SECONDS,
+):
+    """Use the full previous clip, capped to the most recent H3-supported window."""
+
+    total_frames = h3_frame_count_for_duration(duration)
+    max_frames = max(5, round(float(max_seconds) * FRAME_RATE))
+    frame_load_cap = min(total_frames, max_frames)
+    skip_first_frames = max(0, total_frames - frame_load_cap)
+    return skip_first_frames, frame_load_cap
 
 
 # ============================================================
@@ -26321,7 +26339,7 @@ def _append_video_origin_to_h3_subject_definitions(
         registry = {}
 
     suffix_template = (
-        "{name}'s pose, clothing condition, position, and physical state at the "
+        "{name}'s pose, wardrobe, position, and physical state at the "
         "beginning of the target video come from <Video 1>."
     )
     rendered = []
@@ -28462,7 +28480,7 @@ def _render_segment_with_retries(
         console_log(
             f"AUTO REFRESH: segment {segment} is using "
             f"'{os.path.basename(REFRESH_WORKFLOW_FILE)}' with the final "
-            f"{APPEND_CONTEXT_FRAMES} frames as context latents "
+            f"{REFRESH_CONTEXT_FRAMES} frames as context latents "
             f"(context_frames={DEFAULT_CONTEXT_FRAMES}).",
             flush=True,
         )
@@ -28845,7 +28863,7 @@ def prepare_refresh_workflow(
         "skip_first_frames",
         h3_context_tail_skip_frames(
             context_segment_length,
-            APPEND_CONTEXT_FRAMES,
+            REFRESH_CONTEXT_FRAMES,
         ),
         label,
         "VHS_LoadVideoPath",
@@ -28854,7 +28872,7 @@ def prepare_refresh_workflow(
         workflow,
         REFRESH_LOAD_VIDEO_NODE_NAME,
         "frame_load_cap",
-        APPEND_CONTEXT_FRAMES,
+        REFRESH_CONTEXT_FRAMES,
         label,
         "VHS_LoadVideoPath",
     )
@@ -29057,14 +29075,14 @@ def prepare_repair_workflow(
         "VHS_LoadVideoPath",
     )
     context_segment_length = duration if segment_length is None else segment_length
+    skip_first_frames, frame_load_cap = h3_reference_video_window(
+        context_segment_length
+    )
     set_node_input(
         workflow,
         REPAIR_LOAD_VIDEO_NODE_NAME,
         "skip_first_frames",
-        h3_context_tail_skip_frames(
-            context_segment_length,
-            APPEND_CONTEXT_FRAMES,
-        ),
+        skip_first_frames,
         label,
         "VHS_LoadVideoPath",
     )
@@ -29072,7 +29090,7 @@ def prepare_repair_workflow(
         workflow,
         REPAIR_LOAD_VIDEO_NODE_NAME,
         "frame_load_cap",
-        APPEND_CONTEXT_FRAMES,
+        frame_load_cap,
         label,
         "VHS_LoadVideoPath",
     )
@@ -29201,9 +29219,8 @@ def prepare_append_workflow(
     context_segment_length = (
         duration if segment_length is None else segment_length
     )
-    skip_first_frames = h3_context_tail_skip_frames(
-        context_segment_length,
-        APPEND_CONTEXT_FRAMES,
+    skip_first_frames, frame_load_cap = h3_reference_video_window(
+        context_segment_length
     )
     set_node_input(
         workflow,
@@ -29217,7 +29234,7 @@ def prepare_append_workflow(
         workflow,
         LOAD_VIDEO_NODE_NAME,
         "frame_load_cap",
-        APPEND_CONTEXT_FRAMES,
+        frame_load_cap,
         label,
         "VHS_LoadVideoPath",
     )

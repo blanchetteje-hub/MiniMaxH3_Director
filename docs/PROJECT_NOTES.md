@@ -722,16 +722,21 @@ Repair rendering remains a separate concern and is not a user-selectable refresh
 
 ## Append video context
 
-For an append beat, pass only the final 22 frames of the previous video into the H3 reference-video path.
+For an append beat, pass the complete previous video into the H3 reference-video
+path whenever the previous clip is at most 15 seconds long. This preserves
+off-camera subject appearance, wardrobe, and room layout that may have left the
+frame near the end of the preceding shot.
 
-Use the same exact H3-aligned frame-count calculation as the render workflow, then:
+For clips longer than 15 seconds, keep the most recent 15 seconds rather than
+feeding an unsupported/unbounded reference window.
 
-- skip to the final 22 frames;
-- set `frame_load_cap = 22`.
+Use the same H3-aligned frame-count calculation as the render workflow. For an
+8-second segment this means all 192 frames: `skip_first_frames = 0` and
+`frame_load_cap = 192`.
 
-For an 8-second segment this is 192 frames total and `skip_first_frames = 170`.
-
-Do not revert to the old long-tail append context.
+Repair reference-video conditioning follows the same full/capped previous-video
+window. Clean refresh remains separate and continues using its proven 22-frame
+latent context so refresh still acts as a quality reset.
 
 ## Refresh video context
 
@@ -1774,3 +1779,23 @@ inherited frame-zero line may truthfully say a subject remains/stays beside an
 already-open/closed object without being rejected as padding. Every later timed
 micro-beat still must advance visible action. This completes the inherited-frame
 anchor contract without weakening later-shot pacing validation.
+
+
+## 2026-10-03 update — full previous-video reference for append/repair
+
+The 8x6 fantasy-tavern acceptance showed two remaining continuation failures when
+important information had moved off camera near the preceding segment boundary:
+Amy's current wardrobe reverted to her Picture reference when Segment 2 ended on
+the goblin, and the room's subject placement reset when Segment 4 ended on a
+close-up before Segment 5 widened again.
+
+Append and repair reference-video conditioning now use the complete previous clip
+when it is 15 seconds or shorter, and the most recent 15 seconds for longer clips.
+For the normal 8-second case, the loader now passes all 192 aligned frames instead
+of only the final 22. Clean refresh intentionally retains its 22-frame latent
+context path.
+
+Picture-backed continuation Subjects now state that their beginning-of-target-video
+`wardrobe` comes from `<Video 1>`, replacing the weaker phrase `clothing
+condition`, which could be interpreted as damage/cleanliness rather than the
+underlying outfit.

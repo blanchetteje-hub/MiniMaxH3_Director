@@ -172,7 +172,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             "\n\n", 1
         )[0]
         self.assertIn(
-            "Elias's pose, clothing condition, position, and physical state at "
+            "Elias's pose, wardrobe, position, and physical state at "
             "the beginning of the target video come from <Video 1>.",
             subject_text,
         )
