@@ -129,7 +129,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("at most 24", text)
         self.assertIn("Do not name characters", text)
         self.assertNotIn("overall_soundscape", text)
-        self.assertIn("continues from <Video 1>", text)
+        self.assertIn("Continue the established score seamlessly.", text)
         self.assertIn("Return exactly non_diegetic_music", text)
 
     def test_h3_music_continuation_treats_previous_music_as_start_only(self):
@@ -809,7 +809,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )[0]
         self.assertTrue(
             description.startswith(
-                "[Shot 1] Live-action, cinematic, continues from <Video 1>."
+                "[Shot 1] Live-action, cinematic, seamless continuation."
                 " Mark opens the door."
             )
         )
