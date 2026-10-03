@@ -11216,17 +11216,17 @@ def build_beat_finite_endpoint_messages(beat_job, candidate_beat):
                 + "\n\nCANDIDATE BEAT\n"
                 + str(candidate_beat or "")
                 + "\n\nClassify only the finite-activity endpoint. "
-                "Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an "
-                "ongoing/repeated/non-terminal process such as majority, most, "
-                "repeatedly, throughout, continuing, or equivalent. Otherwise, "
-                "when CURRENT JOB assigns a finite activity/task, return COMPLETE "
-                "only if CANDIDATE BEAT shows a natural observable completion/result "
-                "for that activity in this beat. Return ONGOING if it only shows "
-                "the activity underway, continuing, approaching completion, or "
-                "partly complete. Progressive source wording such as 'is cooking' "
-                "or 'is repairing' can still describe a finite task and does not "
-                "by itself make the job ongoing. Do not decide whether the beat is "
-                "valid."
+                "Return NOT_APPLICABLE when CURRENT JOB is satisfied by visibly "
+                "performing an activity/process and does not explicitly require a "
+                "terminal result. This includes ongoing/repeated wording and ordinary "
+                "process events such as reading, inspecting, polishing, watching, "
+                "walking, or working. Do not invent a completion endpoint solely "
+                "because the verb could theoretically finish. When CURRENT JOB "
+                "explicitly requires a terminal result such as arrival, retrieval, "
+                "handoff/receipt, completion, destruction, capture, or a stated final "
+                "condition, return COMPLETE only if CANDIDATE BEAT reaches that "
+                "observable result; otherwise return ONGOING. Do not decide whether "
+                "the beat is valid."
             ),
         },
     ]
@@ -11940,8 +11940,10 @@ CHECKS
 1. CURRENT JOB is the only required work. Show every assigned action and result
 in THIS beat. PREVIOUS FINAL BEAT or aftermath ("having finished X") cannot
 substitute for performing an assigned action now. Preparation or partial progress
-is insufficient. Finite tasks must visibly finish, even with wording like "is
-cooking"; explicitly ongoing/repeated jobs need only a non-terminal instance.
+is insufficient when CURRENT JOB explicitly requires a terminal result. When the
+assigned story event is the visible performance of an activity/process itself
+(reading, inspecting, polishing, watching, walking, working, etc.), showing that
+activity is sufficient unless CURRENT JOB explicitly requires it to finish.
 
 2. Preserve every required participant and beneficiary role. When immediate
 receipt is part of the job, food/hand-offs must reach the intended recipient;
@@ -11950,9 +11952,11 @@ no delivery unless required. Honor explicit later pickup/storage; watching or
 listening can satisfy a performance/lesson role.
 
 3. PREVIOUS FINAL BEAT and CURRENT STATE are authoritative history. Apply candidate
-actions in order. Reject clear impossibilities: unavailable objects, conflicting
-locations, unresolved closed barriers/containment, or repeating an irreversible
-action without restoration. Unknown facts are not contradictions.
+actions in order. Reject clear impossibilities: an object explicitly established
+as absent/destroyed/inaccessible, conflicting locations, unresolved closed
+barriers/containment, or repeating an irreversible action without restoration.
+An ordinary story/staging prop is NOT unavailable merely because CURRENT STATE
+does not list it. Missing state is unknown, not absent.
 
 4. RESERVED FOR LATER is never required now. Do not complete a distinct later job
 early. Allow preparation belonging to CURRENT JOB and another instance of an
@@ -21864,6 +21868,33 @@ def _subject_name_is_promotable(name):
     return not (set(normalized.split()) & disallowed_words)
 
 
+def _functional_subject_type_key(name):
+    """Return the semantic role/type stem for a functional Subject label."""
+    text = " ".join(str(name or "").split()).strip(" ,.;:-")
+    numbered = False
+    while True:
+        stripped = re.sub(r"(?:[_\s-]*\d+)\s*$", "", text).strip()
+        if stripped == text:
+            break
+        numbered = True
+        text = stripped
+    text = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", text)
+    return _subject_identity_key(text), numbered
+
+
+def _raw_explicitly_introduces_distinct_functional_subject(raw_scene, type_key):
+    """Return whether RAW explicitly says another individual of one role/type appears."""
+    words = [re.escape(word) for word in str(type_key or "").split() if word]
+    if not words:
+        return False
+    type_pattern = r"\s+".join(words)
+    return re.search(
+        rf"(?i)\b(?:another|new|second|third|fourth|additional|different)\s+"
+        rf"(?:[a-z][a-z'-]*\s+){{0,2}}{type_pattern}\b",
+        str(raw_scene or ""),
+    ) is not None
+
+
 # Flatten one canonical clothing value into stable garment phrases.
 def _canonical_clothing_items(value):
     """Return deterministic garment phrases from text, arrays, or mappings."""
@@ -21915,6 +21946,14 @@ def _canonical_indefinite_phrase(text, *, clothing=False):
     else:
         article = "an" if first[:1] in "aeiou" else "a"
     return f"{article} {phrase}"
+
+
+def _functional_subject_role_description(name):
+    """Render semantic role/type prose for a numbered dynamic Subject."""
+    type_key, numbered = _functional_subject_type_key(name)
+    if not numbered or not type_key:
+        return ""
+    return f"{str(name).strip()} is {_canonical_indefinite_phrase(type_key)}."
 
 
 def format_canonical_character_sentence(record):
@@ -22038,6 +22077,13 @@ def register_named_subject_hints(
             subject_id,
             state["subjects"].values(),
         )
+        canonical_description = (
+            subject_descriptions.get(name, "")
+            if isinstance(subject_descriptions, dict)
+            else ""
+        )
+        if not canonical_description:
+            canonical_description = _functional_subject_role_description(name)
         state["subjects"][name] = new_subject_continuity_record({
             "subject_id": subject_id,
             "name": name,
@@ -22046,11 +22092,7 @@ def register_named_subject_hints(
             "picture_id": None,
             "speaker_id": speaker_id,
             "origin_segment": origin_segment,
-            "canonical_description": (
-                subject_descriptions.get(name, "")
-                if isinstance(subject_descriptions, dict)
-                else ""
-            ),
+            "canonical_description": canonical_description,
         })
         added_names.append(name)
     return state, added_names
@@ -26534,6 +26576,36 @@ def _open_h3_continuation_description(
     return f"{opener} {description}"
 
 
+_H3_CONTINUOUS_TAKE_SENTENCE = (
+    "Stage this segment as one continuous camera take with no cuts or cutaways; "
+    "reframe only through continuous camera movement."
+)
+
+
+def ensure_h3_continuous_take_instruction(description):
+    """Carry the Director one-take contract into the actual H3 prompt."""
+    text = str(description or "").strip()
+    if not text:
+        return _H3_CONTINUOUS_TAKE_SENTENCE
+    if re.search(
+        r"(?i)one\s+continuous\s+camera\s+take.*no\s+cuts",
+        text,
+    ):
+        return text
+    timestamp = _DIRECTOR_CANONICAL_TIMESTAMP_RE.search(text)
+    if timestamp is None:
+        return text.rstrip() + " " + _H3_CONTINUOUS_TAKE_SENTENCE
+    prefix = text[:timestamp.start()].rstrip()
+    suffix = text[timestamp.start():].lstrip()
+    return (
+        prefix
+        + (" " if prefix else "")
+        + _H3_CONTINUOUS_TAKE_SENTENCE
+        + "\n\n"
+        + suffix
+    ).strip()
+
+
 # Build h3 prompt.
 def build_h3_prompt(
     llm_result,
@@ -26793,6 +26865,7 @@ def build_h3_prompt(
                 )
                 if part
             )
+    integrated = ensure_h3_continuous_take_instruction(integrated)
     canonical_prompt_text = ""
     if segment_number is not None and int(segment_number) == 1:
         canonical_prompt_text = "\n".join(
@@ -30687,11 +30760,15 @@ def build_director_raw_subject_resolution_messages(
                 "location, sound, camera instruction, dialogue, and punctuation meaning "
                 "unchanged. Keep already-named Subjects unchanged. For each distinct "
                 "unnamed foreground animate participant who acts or is acted on, replace "
-                "its references with one stable functional name made from its role/type "
-                "plus an integer, such as Guard1 or Creature1. Reuse a KNOWN SUBJECT name "
-                "only when the RAW clearly shows the same individual continuing. Use the "
-                "next unused suffix for a new identity. Do not label interchangeable "
-                "background crowds/groups. Return JSON only."
+                "its references with one stable functional name made from its most specific "
+                "explicit role/species plus an integer. If RAW says dragon, use Dragon1; "
+                "if RAW says griffin, use Griffin1. Use CreatureN only when the type is "
+                "truly unknown. Capitalization alone does not make a role/species noun an "
+                "established name. Reuse a KNOWN SUBJECT when RAW continues that same "
+                "individual; when exactly one KNOWN SUBJECT has the same role/species stem, "
+                "reuse it unless RAW explicitly says another/new/second individual appears. "
+                "Use the next unused suffix only for a genuinely new identity. Do not label "
+                "interchangeable background crowds/groups. Return JSON only."
             ),
         },
         {
@@ -30771,6 +30848,43 @@ def resolve_director_raw_scene_subjects(
         )
         resolved_timed = alias_pattern.sub(protected_name, resolved_timed)
 
+    # If the model invents a new label for a role/species with exactly one
+    # established functional Subject, reuse that identity unless RAW explicitly
+    # introduces another individual of the same type.
+    resolved_subject_names = list(result.get("subject_names", []))
+    known_functional_names = [
+        name
+        for _subject_number, name in parse_defined_subjects(subject_definitions)
+        if _functional_subject_type_key(name)[1]
+    ]
+    for index, raw_name in enumerate(resolved_subject_names):
+        proposed_name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
+        type_key, _numbered = _functional_subject_type_key(proposed_name)
+        if not proposed_name or not type_key:
+            continue
+        matching_known = [
+            known_name
+            for known_name in known_functional_names
+            if _functional_subject_type_key(known_name)[0] == type_key
+        ]
+        if len(matching_known) != 1:
+            continue
+        canonical_name = matching_known[0]
+        if _subject_identity_key(proposed_name) == _subject_identity_key(canonical_name):
+            continue
+        if _raw_explicitly_introduces_distinct_functional_subject(
+            timed_original,
+            type_key,
+        ):
+            continue
+        resolved_timed = re.sub(
+            rf"(?<![\w]){re.escape(proposed_name)}(?![\w])",
+            canonical_name,
+            resolved_timed,
+            flags=re.I,
+        )
+        resolved_subject_names[index] = canonical_name
+
     resolved = (resolved_timed + "\n" + end_state_original).strip()
     structure_errors = _director_raw_scene_structure_errors(
         resolved,
@@ -30785,7 +30899,7 @@ def resolve_director_raw_scene_subjects(
     names = []
     seen = set()
     known_keys = {name.casefold() for name in protected_names}
-    for raw_name in result.get("subject_names", []):
+    for raw_name in resolved_subject_names:
         name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
         for protected_name in sorted(protected_names, key=len, reverse=True):
             if re.fullmatch(
@@ -30835,9 +30949,15 @@ def build_director_raw_scene_coherence_messages(current_beat, raw_scene):
                 "action. Do not infer that two differently worded references to an "
                 "unnamed person, creature, object, or body must be different entities; "
                 "require explicit evidence of distinct identities or counts before "
-                "calling that a contradiction. Do not judge style, prose quality, camera "
-                "taste, or incidental details. Return exactly one JSON object with "
-                "boolean valid and string issue."
+                "calling that a contradiction. The trailing End continuity state is part "
+                "of this check and MUST describe the state produced by the final timed "
+                "action. Reject an End continuity state that moves a subject/object back "
+                "to an earlier location, restores an earlier held prop or pose, reverses "
+                "a barrier/door result, or otherwise contradicts the final timed frame. "
+                "Do not accept an End continuity state merely because it matches an "
+                "earlier frame. Do not judge style, prose quality, camera taste, or "
+                "incidental details. Return exactly one JSON object with boolean valid "
+                "and string issue."
             ),
         },
         {
@@ -30847,7 +30967,8 @@ def build_director_raw_scene_coherence_messages(current_beat, raw_scene):
                 f"{str(current_beat or '').strip()}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
-                "Read the timed actions literally in order.\n"
+                "Read the timed actions literally in order, then explicitly compare "
+                "the final timed action/result with End continuity state.\n"
                 "If coherent: {\"valid\": true, \"issue\": \"\"}\n"
                 "If incoherent: {\"valid\": false, \"issue\": "
                 "\"short concrete explanation\"}"
