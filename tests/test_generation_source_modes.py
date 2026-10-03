@@ -45,7 +45,7 @@ def test_new_run_resets_planning_outputs_and_preserves_sources_and_media(tmp_pat
     ):
         minimax.prepare_new_generation()
         minimax.prepare_new_generation()  # Missing generated artifacts are fine.
-    assert (tmp_path / 'beats.txt').read_text() == ''
+    assert not (tmp_path / 'beats.txt').exists()
     for name in names[1:6]:
         assert not (tmp_path / name).exists()
     for name in names[6:]:
@@ -106,3 +106,31 @@ def test_existing_prompt_generation_never_enters_beat_generation():
             minimax._run_main(None)
         load_existing.assert_called_once_with(minimax.BEATS_FILE, 1)
         generate.assert_not_called()
+
+
+@pytest.mark.parametrize('arguments', [['--new'], ['--new', '--help'], []])
+def test_new_deletes_sources_before_runtime_imports(tmp_path, arguments):
+    from pathlib import Path
+    startup = Path(minimax.__file__).read_text().split('import argparse', 1)[0]
+    for name in ('beats.txt', 'story_arc.json', 'story.txt'):
+        (tmp_path / name).write_text('original')
+    namespace = {'__name__': '__main__', '__file__': str(tmp_path / 'minimax.py')}
+    with mock.patch('sys.argv', ['minimax.py', *arguments]):
+        exec(compile(startup, 'minimax-startup', 'exec'), namespace)
+        exec(compile(startup, 'minimax-startup', 'exec'), namespace)
+    for name in ('beats.txt', 'story_arc.json'):
+        assert (tmp_path / name).exists() == ('--new' not in arguments)
+    assert (tmp_path / 'story.txt').read_text() == 'original'
+
+
+def test_import_does_not_delete_new_run_sources(tmp_path):
+    from pathlib import Path
+    startup = Path(minimax.__file__).read_text().split('import argparse', 1)[0]
+    for name in ('beats.txt', 'story_arc.json'):
+        (tmp_path / name).write_text('original')
+    with mock.patch('sys.argv', ['app.py', '--new']):
+        exec(compile(startup, 'minimax-startup', 'exec'), {
+            '__name__': 'minimax', '__file__': str(tmp_path / 'minimax.py'),
+        })
+    assert (tmp_path / 'beats.txt').read_text() == 'original'
+    assert (tmp_path / 'story_arc.json').read_text() == 'original'

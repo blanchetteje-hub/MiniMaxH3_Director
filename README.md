@@ -918,7 +918,7 @@ frame alignment and stitching trims can affect the final encoded duration.
 | `SEGMENT_LENGTH` | Target seconds generated per segment; must be greater than zero. |
 | `SEGMENT_COUNT` | Number of clips to generate; must be a whole number greater than zero. |
 | `MEGAPIXELS` | Optional initial and refresh resolution target; defaults to `0.5` and must be greater than zero. |
-| `--new` | Clear beats and regenerate from the story before a fresh run or prompt-generation pass. |
+| `--new` | Delete `beats.txt` and `story_arc.json` immediately at script startup, before runtime imports or argument validation, then regenerate from the story. |
 | `--existing` | Require and use existing beats, without regenerating them. |
 | `--generate-prompts COUNT` | Save final H3 prompts to `generated_prompts.txt` without contacting ComfyUI; supply timing positionals for custom segment length. |
 | `--generate-from-prompts` | Render `generated_prompts.txt` through ComfyUI without LLM planning. |

@@ -1,16 +1,34 @@
+import os
+import sys
+
+
+def _delete_new_run_sources_at_startup():
+    """Remove stale planning sources before importing the generation runtime."""
+    if "--new" not in sys.argv[1:]:
+        return
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    for filename in ("beats.txt", "story_arc.json"):
+        try:
+            os.remove(os.path.join(script_directory, filename))
+        except FileNotFoundError:
+            pass
+
+
+if __name__ == "__main__":
+    _delete_new_run_sources_at_startup()
+
+
 import argparse
 import base64
 import copy
 import hashlib
 import json
 import math
-import os
 import re
 import secrets
 import shutil
 import signal
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -31714,9 +31732,8 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
 def prepare_new_generation():
     """Reset only generated planning artifacts for an explicitly requested new run."""
     # Source files and rendered media are inputs/history, and remain available.
-    with open(BEATS_FILE, "w", encoding="utf-8") as beats_file:
-        beats_file.write("")
     for path in (
+        BEATS_FILE,
         STORY_ARC_FILE,
         get_story_arc_hash_path(STORY_ARC_FILE),
         get_beat_validation_state_path(BEATS_FILE),
