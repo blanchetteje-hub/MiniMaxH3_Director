@@ -19,6 +19,8 @@ if __name__ == "__main__":
 
 
 import argparse
+import builtins
+import io
 import base64
 import copy
 import hashlib
@@ -80,6 +82,28 @@ FORMATTER_CLASSES = {
 ACTIVE_FORMATTER = GPTFormatter()
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+CONSOLE_LOG_FILE = os.path.join(SCRIPT_DIR, "console_logs.txt")
+CONSOLE_LOG_LOCK = threading.Lock()
+
+
+def reset_console_logs():
+    """Start a fresh console log for a new run, retaining logs across retries."""
+    with CONSOLE_LOG_LOCK:
+        with open(CONSOLE_LOG_FILE, "w", encoding="utf-8"):
+            pass
+
+
+def console_log(*values, sep=" ", end="\n", file=None, flush=False):
+    """Append a print-formatted message to disk and its original console stream."""
+    buffer = io.StringIO()
+    builtins.print(*values, sep=sep, end=end, file=buffer)
+    message = buffer.getvalue()
+    with CONSOLE_LOG_LOCK:
+        with open(CONSOLE_LOG_FILE, "a", encoding="utf-8") as handle:
+            handle.write(message)
+        builtins.print(message, end="", file=file, flush=flush)
+
 
 LLM_HOST_URL = (
     os.environ.get("MINIMAX_LLM_HOST_URL")
@@ -1148,7 +1172,7 @@ try:
         _ADDITIONAL_STATES = states_file.read().strip()
 except FileNotFoundError:
     _ADDITIONAL_STATES = ""
-print(f"Added States: {_ADDITIONAL_STATES}")
+console_log(f"Added States: {_ADDITIONAL_STATES}")
 
 _ADDITIONAL_WARDROBE_STATES = _ADDITIONAL_STATES.replace(", ", "|")
 
@@ -1714,7 +1738,7 @@ def cleanup_generated_frames(
                 os.remove(path)
                 deleted.append(path)
         except OSError as error:
-            print(f"WARNING: could not clean up generated frame {path}: {error}")
+            console_log(f"WARNING: could not clean up generated frame {path}: {error}")
 
     if vision_segment is not None:
         segment_directory = os.path.join(
@@ -1725,7 +1749,7 @@ def cleanup_generated_frames(
             if os.path.isdir(segment_directory) and not os.listdir(segment_directory):
                 os.rmdir(segment_directory)
         except OSError as error:
-            print(
+            console_log(
                 f"WARNING: could not remove empty vision-frame directory "
                 f"{segment_directory}: {error}"
             )
@@ -2609,7 +2633,7 @@ def load_phrase_exclusions(path=PHRASE_EXCLUSIONS_FILE):
 def load_additional_states(path=ADDITIONAL_STATES_FILE):
     """Load the comma-delimited additional state text from its keyed file."""
     raw = load_text_file(path, required=False)
-    print(f"Added States: {raw.strip()}")
+    console_log(f"Added States: {raw.strip()}")
     return raw
 
 
@@ -2920,7 +2944,7 @@ def prune_missing_reference_images(
             expected_connection = [node_id, 0]
             if container.get(leaf_name) != expected_connection:
                 container[leaf_name] = expected_connection
-                print(
+                console_log(
                     f"{workflow_label} connected Reference Image {image_number} "
                     f"to '{destination_name}.{input_name}'."
                 )
@@ -2994,7 +3018,7 @@ def disconnect_reference_images(
             continue
         del container[leaf_name]
         removed.append(image_number)
-        print(
+        console_log(
             f"{workflow_label} disconnected Reference Image {image_number} "
             f"because of {reason}."
         )
@@ -3034,7 +3058,7 @@ def verify_reference_images(
                 not isinstance(source_connection, list)
                 or len(source_connection) != 2
             ):
-                print(
+                console_log(
                     f"WARNING: {workflow_label} '{destination_title}' input "
                     f"'{connection}' is not connected to an image."
                 )
@@ -3046,14 +3070,14 @@ def verify_reference_images(
                 or source.get("class_type") != "LoadImage"
                 or output_index != 0
             ):
-                print(
+                console_log(
                     f"WARNING: {workflow_label} '{destination_title}' input "
                     f"'{connection}' does not receive a LoadImage output."
                 )
                 continue
             image_name = source.get("inputs", {}).get("image")
             if not isinstance(image_name, str) or not image_name.strip():
-                print(
+                console_log(
                     f"WARNING: {workflow_label} image source for '{connection}' "
                     "has no image filename."
                 )
@@ -3094,23 +3118,23 @@ def verify_reference_images(
     for image_number, initial_name in initial_references.items():
         append_name = append_references.get(image_number)
         if append_name is None:
-            print(
+            console_log(
                 f"WARNING: Image {initial_name} is connected in the initial "
                 f"workflow but not in the append workflow."
             )
         elif initial_name != append_name:
-            print(
+            console_log(
                 f"WARNING: Reference Image {image_number} differs between "
                 f"workflows: {initial_name!r} vs {append_name!r}."
             )
         refresh_name = refresh_references.get(image_number)
         if refresh_workflow is not None and refresh_name is None:
-            print(
+            console_log(
                 f"WARNING: Image {initial_name} is connected in the initial "
                 "workflow but not in the refresh workflow."
             )
         elif refresh_name is not None and initial_name != refresh_name:
-            print(
+            console_log(
                 f"WARNING: Reference Image {image_number} differs between "
                 f"initial and refresh workflows: {initial_name!r} vs "
                 f"{refresh_name!r}."
@@ -3129,13 +3153,13 @@ def verify_reference_images(
             input_directory,
         )
         if decode_error is not None:
-            print(
+            console_log(
                 f"WARNING: Image {image_name} for reference slot "
                 f"{image_number} is invalid ({decode_error}) and will be "
                 f"disconnected before queueing: {image_path}"
             )
             continue
-        print(f"Image {image_name} decoded and verified.")
+        console_log(f"Image {image_name} decoded and verified.")
 
 
 # Verify that command-line LoRAs exist in ComfyUI's LoRA directory.
@@ -3161,7 +3185,7 @@ def verify_global_loras(global_loras, lora_directory=None):
             raise FileNotFoundError(
                 f"Global LoRA not found: {lora_name!r} (expected {lora_path})"
             )
-        print(f"Global LoRA {lora_name}:{strength:g} verified.")
+        console_log(f"Global LoRA {lora_name}:{strength:g} verified.")
 
 
 # Build run config.
@@ -3407,7 +3431,7 @@ def _inherit_na_subject_identity_values(expected, actual, context, subject_id):
         and expected.get("gender") != "N/A"
     ):
         original = expected.get("gender")
-        print(
+        console_log(
             f"WARNING: Subject identity field gender for Subject ID "
             f"{subject_id} was passed as 'N/A' in {context}; keeping the "
             f"original value {original!r}."
@@ -3527,7 +3551,7 @@ def _inherit_na_subject_genders_in_registry(lock, registry_state, context):
             and locked.get("gender") != "N/A"
         ):
             original = locked.get("gender")
-            print(
+            console_log(
                 f"WARNING: Subject identity field gender for Subject ID "
                 f"{subject_id} was passed as 'N/A' in {context}; keeping the "
                 f"original value {original!r}."
@@ -4038,7 +4062,7 @@ def _guard_combined_continuity_subjects(
             speaker_id=record.get("speaker_id"),
         )
         if existing_name is None:
-            print(
+            console_log(
                 "WARNING: Ignoring continuity identity that was not registered "
                 f"before continuity extraction for {name!r}."
             )
@@ -4049,7 +4073,7 @@ def _guard_combined_continuity_subjects(
             scene_description,
             grounding_registry,
         ):
-            print(
+            console_log(
                 "WARNING: Ignoring continuity identity without explicit scene "
                 f"evidence for {record.get('name') or raw_name!r}."
             )
@@ -4219,7 +4243,7 @@ def parse_subject_registry(subject_definitions):
             # registry. Keep the first definition because it is the
             # established identity, and ignore the duplicate so this
             # recoverable collision does not abort generation.
-            print(
+            console_log(
                 f"WARNING: duplicate subject name {name!r}; keeping the first "
                 "registered identity and ignoring the duplicate.",
                 flush=True,
@@ -6486,7 +6510,7 @@ def wait_for_resume_checkpoint(
     ):
         return state
 
-    print(
+    console_log(
         f"Checkpoint currently has {len(records)}/{required_count} required "
         f"segment records; waiting up to {timeout:g} seconds for segment "
         f"{required_count} to finish committing.",
@@ -6504,7 +6528,7 @@ def wait_for_resume_checkpoint(
             isinstance(reloaded_records, list)
             and len(reloaded_records) >= required_count
         ):
-            print(
+            console_log(
                 f"Segment {required_count} checkpoint commit detected; "
                 "continuing resume.",
                 flush=True,
@@ -6744,7 +6768,7 @@ def validate_repair_checkpoint(state, segment_number):
     ):
         record_index = required_segment - 1
         if record_index >= len(records):
-            print(
+            console_log(
                 f"WARNING: checkpoint record for segment {required_segment} is "
                 "missing; continuing repair using the generated video artifact.",
                 flush=True,
@@ -6931,7 +6955,7 @@ def restore_generation_state(
         raise RuntimeError("Generation checkpoint has no valid segment records.")
     if len(records) < required_count:
         if not records:
-            print(
+            console_log(
                 f"WARNING: checkpoint has no completed segments for resume at "
                 f"segment {resume_segment}; continuing with blank continuity.",
                 flush=True,
@@ -8086,25 +8110,25 @@ def print_minimax_beat_plan(beats, completed_beat_ids, reported_beat_ids):
     projected_completed.update(accepted)
     next_id = get_next_beat_id(beats, projected_completed)
 
-    print()
-    print("=" * 64)
-    print("MINIMAX H3 BEAT PLAN")
-    print("=" * 64)
-    print("Beat assigned to this prompt:")
+    console_log()
+    console_log("=" * 64)
+    console_log("MINIMAX H3 BEAT PLAN")
+    console_log("=" * 64)
+    console_log("Beat assigned to this prompt:")
     if accepted:
         for beat_id in accepted:
-            print(f"  Beat {beat_id}: {beats[beat_id - 1]}")
+            console_log(f"  Beat {beat_id}: {beats[beat_id - 1]}")
     else:
         current_id = get_next_beat_id(beats, completed_beat_ids)
-        print("  None reported complete by the formatted prompt.")
+        console_log("  None reported complete by the formatted prompt.")
         if current_id is not None:
-            print(f"  Still targeting Beat {current_id}: {beats[current_id - 1]}")
-    print("Next required after this prompt:")
+            console_log(f"  Still targeting Beat {current_id}: {beats[current_id - 1]}")
+    console_log("Next required after this prompt:")
     if next_id is None:
-        print("  All required beats would be complete.")
+        console_log("  All required beats would be complete.")
     else:
-        print(f"  Beat {next_id}: {beats[next_id - 1]}")
-    print("=" * 64)
+        console_log(f"  Beat {next_id}: {beats[next_id - 1]}")
+    console_log("=" * 64)
     return accepted, next_id
 
 
@@ -8139,7 +8163,7 @@ def apply_reported_beat_completions(
         if 1 <= beat_id <= len(beats) and beat_id != expected_id
     )
     if unexpected:
-        print(
+        console_log(
             "WARNING: Ignoring beat completion claim(s) not belonging to this "
             f"segment: {', '.join(str(x) for x in unexpected)}"
         )
@@ -8158,7 +8182,7 @@ def apply_reported_beat_completions(
             "created under the one-beat-per-segment contract."
         )
     completed.add(expected_id)
-    print(f"Segment {segment_number} completed Beat {expected_id}.")
+    console_log(f"Segment {segment_number} completed Beat {expected_id}.")
     return normalize_completed_beat_ids(beats, completed)
 
 
@@ -8387,7 +8411,7 @@ def repair_json_with_llm(
         except Exception as error:
             last_error = error
 
-    print(
+    console_log(
         f"WARNING: JSON repair failed after {LLM_CONNECTION_RETRIES} attempts; preserving the "
         f"original malformed response: {last_error}"
     )
@@ -8904,7 +8928,7 @@ def ask_llm(
                     "response_format" in request_payload
                     and _llm_host_rejected_response_format(response)
                 ):
-                    print(
+                    console_log(
                         "LLM host rejected structured response_format; "
                         "retrying once with Python-enforced formatting."
                     )
@@ -9032,7 +9056,7 @@ def ask_llm(
             last_error = e
             if isinstance(e, (requests.ConnectionError, requests.Timeout)):
                 last_connection_error = e
-            print(
+            console_log(
                 f"LLM request failed (attempt {attempt}/{max_attempts}): {e}"
             )
             if attempt < max_attempts:
@@ -9045,7 +9069,7 @@ def ask_llm(
             json.JSONDecodeError
         ) as e:
             last_error = e
-            print(
+            console_log(
                 f"LLM response/content was unusable (attempt "
                 f"{attempt}/{max_attempts}); retrying: {e}"
             )
@@ -9061,7 +9085,7 @@ def ask_llm(
     # A reachable model that keeps returning malformed/truncated content is a
     # content failure, not a fatal transport failure. Preserve its last reply
     # for the caller's parser/salvage path after the retry budget is exhausted.
-    print(
+    console_log(
         f"WARNING: LLM host returned no usable result after {max_attempts} "
         f"attempts; continuing with best effort: {last_error}"
     )
@@ -10407,7 +10431,7 @@ def _log_required_event_failure(
     """Print actionable diagnostics when an event is not completed."""
     event_id = str((event or {}).get("id", "unknown"))
     event_text = " ".join(str((event or {}).get("event", "")).split())
-    print(
+    console_log(
         f"Required event {event_id} failed at Beat {beat_number}: {event_text}\n"
         f"LLM call expected to complete it: {llm_call}\n"
         f"Reason: {reason}",
@@ -10547,7 +10571,7 @@ def _apply_required_event_state_effects(
             for path, value in updates.items():
                 persistent[path] = copy.deepcopy(value)
             if log:
-                print(
+                console_log(
                     f"Required event {event.get('id', '?')} applied persistent state: "
                     f"{effect['op']} = {json.dumps(effect, ensure_ascii=False)}",
                     flush=True,
@@ -12544,7 +12568,7 @@ def _beat_validation_state_from_checkpoint(
             details = []
             if missing_events:
                 details.append("missing required event IDs: " + ", ".join(missing_events))
-            print(
+            console_log(
                 f"WARNING: Beat validation checkpoint has an incomplete finalized "
                 f"phase {phase.get('phase_number')}; preserving pending required "
                 "events for best-effort continuation: "
@@ -12848,7 +12872,7 @@ def _run_forward_beat_validation(
                 str(completed).casefold() for completed in completed_cursor
             }
         ]
-        print(
+        console_log(
             f"Beat {beat_number} jobs: "
             f"current={assigned_job_label(beat_number, current_job)}; "
             f"next={assigned_job_label(next_job_beat, next_job) if next_job else 'none'}; "
@@ -12882,7 +12906,7 @@ def _run_forward_beat_validation(
                     except (LLMConnectionError, requests.RequestException, OSError, ValueError, TypeError) as error:
                         last_issue = f"Beat regeneration failed: {error}"
                         retry_feedback = last_issue
-                        print(
+                        console_log(
                             f"Beat {beat_number} validation attempt "
                             f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
                             f"{last_issue}",
@@ -12921,7 +12945,7 @@ def _run_forward_beat_validation(
                 )
                 retry_feedback = last_issue
                 regenerate_candidate = True
-                print(
+                console_log(
                     f"Beat {beat_number} validation attempt "
                     f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: INVALID; "
                     f"issue: {last_issue}",
@@ -12945,7 +12969,7 @@ def _run_forward_beat_validation(
                     for event in assigned_current_events
                 ],
             )
-            print(
+            console_log(
                 f"Validating Beat {beat_number} "
                 f"(attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}) "
                 "with the single beat validator.",
@@ -12969,7 +12993,7 @@ def _run_forward_beat_validation(
                 last_issue = f"Beat validator failed: {error}"
                 retry_feedback = last_issue
                 regenerate_candidate = False
-                print(
+                console_log(
                     f"Beat {beat_number} validation attempt "
                     f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
                     f"{last_issue}",
@@ -12979,7 +13003,7 @@ def _run_forward_beat_validation(
 
             validation_status = "VALID" if validation["valid"] else "INVALID"
             last_issue = validation["issue"] or "The beat validator rejected the candidate."
-            print(
+            console_log(
                 f"Beat {beat_number} validation attempt "
                 f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
                 f"{validation_status}; issue: "
@@ -13015,7 +13039,7 @@ def _run_forward_beat_validation(
                     last_issue = f"Beat finite-endpoint extractor failed: {error}"
                     retry_feedback = last_issue
                     regenerate_candidate = False
-                    print(
+                    console_log(
                         f"Beat {beat_number} finite-endpoint attempt "
                         f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
                         f"{last_issue}",
@@ -13030,7 +13054,7 @@ def _run_forward_beat_validation(
                     )
                     retry_feedback = last_issue
                     regenerate_candidate = True
-                    print(
+                    console_log(
                         f"Beat {beat_number} finite-endpoint attempt "
                         f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: INVALID; "
                         f"issue: {last_issue}",
@@ -13044,7 +13068,7 @@ def _run_forward_beat_validation(
                     candidate_beat=candidate,
                         previous_beat=finalized_texts[-1] if finalized_texts else "",
                 )
-                print(
+                console_log(
                     f"Checking Beat {beat_number} within-beat physical coherence "
                     f"(attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}).",
                     flush=True,
@@ -13073,7 +13097,7 @@ def _run_forward_beat_validation(
                     last_issue = f"Beat coherence validator failed: {error}"
                     retry_feedback = last_issue
                     regenerate_candidate = False
-                    print(
+                    console_log(
                         f"Beat {beat_number} coherence attempt "
                         f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
                         f"{last_issue}",
@@ -13088,7 +13112,7 @@ def _run_forward_beat_validation(
                     )
                     retry_feedback = last_issue
                     regenerate_candidate = True
-                    print(
+                    console_log(
                         f"Beat {beat_number} coherence attempt "
                         f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: INVALID; "
                         f"issue: {last_issue}",
@@ -13096,7 +13120,7 @@ def _run_forward_beat_validation(
                     )
                     continue
 
-                print(
+                console_log(
                     f"Beat {beat_number} coherence attempt "
                     f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: VALID.",
                     flush=True,
@@ -13150,7 +13174,7 @@ def _run_forward_beat_validation(
                         staged_state,
                         observed_patch,
                     )
-                    print(
+                    console_log(
                         f"Beat {beat_number} observed persistent state: "
                         + json.dumps(observed_patch, ensure_ascii=False),
                         flush=True,
@@ -13159,7 +13183,7 @@ def _run_forward_beat_validation(
                 # Accepted-state capture is auxiliary continuity metadata. A
                 # malformed observation must never invalidate an already-valid
                 # Beat or block prompt generation.
-                print(
+                console_log(
                     f"Beat {beat_number} accepted-state observation ignored: {exc}",
                     flush=True,
                 )
@@ -13187,8 +13211,8 @@ def _run_forward_beat_validation(
         finalized_through = beat_number
         checkpoint["beat_state_after"][str(beat_number)] = copy.deepcopy(state_cursor)
         save_checkpoint()
-        print(f"Beat {beat_number} accepted: {candidate}", flush=True)
-        print(
+        console_log(f"Beat {beat_number} accepted: {candidate}", flush=True)
+        console_log(
             f"Beat {beat_number} accepted and finalized; "
             f"committed required events: {', '.join(newly_completed) or 'none'}; "
             f"completed after={', '.join(_ordered_required_event_ids(all_event_ids, completed_cursor)) or 'none'}",
@@ -15029,7 +15053,7 @@ def extract_source_span_state_effects(
                     unit.text,
                     llm_request=llm_request,
                 )
-                print(
+                console_log(
                     f"Source unit {unit.id} state effects:\n"
                     f"Source span: {unit.text}\n"
                     "Result: "
@@ -15042,7 +15066,7 @@ def extract_source_span_state_effects(
             except ValueError as error:
                 last_error = error
                 if attempt < BEAT_RETRY_ATTEMPTS:
-                    print(
+                    console_log(
                         f"Source-unit state extraction for {unit.id} was invalid "
                         f"({attempt}/{BEAT_RETRY_ATTEMPTS}); retrying: {error}",
                         flush=True,
@@ -16886,7 +16910,7 @@ def load_story_arc(path, total_segments, source_text):
         re.fullmatch(r"[0-9a-f]{64}", stored_hash) is None
         or not secrets.compare_digest(stored_hash, expected_hash)
     ):
-        print(
+        console_log(
             f"Ignoring {path} because {hash_path} is missing or does not match "
             "the current story.txt source; a new story arc will be generated.",
             flush=True,
@@ -16894,7 +16918,7 @@ def load_story_arc(path, total_segments, source_text):
         return None
     declared_count = _story_arc_declared_beat_count(raw_arc)
     if declared_count is not None and declared_count != int(total_segments):
-        print(
+        console_log(
             f"Ignoring {path} because it declares {declared_count} beats, but "
             f"the requested generation has {int(total_segments)}; a new story "
             "arc will be generated.",
@@ -16909,7 +16933,7 @@ def load_story_arc(path, total_segments, source_text):
             validate_state_effects=False,
         )
     except ValueError as error:
-        print(
+        console_log(
             f"Ignoring {path} because its macro schema is invalid ({error}); "
             "a new story arc will be generated.",
             flush=True,
@@ -17107,7 +17131,7 @@ def build_source_span_macro_arc_from_story(
         total_segments,
         llm_request,
         history_metadata=history_metadata,
-        on_source_span=lambda unit: print(
+        on_source_span=lambda unit: console_log(
             f"Source span {unit.id} [{unit.start}:{unit.end}]: {unit.text}",
             flush=True,
         ),
@@ -17788,8 +17812,8 @@ def generate_beats_via_story_expansion(
         )
 
     save_expanded_story(expanded_story, expanded_story_path)
-    print(f"Expanded story saved to {expanded_story_path}.", flush=True)
-    print("Expanded story:\n" + expanded_story, flush=True)
+    console_log(f"Expanded story saved to {expanded_story_path}.", flush=True)
+    console_log("Expanded story:\n" + expanded_story, flush=True)
 
     extracted_beats = None
     last_error = None
@@ -17827,7 +17851,7 @@ def generate_beats_via_story_expansion(
             raise
         except (TypeError, ValueError) as error:
             last_error = error
-            print(
+            console_log(
                 "Story-to-Beats response was invalid; requesting the complete "
                 f"Beat set again: {error}",
                 flush=True,
@@ -17844,12 +17868,12 @@ def generate_beats_via_story_expansion(
         macro_arc,
         subject_information=subject_information,
     )
-    print(
+    console_log(
         f"Story-derived Beat framework created with {len(extracted_beats)} beats.",
         flush=True,
     )
     for beat_number, beat_text in enumerate(extracted_beats, start=1):
-        print(f"Beat {beat_number} created: {beat_text}", flush=True)
+        console_log(f"Beat {beat_number} created: {beat_text}", flush=True)
 
     def repair_candidate(
         *,
@@ -17943,7 +17967,7 @@ def generate_beats_from_story(
     if llm_request is None:
         llm_request = ask_llm
     if not str(story or "").strip():
-        print(
+        console_log(
             "WARNING: story text is empty; no beats can be generated yet.",
             flush=True,
         )
@@ -17953,7 +17977,7 @@ def generate_beats_from_story(
     except (TypeError, ValueError):
         total_segments = 0
     if isinstance(total_segments, bool) or total_segments <= 0:
-        print(
+        console_log(
             f"WARNING: invalid beat count {total_segments!r}; returning no beats.",
             flush=True,
         )
@@ -18033,7 +18057,7 @@ def generate_beats_from_story(
         attempt = 0
         while attempt < max_attempts:
             attempt += 1
-            print(
+            console_log(
                 f"Requesting macro arc (attempt {combined_attempt}, "
                 f"response attempt {attempt}/{max_attempts}).",
                 flush=True,
@@ -18061,7 +18085,7 @@ def generate_beats_from_story(
                 },
             )
             try:
-                print(raw_arc, flush=True)
+                console_log(raw_arc, flush=True)
                 macro_arc = parse_flat_arc_plan(
                     raw_arc,
                     total_segments,
@@ -18070,13 +18094,13 @@ def generate_beats_from_story(
                 return (macro_arc, True)
             except ValueError as error:
                 last_error = error
-                print(
+                console_log(
                     "LLM host returned an invalid macro arc; requesting a "
                     f"corrected arc: {last_error}"
                 )
         
         # Max attempts reached without a structurally valid arc.
-        print(
+        console_log(
             f"Global beat macro arc generation reached maximum attempts ({max_attempts}); "
             "requesting a new combined attempt.",
             flush=True,
@@ -18099,7 +18123,7 @@ def generate_beats_from_story(
         response_attempt = 0
         while response_attempt < max_attempts:
             response_attempt += 1
-            print(
+            console_log(
                 f"Validating macro arc (attempt {combined_attempt}, "
                 f"response attempt {response_attempt}/{max_attempts}).",
                 flush=True,
@@ -18177,14 +18201,14 @@ def generate_beats_from_story(
                 return (validation, True)
             except ValueError as error:
                 last_error = error
-                print(
+                console_log(
                     "Macro arc validation response was malformed; "
                     f"requesting another response: {last_error}"
                 )
         
         # Max attempts reached; return an invalid result so the caller repairs
         # or restarts the arc rather than accepting an unvalidated arc.
-        print(
+        console_log(
             f"Macro arc validation parsing reached maximum attempts ({max_attempts}); "
             "returning to arc creation.",
             flush=True,
@@ -18208,7 +18232,7 @@ def generate_beats_from_story(
                 macro_arc, created = None, False
                 last_error = f"Arc creation failed: {error}"
             if not created or not isinstance(macro_arc, dict):
-                print(
+                console_log(
                     f"Arc creation failed; restarting arc creation "
                     f"({process_round}/{process_budget}).",
                     flush=True,
@@ -18231,13 +18255,13 @@ def generate_beats_from_story(
                         "issues": [f"Arc validation failed: {error}"],
                     }, False
                 if parsed and validation.get("valid"):
-                    print("Macro arc validation: VALID", flush=True)
+                    console_log("Macro arc validation: VALID", flush=True)
                     return current_arc, True
 
                 issues = validation.get("issues") or [
                     "The macro arc did not satisfy semantic validation."
                 ]
-                print(
+                console_log(
                     "Macro arc validation: INVALID — " + " ".join(map(str, issues)),
                     flush=True,
                 )
@@ -18290,7 +18314,7 @@ def generate_beats_from_story(
                             replacements,
                             total_segments,
                         )
-                        print(
+                        console_log(
                             "Applied focused ARC majority tail repair.",
                             flush=True,
                         )
@@ -18298,7 +18322,7 @@ def generate_beats_from_story(
                     except LLMConnectionError:
                         raise
                     except Exception as error:
-                        print(
+                        console_log(
                             "Focused ARC majority tail repair failed; falling back "
                             f"to complete ARC repair: {error}",
                             flush=True,
@@ -18308,7 +18332,7 @@ def generate_beats_from_story(
                 repair_error = None
                 for repair_round in range(1, BEAT_RETRY_ATTEMPTS + 1):
                     try:
-                        print("Repairing macro arc.", flush=True)
+                        console_log("Repairing macro arc.", flush=True)
                         repair_raw = llm_request(
                             build_macro_arc_repair_messages(
                                 story,
@@ -18340,7 +18364,7 @@ def generate_beats_from_story(
                         raise
                     except Exception as error:
                         repair_error = error
-                        print(
+                        console_log(
                             f"Macro arc repair failed; retrying repair "
                             f"({repair_round}/{BEAT_RETRY_ATTEMPTS}): {error}",
                             flush=True,
@@ -18353,7 +18377,7 @@ def generate_beats_from_story(
                     break
                 current_arc = repaired
 
-            print(
+            console_log(
                 "Macro arc validation/repair budget exhausted; restarting "
                 "the arc from creation.",
                 flush=True,
@@ -18414,7 +18438,7 @@ def generate_beats_from_story(
             batch_start = phase_batch["batch_start"]
             batch_end = phase_batch["batch_end"]
             batch_size = batch_end - batch_start + 1
-            print(
+            console_log(
                 f"Generating macro phase {current_phase['phase_number']} "
                 f"({batch_size} beats, global beats {batch_start}-{batch_end} "
                 f"of {total_segments}).",
@@ -18438,7 +18462,7 @@ def generate_beats_from_story(
                         "beat list"
                     )
                 )
-                print(
+                console_log(
                     f"Requesting beats for phase {current_phase['phase_number']} "
                     f"(attempt {attempt_label}).",
                     flush=True,
@@ -18522,7 +18546,7 @@ def generate_beats_from_story(
                     last_error = error
                     correction = str(error)
                     if attempt >= BEAT_PHASE_GENERATION_ATTEMPTS:
-                        print(
+                        console_log(
                             f"Phase {current_phase['phase_number']} failed "
                             f"beat-list validation on all {attempt} attempts: "
                             f"{last_error}; restarting the full beat process.",
@@ -18534,7 +18558,7 @@ def generate_beats_from_story(
                         ) from error
                     else:
                         batch_beats = None
-                        print(
+                        console_log(
                             "LLM returned an invalid beat list; requesting a "
                             f"corrected list: {last_error}"
                         )
@@ -18548,9 +18572,9 @@ def generate_beats_from_story(
                     f"{BEAT_PHASE_GENERATION_ATTEMPTS} beat-generation attempts."
                 )
             for beat_number, beat_text in enumerate(batch_beats, start=batch_start):
-                print(f"Beat {beat_number} created: {beat_text}", flush=True)
+                console_log(f"Beat {beat_number} created: {beat_text}", flush=True)
             generated.extend(batch_beats)
-            print(
+            console_log(
                 f"Accepted macro phase {current_phase['phase_number']}; collected "
                 f"{len(generated)}/{total_segments} beats.",
                 flush=True,
@@ -18641,7 +18665,7 @@ def generate_beats_from_story(
             phrase_exclusions=phrase_exclusions,
             llm_request=llm_request,
         )
-        print(f"Beat {beat_number} created: {regenerated[0]}", flush=True)
+        console_log(f"Beat {beat_number} created: {regenerated[0]}", flush=True)
         return regenerated[0]
 
     # Keep an accepted story arc immutable across candidate, phase, framework,
@@ -18693,7 +18717,7 @@ def generate_beats_from_story(
             recovered_beats = load_beats(path)
         except (OSError, TypeError, ValueError, IndexError):
             return None
-        print(
+        console_log(
             "WARNING: beat validation completed all beats, but its final handoff "
             f"raised {error!r}; recovered the accepted checkpoint and continuing.",
             flush=True,
@@ -18712,7 +18736,7 @@ def generate_beats_from_story(
                     saved_arc_checked = True
                     if macro_arc_uses_source_span_planner(cached_macro_arc):
                         active_macro_arc = cached_macro_arc
-                        print(
+                        console_log(
                             f"Using cached source-span story plan from "
                             f"{story_arc_path}.",
                             flush=True,
@@ -18735,7 +18759,7 @@ def generate_beats_from_story(
                                 story_arc_source,
                                 story_arc_path,
                             )
-                            print(
+                            console_log(
                                 f"Using validated legacy story arc from "
                                 f"{story_arc_path}.",
                                 flush=True,
@@ -18743,7 +18767,7 @@ def generate_beats_from_story(
 
                 if active_macro_arc is None:
                     process_attempt += 1
-                    print(
+                    console_log(
                         f"\n=== Source-span planning attempt {process_attempt}/"
                         f"{BEAT_PROCESS_ATTEMPTS} ===",
                         flush=True,
@@ -18758,7 +18782,7 @@ def generate_beats_from_story(
                                 subject_information=subject_information,
                             )
                         )
-                        print(
+                        console_log(
                             "Source-span planner produced "
                             f"{len(source_plan.chapters)} chapter(s): "
                             + ", ".join(
@@ -18772,7 +18796,7 @@ def generate_beats_from_story(
                         raise
                     except Exception as source_plan_error:
                         active_macro_arc = None
-                        print(
+                        console_log(
                             "Source-span planner could not produce a valid "
                             "beat/source plan; restarting source-span planning: "
                             f"{source_plan_error}",
@@ -18788,7 +18812,7 @@ def generate_beats_from_story(
                     story_arc_source,
                     story_arc_path,
                 )
-                print(
+                console_log(
                     f"Saved story arc to {story_arc_path}.",
                     flush=True,
                 )
@@ -18833,7 +18857,7 @@ def generate_beats_from_story(
                 phase = story_arc_phase_for_beat(macro_arc, error.beat_number)
                 phase_number = phase.get("phase_number") if phase else None
 
-            print(
+            console_log(
                 f"WARNING: beat process attempt {process_attempt} failed: {error}",
                 flush=True,
             )
@@ -18894,7 +18918,7 @@ def generate_beats_from_story(
                                 if prefix_end
                                 else "no finalized beats"
                             )
-                            print(
+                            console_log(
                                 f"Retrying phase {phase_number} and all later "
                                 "phases with the same story arc; preserving "
                                 f"{preserved_prefix}.",
@@ -18902,7 +18926,7 @@ def generate_beats_from_story(
                             )
                             continue
                         except (OSError, TypeError, ValueError) as retry_error:
-                            print(
+                            console_log(
                                 f"Phase {phase_number} retry could not regenerate "
                                 f"its suffix: {retry_error}",
                                 flush=True,
@@ -18913,7 +18937,7 @@ def generate_beats_from_story(
                 force_clean_validation_state = True
                 if os.path.exists(validation_state_path):
                     os.remove(validation_state_path)
-                print(
+                console_log(
                     "Retrying the complete beat process with the same story arc "
                     "and clean validation state.",
                     flush=True,
@@ -18923,7 +18947,7 @@ def generate_beats_from_story(
             if macro_arc is None:
                 raise
 
-            print(
+            console_log(
                 "All beat, phase, and same-arc full-process retries are exhausted; "
                 "requesting a new macro story arc.",
                 flush=True,
@@ -18941,7 +18965,7 @@ def generate_beats_from_story(
         except LLMConnectionError:
             raise
         except RequiredEventStateApplicationError as error:
-            print(
+            console_log(
                 "Required-event state application failed deterministically; "
                 f"preserving the current story arc instead of restarting it: {error}",
                 flush=True,
@@ -18951,7 +18975,7 @@ def generate_beats_from_story(
             # H3 generation is an interactive recovery loop. Any recoverable
             # failure at this outer boundary returns to arc creation instead
             # of terminating the process or exposing a fatal exception.
-            print(
+            console_log(
                 f"Generation failed; discarding the failing process state and "
                 f"restarting from arc creation: {error}",
                 flush=True,
@@ -18971,7 +18995,7 @@ def generate_beats_from_story(
                     if os.path.exists(stale_path):
                         os.remove(stale_path)
                 except OSError as cleanup_error:
-                    print(
+                    console_log(
                         f"Could not remove stale retry artifact {stale_path}: "
                         f"{cleanup_error}; continuing recovery.",
                         flush=True,
@@ -18996,7 +19020,7 @@ def load_or_generate_beats(
     try:
         raw = load_text_file(path, required=not force_generate)
     except (OSError, ValueError) as error:
-        print(
+        console_log(
             f"Could not read {path} ({error}); regenerating the beat plan.",
             flush=True,
         )
@@ -19006,7 +19030,7 @@ def load_or_generate_beats(
         beats, lora_directive = parse_beats_content(raw)
     except ValueError as error:
         if not force_generate:
-            print(
+            console_log(
                 f"Existing beats could not be parsed ({error}); regenerating "
                 "the beat plan.",
                 flush=True,
@@ -19021,7 +19045,7 @@ def load_or_generate_beats(
             phrase_exclusions,
         )
         if exclusion_issues:
-            print(
+            console_log(
                 f"{path} violates phrase_exclusions.txt; regenerating the "
                 "beat plan: " + " ".join(exclusion_issues),
                 flush=True,
@@ -19031,12 +19055,12 @@ def load_or_generate_beats(
         else:
             return beats
     if force_generate:
-        print(
+        console_log(
             f"Asking LLM host to replace {path} with {total_segments} creative "
             "story beats."
         )
     else:
-        print(
+        console_log(
             f"{path} is empty; asking LLM host to create {total_segments} "
             "creative story beats before generation starts."
         )
@@ -19279,7 +19303,7 @@ def _normalize_raw_scene_result(raw_result):
             text = text[first_newline + 1:-3].strip()
     text = re.sub(r"(?is)^\s*raw_scene\s*:\s*", "", text, count=1)
     if not text:
-        print(
+        console_log(
             "WARNING: Director Request 1 returned an empty raw_scene; "
             "continuing with N/A best effort."
         )
@@ -20495,14 +20519,14 @@ def _verify_authoritative_opening_state_handoff(
         return
     expected = str(previous_end_state or "").strip()
     if not expected:
-        print(
+        console_log(
             f"WARNING: Segment {segment_number} has no previous segment end continuity "
             "state to use as its AUTHORITATIVE OPENING STATE; continuing with "
             "the provided prompt."
         )
         return
     if not isinstance(formatter_messages, list) or len(formatter_messages) < 2:
-        print(
+        console_log(
             f"WARNING: Segment {segment_number} formatter prompt is missing its user message."
             " Continuing with the provided prompt."
         )
@@ -20516,7 +20540,7 @@ def _verify_authoritative_opening_state_handoff(
         else ""
     )
     if not actual.startswith(expected + "\n\n"):
-        print(
+        console_log(
             f"WARNING: Segment {segment_number} AUTHORITATIVE OPENING STATE does not "
             "match the previous segment's End continuity state; continuing with "
             "the provided prompt."
@@ -21403,7 +21427,7 @@ def request_five_bullet_summary(
         if normalized is not None:
             return normalized
 
-    print(
+    console_log(
         "WARNING: LLM host did not return an exact eight-field previous state "
         f"after {content_attempts} attempts; using N/A best effort."
     )
@@ -21583,7 +21607,7 @@ def sanitize_continuity_delta(candidate, subject_definitions, committed_state):
         if canonical_name is None and raw_name_text.isdigit():
             canonical_name = id_to_name.get(raw_name_text)
         if canonical_name is None:
-            print(
+            console_log(
                 "WARNING: Ignoring continuity delta for unknown Subject "
                 f"{proposed_name or raw_name!r}; identities are Python-owned."
             )
@@ -22159,7 +22183,7 @@ def register_inline_dialogue_subjects(
             for record in state["subjects"].values()
         )
         if subject_collision or speaker_collision:
-            print(
+            console_log(
                 "WARNING: Ignoring colliding dialogue Subject "
                 f"{proposed_name!r} (<Subject {subject_id}>, {speaker_id})."
             )
@@ -22293,7 +22317,7 @@ def _complete_partial_continuity_candidate(candidate, committed_snapshot):
             # committed record; explicit N/A/empty-array values still travel
             # through the normal candidate path and remain valid clear signals.
             subjects[name] = copy.deepcopy(record)
-            print(
+            console_log(
                 f"[Continuity] Subject {name!r} omitted by the LLM; "
                 "preserving its committed state (no update)."
             )
@@ -22733,7 +22757,7 @@ def reconcile_h3_wardrobe_with_canonical_state(
     ):
         old = description[start:end]
         description = description[:start] + replacement + description[end:]
-        print(
+        console_log(
             f"[H3] Canonical wardrobe reconciliation for {name!r}: "
             f"{old!r} -> {replacement!r}."
         )
@@ -22803,7 +22827,7 @@ def _repair_candidate_wardrobe_extraction(
         ).items():
             old_value = wardrobe.get(field, "N/A")
             wardrobe[field] = value
-            print(
+            console_log(
                 f"[Continuity] explicit wardrobe action for {name!r}: "
                 f"{field} {old_value!r} -> {value!r}."
             )
@@ -23371,7 +23395,7 @@ def normalize_structured_continuity_state(
 
     validation_error = candidate_error()
     if validation_error:
-        print(f"[Continuity] canonical replacement rejected: {validation_error}")
+        console_log(f"[Continuity] canonical replacement rejected: {validation_error}")
         return None
 
     # COPY FORWARD FIRST. This is the central continuity invariant.
@@ -23469,7 +23493,7 @@ def normalize_structured_continuity_state(
                 continuity_registry,
             )
         ):
-            print(
+            console_log(
                 "WARNING: Ignoring continuity Subject update without explicit "
                 f"scene evidence for {record.get('name') or raw_name!r}."
             )
@@ -23479,7 +23503,7 @@ def normalize_structured_continuity_state(
             proposed_name = str(record.get("name", raw_name)).strip()
             if not proposed_name or proposed_name.isdigit():
                 continue
-            print(
+            console_log(
                 "[Continuity] ignoring unregistered Subject candidate "
                 f"{proposed_name!r}; identity registration must happen "
                 "before continuity extraction."
@@ -23541,7 +23565,7 @@ def normalize_structured_continuity_state(
                     newest_description,
                 )
             ):
-                print(
+                console_log(
                     "WARNING: Ignoring unevidenced structural continuity "
                     f"change for {name} ({field}): {value!r}"
                 )
@@ -23627,9 +23651,9 @@ def normalize_structured_continuity_state(
         rendered = json.dumps(value, ensure_ascii=False)
         return rendered if len(rendered) <= 120 else rendered[:117] + "..."
 
-    print("[Continuity] copy-forward patch accepted")
+    console_log("[Continuity] copy-forward patch accepted")
     if location_transition:
-        print(
+        console_log(
             "[Continuity] location transition cleanup: "
             f"{brief(committed_environment.get('location', 'N/A'))} -> "
             f"{brief(state['environment']['location'])}"
@@ -23637,11 +23661,11 @@ def normalize_structured_continuity_state(
     for field in ("camera", "ongoing_action", "ongoing_audio"):
         old_value = committed_snapshot.get(field, "N/A")
         if old_value != state[field]:
-            print(f"[Continuity] {field}: {brief(old_value)} -> {brief(state[field])}")
+            console_log(f"[Continuity] {field}: {brief(old_value)} -> {brief(state[field])}")
     old_names = set(committed_snapshot.get("subjects", {}))
     new_names = set(state.get("subjects", {})) - old_names
     if new_names:
-        print("[Continuity] new Subjects: " + ", ".join(sorted(new_names)))
+        console_log("[Continuity] new Subjects: " + ", ".join(sorted(new_names)))
     return state
 
 
@@ -23982,12 +24006,12 @@ def _best_effort_continuity_opening_state(reduced_state):
 
 # Print continuity phase result.
 def _print_continuity_phase_result(phase_number, title, value):
-    print()
-    print("=" * 64)
-    print(f"CONTINUITY PHASE {phase_number}: {title}")
-    print("=" * 64)
-    print(_continuity_json_text(value) if phase_number < 2 else str(value))
-    print("=" * 64)
+    console_log()
+    console_log("=" * 64)
+    console_log(f"CONTINUITY PHASE {phase_number}: {title}")
+    console_log("=" * 64)
+    console_log(_continuity_json_text(value) if phase_number < 2 else str(value))
+    console_log("=" * 64)
 
 
 # Run only continuity Phase 2 from an already-finalized end state.
@@ -24067,13 +24091,13 @@ def request_continuity_opening_state(
         except Exception as error:
             last_error = error
         if attempt < LLM_CONNECTION_RETRIES:
-            print(
+            console_log(
                 f"[Continuity] Phase 2 response was unusable "
                 f"({attempt}/{LLM_CONNECTION_RETRIES}); retrying: {last_error}"
             )
 
     fallback = _best_effort_continuity_opening_state(state_for_opening)
-    print(
+    console_log(
         "WARNING: Continuity Phase 2 exhausted its content retries; using "
         f"best-effort serialized state: {last_error}"
     )
@@ -24430,11 +24454,11 @@ def request_combined_continuity(
             )
             if raw_received:
                 parse_error = error.__cause__ or error
-                print("CONTINUITY RAW RESPONSE - PARSE FAILURE:")
-                print(raw if isinstance(raw, str) else repr(raw))
-                print(f"CONTINUITY PARSE ERROR: {parse_error}")
+                console_log("CONTINUITY RAW RESPONSE - PARSE FAILURE:")
+                console_log(raw if isinstance(raw, str) else repr(raw))
+                console_log(f"CONTINUITY PARSE ERROR: {parse_error}")
             if attempt < attempts:
-                print(f"[Continuity] returned unusable JSON; retrying: {error}")
+                console_log(f"[Continuity] returned unusable JSON; retrying: {error}")
     if reduced_state is None:
         fallback_state = (
             copy.deepcopy(committed_state)
@@ -24445,7 +24469,7 @@ def request_combined_continuity(
             subject_definitions,
             fallback_state,
         )
-        print(
+        console_log(
             "WARNING: Continuity exhausted its JSON/content retries; using "
             f"the last canonical state plus source-authorized end state: {combined_error}"
         )
@@ -24579,7 +24603,7 @@ def request_structured_continuity_state(
         )
         if delta is None:
             if attempt < attempts:
-                print(
+                console_log(
                     "[Continuity] updater response was unusable; requesting a "
                     "corrected delta."
                 )
@@ -24600,7 +24624,7 @@ def request_structured_continuity_state(
         )
         if normalized is None:
             if attempt < attempts:
-                print(
+                console_log(
                     "[Continuity] Python rejected the delta; requesting a "
                     "corrected delta."
                 )
@@ -24641,27 +24665,27 @@ def request_structured_continuity_state(
             raise
         except Exception as error:
             # The validator is a semantic safety check, not the state owner.
-            print(
+            console_log(
                 "WARNING: continuity-state LLM validation failed; using the "
                 f"Python-built candidate state: {error}"
             )
             return normalized
 
         if validation["valid"]:
-            print("[Continuity] LLM validation passed for Python-built state.")
+            console_log("[Continuity] LLM validation passed for Python-built state.")
             return normalized
 
         validation_feedback = "\n".join(
             f"- {issue}" for issue in validation["issues"]
         )
-        print("[Continuity] LLM validation rejected candidate state:")
+        console_log("[Continuity] LLM validation rejected candidate state:")
         for issue in validation["issues"]:
-            print(f"  - {issue}")
+            console_log(f"  - {issue}")
         if attempt < attempts:
-            print("[Continuity] requesting a corrected delta.")
+            console_log("[Continuity] requesting a corrected delta.")
 
     if last_normalized is not None:
-        print(
+        console_log(
             "WARNING: continuity-state validation did not fully pass after "
             "all correction attempts; using the latest Python-built candidate "
             "state instead of discarding it."
@@ -25045,11 +25069,11 @@ def request_subject_continuity(subjects, descriptions, llm_request=None):
         except Exception as error:
             last_error = error
             if attempt < LLM_CONNECTION_RETRIES:
-                print(
+                console_log(
                     f"WARNING: subject continuity response was unusable "
                     f"({attempt}/{LLM_CONNECTION_RETRIES}); retrying: {error}"
                 )
-    print(
+    console_log(
         "WARNING: subject continuity extraction exhausted its retries; "
         f"using empty best effort: {last_error}"
     )
@@ -25138,7 +25162,7 @@ def build_hard_cut_subject_continuity(
                 + "."
             )
         else:
-            print(
+            console_log(
                 "WARNING: Exact hard-cut continuity could not be recovered for "
                 f"<Subject {subject_number}> {subject_name}; omitting the "
                 "continuity reminder rather than inventing details."
@@ -25840,7 +25864,7 @@ def _assert_h3_subject_identity(prompt, subject_definitions, continuity_state=No
         continuity_state=continuity_state,
     )
     if issues:
-        print(
+        console_log(
             "WARNING: Final H3 prompt retained unresolved Subject identity "
             "issue(s); continuing with the repaired prompt:\n"
             + "\n".join(f"- {issue}" for issue in issues),
@@ -26988,7 +27012,7 @@ def free_vram():
             timeout=60
         ).raise_for_status()
     except requests.RequestException as e:
-        print(f"WARNING: ComfyUI could not release VRAM: {e}")
+        console_log(f"WARNING: ComfyUI could not release VRAM: {e}")
 
 
 class WorkflowConfigurationError(RuntimeError):
@@ -27054,7 +27078,7 @@ def queue_workflow(
             # it through the same bounded ComfyUI budget so transient server
             # validation/state races do not abort the whole run immediately.
             last_error = e
-            print(
+            console_log(
                 f"ComfyUI queue rejected the workflow "
                 f"(attempt {attempt}/{max_retries}): {e}"
             )
@@ -27074,19 +27098,19 @@ def queue_workflow(
                 if guid_attempts >= 3:
                     previous_client_id = client_id
                     client_id = str(uuid.uuid4())
-                    print(
+                    console_log(
                         f"ComfyUI connection failed for GUID "
                         f"{previous_client_id}; re-submitting prompt "
                         f"with a new client ID {client_id}."
                     )
                     guid_attempts = 0
                 else:
-                    print(
+                    console_log(
                         f"ComfyUI queue failed for GUID {client_id} "
                         f"({guid_attempts}/3): {e}"
                     )
             else:
-                print(
+                console_log(
                     f"ComfyUI queue failed (attempt {attempt}/{max_retries}): {e}"
                 )
             if attempt < max_retries:
@@ -27179,7 +27203,7 @@ def wait_for_completion(
             consecutive_errors += 1
             if isinstance(e, (requests.ConnectionError, requests.Timeout)):
                 last_connection_error = e
-            print(
+            console_log(
                 f"ComfyUI history check failed "
                 f"({consecutive_errors}/{max_consecutive_errors}): {e}"
             )
@@ -27758,7 +27782,7 @@ def ask_vision_model(
         ) as error:
             last_error = error
             if attempt < max_retries:
-                print(
+                console_log(
                     f"[Vision] End-state request failed for segment "
                     f"{segment_number} ({attempt}/{max_retries}); retrying: {error}"
                 )
@@ -27768,7 +27792,7 @@ def ask_vision_model(
             f"Vision LLM could not be reached after {max_retries} attempts "
             f"for segment {segment_number}."
         ) from last_error
-    print(
+    console_log(
         f"WARNING: Vision end-state content was unusable after {max_retries} "
         f"attempts for segment {segment_number}; using empty best effort: "
         f"{last_error}"
@@ -28366,7 +28390,7 @@ def capture_h3_fixture(
         json.dump(fixture, handle, ensure_ascii=False, indent=2)
         handle.write("\n")
     os.replace(temporary_path, output_path)
-    print(f"Saved H3 experiment fixture to {output_path}", flush=True)
+    console_log(f"Saved H3 experiment fixture to {output_path}", flush=True)
 
 
 # Render one segment, retrying only recoverable ComfyUI failures.
@@ -28407,7 +28431,7 @@ def _render_segment_with_retries(
         macro_arc=macro_arc,
     )
     if refresh_segment:
-        print(
+        console_log(
             f"AUTO REFRESH: segment {segment} is using "
             f"'{os.path.basename(REFRESH_WORKFLOW_FILE)}' with the final "
             f"{APPEND_CONTEXT_FRAMES} frames as context latents "
@@ -28427,13 +28451,13 @@ def _render_segment_with_retries(
         if retry_number:
             #free_vram()
             if segment == 1 or refresh_segment:
-                print(
+                console_log(
                     f"Retrying ComfyUI render ({retry_number}/"
                     f"{COMFY_RENDER_RETRIES}) at "
                     f"{current_megapixels:.2f} MP."
                 )
             else:
-                print(
+                console_log(
                     f"Retrying ComfyUI render ({retry_number}/"
                     f"{COMFY_RENDER_RETRIES}) at inherited resolution."
                 )
@@ -28483,7 +28507,7 @@ def _render_segment_with_retries(
                 require_in_prompt=refresh_segment,
             )
             prompt_id = queue_workflow(workflow)
-            print(f"ComfyUI prompt ID: {prompt_id}")
+            console_log(f"ComfyUI prompt ID: {prompt_id}")
             if render_started_event is not None:
                 render_started_event.set()
             comfy_result = wait_for_completion(prompt_id)
@@ -28501,7 +28525,7 @@ def _render_segment_with_retries(
                 )
             return workflow, video_path, width, height, current_megapixels
         except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
-            print(
+            console_log(
                 f"ComfyUI render attempt failed "
                 f"({retry_number + 1}/{COMFY_RENDER_RETRIES + 1}): {error}"
             )
@@ -28573,7 +28597,7 @@ def render_repair_segment_with_retries(
             - retry_number * COMFY_RETRY_MEGAPIXEL_STEP,
         )
         if retry_number:
-            print(
+            console_log(
                 f"Retrying repair render ({retry_number}/{COMFY_RENDER_RETRIES}) "
                 f"at {current_megapixels:.2f} MP."
             )
@@ -28595,7 +28619,7 @@ def render_repair_segment_with_retries(
                 segment_number,
             )
             prompt_id = queue_workflow(workflow)
-            print(f"ComfyUI prompt ID: {prompt_id}")
+            console_log(f"ComfyUI prompt ID: {prompt_id}")
             comfy_result = wait_for_completion(prompt_id)
             video_path = get_video_path(comfy_result, workflow)
             if (
@@ -28608,7 +28632,7 @@ def render_repair_segment_with_retries(
             width, height = get_video_resolution(video_path)
             return workflow, video_path, width, height, current_megapixels
         except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
-            print(
+            console_log(
                 f"ComfyUI repair attempt failed "
                 f"({retry_number + 1}/{COMFY_RENDER_RETRIES + 1}): {error}"
             )
@@ -29302,17 +29326,17 @@ def stitch_videos(
             f"trimmed_{os.path.basename(video_path)}",
         )
         if index == 0:
-            print(
+            console_log(
                 f"Trimming segment {index + 1} to "
                 f"{target_duration:g} seconds."
             )
         elif target_duration is None:
-            print(
+            console_log(
                 f"Trimming first {trim_frames} frames from "
                 f"segment {index + 1}."
             )
         else:
-            print(
+            console_log(
                 f"Trimming first {trim_frames} frames from "
                 f"segment {index + 1} and limiting it to "
                 f"{target_duration:g} seconds."
@@ -29375,9 +29399,9 @@ def stitch_videos(
         except FileNotFoundError:
             pass
         except OSError as error:
-            print(f"Warning: could not delete trimmed video {trimmed_path}: {error}")
+            console_log(f"Warning: could not delete trimmed video {trimmed_path}: {error}")
 
-    print(f"Stitching complete: {FINAL_VIDEO}")
+    console_log(f"Stitching complete: {FINAL_VIDEO}")
 
 
 # Rerender one checkpointed middle segment without changing semantic state.
@@ -29557,7 +29581,7 @@ def repair_existing_segment(
         "source_sha256",
         hashlib.sha256(beats_raw.encode("utf-8")).hexdigest(),
     )
-    print(
+    console_log(
         f"Requesting a fresh Director prompt from Beat {segment_number} in "
         f"{os.path.basename(beats_path)}."
     )
@@ -29590,25 +29614,25 @@ def repair_existing_segment(
         continuity_state=opening_state,
     )
 
-    print()
-    print(
+    console_log()
+    console_log(
         f"# {'=' * 64} DIRECTOR REQUEST 2: H3 prompt - SEGMENT {segment_number}"
     )
-    print(h3_prompt)
-    print("=" * 64)
-    print("END H3 PROMPT - SEGMENT {segment_number}\n{'=' * 64}")
-    print("=" * 64)
+    console_log(h3_prompt)
+    console_log("=" * 64)
+    console_log("END H3 PROMPT - SEGMENT {segment_number}\n{'=' * 64}")
+    console_log("=" * 64)
 
     loras = beat_loras(beats, segment_number, global_loras)
 
-    print()
-    print("=" * 64)
-    print(f"REPAIR SEGMENT {segment_number}")
-    print("=" * 64)
-    print(
+    console_log()
+    console_log("=" * 64)
+    console_log(f"REPAIR SEGMENT {segment_number}")
+    console_log("=" * 64)
+    console_log(
         f"Previous anchor: segment {segment_number - 1} final frame"
     )
-    print(
+    console_log(
         f"Next anchor: segment {segment_number + 1} stitched frame "
         f"{repair_trim_frames}"
     )
@@ -29646,7 +29670,7 @@ def repair_existing_segment(
         raise RuntimeError(
             f"Repair output is missing or empty: {repaired_video_path}"
         )
-    print(
+    console_log(
         f"Created: {repaired_video_path}\n"
         f"Resolution: {width} x {height} "
         f"({width * height / 1_000_000:.3f} MP; "
@@ -29666,7 +29690,7 @@ def repair_existing_segment(
         )
         save_generation_state(generation_state, generation_state_path)
 
-    print("Repaired video clip saved, you can run stitch.bat to combine them.")
+    console_log("Repaired video clip saved, you can run stitch.bat to combine them.")
     return {
         "video_path": repaired_video_path,
         "width": width,
@@ -30605,11 +30629,11 @@ def parse_director_continuity_validation(raw_result, formatter=None):
             "issues is empty."
         )
     if not valid:
-        print("Director continuity validation failed with the following issues:", flush=True)
+        console_log("Director continuity validation failed with the following issues:", flush=True)
         for issue in normalized:
-            print(f"{issue['problem']}\n", flush=True)
+            console_log(f"{issue['problem']}\n", flush=True)
     else:
-        print("Director continuity validation passed with no issues.", flush=True)
+        console_log("Director continuity validation passed with no issues.", flush=True)
     return {"valid": valid, "issues": normalized}
 
 
@@ -30650,7 +30674,7 @@ def validate_director_continuity(bundle):
         or bundle.get("h3_opening_summary")
     )
     if not _meaningful_director_continuity(opening_state):
-        print(
+        console_log(
             f"WARNING: Segment {segment_number} Director continuity is missing "
             "or unusable; continuing with blank continuity.",
             flush=True,
@@ -30663,7 +30687,7 @@ def validate_director_continuity(bundle):
         "prompt_plus_visual": "vision",
     }.get(source, source)
     if source not in {"prompt", "vision"}:
-        print(
+        console_log(
             f"WARNING: Segment {segment_number} Director continuity source is "
             f"invalid ({source or 'missing'!r}); using prompt best effort.",
             flush=True,
@@ -30728,7 +30752,7 @@ def resolve_director_raw_scene_pronouns(
     timed_original = original[:end_match.start()].rstrip()
     end_state_original = original[end_match.start():].strip()
 
-    print("Checking pronouns segment:", flush=True)
+    console_log("Checking pronouns segment:", flush=True)
     result = llm_request(
         build_director_pronoun_resolution_messages(
             timed_original,
@@ -30753,7 +30777,7 @@ def resolve_director_raw_scene_pronouns(
     resolved_timed = _canonicalize_director_timestamps(
         result.get("raw_scene", "")
     ).strip()
-    print(
+    console_log(
         "Checking pronouns segment: LLM result="
         + (resolved_timed or "<empty>"),
         flush=True,
@@ -30775,7 +30799,7 @@ def resolve_director_raw_scene_pronouns(
         )
 
     if resolved_timed == timed_original:
-        print("Checking pronouns segment: no replacements.", flush=True)
+        console_log("Checking pronouns segment: no replacements.", flush=True)
     else:
         original_lines = timed_original.splitlines()
         resolved_lines = resolved_timed.splitlines()
@@ -30787,12 +30811,12 @@ def resolve_director_raw_scene_pronouns(
             replacements = ["timed RAW text changed while preserving timestamps."]
         if replacements:
             for replacement in replacements:
-                print(
+                console_log(
                     f"Checking pronouns segment: replaced {replacement}",
                     flush=True,
                 )
         else:
-            print("Checking pronouns segment: replacements applied.", flush=True)
+            console_log("Checking pronouns segment: replacements applied.", flush=True)
     return resolved
 
 
@@ -30976,7 +31000,7 @@ def resolve_director_raw_scene_subjects(
         seen.add(key)
         names.append(name)
 
-    print(
+    console_log(
         "Checking RAW Subjects segment: "
         + (", ".join(names) if names else "no dynamic Subjects"),
         flush=True,
@@ -31088,7 +31112,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     except (TypeError, ValueError):
         segment_number = 1
     continuity_source = validate_director_continuity(bundle)
-    print(
+    console_log(
         f"Segment {segment_number} Director continuity source: "
         f"{continuity_source}",
         flush=True,
@@ -31096,7 +31120,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     duration = float(bundle.get("current_duration") or 0)
     if not math.isfinite(duration) or duration <= 0:
         duration = 1.0
-        print(
+        console_log(
             f"WARNING: Segment {segment_number} has no positive Director "
             "duration; using a one-second best-effort fallback.",
             flush=True,
@@ -31156,7 +31180,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         f"Director Request 1 returned malformed shot script for "
                         f"Segment {segment_number}: " + "; ".join(structure_errors)
                     )
-                print(
+                console_log(
                     f"Director Request 1 shot-script structure failed "
                     f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
                     f"retrying: " + "; ".join(structure_errors),
@@ -31215,7 +31239,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                             f"Director Request 1 remained physically incoherent for "
                             f"Segment {segment_number}: {issue}"
                         )
-                    print(
+                    console_log(
                         f"Director Request 1 physical/order coherence failed "
                         f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
                         f"retrying: {issue}",
@@ -31325,13 +31349,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 )
 
             if diagnostics:
-                print(
+                console_log(
                     f"Director baseline diagnostics for Segment {segment_number} "
                     "(non-blocking):",
                     flush=True,
                 )
                 for issue in dict.fromkeys(diagnostics):
-                    print(f"  WARNING: {issue}", flush=True)
+                    console_log(f"  WARNING: {issue}", flush=True)
             break
 
         if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
@@ -31340,7 +31364,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 f"{segment_number} after {DIRECTOR_RAW_SCENE_ATTEMPTS} attempts."
             )
 
-        print(
+        console_log(
             f"Director Request 1 returned no usable RAW SCENE "
             f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
             "retrying the same segment.",
@@ -31375,7 +31399,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         if resolved_raw_scene != raw_scene:
             raw_scene = resolved_raw_scene
             request1_result["raw_scene"] = raw_scene
-            print(
+            console_log(
                 f"Segment {segment_number} RAW person pronouns resolved to "
                 "explicit names before H3 formatting.",
                 flush=True,
@@ -31387,18 +31411,18 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         ValueError,
         TypeError,
     ) as error:
-        print(
+        console_log(
             f"WARNING: Segment {segment_number} RAW pronoun resolution ignored: "
             f"{error}",
             flush=True,
         )
 
-    print()
-    print("=" * 64)
-    print(f"DIRECTOR REQUEST 1: RAW SCENE - SEGMENT {segment_number}")
-    print("=" * 64)
-    print(raw_scene)
-    print("=" * 64)
+    console_log()
+    console_log("=" * 64)
+    console_log(f"DIRECTOR REQUEST 1: RAW SCENE - SEGMENT {segment_number}")
+    console_log("=" * 64)
+    console_log(raw_scene)
+    console_log("=" * 64)
 
     # Request 2 gets a scene-scoped projection of continuity as helpful opening
     # context. It is not a semantic validator for Request 1.
@@ -31420,10 +31444,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 or ""
             ).strip()
 
-    print()
-    print("=" * 64)
-    print(f"H3 SOUNDSCAPE REQUEST - SEGMENT {segment_number}")
-    print("=" * 64)
+    console_log()
+    console_log("=" * 64)
+    console_log(f"H3 SOUNDSCAPE REQUEST - SEGMENT {segment_number}")
+    console_log("=" * 64)
 
     soundscape = "N/A"
     soundscape_messages = build_h3_soundscape_messages(raw_scene)
@@ -31446,7 +31470,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 raw_soundscape,
                 raw_scene=raw_scene,
             )
-            print(
+            console_log(
                 f"H3 soundscape segment {segment_number}: {soundscape!r}",
                 flush=True,
             )
@@ -31459,7 +31483,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             TypeError,
         ) as error:
             if audio_attempt < 2:
-                print(
+                console_log(
                     f"H3 soundscape segment {segment_number} invalid "
                     f"(attempt {audio_attempt}/2); retrying: {error}",
                     flush=True,
@@ -31473,7 +31497,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     "descriptions."
                 )
                 continue
-            print(
+            console_log(
                 f"WARNING: H3 soundscape segment {segment_number} failed; "
                 f"using N/A: {error}",
                 flush=True,
@@ -31481,8 +31505,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     music = "N/A"
     if not (run_config or {}).get("no_music", False):
-        print(f"H3 MUSIC REQUEST - SEGMENT {segment_number}")
-        print("=" * 64)
+        console_log(f"H3 MUSIC REQUEST - SEGMENT {segment_number}")
+        console_log("=" * 64)
 
         music_messages = build_h3_music_messages(
             raw_scene,
@@ -31505,7 +31529,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     max_tokens=512,
                 )
                 music = parse_h3_music_result(raw_music)
-                print(
+                console_log(
                     f"H3 music segment {segment_number}: {music!r}",
                     flush=True,
                 )
@@ -31518,7 +31542,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 TypeError,
             ) as error:
                 if audio_attempt < 2:
-                    print(
+                    console_log(
                         f"H3 music segment {segment_number} invalid "
                         f"(attempt {audio_attempt}/2); retrying: {error}",
                         flush=True,
@@ -31530,7 +31554,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "name characters, actions, or sound effects."
                     )
                     continue
-                print(
+                console_log(
                     f"WARNING: H3 music segment {segment_number} failed; using N/A: "
                     f"{error}",
                     flush=True,
@@ -31655,7 +31679,7 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
     validate_runtime_environment()
     generated_video_paths = []
     previous_video_path = None
-    print(
+    console_log(
         f"Rendering {total_segments} saved H3 prompt(s) from "
         f"{os.path.basename(path)} without LLM generation.",
         flush=True,
@@ -31708,7 +31732,7 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
             generated_video_paths,
             video_path,
         )
-        print(
+        console_log(
             f"Created: {video_path}\n"
             f"Resolution: {width} x {height} "
             f"({width * height / 1_000_000:.3f} MP; "
@@ -31744,7 +31768,7 @@ def prepare_new_generation():
             os.remove(path)
         except FileNotFoundError:
             pass
-    print("New run: cleared beats and generated planning checkpoints.", flush=True)
+    console_log("New run: cleared beats and generated planning checkpoints.", flush=True)
 
 
 def require_existing_beats(path, total_segments):
@@ -31788,17 +31812,17 @@ def _run_main(
     generate_prompts_only = generate_prompts_count is not None
     director_only = bool(getattr(args, "director_only", False))
     if generate_beats_only:
-        print(
+        console_log(
             "Generating the story arc and beats based on story.txt",
             flush=True,
         )
     if generate_prompts_only:
-        print(
+        console_log(
             "Generating story arc, beats, and final H3 prompts without ComfyUI.",
             flush=True,
         )
     if director_only:
-        print(
+        console_log(
             "Director-only test: using existing story_arc.json and beats.txt; "
             "arc/beat generation is disabled.",
             flush=True,
@@ -31952,7 +31976,7 @@ def _run_main(
             f"{total_segments} segments, but beats.txt contains {len(beats)} beats."
         )
     if generate_beats_only:
-        print("Story arc and beats generated successfully.", flush=True)
+        console_log("Story arc and beats generated successfully.", flush=True)
         return
 
     story_location_metadata = {}
@@ -31966,14 +31990,14 @@ def _run_main(
                 expanded_story_for_locations,
                 history_metadata={"run_id": run_id},
             )
-            print(
+            console_log(
                 "Story location metadata: "
                 f"overall={story_location_metadata['overall_location']!r}; "
                 f"starting={story_location_metadata['starting_location']!r}",
                 flush=True,
             )
         else:
-            print(
+            console_log(
                 "WARNING: expanded_story.txt is unavailable; Segment 1 will "
                 "continue without extracted location metadata.",
                 flush=True,
@@ -32026,7 +32050,7 @@ def _run_main(
                 if int(record.get("segment", 0)) < resume_segment
             ]
         except Exception as error:
-            print(
+            console_log(
                 f"WARNING: could not reuse saved prompt prefix during "
                 f"recovery: {error}. Regenerating the prompt file from the "
                 "current resume point.",
@@ -32057,7 +32081,7 @@ def _run_main(
     if not test_prompt_generation:
         validate_runtime_environment()
     else:
-        print(
+        console_log(
             "Prompt-generation test mode enabled: ComfyUI rendering and "
             "stitching are disabled.",
             flush=True,
@@ -32142,7 +32166,7 @@ def _run_main(
             # fallback must stay here, rather than in prepare_append_workflow,
             # so a valid checkpoint is never silently overridden.
             previous_video_path = assumed_comfyui_video_path(resume_segment - 1)
-            print(
+            console_log(
                 f"WARNING: generation state could not be restored for resume "
                 f"at segment {resume_segment}: {error}. Assuming previous "
                 f"video is {previous_video_path}.",
@@ -32239,16 +32263,16 @@ def _run_main(
         with generation_state_lock:
             save_generation_state(generation_state)
 
-    print()
-    print("=" * 64)
-    print("H3 AUTOMATED DIRECTOR")
-    print("=" * 64)
-    print(f"Segment length:       {segment_length:g} seconds")
-    print(f"Total story length:   {total_length:g} seconds")
-    print(f"Total segments:       {total_segments}")
-    print(f"Starting segment:     {resume_segment}")
-    print(f"Initial megapixels:   {megapixels:g}")
-    print(f"Steps:                {args.steps}")
+    console_log()
+    console_log("=" * 64)
+    console_log("H3 AUTOMATED DIRECTOR")
+    console_log("=" * 64)
+    console_log(f"Segment length:       {segment_length:g} seconds")
+    console_log(f"Total story length:   {total_length:g} seconds")
+    console_log(f"Total segments:       {total_segments}")
+    console_log(f"Starting segment:     {resume_segment}")
+    console_log(f"Initial megapixels:   {megapixels:g}")
+    console_log(f"Steps:                {args.steps}")
     visual_continuity_label = (
         "disabled (prompt-generation test)"
         if test_prompt_generation
@@ -32262,17 +32286,17 @@ def _run_main(
             )
         )
     )
-    print(f"Visual Continuity:    {visual_continuity_label}")
-    print(f"Stitch trim:          {trim_frames} frames after segment 1")
-    print(f"Retention analysis:   {'enabled' if retention else 'disabled'}")
-    print(
+    console_log(f"Visual Continuity:    {visual_continuity_label}")
+    console_log(f"Stitch trim:          {trim_frames} frames after segment 1")
+    console_log(f"Retention analysis:   {'enabled' if retention else 'disabled'}")
+    console_log(
         "Prompt generation test: "
         + ("enabled" if test_prompt_generation else "disabled")
     )
-    print(f"Formatter:            {getattr(args, 'model', 'gpt')}")
-    print(f"Global LoRAs:         {len(global_loras)}")
+    console_log(f"Formatter:            {getattr(args, 'model', 'gpt')}")
+    console_log(f"Global LoRAs:         {len(global_loras)}")
     chapter_refreshes = source_span_refresh_segments(macro_arc)
-    print(
+    console_log(
         "Auto refresh:         "
         + (
             "chapter starts at segment(s) "
@@ -32285,16 +32309,16 @@ def _run_main(
             )
         )
     )
-    print(f"Vision continuity:    {visual_continuity_label}")
-    print("Director prompting:    2-stage raw scene -> H3 formatter")
+    console_log(f"Vision continuity:    {visual_continuity_label}")
+    console_log("Director prompting:    2-stage raw scene -> H3 formatter")
     if beats:
-        print(f"Story beats:          {len(beats)}")
-        print("Persistent state:     generation_state.json")
+        console_log(f"Story beats:          {len(beats)}")
+        console_log("Persistent state:     generation_state.json")
     else:
-        print("Story beats:          disabled (beats.txt is blank)")
-        print("Beat progress file:   disabled")
-        print("Persistent state:     generation_state.json")
-    print("=" * 64)
+        console_log("Story beats:          disabled (beats.txt is blank)")
+        console_log("Beat progress file:   disabled")
+        console_log("Persistent state:     generation_state.json")
+    console_log("=" * 64)
 
     # Workflow validation remains local-only; prompt-only mode still performs
     # image and LoRA verification so its console output matches a normal run.
@@ -32333,12 +32357,12 @@ def _run_main(
         exclusion_count_label = (
             "entry" if len(phrase_exclusions) == 1 else "entries"
         )
-        print(
+        console_log(
             f"Phrase exclusions file found: {PHRASE_EXCLUSIONS_FILE} "
             f"({len(phrase_exclusions)} {exclusion_count_label})."
         )
     verify_global_loras(global_loras, lora_directory)
-    print(
+    console_log(
         "Workflow validation passed."
         if not test_prompt_generation
         else "Prompt-only setup validation passed."
@@ -32577,7 +32601,7 @@ def _run_main(
                 raise RuntimeError("prefetched director request was cancelled")
             generation_state["prefetched_next_prompt"] = prefetched_checkpoint
             save_generation_state(generation_state)
-        print(
+        console_log(
             f"Prefetched prompt for segment {payload['segment']} saved to "
             "generation_state.json.",
             flush=True,
@@ -32625,7 +32649,7 @@ def _run_main(
             # subject_definitions = base_subject_definitions
             # save_generation_state(generation_state)
             phase_number = beats[segment - 1].phase_number
-            print(
+            console_log(
                 f"Starting phase {phase_number} at segment {segment}; retaining "
                 "dynamically created Subjects from earlier phases."
             )
@@ -32651,14 +32675,14 @@ def _run_main(
                         save_generation_state(generation_state)
                 prefetched_next = None
 
-        print()
-        print("=" * 64)
-        print(
+        console_log()
+        console_log("=" * 64)
+        console_log(
             f"SEGMENT {segment}/{total_segments} "
             f"({segment_bundle['current_duration']:g} seconds)"
         )
-        print("=" * 64)
-        print(
+        console_log("=" * 64)
+        console_log(
             f"Estimated LLM input context: "
             f"{segment_bundle['estimated_tokens']}/{LLM_INPUT_TOKEN_BUDGET} tokens "
             f"(recent exact segments: {segment_bundle['recent_count']})"
@@ -32673,9 +32697,9 @@ def _run_main(
                     == segment_bundle["fingerprint"]
                 ):
                     payload = speculative_payload
-                    print(f"Using prefetched LLM response for segment {segment}.")
+                    console_log(f"Using prefetched LLM response for segment {segment}.")
                 else:
-                    print(
+                    console_log(
                         f"Discarded prefetched LLM response for segment {segment} "
                         "because the confirmed beat, continuity, or subject state "
                         "differed; re-querying the LLM."
@@ -32683,7 +32707,7 @@ def _run_main(
             except LLMConnectionError:
                 raise
             except Exception as error:
-                print(
+                console_log(
                     f"WARNING: prefetched LLM response for segment {segment} failed: "
                     f"{error}. Regenerating now."
                 )
@@ -32727,7 +32751,7 @@ def _run_main(
             ValueError,
             TypeError,
         ) as error:
-            print(
+            console_log(
                 f"WARNING: RAW Subject resolution failed for Segment {segment}; "
                 f"using accepted RAW unchanged: {error}",
                 flush=True,
@@ -32809,9 +32833,9 @@ def _run_main(
             generation_state["subject_registry_state"] = migrate_continuity_state(
                 continuity_state
             )
-            print("Registered new Subject definition(s) before H3 prompt:")
+            console_log("Registered new Subject definition(s) before H3 prompt:")
             for definition in new_subject_lines:
-                print(f"  {definition}")
+                console_log(f"  {definition}")
 
         # Fail before rendering if the Director/formatter tried to reuse an
         # existing Subject ID for a different person or changed its metadata.
@@ -32886,7 +32910,7 @@ def _run_main(
             ],
         })
         save_generated_prompts_file(generated_prompts_payload)
-        print(
+        console_log(
             f"Saved finalized H3 prompt {segment}/{total_segments} to "
             f"{os.path.basename(GENERATED_PROMPTS_FILE)}.",
             flush=True,
@@ -32914,7 +32938,7 @@ def _run_main(
                 subject_definitions=subject_definitions,
                 label=f"captured segment {segment}",
             )
-            print(
+            console_log(
                 f"Saved final-H3 extractor fixture to "
                 f"{args.capture_h3_validation_fixture}.",
                 flush=True,
@@ -32961,7 +32985,7 @@ def _run_main(
                     segment_bundle.get("assigned_state_effects", [])
                 ),
             )
-            print(
+            console_log(
                 f"Combined continuity requested for segment {segment} "
                 + (
                     "during prompt generation."
@@ -32970,7 +32994,7 @@ def _run_main(
                 )
             )
         else:
-            print(
+            console_log(
                 f"Skipping continuity for final segment {segment}; "
                 "no later segment needs its state."
             )
@@ -32981,13 +33005,13 @@ def _run_main(
             reported_beat_ids
         )
 
-        print()
-        print(
+        console_log()
+        console_log(
             f"# {'=' * 64} FINAL H3 PROMPT - SEGMENT {segment}"
         )
-        print(h3_prompt)
-        print(f"# {'=' * 64} END H3 PROMPT - SEGMENT {segment}")
-        print()
+        console_log(h3_prompt)
+        console_log(f"# {'=' * 64} END H3 PROMPT - SEGMENT {segment}")
+        console_log()
 
         # A skipped vision-continuity render runs in the background. The path
         # from the prior completed segment may still be non-None, so checking
@@ -33004,7 +33028,7 @@ def _run_main(
             except ComfyUIConnectionError:
                 raise
             except Exception as error:
-                print(
+                console_log(
                     f"WARNING: waiting for the previous segment render to finish "
                     f"before starting segment {segment} failed: {error}. "
                     "Returning to the last committed segment checkpoint."
@@ -33057,7 +33081,7 @@ def _run_main(
             }
         render_future = None
         if test_prompt_generation:
-            print(
+            console_log(
                 f"ComfyUI render skipped for segment {segment}; continuing "
                 "with prompt-derived continuity only."
             )
@@ -33103,7 +33127,7 @@ def _run_main(
                     # Surface workflow preparation/queue failures instead of waiting
                     # forever for a render-start signal that cannot arrive.
                     render_future.result()
-            print(
+            console_log(
                 f"ComfyUI render started for segment {segment}; building the "
                 "prompt-derived end-state prediction while the video renders."
             )
@@ -33117,7 +33141,7 @@ def _run_main(
             except LLMConnectionError:
                 raise
             except Exception as error:
-                print(
+                console_log(
                     f"WARNING: combined continuity for segment {segment} failed: "
                     f"{error}; retaining the last continuity outputs."
                 )
@@ -33142,12 +33166,12 @@ def _run_main(
                 prompt_reduced_continuity_state,
             )
             if vision_required:
-                print(
+                console_log(
                     f"Combined continuity completed for segment {segment}; "
                     "Phase 2 is waiting for rendered visual state."
                 )
             else:
-                print(
+                console_log(
                     f"Combined continuity completed for segment {segment}; "
                     "vision continuity is disabled for this cadence, so Phase 2 "
                     "uses the prompt-derived state immediately."
@@ -33161,7 +33185,7 @@ def _run_main(
                 ),
                 "opening_state": "",
             }
-            print(
+            console_log(
                 f"WARNING: Segment {segment} prompt-derived continuity is "
                 "missing; scheduling the next Director with the last known "
                 "state as best effort."
@@ -33207,7 +33231,7 @@ def _run_main(
                 reduced_continuity_state
             )
             generation_state["continuity_summary"] = continuity_summary
-            print(
+            console_log(
                 f"Segment {segment} continuity source: prompt-derived state; "
                 "opening state is ready before Director prefetch."
             )
@@ -33242,9 +33266,9 @@ def _run_main(
                 continuity_state,
             )
         if appended_subject_lines:
-            print("Registered video-created subject definition(s) internally:")
+            console_log("Registered video-created subject definition(s) internally:")
             for definition in appended_subject_lines:
-                print(f"  {definition}")
+                console_log(f"  {definition}")
 
         if beats:
             completed_beat_ids = apply_reported_beat_completions(
@@ -33290,7 +33314,7 @@ def _run_main(
         # deliberately added only after ComfyUI returns a verified video path,
         # so an interrupted or failed render is never advertised as resumable.
         checkpoint_generation_state()
-        print(
+        console_log(
             f"Prompt-derived continuity prediction saved before the ComfyUI "
             f"response for segment {segment}."
         )
@@ -33337,7 +33361,7 @@ def _run_main(
                     prompt_reduced_continuity_state
                 )
                 save_generation_state(generation_state)
-            print(
+            console_log(
                 f"Completed prompt generation for segment {segment}; "
                 "no ComfyUI request was sent."
             )
@@ -33371,12 +33395,12 @@ def _run_main(
                         prefetch_cancellation,
                     ),
                 }
-                print(
+                console_log(
                     f"Started LLM prefetch for segment {segment + 1} without waiting "
                     f"for segment {segment}'s video render because vision continuity "
                     "is skipped by cadence."
                 )
-            print(
+            console_log(
                 "Skipping the render wait for this segment so the next prompt can "
                 "start immediately while the render continues in the background."
             )
@@ -33401,7 +33425,7 @@ def _run_main(
                         rendered_megapixels,
                     ) = future.result()
                 except Exception:
-                    print(
+                    console_log(
                         f"Segment {skipped_segment_number} render failed after the "
                         "cadence skipped its visual continuity check; the prompt-"
                         "derived state was already allowed to proceed."
@@ -33410,7 +33434,7 @@ def _run_main(
                     pending_render_finalized.set()
                     return
                 if not isinstance(video_path, str) or not video_path.strip():
-                    print(
+                    console_log(
                         f"Segment {skipped_segment_number} finished without a valid "
                         "video path; skipping the background completion record."
                     )
@@ -33454,7 +33478,7 @@ def _run_main(
                             "newly_completed_beat_ids": skipped_prompt_completed_beat_ids,
                         }
                     save_generation_state(generation_state)
-                print(
+                console_log(
                     f"Completed segment {skipped_segment_number} from the "
                     "prompt-derived state while its render finished in the "
                     "background."
@@ -33479,12 +33503,12 @@ def _run_main(
                 with generation_state_lock:
                     generation_state.pop("prefetched_next_prompt", None)
                     save_generation_state(generation_state)
-            print(
+            console_log(
                 f"Segment {segment} render failed; its LLM-returned working state "
                 "was saved, but the segment was not marked complete."
             )
             raise
-        print(
+        console_log(
             f"Created: {video_path}\n"
             f"Resolution: {width} x {height} "
             f"({width * height / 1_000_000:.3f} MP; "
@@ -33502,20 +33526,20 @@ def _run_main(
                     subject_definitions,
                     segment,
                 )
-                print()
-                print("=" * 64)
-                print(f"VISUAL END STATE: SEGMENT {segment}")
-                print("=" * 64)
-                print(json.dumps(
+                console_log()
+                console_log("=" * 64)
+                console_log(f"VISUAL END STATE: SEGMENT {segment}")
+                console_log("=" * 64)
+                console_log(json.dumps(
                     visual_result["end_state"],
                     ensure_ascii=False,
                     indent=2,
                 ))
-                print("=" * 64)
+                console_log("=" * 64)
             except LLMConnectionError:
                 raise
             except Exception as error:
-                print(
+                console_log(
                     f"WARNING: visual end-state observation for segment {segment} "
                     f"failed: {error}. Generation will continue without it."
                 )
@@ -33527,12 +33551,12 @@ def _run_main(
                 prompt_reduced_continuity_state,
                 visual_state_for_merge,
             )
-            print()
-            print("=" * 64)
-            print(f"MERGED END STATE: SEGMENT {segment} (VISUAL PRECEDENCE)")
-            print("=" * 64)
-            print(json.dumps(reduced_continuity_state, ensure_ascii=False, indent=2))
-            print("=" * 64)
+            console_log()
+            console_log("=" * 64)
+            console_log(f"MERGED END STATE: SEGMENT {segment} (VISUAL PRECEDENCE)")
+            console_log("=" * 64)
+            console_log(json.dumps(reduced_continuity_state, ensure_ascii=False, indent=2))
+            console_log("=" * 64)
             state_source = "prompt_plus_visual"
             continuity_source = "vision" if visual_result is not None else "prompt"
         else:
@@ -33544,7 +33568,7 @@ def _run_main(
                 story,
                 reduced_continuity_state,
             )
-            print(
+            console_log(
                 f"Skipping rendered-frame vision continuity for segment {segment} "
                 f"(cadence={getattr(args, 'vision_continuity', 1)}); using the "
                 "non-wardrobe prompt continuity state."
@@ -33594,7 +33618,7 @@ def _run_main(
                 continuity_summary = _best_effort_continuity_opening_state(
                     phase2_state_for_opening
                 )
-                print(
+                console_log(
                     f"WARNING: Continuity for Segment {segment} is unavailable; "
                     f"using serialized best effort and continuing: {error}"
                 )
@@ -33653,7 +33677,7 @@ def _run_main(
                     "newly_completed_beat_ids": prompt_completed_beat_ids,
                 }
             save_generation_state(generation_state)
-        print(f"Completed segment {segment} committed with its rendered video.")
+        console_log(f"Completed segment {segment} committed with its rendered video.")
 
         next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
         if (
@@ -33680,12 +33704,12 @@ def _run_main(
                     prefetch_cancellation,
                 ),
             }
-            print(
+            console_log(
                 f"Started LLM prefetch for segment {segment + 1} after "
                 f"segment {segment}'s visual continuity merge."
             )
         elif next_segment_starts_phase and director_prefetch_executor is not None:
-            print(
+            console_log(
                 f"Skipped LLM prefetch for segment {segment + 1} because it "
                 "starts a new phase."
             )
@@ -33694,7 +33718,7 @@ def _run_main(
         hours = int(elapsed_seconds // 3600)
         minutes = int((elapsed_seconds % 3600) // 60)
         seconds = int(elapsed_seconds % 60)
-        print(f"Cumulative runtime: {hours:02d}:{minutes:02d}:{seconds:02d}")
+        console_log(f"Cumulative runtime: {hours:02d}:{minutes:02d}:{seconds:02d}")
 
         #if segment % 5 == 0:
         #    free_vram()
@@ -33708,13 +33732,13 @@ def _run_main(
             if beat_id not in completed_beat_ids
         ]
         if remaining:
-            print("WARNING: Runtime ended with unfinished beats:")
+            console_log("WARNING: Runtime ended with unfinished beats:")
             for beat_id in remaining:
-                print(f"  [TODO] Beat {beat_id}: {beats[beat_id - 1]}")
+                console_log(f"  [TODO] Beat {beat_id}: {beats[beat_id - 1]}")
         else:
-            print(f"All {len(beats)} story beats were marked complete.")
+            console_log(f"All {len(beats)} story beats were marked complete.")
     else:
-        print("Story beat tracking was disabled for this run.")
+        console_log("Story beat tracking was disabled for this run.")
 
     if test_prompt_generation:
         if generate_prompts_only:
@@ -33723,12 +33747,12 @@ def _run_main(
                     "Prompt generation ended without saving every final H3 prompt."
                 )
             save_generated_prompts_file(generated_prompts_payload)
-            print(
+            console_log(
                 f"Saved {total_segments} finalized H3 prompt(s) to "
                 f"{GENERATED_PROMPTS_FILE}."
             )
         else:
-            print(
+            console_log(
                 "Prompt-generation test completed: prompts were generated for all "
                 "requested segments and no data was sent to ComfyUI."
             )
@@ -33785,12 +33809,12 @@ def _run_main(
             break
         except Exception as error:
             cycle_attempt = ((stitch_attempt - 1) % LLM_CONNECTION_RETRIES) + 1
-            print(
+            console_log(
                 f"WARNING: stitching failed (attempt {cycle_attempt}/"
                 f"{LLM_CONNECTION_RETRIES} in current retry cycle): {error}"
             )
             if cycle_attempt == LLM_CONNECTION_RETRIES:
-                print(
+                console_log(
                     "Stitch retry cycle exhausted; restarting stitching from the "
                     "same completed segment set.",
                     flush=True,
@@ -33842,6 +33866,8 @@ def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
 
 # Run the command-line application under a persistent recovery supervisor.
 def main():
+    reset_console_logs()
+    console_log("Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
     recovery_resume_segment = None
     normalized_args = set(normalize_command_line(sys.argv[1:]))
     fail_fast_generation = bool(
@@ -33895,7 +33921,7 @@ def main():
             raise
         except Exception as error:
             if fail_fast_generation:
-                print(
+                console_log(
                     f"FATAL: prompt-generation run stopped at first real failure: "
                     f"{type(error).__name__}: {error}",
                     file=sys.stderr,
@@ -33912,12 +33938,12 @@ def main():
                 recovery_resume_segment = _checkpoint_recovery_resume_segment()
             elif recovery_resume_segment is None:
                 recovery_resume_segment = 1
-            print(
+            console_log(
                 f"WARNING: recoverable generation failure: {error}",
                 file=sys.stderr,
                 flush=True,
             )
-            print(
+            console_log(
                 "Restarting from the last committed checkpoint at segment "
                 f"{recovery_resume_segment}; the existing ARC/beat plan is retained.",
                 file=sys.stderr,
@@ -33933,20 +33959,19 @@ def main():
 if __name__ == "__main__":
     install_immediate_interrupt_handlers()
     start_emergency_stop_listener()
-    print("Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
     try:
         main()
     except KeyboardInterrupt:
-        print("\nGeneration cancelled by user.", file=sys.stderr)
+        console_log("\nGeneration cancelled by user.", file=sys.stderr)
         raise SystemExit(130) from None
     except LLMConnectionError as error:
-        print(
+        console_log(
             f"\nFATAL: cannot connect to the LLM runtime: {error}",
             file=sys.stderr,
         )
         raise SystemExit(1) from None
     except ComfyUIConnectionError as error:
-        print(
+        console_log(
             f"\nFATAL: cannot connect to ComfyUI: {error}",
             file=sys.stderr,
         )
