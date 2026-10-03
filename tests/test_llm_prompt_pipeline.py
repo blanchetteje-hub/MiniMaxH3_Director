@@ -804,6 +804,8 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("one continuous camera take", normalized)
         self.assertIn("move the camera instead of cutting", normalized)
         self.assertIn("tracks with a moving subject", normalized)
+        self.assertIn("CONTINUATION AIRLOCK", normalized)
+        self.assertIn("Start CURRENT BEAT at or after 00:01.000", normalized)
         self.assertIn("Explicitly locate every named subject whose final position matters", normalized)
         self.assertIn("NEXT BEAT is boundary context only", normalized)
         self.assertNotIn("Do not invent persistent changes", normalized)
@@ -834,6 +836,21 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("REFRAME THIS SEGMENT", segment_7)
         self.assertNotIn("REFRAME THIS SEGMENT", segment_3)
         self.assertIn("Do not force a new composition", segment_3)
+
+    def test_continuation_structure_rejects_action_inside_native_guide_airlock(self):
+        raw = (
+            "At 00:00.000, Amy holds the inherited composition.\n"
+            "At 00:00.500, Amy starts the new beat.\n"
+            "At 00:07.000, Amy finishes the beat.\n"
+            "End continuity state: Amy stands by the bar."
+        )
+        errors = minimax._director_raw_scene_structure_errors(
+            raw,
+            8.917,
+            minimum_second_timestamp=minimax.APPEND_GUIDE_CONTEXT_SECONDS,
+        )
+        self.assertTrue(errors)
+        self.assertIn("Continuation airlock", errors[0])
 
     def test_director_camera_choreography_segment_one_establishes_composition(self):
         rules = " ".join(minimax.build_director_rules(
@@ -1646,7 +1663,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
         self.assertIn(
             "non_diegetic_music MUST begin exactly with "
-            "'continues from <Video 1>.'",
+            "'Continue the established score seamlessly.'",
             continuation[1]["content"],
         )
         self.assertIn(
