@@ -1028,3 +1028,28 @@ the malformed RAW, which Python later copied into final H3 output. Request-1
 structure validation now rejects timestamps wrapped by labels/prose and rejects
 timestamp-only lines whose action is moved to following bullets. The Director must
 retry with normal `At mm:ss.mmm, action` lines.
+
+
+## 2026-10-03 handoff — native Guide overlap replaces append Ref2V
+
+Implemented on `summary-to-story-test`:
+
+- append uses the exact final 22 rendered frames as native
+  `MiniMaxH3AddGuide` conditioning at frame 0;
+- prior video/audio are disconnected from append Ref2V, which now carries
+  persistent Picture references only;
+- final H3 continuation text no longer claims a nonexistent preceding
+  `<Video 1>` reference;
+- raw append duration includes the duplicate guide head, then Python removes 20
+  frames and the existing stitch removes the remaining 2;
+- Director has a ~0.92-second airlock before CURRENT BEAT begins;
+- coherence checks now cover final-frame participant omission and moving an
+  occupied chair/stool/seat.
+
+No custom node package is required. Local ComfyUI must include the native
+`MiniMaxH3AddGuide` node; otherwise queueing fails with an update-ComfyUI
+message.
+
+Next acceptance target: rerun the tavern torture test, especially Segment 2→3
+and 4→5, verify Griffin1 survives Segment 4's final-frame state, and compare
+camera continuity/runtime against the Ref2V-tail experiments.
