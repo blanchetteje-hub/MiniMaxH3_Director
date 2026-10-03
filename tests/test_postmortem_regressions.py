@@ -137,6 +137,18 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertTrue(errors)
         self.assertIn("00:00.000", errors[0])
 
+    def test_frame_zero_state_anchor_is_allowed(self):
+        errors = minimax._director_raw_scene_structure_errors(
+            (
+                "At 00:00.000, Amy remains beside the open door.\n\n"
+                "At 00:02.000, Amy turns toward the counter.\n\n"
+                "At 00:06.500, Amy walks to the counter.\n\n"
+                "End continuity state: Amy stands at the counter."
+            ),
+            segment_seconds=8,
+        )
+        self.assertEqual(errors, [])
+
     def test_director_coherence_receives_previous_shot_end(self):
         messages = minimax.build_director_raw_scene_coherence_messages(
             "Amy opens the tavern door.",
