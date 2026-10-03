@@ -207,7 +207,7 @@ class H3ContinuityBoundaryTests(unittest.TestCase):
                 self.assertIn(action, prompt)
                 self.assertEqual(prompt.count("Live-action, cinematic"), 1)
                 self.assertEqual(
-                    prompt.count("continues from <Video 1>"),
+                    prompt.count("seamless continuation"),
                     1,
                 )
 
