@@ -928,3 +928,51 @@ Current workflow:
 
 Do not queue new `gpt-runtime` bridge jobs or wait for bridge results unless the
 user explicitly asks to restore the bridge workflow.
+
+
+## 2026-10-03 update — six continuity fixes from 8x6 acceptance render
+
+The 48-second / six-segment local acceptance render established that clean refresh is
+architecturally justified and should remain. The continuation chain showed the visible
+identity/seam accumulation; the Segment 5 -> 6 clean-refresh boundary was one of the
+cleanest transitions in the run. Refresh exists to reset generation quality rather than
+repeatedly conditioning on decoded/generated video indefinitely.
+
+Implemented six generic fixes:
+
+1. **Dynamic Subject Video-1 origin is now based on actual previous visibility.**
+   Final H3 subject definitions strip historical Video-1 markers first, then add exactly
+   one continuation marker only for Subjects visible in the immediately preceding video.
+   A Subject introduced in the current segment therefore does not claim to be continued
+   from <Video 1>. Dynamic Subject definitions without a Video-1 clause are now valid
+   registry syntax.
+2. **Continuation frame 0 is an inherited anchor.** When PREVIOUS SHOT END exists,
+   Request 1 must use 00:00.000 only to preserve the inherited subjects, positions,
+   props, and opening composition. CURRENT BEAT action and newly introduced Subjects
+   begin immediately after frame 0 rather than restaging the shot at the seam.
+3. **The RAW coherence validator no longer rejects legitimate new participants.**
+   A participant introduced by CURRENT BEAT need not exist in PREVIOUS SHOT END; only
+   already-established subjects/state must be physically reachable from the inherited
+   frame.
+4. **Functional Subject names propagate into End continuity state.** When a species/
+   role has one unambiguous canonical functional Subject (for example Centaur1), generic
+   end-state references are deterministically canonicalized. This prevents the continuity
+   guard from discarding correctly extracted dynamic Subject state merely because the
+   Director end-state reverted to an anonymous species noun.
+5. **Explicit source enumerations must survive Beat conversion/repair/validation.**
+   Story-to-Beats and Beat repair now explicitly preserve listed participants,
+   recipients, targets, or objects instead of collapsing a meaningful list into a generic
+   group label.
+6. **No-dialogue wording now forbids spoken dialogue only.** The final H3 fallback is
+   `No intelligible spoken dialogue is heard in this segment.`, so story-required
+   singing/chanting/background song is not contradicted.
+
+Focused regressions were added to `tests/test_postmortem_regressions.py`. Tests are
+committed but are not considered accepted until the user runs them locally.
+
+### Active development responsibility
+
+For overall continuity architecture, accumulated project rationale, cross-run postmortems,
+and continuity/state changes, this ChatGPT thread is the source-of-truth maintainer.
+Local Codex may be used for isolated feature additions (for example CLI flags), after
+which the latest merged branch must be re-read before continuity changes are made.
