@@ -4197,7 +4197,7 @@ def parse_subject_registry(subject_definitions):
         match = re.match(
             r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+"
             r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*?)"
-            r"(?:\s*,\s+|\s+\(S\d+\)\s*,\s+)",
+            r"(?:\s*,\s+|\s+\(S\d+\)\s*(?:,\s+|\.\s*(?=\S|$))|\.\s*(?=\S|$))",
             line,
         )
         if match is None:
