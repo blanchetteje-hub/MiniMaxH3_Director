@@ -29,7 +29,9 @@ class RefreshContextLatentTests(unittest.TestCase):
             with open(os.path.join(directory, "0.png"), "wb") as handle:
                 handle.write(VALID_PNG)
 
-            with mock.patch("minimax.COMFY_INPUT", directory):
+            with mock.patch("minimax.COMFY_INPUT", directory), mock.patch(
+                "minimax.get_video_frame_count", return_value=192,
+            ):
                 workflow = minimax.prepare_refresh_workflow(
                     8.0,
                     0.3,
@@ -77,7 +79,7 @@ class RefreshContextLatentTests(unittest.TestCase):
                     overrides = {number: f"reference_{number}.png" for number in selected}
                     with mock.patch("minimax.COMFY_INPUT", directory), mock.patch.dict(
                         minimax.REFERENCE_IMAGE_OVERRIDES, overrides, clear=True,
-                    ):
+                    ), mock.patch("minimax.get_video_frame_count", return_value=192):
                         workflow = minimax.prepare_refresh_workflow(
                             8.0, 0.3, "prompt", previous_video, 7, noise_seed=123,
                         )
