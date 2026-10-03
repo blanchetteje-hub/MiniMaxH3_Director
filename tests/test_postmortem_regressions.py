@@ -121,7 +121,9 @@ class PostmortemRegressionTests(unittest.TestCase):
             "first timed micro-beat MUST be at 00:00.000",
             rules,
         )
-        self.assertIn("do not leave an unstaged opening gap", rules)
+        self.assertIn("00:00.000 is an inherited-frame anchor", rules)
+        self.assertIn("Do not introduce a new subject", rules)
+        self.assertIn("Start CURRENT BEAT immediately after that anchor", rules)
 
     def test_director_structure_rejects_nonzero_first_timestamp(self):
         errors = minimax._director_raw_scene_structure_errors(
@@ -147,8 +149,15 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("PREVIOUS SHOT END\nAmy stands at the oak counter.", prompt)
-        self.assertIn("first timed action must be reachable", prompt)
-        self.assertIn("reject any omitted physical transition", prompt)
+        self.assertIn("inherited 00:00.000 frame must be reachable", prompt)
+        self.assertIn(
+            "Do NOT require a participant introduced by CURRENT BEAT",
+            prompt,
+        )
+        self.assertIn(
+            "do not reject a new CURRENT BEAT participant merely because it enters after",
+            prompt,
+        )
 
     def test_dynamic_subject_definition_survives_plain_name_in_malformed_prose(self):
         definitions = (
@@ -172,9 +181,120 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertEqual(
             constraint,
-            "No intelligible speech or singing is heard in this segment.",
+            "No intelligible spoken dialogue is heard in this segment.",
         )
         self.assertNotIn("SPOKEN DIALOGUE", constraint)
+
+    def test_new_dynamic_subject_does_not_claim_previous_video(self):
+        definitions = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "<Subject 2> is Centaur1 (S2), continued from <Video 1>. "
+            "Centaur1 is a centaur."
+        )
+        rendered = minimax._append_video_origin_to_h3_subject_definitions(
+            definitions,
+            previous_visible_subject_ids={1},
+        )
+        centaur_line = next(
+            line for line in rendered.splitlines()
+            if line.startswith("<Subject 2>")
+        )
+        self.assertNotIn("continued from <Video 1>", centaur_line)
+        self.assertIn("Centaur1 is a centaur.", centaur_line)
+        self.assertIn(2, minimax.parse_subject_registry(rendered))
+
+        filtered, _ = minimax._filter_h3_subject_definitions(
+            rendered,
+            {1},
+            "At 00:01.000, Centaur1 enters the room.",
+        )
+        self.assertIn("<Subject 2> is Centaur1", filtered)
+
+    def test_previous_visible_dynamic_subject_has_one_video_origin(self):
+        definitions = (
+            "<Subject 2> is Dragon1 (S2), continued from <Video 1>. "
+            "Dragon1 is a dragon. continued from <Video 1>."
+        )
+        rendered = minimax._append_video_origin_to_h3_subject_definitions(
+            definitions,
+            previous_visible_subject_ids={2},
+        )
+        self.assertEqual(
+            rendered.lower().count("continued from <video 1>"),
+            1,
+        )
+
+    def test_subject_resolver_canonicalizes_functional_end_state(self):
+        raw = (
+            "At 00:00.000, Amy stands at the counter.\n\n"
+            "At 00:01.000, a centaur enters from the left.\n\n"
+            "At 00:06.200, the centaur sits on a low stool.\n\n"
+            "End continuity state: The tall centaur sits across from Amy."
+        )
+
+        def fake_llm(_messages, **_kwargs):
+            return {
+                "raw_scene": (
+                    "At 00:00.000, Amy stands at the counter.\n\n"
+                    "At 00:01.000, Centaur1 enters from the left.\n\n"
+                    "At 00:06.200, Centaur1 sits on a low stool."
+                ),
+                "subject_names": ["Centaur1"],
+            }
+
+        resolved, names = minimax.resolve_director_raw_scene_subjects(
+            raw,
+            llm_request=fake_llm,
+            segment_seconds=8,
+        )
+        self.assertEqual(names, ["Centaur1"])
+        self.assertIn(
+            "End continuity state: The tall Centaur1 sits across from Amy.",
+            resolved,
+        )
+
+    def test_story_to_beats_preserves_explicit_enumerations(self):
+        messages = minimax.build_story_to_beats_messages(
+            "A barkeep serves magical patrons.",
+            (
+                "Amy watches the goblin, centaur, dragon, and unicorn "
+                "settle around the room."
+            ),
+            1,
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("Preserve explicit source enumerations", prompt)
+        self.assertIn("do not replace a stated list with", prompt)
+        self.assertIn("instead of collapsing them into a", prompt)
+
+        validator = minimax.build_beat_validation_messages(
+            previous_final_beat="",
+            current_state=minimax.new_beat_canonical_state(),
+            beat_job="Amy watches the goblin, centaur, dragon, and unicorn settle.",
+            next_beat_job="",
+            candidate_beat="Amy watches each magical patron settle.",
+        )
+        self.assertIn(
+            "candidate must preserve each listed identity",
+            validator[-1]["content"],
+        )
+
+    def test_story_beat_repair_preserves_explicit_enumerations(self):
+        messages = minimax.build_story_beat_repair_messages(
+            "Amy watches the goblin, centaur, dragon, and unicorn settle.",
+            6,
+            6,
+            "Amy watches each magical patron settle.",
+            "The explicit participant list was collapsed.",
+            ["Amy finishes counting coins."],
+            "",
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn(
+            "Preserve any explicit FULL STORY enumeration",
+            prompt,
+        )
+        self.assertIn("do not replace the list with a", prompt)
 
     def test_empty_phase_two_continuity_skips_llm(self):
         calls = []
