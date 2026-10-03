@@ -5735,17 +5735,17 @@ def format_authoritative_opening_state(
         ]
     else:
         lines = [
-            "<Video 1> is the immediately preceding successfully rendered video "
-            "and provides the authoritative continuation starting point. Preserve "
-            f"its {location_text}, {continuation_details} until an action in this "
-            "target video visibly changes them.",
+            "The supplied opening guide contains the immediately preceding rendered "
+            "frames and provides the authoritative visual continuation starting point. "
+            f"Preserve its {location_text}, {continuation_details} until an action in "
+            "this target video visibly changes them.",
             "",
             "summary:",
             "",
         ]
         summary_sentences = [
-            "[video continuation + reference generation] The target video continues "
-            "directly from the final observable state of <Video 1>."
+            "[native-guide continuation + reference generation] The target video "
+            "continues directly from the supplied opening guide."
         ]
     summary_sentences.extend(
         sentence
@@ -5786,7 +5786,7 @@ def format_authoritative_opening_state(
         picture_source = (
             "the physical state represented by the supplied first frame"
             if clean_refresh
-            else "the physical continuation established by <Video 1>"
+            else "the physical continuation established by the supplied opening guide"
         )
         summary_sentences.append(
             f"{picture_label} {picture_verb} {identity_label} without overriding "
@@ -5848,10 +5848,10 @@ def format_authoritative_opening_state(
             )
         else:
             video_line = (
-                f"<Video 1>: fully_preserved - Preserve the {location_text}, lighting, "
-                f"spatial layout, positions of {subject_names}, wardrobe condition, "
-                "physical states, props, and immediate physical continuity from the "
-                "final frame of the preceding video."
+                "supplied opening guide: fully_preserved - Preserve the "
+                f"{location_text}, lighting, spatial layout, positions of "
+                f"{subject_names}, wardrobe condition, physical states, props, and "
+                "immediate physical continuity from the preceding rendered frames."
             )
     elif clean_refresh:
         video_line = (
@@ -5861,9 +5861,9 @@ def format_authoritative_opening_state(
         )
     else:
         video_line = (
-            f"<Video 1>: fully_preserved - Preserve the {location_text}, lighting, "
-            "spatial layout, and immediate environmental continuity from the final "
-            "frame of the preceding video."
+            "supplied opening guide: fully_preserved - Preserve the "
+            f"{location_text}, lighting, spatial layout, and immediate environmental "
+            "continuity from the preceding rendered frames."
         )
     if video_details:
         result_constraints = [
@@ -20894,9 +20894,9 @@ def build_h3_formatter_messages(
         music_rule = (
             "SEGMENT MUSIC RULE:\n"
             "non_diegetic_music MUST begin exactly with "
-            "'continues from <Video 1>.' Then briefly describe the continued "
-            "underscore or a scene-appropriate musical transition. Do not use "
-            "N/A for an ordinary scored continuation segment.\n\n"
+            "'Continue the established score seamlessly.' Then briefly describe "
+            "the continued underscore or a scene-appropriate musical transition. "
+            "Do not use N/A for an ordinary scored continuation segment.\n\n"
         )
     elif conditioning_mode == "clean_refresh":
         music_rule = (
@@ -20915,8 +20915,8 @@ def build_h3_formatter_messages(
             "CLEAN-REFRESH OPENING RULE:\n"
             "The supplied first frame establishes the opening composition, framing, "
             "and camera position. Use the authoritative opening state for semantic "
-            "and physical context, but do not treat <Video 1> as the visual "
-            "conditioning source. Do not re-narrate the full opening frame.\n\n"
+            "and physical context. Do not invent a separate preceding-video reference "
+            "or re-narrate the full opening frame.\n\n"
             if continuity_text
             else ""
         )
@@ -26787,8 +26787,8 @@ def _open_h3_continuation_description(
                 )
             else:
                 opener = (
-                    "[Shot 1] Continuing directly from the final state of "
-                    f"<Video 1>, {summary_text}"
+                    "[Shot 1] Continuing seamlessly from the supplied opening guide, "
+                    f"{summary_text}"
                 )
         if not re.search(r"[.!?]\s*$", opener):
             opener += "."
@@ -26799,7 +26799,7 @@ def _open_h3_continuation_description(
                 "Continue directly from that frame. "
             )
         else:
-            opener = "[Shot 1] Continuing directly from the final state of <Video 1>."
+            opener = "[Shot 1] Continuing seamlessly from the supplied opening guide."
     if not description:
         return opener
     return f"{opener} {description}"
