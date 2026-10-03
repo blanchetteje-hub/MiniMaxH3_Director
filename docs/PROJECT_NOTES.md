@@ -1624,3 +1624,34 @@ Only truly interchangeable collective groups may remain unlabeled.
 - Python remains authoritative for Subject IDs, speaker IDs, persistence, registration, and scene-scoped H3 filtering.
 - Acceptance 2868 verified clean dynamic registration (`Zombie1`, then `Zombie2`/`Zombie3`) with no identifier-alias corruption. Treat this area as locked unless new evidence shows a regression.
 - Next major gold-gap target: camera choreography.
+
+
+## 2026-10-02 update — generated-video postmortem hardening
+
+A 50-second fantasy-tavern production render exposed six concrete upstream failures.
+The fixes are intentionally narrow and preserve the current post-RAW architecture:
+
+1. Director RAW coherence now explicitly verifies that the trailing
+   `End continuity state` matches the state produced by the final timed action.
+   It must reject stale earlier-frame positions/props/barrier state.
+2. Post-RAW Subject resolution now uses the most specific explicit role/species
+   for functional names (`Dragon1`, `Griffin1`, etc.); `CreatureN` is reserved
+   for genuinely unknown types. Numbered dynamic Subjects also carry deterministic
+   semantic prose such as `Griffin1 is a griffin.`
+3. A deterministic Subject backstop collapses an accidental same-type alias such
+   as `Griffin` or `Griffin2` to the one established `Griffin1` unless RAW
+   explicitly introduces another/new/second individual.
+4. Beat validation no longer treats an ordinary story/staging prop as unavailable
+   merely because canonical state does not list it. Missing state is unknown;
+   only explicitly absent/destroyed/inaccessible props are unavailable.
+5. Finite-endpoint checks no longer invent terminal outcomes for story events whose
+   required event is the visible activity itself (for example reading, inspecting,
+   polishing, watching, walking, or working). Explicit arrivals, retrievals,
+   handoffs, destruction, capture, completion, and stated final conditions still
+   require observable endpoints.
+6. The Director's one-continuous-take rule is now copied deterministically into the
+   actual H3 detailed-description prompt: no cuts/cutaways, continuous camera
+   movement only for reframing.
+
+Focused regression coverage lives in `tests/test_postmortem_regressions.py`.
+No bridge job is queued; the next acceptance step is the user's fresh local run.
