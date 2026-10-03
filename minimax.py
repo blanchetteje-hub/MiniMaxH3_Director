@@ -2009,6 +2009,13 @@ def h3_guide_render_duration(
     return h3_guide_render_frame_count(delivered_duration, context_frames) / FRAME_RATE
 
 
+def rendered_video_tail_window(video_path, context_frames):
+    """Return an exact tail window from the actual rendered source file."""
+    frame_count = get_video_frame_count(video_path)
+    frame_load_cap = min(frame_count, max(1, int(context_frames)))
+    return frame_count - frame_load_cap, frame_load_cap
+
+
 def h3_guide_tail_window(
     video_path,
     context_frames=APPEND_GUIDE_CONTEXT_FRAMES,
@@ -28978,17 +28985,16 @@ def prepare_refresh_workflow(
         label,
         "VHS_LoadVideoPath",
     )
-    context_segment_length = (
-        duration if segment_length is None else segment_length
+    del segment_length
+    refresh_skip, refresh_cap = rendered_video_tail_window(
+        previous_video_path,
+        REFRESH_CONTEXT_FRAMES,
     )
     set_node_input(
         workflow,
         REFRESH_LOAD_VIDEO_NODE_NAME,
         "skip_first_frames",
-        h3_context_tail_skip_frames(
-            context_segment_length,
-            REFRESH_CONTEXT_FRAMES,
-        ),
+        refresh_skip,
         label,
         "VHS_LoadVideoPath",
     )
@@ -28996,7 +29002,7 @@ def prepare_refresh_workflow(
         workflow,
         REFRESH_LOAD_VIDEO_NODE_NAME,
         "frame_load_cap",
-        REFRESH_CONTEXT_FRAMES,
+        refresh_cap,
         label,
         "VHS_LoadVideoPath",
     )
@@ -29198,9 +29204,10 @@ def prepare_repair_workflow(
         label,
         "VHS_LoadVideoPath",
     )
-    context_segment_length = duration if segment_length is None else segment_length
-    skip_first_frames, frame_load_cap = h3_reference_video_window(
-        context_segment_length
+    del segment_length
+    skip_first_frames, frame_load_cap = rendered_video_tail_window(
+        previous_video_path,
+        REFERENCE_VIDEO_CONTEXT_FRAMES,
     )
     set_node_input(
         workflow,
