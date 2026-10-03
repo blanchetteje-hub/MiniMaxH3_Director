@@ -234,10 +234,14 @@ TRIM_FRAMES_AFTER_FIRST = 2
 
 TRIM_SECONDS_AFTER_FIRST = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
 
-# Append/repair reference-video conditioning uses a bounded recent tail. 56
-# frames is about 2.33 seconds at 24 fps: enough history to recover subjects
-# that just left frame without the VRAM/runtime cost of a full 8-second clip.
+# Repair's legacy previous-video reference remains bounded at 56 frames.
+# Normal append continuation no longer uses Ref2V for the previous clip.
 REFERENCE_VIDEO_CONTEXT_FRAMES = 56
+
+# Native Add Guide continuation pins exactly 22 previous frames (~0.92s) at
+# the head of each append render.
+APPEND_GUIDE_CONTEXT_FRAMES = 22
+APPEND_GUIDE_CONTEXT_SECONDS = APPEND_GUIDE_CONTEXT_FRAMES / FRAME_RATE
 
 # Clean refresh is intentionally different: it keeps the proven short latent
 # context window so the refresh boundary can reset accumulated generation drift.
@@ -535,6 +539,8 @@ LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
 REFRESH_LOAD_VIDEO_NODE_NAME = "Load Video"
 
 CONDITIONER_NODE_NAME = "Conditioner"
+H3_GUIDE_NODE_NAME = "Add Guide for MiniMax H3"
+VIDEO_VAE_NODE_NAME = "Load Video VAE"
 QUALITY_NODE_NAME = "Quality"
 STEPS_NODE_NAME = "Steps"
 
@@ -1062,7 +1068,7 @@ WRITE THE SCENE
 - Short dialogue is allowed when it naturally supports CURRENT BEAT.
 {camera_choreography_rules}
 - Keep all timed action inside the {segment_seconds}-second clip.
-- The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor: describe the same subjects, positions, props, and opening composition already present there. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. Start CURRENT BEAT immediately after that anchor at the next timestamp; a subject introduced by CURRENT BEAT may enter or be revealed then. For the opening segment, stage frame 0 normally.
+- The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor: describe the same subjects, positions, props, and opening composition already present there. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. For continuation segments, obey the CONTINUATION AIRLOCK timing in CAMERA CHOREOGRAPHY before starting CURRENT BEAT; otherwise start CURRENT BEAT at the next timestamp. A subject introduced by CURRENT BEAT may enter or be revealed only after that handoff. For the opening segment, stage frame 0 normally.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
 - After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Preserve only cut-relevant positions/containment, held props, door/barrier state, and unresolved active threats needed to start the next shot. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state or add a new event.
@@ -1412,11 +1418,11 @@ _H3_TIMED_SENTENCE_START_RE = re.compile(
 )
 
 _H3_CONTINUATION_PREFIX_TEXT = (
-    "Continuing directly from the final state of <Video 1>,"
+    "Continuing seamlessly from the supplied opening guide,"
 )
 
 _H3_APPEND_DESCRIPTION_PREFIX = (
-    "[Shot 1] Live-action, cinematic, continues from <Video 1>."
+    "[Shot 1] Live-action, cinematic, seamless continuation."
 )
 
 _H3_CONTINUATION_STYLE_PREFIX_RE = re.compile(
@@ -1978,6 +1984,51 @@ def h3_reference_video_window(
     frame_load_cap = min(total_frames, max(5, int(context_frames)))
     skip_first_frames = max(0, total_frames - frame_load_cap)
     return skip_first_frames, frame_load_cap
+
+
+def _align_h3_frame_count(frame_count):
+    """Snap a requested frame count upward to H3's 17k+5 temporal grid."""
+    frame_count = max(5, int(math.ceil(float(frame_count))))
+    return frame_count + (5 - (frame_count % 17)) % 17
+
+
+def h3_guide_render_frame_count(
+    delivered_duration,
+    context_frames=APPEND_GUIDE_CONTEXT_FRAMES,
+):
+    """Return raw H3 frames needed for a delivered clip plus pinned guide head."""
+    delivered_frames = h3_frame_count_for_duration(delivered_duration)
+    return _align_h3_frame_count(delivered_frames + int(context_frames))
+
+
+def h3_guide_render_duration(
+    delivered_duration,
+    context_frames=APPEND_GUIDE_CONTEXT_FRAMES,
+):
+    """Return raw render duration that can contain the guide plus delivery."""
+    return h3_guide_render_frame_count(delivered_duration, context_frames) / FRAME_RATE
+
+
+def h3_guide_tail_window(
+    video_path,
+    context_frames=APPEND_GUIDE_CONTEXT_FRAMES,
+):
+    """Return the exact final native-guide window from a rendered video."""
+    frame_count = get_video_frame_count(video_path)
+    requested = min(frame_count, int(context_frames))
+    if requested < 5:
+        raise RuntimeError(
+            f"Previous video has only {frame_count} frames; native H3 continuation "
+            "needs at least 5 guide frames."
+        )
+    guide_frames = requested
+    while guide_frames >= 5 and guide_frames % 17 != 5:
+        guide_frames -= 1
+    if guide_frames < 5:
+        raise RuntimeError(
+            f"Could not derive a valid H3 guide window from {frame_count} frames."
+        )
+    return frame_count - guide_frames, guide_frames
 
 
 # ============================================================
@@ -7379,44 +7430,87 @@ def connect_named_connection(
 
 
 # Restore the complete append video-to-conditioning graph by node title.
-def connect_append_workflow_inputs(workflow, workflow_label):
-    """Restore the complete append video-to-conditioning graph by node title."""
-
-    connections = (
-        (
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            "ref_videos.ref_video_0",
-            LOAD_VIDEO_NODE_NAME,
-            0,
-        ),
-        (
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            "ref_video_audios.ref_video_audio_0",
-            LOAD_VIDEO_NODE_NAME,
-            2,
-        ),
-        (
-            "Basic Guider",
-            "conditioning",
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            0,
-        ),
-        (
-            "SamplerCustomAdvanced",
-            "latent_image",
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            1,
-        ),
-    )
-    for destination_name, input_name, source_name, output_index in connections:
-        connect_named_connection(
-            workflow,
-            destination_name,
-            input_name,
-            source_name,
-            output_index,
-            workflow_label,
+def _ensure_append_guide_node(workflow, workflow_label):
+    """Return one native MiniMaxH3AddGuide node, adding it when absent."""
+    matches = []
+    for node_id, node in workflow.items():
+        if not isinstance(node, dict):
+            continue
+        title = node.get("_meta", {}).get("title")
+        if title == H3_GUIDE_NODE_NAME or node.get("class_type") == "MiniMaxH3AddGuide":
+            matches.append((str(node_id), node))
+    if len(matches) > 1:
+        raise WorkflowConfigurationError(
+            f"{workflow_label} contains multiple native H3 guide nodes."
         )
+    if matches:
+        node_id, node = matches[0]
+        if node.get("class_type") != "MiniMaxH3AddGuide":
+            raise WorkflowConfigurationError(
+                f"Node '{H3_GUIDE_NODE_NAME}' has type {node.get('class_type')!r}, "
+                "expected 'MiniMaxH3AddGuide'."
+            )
+        node.setdefault("_meta", {})["title"] = H3_GUIDE_NODE_NAME
+        node.setdefault("inputs", {})
+        return node_id, node
+    node_id = _next_workflow_node_id(workflow)
+    node = {
+        "inputs": {"frame_idx": 0},
+        "class_type": "MiniMaxH3AddGuide",
+        "_meta": {"title": H3_GUIDE_NODE_NAME},
+    }
+    workflow[node_id] = node
+    return node_id, node
+
+
+def connect_append_workflow_inputs(workflow, workflow_label):
+    """Use Ref2V only for Pictures and native Add Guide for continuation."""
+    conditioning_id, conditioning = find_workflow_node(
+        workflow,
+        INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3ReferenceToVideo",
+    )
+    load_video_id, _ = find_workflow_node(
+        workflow, LOAD_VIDEO_NODE_NAME, workflow_label, "VHS_LoadVideoPath",
+    )
+    video_vae_id, _ = find_workflow_node(
+        workflow, VIDEO_VAE_NODE_NAME, workflow_label, "VAELoader",
+    )
+    guide_id, guide = _ensure_append_guide_node(workflow, workflow_label)
+
+    inputs = conditioning.setdefault("inputs", {})
+    inputs.pop("ref_videos.ref_video_0", None)
+    inputs.pop("ref_video_audios.ref_video_audio_0", None)
+    if isinstance(inputs.get("ref_videos"), dict):
+        inputs["ref_videos"].pop("ref_video_0", None)
+    if isinstance(inputs.get("ref_video_audios"), dict):
+        inputs["ref_video_audios"].pop("ref_video_audio_0", None)
+
+    guide["inputs"].update({
+        "positive": [conditioning_id, 0],
+        "vae": [video_vae_id, 0],
+        "latent": [conditioning_id, 1],
+        "image": [load_video_id, 0],
+        "frame_idx": 0,
+    })
+    connect_named_connection(
+        workflow,
+        "Basic Guider",
+        "conditioning",
+        H3_GUIDE_NODE_NAME,
+        0,
+        workflow_label,
+    )
+    connect_named_connection(
+        workflow,
+        "SamplerCustomAdvanced",
+        "latent_image",
+        INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+        1,
+        workflow_label,
+    )
+    return guide_id
 
 
 # Restore the Extend Backport refresh graph by stable node title.
@@ -7468,8 +7562,6 @@ def validate_workflow(workflow, workflow_label, is_append=False):
     _duration_id, duration_node, duration_name, _duration_class = find_duration_node(
         workflow, workflow_label
     )
-    # Downstream connection helpers use the canonical title. Normalize only
-    # the in-memory API graph; the user's saved workflow file is untouched.
     if duration_name != DURATION_NODE_NAME:
         duration_node.setdefault("_meta", {})["title"] = DURATION_NODE_NAME
     required = (
@@ -7481,98 +7573,50 @@ def validate_workflow(workflow, workflow_label, is_append=False):
         find_workflow_node(workflow, name, workflow_label, class_type)
     if not is_append:
         find_workflow_node(
-            workflow,
-            RESOLUTION_NODE_NAME,
-            workflow_label,
-            "ResolutionSelector"
+            workflow, RESOLUTION_NODE_NAME, workflow_label, "ResolutionSelector"
         )
         return
 
     find_workflow_node(
-        workflow,
-        LOAD_VIDEO_NODE_NAME,
-        workflow_label,
-        "VHS_LoadVideoPath"
+        workflow, LOAD_VIDEO_NODE_NAME, workflow_label, "VHS_LoadVideoPath"
     )
-    find_workflow_node(
+    _, conditioning = find_workflow_node(
         workflow,
         INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
         workflow_label,
         "MiniMaxH3ReferenceToVideo",
     )
-
-    # API exports can retain stale numeric links after a GUI edit. Rebuild the
-    # append-specific links from stable node titles before validating them.
     connect_append_workflow_inputs(workflow, workflow_label)
+    find_workflow_node(
+        workflow, H3_GUIDE_NODE_NAME, workflow_label, "MiniMaxH3AddGuide"
+    )
+    for stale_name in (
+        "ref_videos.ref_video_0",
+        "ref_video_audios.ref_video_audio_0",
+    ):
+        if stale_name in conditioning.get("inputs", {}):
+            raise WorkflowConfigurationError(
+                f"{workflow_label} still routes previous video through Ref2V input "
+                f"{stale_name!r}; append continuation must use native Add Guide."
+            )
 
     required_connections = (
-        (
-            MATH_NODE_NAME,
-            "values.a",
-            DURATION_NODE_NAME,
-            0,
-        ),
-        (
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            "length",
-            MATH_NODE_NAME,
-            1,
-        ),
-        (
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            "prompt",
-            PROMPT_NODE_NAME,
-            0,
-        ),
-        (
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            "ref_videos.ref_video_0",
-            LOAD_VIDEO_NODE_NAME,
-            0,
-        ),
-        (
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            "ref_video_audios.ref_video_audio_0",
-            LOAD_VIDEO_NODE_NAME,
-            2,
-        ),
-        (
-            "Basic Guider",
-            "conditioning",
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            0,
-        ),
-        (
-            "SamplerCustomAdvanced",
-            "latent_image",
-            INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-            1,
-        ),
-        (
-            "Create Video",
-            "images",
-            "VAE Decode",
-            0,
-        ),
-        (
-            "Create Video",
-            "audio",
-            "VAE Decode Audio",
-            0,
-        ),
-        (
-            SAVE_VIDEO_NODE_NAME,
-            "video",
-            "Create Video",
-            0,
-        ),
+        (MATH_NODE_NAME, "values.a", DURATION_NODE_NAME, 0),
+        (INITIAL_REFERENCE_CONDITIONING_NODE_NAME, "length", MATH_NODE_NAME, 1),
+        (INITIAL_REFERENCE_CONDITIONING_NODE_NAME, "prompt", PROMPT_NODE_NAME, 0),
+        (H3_GUIDE_NODE_NAME, "positive", INITIAL_REFERENCE_CONDITIONING_NODE_NAME, 0),
+        (H3_GUIDE_NODE_NAME, "vae", VIDEO_VAE_NODE_NAME, 0),
+        (H3_GUIDE_NODE_NAME, "latent", INITIAL_REFERENCE_CONDITIONING_NODE_NAME, 1),
+        (H3_GUIDE_NODE_NAME, "image", LOAD_VIDEO_NODE_NAME, 0),
+        ("Basic Guider", "conditioning", H3_GUIDE_NODE_NAME, 0),
+        ("SamplerCustomAdvanced", "latent_image", INITIAL_REFERENCE_CONDITIONING_NODE_NAME, 1),
+        ("Create Video", "images", "VAE Decode", 0),
+        ("Create Video", "audio", "VAE Decode Audio", 0),
+        (SAVE_VIDEO_NODE_NAME, "video", "Create Video", 0),
     )
-
     for args in required_connections:
         validate_named_connection(
-            workflow,
-            *args,
-            workflow_label=workflow_label
+            workflow, *args, workflow_label=workflow_label
         )
 
 
@@ -19207,7 +19251,7 @@ def build_story_segment_ending_rules(is_final_story_segment):
 
 
 # Return the Director camera rule for one segment.
-def build_director_camera_choreography_rules(segment_number):
+def build_director_camera_choreography_rules(segment_number, conditioning_mode=None):
     """Prefer continuous camera choreography over seam-exposing cuts."""
     try:
         segment_number = int(segment_number)
@@ -19229,6 +19273,17 @@ def build_director_camera_choreography_rules(segment_number):
         "Do not add decorative movement, and keep the active subject/action readable "
         "through the move.",
     ]
+
+    if str(conditioning_mode or "").strip().lower() == "continuation":
+        lines.append(
+            "- CONTINUATION AIRLOCK: the opening 22 frames (about 0.92 seconds) "
+            "are pinned from the previous rendered clip and removed before delivery. "
+            "At 00:00.000 inherit the exact previous composition. Through 00:00.917 "
+            "keep that composition and ongoing motion continuous; only small natural "
+            "continuation motion may continue. Do not start CURRENT BEAT, introduce a "
+            "new subject, relocate an established subject, or begin a new reframe "
+            "before 00:01.000. Start CURRENT BEAT at or after 00:01.000."
+        )
 
     # Every third segment after Segment 1 deliberately changes composition
     # without adding an editorial cut: 4, 7, 10, ...
@@ -19272,21 +19327,25 @@ def build_director_rules(
     context is supplied in the user turn.
     """
     del total_length, subject_definitions, beats_enabled
-    del conditioning_mode
+    delivered_seconds = float(segment_length)
+    continuation = str(conditioning_mode or "").strip().lower() == "continuation"
+    guide_seconds = APPEND_GUIDE_CONTEXT_SECONDS if continuation else 0.0
+    director_seconds = delivered_seconds + guide_seconds
     if is_final_story_segment is None:
         # Compatibility for direct callers that predate the explicit runtime
         # boolean. Production callers pass this value explicitly.
         is_final_story_segment = int(segment_number) == int(total_segments)
     rules = DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-        segment_seconds=f"{float(segment_length):g}",
-        final_quarter_start=f"{float(segment_length) * 0.75:g}",
-        segment_min_beats=max(0, int(math.ceil(float(segment_length) / 2))),
+        segment_seconds=f"{director_seconds:g}",
+        final_quarter_start=f"{guide_seconds + delivered_seconds * 0.75:g}",
+        segment_min_beats=max(0, int(math.ceil(delivered_seconds / 2))),
         beat_number=int(segment_number),
         story_segment_ending_rules=build_story_segment_ending_rules(
             is_final_story_segment
         ),
         camera_choreography_rules=build_director_camera_choreography_rules(
-            segment_number
+            segment_number,
+            conditioning_mode=conditioning_mode,
         ),
     )
     return rules
@@ -19613,7 +19672,11 @@ def _director_unassigned_release_from_storage_errors(raw_scene, assigned_source)
     return []
 
 
-def _director_raw_scene_structure_errors(raw_scene, segment_seconds=None):
+def _director_raw_scene_structure_errors(
+    raw_scene,
+    segment_seconds=None,
+    minimum_second_timestamp=None,
+):
     """Return deterministic Request-1 structure errors."""
     text_value = str(raw_scene or "").strip()
     markers = list(
@@ -19665,6 +19728,15 @@ def _director_raw_scene_structure_errors(raw_scene, segment_seconds=None):
             "RAW SCENE must begin its first timed micro-beat at 00:00.000 so "
             "frame 0 is explicitly staged instead of left for H3 to invent."
         ]
+    if minimum_second_timestamp is not None and len(timestamps) > 1:
+        minimum_second_timestamp = float(minimum_second_timestamp)
+        second_seconds, second_milliseconds = timestamps[1]
+        second_time = second_seconds + (second_milliseconds / 1000.0)
+        if second_time < minimum_second_timestamp:
+            return [
+                f"Continuation airlock requires the second timed micro-beat at or "
+                f"after {minimum_second_timestamp:g}s; received {second_time:g}s."
+            ]
     range_errors = _director_timestamp_range_errors(
         timed_scene,
         segment_seconds=segment_seconds,
@@ -20705,8 +20777,8 @@ def build_h3_music_messages(
     if conditioning_mode == "continuation":
         music_rule = (
             "non_diegetic_music must begin exactly with "
-            "'continues from <Video 1>.' PREVIOUS MUSIC describes only the musical "
-            "state at the instant this segment begins; it does not determine the "
+            "'Continue the established score seamlessly.' PREVIOUS MUSIC describes "
+            "only the musical state at the instant this segment begins; it does not determine the "
             "rest of the segment. Read the full RAW SCENE and make the score follow "
             "its emotional arc. If the scene becomes materially more threatening, "
             "violent, frightening, sad, joyful, calm, or otherwise changes tone, "
@@ -20766,9 +20838,14 @@ def parse_h3_music_result(raw_result):
         )
     normalized = _normalize_h3_audio_text(result.get("non_diegetic_music"))
     cue_text = normalized
-    continuation_prefix = "continues from <Video 1>."
-    if cue_text.startswith(continuation_prefix):
-        cue_text = cue_text[len(continuation_prefix):].strip()
+    continuation_prefixes = (
+        "Continue the established score seamlessly.",
+        "continues from <Video 1>.",
+    )
+    for continuation_prefix in continuation_prefixes:
+        if cue_text.startswith(continuation_prefix):
+            cue_text = cue_text[len(continuation_prefix):].strip()
+            break
     cue_words = re.findall(r"\b[\w’'-]+\b", cue_text)
     if len(cue_words) > 32:
         raise ValueError(
@@ -20848,15 +20925,14 @@ def build_h3_formatter_messages(
     ):
         continuation_opening_rule = (
             "CONTINUATION OPENING RULE:\n"
-            "The authoritative opening state and <Video 1> establish the starting "
-            "composition, framing, and camera position. Do not invent or add a "
-            "redundant opening-camera setup. Preserve every camera movement "
-            "explicitly present in RAW SCENE, including camera movement beginning "
-            "at 00:00.000. Keep it at its original timestamp and do not move it "
-            "later. "
-            "Do not repeat the words 'Live-action, cinematic' in the description "
-            "when continuing from <Video 1>; the final H3 prompt supplies that "
-            "continuation opener.\n\n"
+            "The authoritative opening state and native opening guide frames establish "
+            "the starting composition, framing, camera position, wardrobe, and visible "
+            "pose. Do not invent or add a redundant opening-camera setup. Preserve "
+            "every camera movement explicitly present in RAW SCENE at its original "
+            "timestamp. The pinned guide owns the opening airlock; do not describe a "
+            "different composition during that interval. Do not repeat the words "
+            "'Live-action, cinematic' in the description; the final H3 prompt supplies "
+            "that opener.\n\n"
         )
     else:
         continuation_opening_rule = ""
@@ -25961,7 +26037,12 @@ def _replace_excluded_picture_tags_for_h3(
             str(number) for number in sorted(excluded)
         )
     )
-    return pattern.sub("<Video 1>", text)
+    replacement = (
+        "the supplied first frame"
+        if conditioning_mode == "clean_refresh"
+        else "the supplied opening guide"
+    )
+    return pattern.sub(replacement, text)
 
 
 # Remap canonical Picture tags to dense append batch slots in H3 text only.
@@ -26364,8 +26445,8 @@ def _append_video_origin_to_h3_subject_definitions(
         registry = {}
 
     suffix_template = (
-        "{name}'s pose, wardrobe, position, and physical state at the "
-        "beginning of the target video come from <Video 1>."
+        "{name}'s opening pose, wardrobe, position, and physical state are "
+        "anchored by the supplied opening guide."
     )
     rendered = []
     for line in text.splitlines():
@@ -26400,7 +26481,10 @@ def _append_video_origin_to_h3_subject_definitions(
         if subject.get("picture_ids"):
             suffix = suffix_template.format(name=subject["name"])
         else:
-            suffix = "continued from <Video 1>."
+            suffix = (
+                "The subject's opening appearance and position are anchored by "
+                "the supplied opening guide."
+            )
         separator = " " if stripped_line.endswith((".", "!", "?")) else ". "
         stripped_line += separator + suffix
         rendered.append(stripped_line)
@@ -27145,6 +27229,15 @@ def queue_workflow(
             data = response.json()
             return data["prompt_id"]
         except RuntimeError as e:
+            error_text = str(e)
+            if "MiniMaxH3AddGuide" in error_text and any(
+                token in error_text.lower()
+                for token in ("unknown", "not found", "does not exist", "not registered")
+            ):
+                raise WorkflowConfigurationError(
+                    "ComfyUI core is missing native 'Add Guide for MiniMax H3' "
+                    "(MiniMaxH3AddGuide). Update ComfyUI; no custom node is required."
+                ) from e
             # A rejected prompt is still a recoverable queue attempt. Retry
             # it through the same bounded ComfyUI budget so transient server
             # validation/state races do not abort the whole run immediately.
@@ -28583,6 +28676,12 @@ def _render_segment_with_retries(
                 render_started_event.set()
             comfy_result = wait_for_completion(prompt_id)
             video_path = get_video_path(comfy_result, workflow)
+            if workflow_type == "append":
+                video_path = postprocess_guided_append_video(
+                    video_path,
+                    segment,
+                    current_duration,
+                )
             width, height = get_video_resolution(video_path)
             if h3_fixture_path and h3_fixture_context:
                 capture_h3_fixture(
@@ -29213,7 +29312,7 @@ def prepare_append_workflow(
             f"Previous video is missing or empty: {previous_video_path}"
         )
 
-    set_duration_input(workflow, label, duration)
+    set_duration_input(workflow, label, h3_guide_render_duration(duration))
     set_node_input(
         workflow, PROMPT_NODE_NAME, "text", h3_prompt,
         label, "DPRandomGenerator"
@@ -29241,11 +29340,12 @@ def prepare_append_workflow(
         label,
         "VHS_LoadVideoPath",
     )
-    context_segment_length = (
-        duration if segment_length is None else segment_length
-    )
-    skip_first_frames, frame_load_cap = h3_reference_video_window(
-        context_segment_length
+    del segment_length
+    skip_first_frames, frame_load_cap = h3_guide_tail_window(previous_video_path)
+    console_log(
+        f"APPEND GUIDE: source_frames={skip_first_frames + frame_load_cap}, "
+        f"skip_first_frames={skip_first_frames}, frame_load_cap={frame_load_cap}, "
+        f"raw_target_frames={h3_guide_render_frame_count(duration)}."
     )
     set_node_input(
         workflow,
@@ -29296,7 +29396,15 @@ def prepare_append_workflow(
 # ============================================================
 
 # Trim video start.
-def trim_video_start(input_path, output_path, trim_seconds, duration_seconds=None):
+def trim_video_start(
+    input_path,
+    output_path,
+    trim_seconds,
+    duration_seconds=None,
+    *,
+    crf=18,
+    preset="medium",
+):
     command = [
         "ffmpeg", "-y",
         "-i", input_path,
@@ -29306,13 +29414,50 @@ def trim_video_start(input_path, output_path, trim_seconds, duration_seconds=Non
         command.extend(["-t", f"{duration_seconds:.6f}"])
     command.extend([
         "-c:v", "libx264",
-        "-preset", "medium",
-        "-crf", "18",
+        "-preset", str(preset),
+        "-crf", str(crf),
         "-c:a", "aac",
         "-b:a", "192k",
         output_path,
     ])
     subprocess.run(command, check=True)
+
+
+def postprocess_guided_append_video(
+    video_path,
+    segment_number,
+    delivered_duration,
+):
+    """Remove 20/22 guide frames now; normal stitching removes the final two."""
+    if TRIM_FRAMES_AFTER_FIRST > APPEND_GUIDE_CONTEXT_FRAMES:
+        raise RuntimeError(
+            "Final stitch trim cannot exceed native guide overlap."
+        )
+    pretrim_frames = APPEND_GUIDE_CONTEXT_FRAMES - TRIM_FRAMES_AFTER_FIRST
+    output_path = os.path.join(
+        os.path.dirname(video_path),
+        f"guided_{os.path.basename(video_path)}",
+    )
+    retained_seconds = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
+    trim_video_start(
+        video_path,
+        output_path,
+        pretrim_frames / FRAME_RATE,
+        duration_seconds=float(delivered_duration) + retained_seconds,
+        crf=0,
+        preset="ultrafast",
+    )
+    if not os.path.isfile(output_path) or os.path.getsize(output_path) == 0:
+        raise RuntimeError(
+            f"Guided append postprocess failed for segment {segment_number}: "
+            f"{output_path}"
+        )
+    console_log(
+        f"Native Guide overlap: removed {pretrim_frames}/"
+        f"{APPEND_GUIDE_CONTEXT_FRAMES} frames after render; normal stitching "
+        f"removes the remaining {TRIM_FRAMES_AFTER_FIRST}."
+    )
+    return output_path
 
 
 # Append one rendered clip exactly once, even across render callbacks.
@@ -31141,8 +31286,10 @@ def build_director_raw_scene_coherence_messages(
                 "invented staging is allowed. Reject only concrete impossibilities or "
                 "material action-order contradictions, such as closing a barrier before "
                 "someone passes through it, using an occupied hand without releasing "
-                "what it holds, or showing a required result before its prerequisite "
-                "action. Do not infer that two differently worded references to an "
+                "what it holds, moving or repositioning a chair/stool/seat while a "
+                "person or creature is still sitting or standing on it without stated "
+                "movement off that support, or showing a required result before its "
+                "prerequisite action. Do not infer that two differently worded references to an "
                 "unnamed person, creature, object, or body must be different entities; "
                 "require explicit evidence of distinct identities or counts before "
                 "calling that a contradiction. PREVIOUS SHOT END, when supplied, is the "
@@ -31157,8 +31304,13 @@ def build_director_raw_scene_coherence_messages(
                 "must not jump to a new location without stated movement. The trailing "
                 "End continuity state is part "
                 "of this check and MUST describe the state produced by the final timed "
-                "action. Reject an End continuity state that moves a subject/object back "
-                "to an earlier location, restores an earlier held prop or pose, reverses "
+                "action. Any foreground participant visibly present in the final timed "
+                "action remains present at the final frame unless that final action "
+                "explicitly shows the participant leaving, becoming fully occluded, or "
+                "otherwise no longer visible; reject an End continuity state that simply "
+                "omits such a participant. Reject an End continuity state that moves a "
+                "subject/object back to an earlier location, restores an earlier held "
+                "prop or pose, reverses "
                 "a barrier/door result, or otherwise contradicts the final timed frame. "
                 "Do not accept an End continuity state merely because it matches an "
                 "earlier frame. Do not judge style, prose quality, camera taste, or "
@@ -31250,6 +31402,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             flush=True,
         )
     conditioning_mode = bundle.get("conditioning_mode")
+    continuation_airlock = (
+        APPEND_GUIDE_CONTEXT_SECONDS
+        if str(conditioning_mode or "").strip().lower() == "continuation"
+        else 0.0
+    )
+    duration += continuation_airlock
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
     # Keep typed state available for diagnostics, but do not inject Python-owned
@@ -31297,6 +31455,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             structure_errors = _director_raw_scene_structure_errors(
                 raw_scene,
                 duration,
+                minimum_second_timestamp=(
+                    continuation_airlock if continuation_airlock else None
+                ),
             )
             if structure_errors:
                 if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
