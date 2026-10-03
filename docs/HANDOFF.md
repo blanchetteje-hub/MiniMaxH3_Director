@@ -976,3 +976,12 @@ For overall continuity architecture, accumulated project rationale, cross-run po
 and continuity/state changes, this ChatGPT thread is the source-of-truth maintainer.
 Local Codex may be used for isolated feature additions (for example CLI flags), after
 which the latest merged branch must be re-read before continuity changes are made.
+
+
+### 2026-10-03 follow-up — frame-zero structural compatibility
+
+The timed-state padding guard now explicitly exempts only `00:00.000`, so an
+inherited frame-zero line may truthfully say a subject remains/stays beside an
+already-open/closed object without being rejected as padding. Every later timed
+micro-beat still must advance visible action. This completes the inherited-frame
+anchor contract without weakening later-shot pacing validation.
