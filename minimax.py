@@ -19490,10 +19490,22 @@ _DIRECTOR_ACTION_WORD_RE = re.compile(
 
 
 def _director_timed_state_restatement_errors(raw_scene):
-    """Reject timed lines used only to repeat unchanged persistent state."""
+    """Reject timed state-only lines except the explicit frame-zero anchor."""
     errors = []
     for line in str(raw_scene or "").splitlines():
-        if not _DIRECTOR_TIMESTAMP_RE.search(line):
+        timestamp = _DIRECTOR_TIMESTAMP_RE.search(line)
+        if timestamp is None:
+            continue
+        fraction = (timestamp.group("fraction") or "0").ljust(3, "0")[:3]
+        absolute_ms = (
+            (int(timestamp.group("minutes")) * 60 + int(timestamp.group("seconds")))
+            * 1000
+            + int(fraction)
+        )
+        # 00:00.000 is allowed to restate inherited/establishing frame state.
+        # Later timed lines must advance visible action rather than padding the
+        # clip with unchanged continuity.
+        if absolute_ms == 0:
             continue
         body = _DIRECTOR_TIMESTAMP_RE.sub("", line, count=1)
         if (
@@ -19502,9 +19514,10 @@ def _director_timed_state_restatement_errors(raw_scene):
             and not _DIRECTOR_ACTION_WORD_RE.search(body)
         ):
             errors.append(
-                "Timed micro-beats must contain a new visible action/event, not "
-                "only restate unchanged continuity; put unchanged state only in "
-                "the untimed End continuity state."
+                "Timed micro-beats after 00:00.000 must contain a new visible "
+                "action/event, not only restate unchanged continuity; put "
+                "unchanged state only in the frame-zero anchor or untimed End "
+                "continuity state."
             )
     return errors
 
