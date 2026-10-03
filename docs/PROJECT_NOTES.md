@@ -1813,3 +1813,33 @@ parsing previously saw the embedded timestamp and accepted the structure. Reques
 structure validation now requires every timed micro-beat to begin directly with
 its timestamp on a new line and to contain action text on that same line. This is
 an upstream RAW validator fix; no formatter rule was added.
+
+
+## 2026-10-03 update — native 22-frame Guide continuation
+
+Normal append continuation no longer passes the previous clip through
+`MiniMaxH3ReferenceToVideo`. Ref2V remains responsible for persistent Picture
+references only. Python now takes the exact final 22 decoded frames of the
+previous rendered clip and adds them at frame 0 through ComfyUI core's native
+`MiniMaxH3AddGuide` node.
+
+The 22-frame guide is a protected opening overlap, not a semantic `<Video 1>`
+reference. Continuation H3 prompts therefore no longer emit `<Video 1>`
+authority clauses for the preceding clip. Picture-backed identity remains on
+Picture references; current opening pose/wardrobe/position are physically
+anchored by the Guide; semantic changed state remains Python/continuity owned.
+
+For an 8-second delivery, append renders to 226 raw frames. Python removes 20
+of the 22 overlap frames immediately and retains the existing two-frame stitch
+trim, so the delivered clip begins exactly after the Guide while preserving the
+requested duration.
+
+Director continuation now has an explicit ~0.92-second airlock and deterministic
+validation rejects a second timed micro-beat before it ends. Coherence validation
+also rejects silently dropping a foreground participant still visible in the
+final timed action and rejects moving an occupied chair/stool/seat without
+stated occupant movement.
+
+Dependency: no new custom node. ComfyUI core must include native
+`MiniMaxH3AddGuide` ("Add Guide for MiniMax H3"). A missing node is treated as
+a fatal configuration error instead of a recoverable render retry.
