@@ -1655,3 +1655,31 @@ The fixes are intentionally narrow and preserve the current post-RAW architectur
 
 Focused regression coverage lives in `tests/test_postmortem_regressions.py`.
 No bridge job is queued; the next acceptance step is the user's fresh local run.
+
+
+## 2026-10-03 update — 8x6 render boundary hardening
+
+Postmortem of the 48-second, six-segment render produced four focused follow-ups:
+
+1. Director RAW now must begin at `00:00.000`. The system prompt states the
+   frame-0 requirement and deterministic RAW structure validation rejects any
+   first timed micro-beat later than zero.
+2. The existing RAW physical/coherence validator now receives
+   `PREVIOUS SHOT END` and checks that the first timed action is physically
+   reachable from it without omitted subject travel, teleportation, hidden
+   location changes, or unexplained prop/state changes.
+3. H3 Subject filtering now preserves a dynamic video-only Subject definition
+   whenever that Subject's canonical name appears in non-tagged-dialogue scene
+   prose. This protects identities such as `Creature1` from being dropped when
+   malformed quotation punctuation confuses the stricter visual-identity mask.
+4. The H3 no-dialogue constraint is now natural prose
+   (`No intelligible speech or singing is heard in this segment.`) rather than
+   a metadata-looking `SPOKEN DIALOGUE:` label. Continuity Phase 2 also returns
+   immediately without an LLM call when placeholder pruning leaves no facts
+   beyond `version`.
+
+Regression coverage was added to `tests/test_postmortem_regressions.py`.
+Bridge job `tests-20261003-boundary-v1` targets
+`summary-to-story-test` and the postmortem/requested-prompt regression suites.
+At documentation time the bridge result had not yet been published; do not mark
+this checkpoint test-green until that result exists.
