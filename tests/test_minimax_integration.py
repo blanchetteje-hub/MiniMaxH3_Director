@@ -245,6 +245,9 @@ class LlmHostIntegrationTests(unittest.TestCase):
                     ), mock.patch(
                         "minimax.prune_missing_reference_images",
                         return_value=(sorted(excluded), picture_slot_map),
+                    ), mock.patch(
+                        "minimax.get_video_frame_count",
+                        return_value=158,
                     ):
                         prepared = minimax.prepare_append_workflow(
                             6.0,
