@@ -1057,7 +1057,7 @@ WRITE THE SCENE
 - Short dialogue is allowed when it naturally supports CURRENT BEAT.
 {camera_choreography_rules}
 - Keep all timed action inside the {segment_seconds}-second clip.
-- The first timed micro-beat MUST be at 00:00.000. For continuation/refresh segments, begin from PREVIOUS SHOT END/frame 0 and start any needed subject or camera movement from there; do not leave an unstaged opening gap.
+- The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor: describe the same subjects, positions, props, and opening composition already present there. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. Start CURRENT BEAT immediately after that anchor at the next timestamp; a subject introduced by CURRENT BEAT may enter or be revealed then. For the opening segment, stage frame 0 normally.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
 - After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Preserve only cut-relevant positions/containment, held props, door/barrier state, and unresolved active threats needed to start the next shot. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state or add a new event.
@@ -11988,7 +11988,10 @@ assigned story event is the visible performance of an activity/process itself
 (reading, inspecting, polishing, watching, walking, working, etc.), showing that
 activity is sufficient unless CURRENT JOB explicitly requires it to finish.
 
-2. Preserve every required participant and beneficiary role. When immediate
+2. Preserve every required participant and beneficiary role. If CURRENT JOB
+explicitly enumerates distinct participants, recipients, targets, or objects,
+the candidate must preserve each listed identity rather than collapse the list
+into a generic collective label. When immediate
 receipt is part of the job, food/hand-offs must reach the intended recipient;
 labeling or leaving them elsewhere is insufficient. Work made FOR someone needs
 no delivery unless required. Honor explicit later pickup/storage; watching or
@@ -17510,7 +17513,10 @@ def build_story_to_beats_messages(
                 f"Read the provided story and convert it into {int(total_segments)} "
                 "distinct, concise film beats. Keep each beat one sentence and "
                 "maintain continuity and spatial awareness throughout the beats. "
-                "One beat MUST lead logically into another. No teleporting: if a "
+                "Preserve explicit source enumerations of distinct participants, "
+                "recipients, targets, or objects; do not replace a stated list with "
+                "a generic collective label when those listed identities matter on "
+                "screen. One beat MUST lead logically into another. No teleporting: if a "
                 "character moves, that movement has to be in the beat text. "
                 "Do not create identity labels for unnamed participants; Subject "
                 "identity is resolved later from the fully staged RAW scene. "
@@ -17527,7 +17533,10 @@ STORY
 
 Convert the complete story above into exactly {int(total_segments)} sequential beats.
 Preserve the story's event order and outcomes. Do not summarize away an action
-that must visibly happen on screen. Each beat must be executable as one film clip.
+that must visibly happen on screen. Preserve explicit story lists of distinct
+participants, recipients, targets, or objects instead of collapsing them into a
+generic group label when the listed identities matter to the visible event.
+Each beat must be executable as one film clip.
 A terminal result belongs to one beat only: if the next beat begins with that
 result or consequence, the current beat must stop before it.
 Do not create functional identity labels for unnamed participants. Describe the
@@ -17680,7 +17689,9 @@ VALIDATION ISSUE
 Rewrite only Beat {int(beat_number)}. Keep it one concise sentence. Preserve the
 same story event and outcome. Fix the stated problem while maintaining spatial
 continuity with the previous and next beats. If movement is required, show it.
-Do not pull a later story event into this beat. Do not create functional identity
+Preserve any explicit FULL STORY enumeration of distinct participants, recipients,
+targets, or objects that belongs to this beat; do not replace the list with a
+generic collective label. Do not pull a later story event into this beat. Do not create functional identity
 labels for unnamed participants; Subject identity is resolved later from RAW.
 A terminal result belongs to one beat only: if NEXT PLANNED BEAT begins with that
 result or consequence, stop this beat before it.
@@ -26314,11 +26325,19 @@ def _append_video_origin_to_h3_subject_definitions(
             continue
 
         subject_id = int(match.group(1))
+        # Dynamic registry lines may carry a historical Video-1 marker because
+        # they are also reused by the Director on later segments. Final H3
+        # conditioning must derive that marker from actual previous-video
+        # visibility, never from the line's historical text.
+        clean_line = _remove_video_origin_from_h3_subject_line(
+            line,
+            preserve_dynamic=False,
+        )
         if subject_id not in previous_visible:
-            rendered.append(_remove_video_origin_from_h3_subject_line(line))
+            rendered.append(clean_line)
             continue
 
-        stripped_line = line.rstrip()
+        stripped_line = clean_line.rstrip()
         # Picture-backed Subjects come from subjects.txt and need their
         # beginning-of-target-video state explicitly tied to the preceding
         # video. Video-only Subjects use their shorter registry marker.
@@ -26326,12 +26345,8 @@ def _append_video_origin_to_h3_subject_definitions(
             suffix = suffix_template.format(name=subject["name"])
         else:
             suffix = "continued from <Video 1>."
-        if not re.search(
-            rf"(?i)\b{re.escape(suffix[:-1])}\s*\.?$",
-            stripped_line,
-        ):
-            separator = " " if stripped_line.endswith((".", "!", "?")) else ". "
-            stripped_line += separator + suffix
+        separator = " " if stripped_line.endswith((".", "!", "?")) else ". "
+        stripped_line += separator + suffix
         rendered.append(stripped_line)
     return "\n".join(rendered)
 
@@ -26591,7 +26606,7 @@ def format_h3_spoken_dialogue_constraint(detailed_description):
     """Return the deterministic H3 speech constraint for one segment."""
     if _h3_contains_spoken_dialogue(detailed_description):
         return ""
-    return "No intelligible speech or singing is heard in this segment."
+    return "No intelligible spoken dialogue is heard in this segment."
 
 
 # Open a continuation description as the canonical ``[Shot 1]`` form.
@@ -30787,7 +30802,12 @@ def resolve_director_raw_scene_pronouns(
     if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
         raise ValueError("RAW pronoun resolver changed timestamps.")
 
-    resolved = (resolved_timed + "\n" + end_state_original).strip()
+    resolved_end_state = _canonicalize_end_continuity_functional_subjects(
+        end_state_original,
+        subject_definitions,
+        resolved_subject_names,
+    )
+    resolved = (resolved_timed + "\n" + resolved_end_state).strip()
     structure_errors = _director_raw_scene_structure_errors(
         resolved,
         segment_seconds,
@@ -30857,6 +30877,49 @@ def build_director_raw_subject_resolution_messages(
             ),
         },
     ]
+
+
+def _canonicalize_end_continuity_functional_subjects(
+    end_state,
+    subject_definitions,
+    resolved_subject_names,
+):
+    """Use unambiguous functional Subject names in the authoritative end state."""
+    candidates = [
+        name for _subject_number, name in parse_defined_subjects(subject_definitions)
+    ]
+    candidates.extend(str(name or "").strip() for name in resolved_subject_names or [])
+    by_type = {}
+    for name in candidates:
+        if not name:
+            continue
+        type_key, numbered = _functional_subject_type_key(name)
+        if not numbered or not type_key:
+            continue
+        bucket = by_type.setdefault(type_key, [])
+        if not any(
+            _subject_identity_key(existing) == _subject_identity_key(name)
+            for existing in bucket
+        ):
+            bucket.append(name)
+
+    text = str(end_state or "")
+    for type_key, names in by_type.items():
+        if len(names) != 1:
+            continue
+        canonical_name = names[0]
+        words = [re.escape(word) for word in type_key.split() if word]
+        if not words:
+            continue
+        type_pattern = r"\s+".join(words)
+        # The negative word boundary on the right keeps Dragon1/Centaur1 from
+        # being rewritten inside their already-canonical labels.
+        text = re.sub(
+            rf"(?i)(?<![\w]){type_pattern}(?![\w])",
+            canonical_name,
+            text,
+        )
+    return text
 
 
 def resolve_director_raw_scene_subjects(
@@ -31028,12 +31091,16 @@ def build_director_raw_scene_coherence_messages(
                 "unnamed person, creature, object, or body must be different entities; "
                 "require explicit evidence of distinct identities or counts before "
                 "calling that a contradiction. PREVIOUS SHOT END, when supplied, is the "
-                "physical frame-0 starting state. The first timed action must be reachable "
-                "from it without an omitted subject move, teleport, unexplained prop/state "
-                "change, or hidden location transition. Ordinary continuous camera motion "
-                "may reveal another part of the same established space, but do not accept "
-                "a new subject location that requires unstated travel before the first "
-                "timed action. The trailing End continuity state is part "
+                "physical frame-0 starting state. The inherited 00:00.000 frame must be reachable "
+                "from it without an omitted move, teleport, unexplained prop/state change, "
+                "or hidden location transition. Do NOT require a participant introduced "
+                "by CURRENT BEAT to already exist in PREVIOUS SHOT END. A genuinely new "
+                "participant may enter or be revealed after the inherited frame-0 anchor; "
+                "do not reject the scene solely because that participant was absent from "
+                "the previous shot. Ordinary continuous camera motion may reveal another "
+                "part of the same established space, but an already-established subject "
+                "must not jump to a new location without stated movement. The trailing "
+                "End continuity state is part "
                 "of this check and MUST describe the state produced by the final timed "
                 "action. Reject an End continuity state that moves a subject/object back "
                 "to an earlier location, restores an earlier held prop or pose, reverses "
@@ -31053,8 +31120,10 @@ def build_director_raw_scene_coherence_messages(
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
-                "First compare PREVIOUS SHOT END with the first timed action and reject "
-                "any omitted physical transition. Then read the timed actions literally "
+                "First compare PREVIOUS SHOT END with the inherited 00:00.000 anchor and reject "
+                "any omitted transition for already-established subjects/state. Do not "
+                "reject a new CURRENT BEAT participant merely because it enters after "
+                "frame 0. Then read the timed actions literally "
                 "in order and explicitly compare the final timed action/result with "
                 "End continuity state.\n"
                 "If coherent: {\"valid\": true, \"issue\": \"\"}\n"
