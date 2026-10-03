@@ -97,7 +97,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
                     with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
                         "minimax.prune_missing_reference_images",
                         return_value=([], {}),
-                    ):
+                    ), mock.patch("minimax.get_video_frame_count", return_value=192):
                         if kind == "initial":
                             prepared = minimax.prepare_initial_workflow(8, .45, "prompt", 2, steps=11)
                         elif kind == "append":
@@ -114,7 +114,10 @@ class WorkflowNameResolutionTests(unittest.TestCase):
                     self.assertEqual(steps["inputs"]["value"], 11)
                     if kind != "append":
                         self.assertEqual(quality["inputs"]["value"], .45)
-                    self.assertEqual(duration["inputs"]["value"], 8)
+                    self.assertEqual(
+                        duration["inputs"]["value"],
+                        minimax.h3_guide_render_duration(8) if kind == "append" else 8,
+                    )
                     self.assertEqual(prompt["inputs"]["text"], "prompt")
 
     def test_initial_validation_is_independent_of_exported_node_ids(self):
@@ -326,7 +329,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             is_append=True
         )
 
-    def test_append_validation_reconnects_video_conditioning_graph(self):
+    def test_append_validation_reconnects_native_guide_graph(self):
         workflow = copy.deepcopy(self.append)
         conditioning_id, conditioning = minimax.find_workflow_node(
             workflow,
@@ -338,23 +341,8 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             minimax.LOAD_VIDEO_NODE_NAME,
             "append workflow",
         )
-        _, guider = minimax.find_workflow_node(
-            workflow,
-            "Basic Guider",
-            "append workflow",
-        )
-        _, sampler = minimax.find_workflow_node(
-            workflow,
-            "SamplerCustomAdvanced",
-            "append workflow",
-        )
         conditioning["inputs"]["ref_videos.ref_video_0"] = ["wrong", 1]
-        conditioning["inputs"]["ref_video_audios.ref_video_audio_0"] = [
-            "wrong",
-            1,
-        ]
-        guider["inputs"]["conditioning"] = ["wrong", 1]
-        sampler["inputs"]["latent_image"] = ["wrong", 1]
+        conditioning["inputs"]["ref_video_audios.ref_video_audio_0"] = ["wrong", 1]
 
         minimax.validate_workflow(
             workflow,
@@ -362,16 +350,27 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             is_append=True,
         )
 
-        self.assertEqual(
-            conditioning["inputs"]["ref_videos.ref_video_0"],
-            [load_video_id, 0],
+        guide_id, guide = minimax.find_workflow_node(
+            workflow,
+            minimax.H3_GUIDE_NODE_NAME,
+            "append workflow",
+            "MiniMaxH3AddGuide",
         )
-        self.assertEqual(
-            conditioning["inputs"]["ref_video_audios.ref_video_audio_0"],
-            [load_video_id, 2],
+        self.assertNotIn("ref_videos.ref_video_0", conditioning["inputs"])
+        self.assertNotIn(
+            "ref_video_audios.ref_video_audio_0",
+            conditioning["inputs"],
         )
-        self.assertEqual(guider["inputs"]["conditioning"], [conditioning_id, 0])
-        self.assertEqual(sampler["inputs"]["latent_image"], [conditioning_id, 1])
+        self.assertEqual(guide["inputs"]["positive"], [conditioning_id, 0])
+        self.assertEqual(guide["inputs"]["latent"], [conditioning_id, 1])
+        self.assertEqual(guide["inputs"]["image"], [load_video_id, 0])
+        _, guider = minimax.find_workflow_node(
+            workflow,
+            "Basic Guider",
+            "append workflow",
+        )
+        self.assertEqual(guider["inputs"]["conditioning"], [guide_id, 0])
+
 
     def test_append_validation_allows_any_number_of_reference_images(self):
         workflow = copy.deepcopy(self.append)
