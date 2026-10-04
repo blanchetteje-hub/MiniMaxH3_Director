@@ -25,6 +25,7 @@ def _args(**overrides):
         "refresh": None,
         "trim_frames": 2,
         "retention": False,
+        "disable_subject_removal": False,
         "test_prompt_generation": True,
         "vision_continuity": 1,
         "steps": 6,
@@ -37,7 +38,12 @@ def _args(**overrides):
 
 
 def test_parse_args_defaults_prompt_generation_test_mode_off():
-    assert not minimax.parse_args(["5", "10", ".2"]).test_prompt_generation
+    args = minimax.parse_args(["5", "10", ".2"])
+    assert not args.test_prompt_generation
+    assert not args.disable_subject_removal
+    assert minimax.parse_args(
+        ["5", "10", ".2", "--disable-subject-removal"]
+    ).disable_subject_removal
     assert minimax.parse_args(
         ["5", "10", ".2", "--test-prompt-generation"]
     ).test_prompt_generation
