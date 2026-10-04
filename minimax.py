@@ -2226,6 +2226,15 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--disable-subject-removal",
+        action="store_true",
+        default=False,
+        help=(
+            "keep every previously seen Subject/reference bound in later segments "
+            "instead of aging inactive Subjects out after half the story"
+        ),
+    )
+    parser.add_argument(
         "--test-prompt-generation",
         action="store_true",
         default=False,
@@ -3374,6 +3383,7 @@ def build_run_config(
     retention=False,
     test_prompt_generation=False,
     no_music=False,
+    disable_subject_removal=False,
 ):
     # Auto-discovered video subjects are durable continuity metadata, not a
     # user edit to the creative source. Excluding those appended lines keeps a
@@ -3412,6 +3422,7 @@ def build_run_config(
         "retention": bool(retention),
         "test_prompt_generation": bool(test_prompt_generation),
         "no_music": bool(no_music),
+        "disable_subject_removal": bool(disable_subject_removal),
         "source_sha256": hashlib.sha256(source_payload).hexdigest(),
     }
 
@@ -6596,6 +6607,22 @@ def new_generation_state(run_config):
         "prop_ledger": {},
         "character_reference_images": {},
         "base_reference_image_count": None,
+        "reference_binding_state": {
+            "version": 1,
+            "disable_subject_removal": bool(
+                run_config.get("disable_subject_removal", False)
+            ),
+            "subject_removal_window_segments": max(
+                1,
+                int(math.ceil(float(run_config.get("total_segments") or 1) / 2.0)),
+            ),
+            "current_segment_number": None,
+            "current_bindings": [],
+            "current_active_subject_ids": [],
+            "current_explicit_subject_ids": [],
+            "current_removed_subject_ids": [],
+            "subjects": {},
+        },
         "subject_registry_state": new_continuity_state(),
         # This is the append-only identity contract for the run. Subject
         # continuity facts may change, but this lock may only gain a brand-new
@@ -7278,6 +7305,9 @@ def restore_generation_state(
             state.get("character_reference_images", {})
         ),
         "base_reference_image_count": state.get("base_reference_image_count"),
+        "reference_binding_state": copy.deepcopy(
+            state.get("reference_binding_state", {})
+        ),
         "subject_registry_state": migrate_continuity_state(
             state.get("subject_registry_state")
         ),
@@ -26803,7 +26833,10 @@ def _subject_ids_referenced_by_description(
 
 # Keep identity/reference definitions only for target-visible Subjects.
 def _filter_h3_subject_definitions(
-    subject_definitions, visible_subject_ids, detailed_description=None
+    subject_definitions,
+    visible_subject_ids,
+    detailed_description=None,
+    retained_subject_ids=None,
 ):
     """Keep identity/reference definitions only for target-visible Subjects.
 
@@ -26817,6 +26850,11 @@ def _filter_h3_subject_definitions(
         for value in (visible_subject_ids or ())
         if isinstance(value, int) or str(value).isdigit()
     }
+    visible.update(
+        int(value)
+        for value in (retained_subject_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    )
 
     text = str(subject_definitions or "")
     # Map subject id -> original definition line (preserve order)
@@ -27400,6 +27438,7 @@ def build_h3_prompt(
     retention_json=None,
     character_canon=None,
     starting_location="",
+    retained_subject_ids=None,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -27509,6 +27548,7 @@ def build_h3_prompt(
         subject_text,
         current_visible_subject_ids,
         integrated,
+        retained_subject_ids=retained_subject_ids,
     )
     if isinstance(maybe_modified_description, str) and maybe_modified_description:
         integrated = maybe_modified_description
@@ -29170,6 +29210,259 @@ def normalize_character_reference_images(value):
             "authority": authority,
         }
     return normalized
+
+
+def subject_removal_window_segments(total_segments):
+    """Return the inactivity window used for per-segment Subject bindings."""
+    try:
+        total = int(total_segments)
+    except (TypeError, ValueError):
+        total = 1
+    return max(1, int(math.ceil(max(1, total) / 2.0)))
+
+
+def _reference_binding_registry(subject_definitions):
+    """Return parsed Subject registry for reference-binding decisions."""
+    try:
+        return parse_subject_registry(str(subject_definitions or ""))
+    except (TypeError, ValueError):
+        return {}
+
+
+def _reference_binding_subject_name(registry, subject_id):
+    record = registry.get(int(subject_id), {}) if isinstance(registry, dict) else {}
+    if not isinstance(record, dict):
+        return ""
+    return " ".join(str(record.get("name") or "").split()).strip()
+
+
+def build_segment_reference_bindings(
+    *,
+    segment_number,
+    total_segments,
+    detailed_description,
+    subject_definitions,
+    character_references,
+    base_reference_count,
+    binding_state=None,
+    disable_subject_removal=False,
+):
+    """Build one frozen segment-local Subject/Picture map."""
+    segment_number = int(segment_number)
+    total_segments = max(1, int(total_segments))
+    base_reference_count = max(0, int(base_reference_count or 0))
+    window = subject_removal_window_segments(total_segments)
+    registry = _reference_binding_registry(subject_definitions)
+    explicit_ids = set(
+        _subject_ids_referenced_by_description(
+            detailed_description,
+            subject_definitions,
+        )
+    )
+    state = copy.deepcopy(binding_state) if isinstance(binding_state, dict) else {}
+    subjects = state.get("subjects")
+    if not isinstance(subjects, dict):
+        subjects = {}
+
+    for subject_id in sorted(explicit_ids):
+        name = _reference_binding_subject_name(registry, subject_id)
+        if not name:
+            continue
+        prior = subjects.get(name)
+        if not isinstance(prior, dict):
+            prior = {}
+        try:
+            first_seen = int(prior.get("first_segment_seen"))
+        except (TypeError, ValueError):
+            first_seen = segment_number
+        history = prior.get("binding_history")
+        if not isinstance(history, list):
+            history = []
+        subjects[name] = {
+            **prior,
+            "subject_id": int(subject_id),
+            "first_segment_seen": first_seen,
+            "last_explicit_segment": segment_number,
+            "binding_history": history,
+        }
+
+    active_ids = set()
+    removed_ids = set()
+    binding_reason_by_name = {}
+    for name, tracking in list(subjects.items()):
+        if not isinstance(tracking, dict):
+            continue
+        try:
+            subject_id = int(tracking.get("subject_id"))
+            last_explicit = int(tracking.get("last_explicit_segment"))
+        except (TypeError, ValueError):
+            continue
+        segments_since = max(0, segment_number - last_explicit)
+        currently_bound = bool(
+            disable_subject_removal
+            or segments_since < window
+            or subject_id in explicit_ids
+        )
+        reason = (
+            "explicit_current_segment"
+            if subject_id in explicit_ids
+            else (
+                "forced_persistent"
+                if disable_subject_removal
+                else "within_sliding_window"
+            )
+        )
+        threshold = last_explicit + window
+        tracking.update({
+            "segments_since_explicit": segments_since,
+            "currently_bound": currently_bound,
+            "eligible_for_removal": not currently_bound,
+            "removal_threshold_segment": threshold,
+            "binding_reason": reason if currently_bound else "expired_sliding_window",
+        })
+        if currently_bound:
+            active_ids.add(subject_id)
+            binding_reason_by_name[name] = reason
+            tracking["last_bound_segment"] = segment_number
+        else:
+            removed_ids.add(subject_id)
+
+    active_subject_definitions, _ = _filter_h3_subject_definitions(
+        subject_definitions,
+        active_ids,
+        "",
+        retained_subject_ids=active_ids,
+    )
+
+    persistent_refs = normalize_character_reference_images(character_references)
+    active_names = {
+        _reference_binding_subject_name(registry, subject_id)
+        for subject_id in active_ids
+    }
+    active_names.discard("")
+    ordered_refs = sorted(
+        (
+            record
+            for name, record in persistent_refs.items()
+            if name in active_names
+        ),
+        key=lambda item: (
+            int(item.get("picture_number") or 0),
+            str(item.get("name") or ""),
+        ),
+    )
+
+    segment_refs = {}
+    bindings = []
+
+    for subject_id in sorted(active_ids):
+        record = registry.get(subject_id, {})
+        if not isinstance(record, dict):
+            continue
+        name = _reference_binding_subject_name(registry, subject_id)
+        picture_ids = []
+        for raw_id in record.get("picture_ids", []) or []:
+            try:
+                picture_ids.append(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+        if not picture_ids and record.get("picture_id") is not None:
+            try:
+                picture_ids.append(int(record.get("picture_id")))
+            except (TypeError, ValueError):
+                pass
+        for picture_number in dict.fromkeys(picture_ids):
+            if picture_number <= 0:
+                continue
+            bindings.append({
+                "picture_number": picture_number,
+                "canonical_picture_number": picture_number,
+                "subject_name": name,
+                "subject_id": subject_id,
+                "source_kind": "configured_picture",
+                "reference_version": None,
+                "image_name": "",
+                "image_path": "",
+                "authority": "identity",
+                "binding_reason": binding_reason_by_name.get(name, ""),
+            })
+
+    next_picture_number = base_reference_count + 1
+    for persistent in ordered_refs:
+        name = str(persistent.get("name") or "").strip()
+        subject_id = next(
+            (
+                int(sid)
+                for sid in active_ids
+                if _reference_binding_subject_name(registry, sid) == name
+            ),
+            None,
+        )
+        if subject_id is None:
+            continue
+        remapped = copy.deepcopy(persistent)
+        canonical_picture_number = int(persistent["picture_number"])
+        remapped["canonical_picture_number"] = canonical_picture_number
+        remapped["picture_number"] = next_picture_number
+        segment_refs[name] = remapped
+        tracking = subjects.get(name, {})
+        binding = {
+            "picture_number": next_picture_number,
+            "canonical_picture_number": canonical_picture_number,
+            "subject_name": name,
+            "subject_id": subject_id,
+            "source_kind": "generated_reference",
+            "reference_version": int(persistent.get("version") or 1),
+            "image_name": str(persistent.get("image_name") or ""),
+            "image_path": str(persistent.get("image_path") or ""),
+            "authority": str(persistent.get("authority") or ""),
+            "binding_reason": binding_reason_by_name.get(name, ""),
+            "first_segment_seen": tracking.get("first_segment_seen"),
+            "last_explicit_segment": tracking.get("last_explicit_segment"),
+            "segments_since_explicit": tracking.get("segments_since_explicit"),
+            "removal_threshold_segment": tracking.get("removal_threshold_segment"),
+        }
+        bindings.append(binding)
+        history = tracking.get("binding_history")
+        if not isinstance(history, list):
+            history = []
+        history.append({
+            "segment_number": segment_number,
+            "picture_number": next_picture_number,
+            "canonical_picture_number": canonical_picture_number,
+            "reference_version": int(persistent.get("version") or 1),
+            "image_name": str(persistent.get("image_name") or ""),
+            "binding_reason": binding_reason_by_name.get(name, ""),
+        })
+        tracking["binding_history"] = history
+        subjects[name] = tracking
+        next_picture_number += 1
+
+    segment_subject_definitions = append_character_reference_definitions(
+        active_subject_definitions,
+        segment_refs,
+    )
+    state.update({
+        "version": 1,
+        "disable_subject_removal": bool(disable_subject_removal),
+        "subject_removal_window_segments": window,
+        "current_segment_number": segment_number,
+        "current_bindings": copy.deepcopy(bindings),
+        "current_active_subject_ids": sorted(active_ids),
+        "current_explicit_subject_ids": sorted(explicit_ids),
+        "current_removed_subject_ids": sorted(removed_ids),
+        "subjects": subjects,
+    })
+    snapshot = {
+        "segment_number": segment_number,
+        "disable_subject_removal": bool(disable_subject_removal),
+        "subject_removal_window_segments": window,
+        "explicit_subject_ids": sorted(explicit_ids),
+        "active_subject_ids": sorted(active_ids),
+        "removed_subject_ids": sorted(removed_ids),
+        "bindings": copy.deepcopy(bindings),
+    }
+    return segment_refs, segment_subject_definitions, state, snapshot
 
 
 def active_configured_reference_count(input_directory=None):
@@ -34969,6 +35262,12 @@ def _run_main(
             "trim_frames": trim_frames,
             "refresh_interval": refresh_interval,
             "total_segments": total_segments,
+            "disable_subject_removal": bool(
+                getattr(args, "disable_subject_removal", False)
+            ),
+            "subject_removal_window_segments": max(
+                1, int(math.ceil(float(total_segments) / 2.0))
+            ),
             "reference_file_token": (
                 saved_reference_file_token
                 or run_id.replace("-", "")[:12]
@@ -35010,6 +35309,9 @@ def _run_main(
         retention=retention,
         test_prompt_generation=test_prompt_generation,
         no_music=getattr(args, "no_music", False),
+        disable_subject_removal=bool(
+            getattr(args, "disable_subject_removal", False)
+        ),
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
@@ -35150,6 +35452,20 @@ def _run_main(
     )
     base_reference_image_count = generation_state.get(
         "base_reference_image_count"
+    )
+    reference_binding_state = copy.deepcopy(
+        generation_state.get("reference_binding_state", {})
+    )
+    if not isinstance(reference_binding_state, dict):
+        reference_binding_state = {}
+    reference_binding_state["disable_subject_removal"] = bool(
+        getattr(args, "disable_subject_removal", False)
+    )
+    reference_binding_state["subject_removal_window_segments"] = (
+        subject_removal_window_segments(total_segments)
+    )
+    generation_state["reference_binding_state"] = copy.deepcopy(
+        reference_binding_state
     )
 
     # A prefetched prompt belongs to a live executor/Future. It cannot be
@@ -35380,6 +35696,19 @@ def _run_main(
         base_reference_image_count = int(base_reference_image_count)
     console_log(
         f"Active base Picture references: {base_reference_image_count}",
+        flush=True,
+    )
+    console_log(
+        "Subject reference removal: "
+        + (
+            "disabled; previously seen Subjects remain bound"
+            if getattr(args, "disable_subject_removal", False)
+            else (
+                "enabled after "
+                f"{subject_removal_window_segments(total_segments)} segment(s) "
+                "without explicit visual appearance"
+            )
+        ),
         flush=True,
     )
     console_log(
@@ -35987,10 +36316,27 @@ def _run_main(
                 + ", ".join(changed_character_references),
                 flush=True,
             )
-        h3_subject_definitions = append_character_reference_definitions(
-            subject_definitions,
-            character_reference_images,
+        (
+            segment_character_reference_images,
+            h3_subject_definitions,
+            reference_binding_state,
+            segment_reference_binding_snapshot,
+        ) = build_segment_reference_bindings(
+            segment_number=segment,
+            total_segments=total_segments,
+            detailed_description=detailed_description,
+            subject_definitions=subject_definitions,
+            character_references=character_reference_images,
+            base_reference_count=base_reference_image_count,
+            binding_state=reference_binding_state,
+            disable_subject_removal=bool(
+                getattr(args, "disable_subject_removal", False)
+            ),
         )
+        generation_state["reference_binding_state"] = copy.deepcopy(
+            reference_binding_state
+        )
+        checkpoint_generation_state()
         previous_visible_subject_ids = extract_previous_visible_subject_ids(
             recent_results,
             segment,
@@ -36022,6 +36368,9 @@ def _run_main(
                 if isinstance(generation_state.get("metadata"), dict)
                 else ""
             ),
+            retained_subject_ids=segment_reference_binding_snapshot.get(
+                "active_subject_ids", []
+            ),
         )
         if (
             location_setting_description
@@ -36042,7 +36391,10 @@ def _run_main(
             "h3_prompt": h3_prompt,
             "subject_definitions": h3_subject_definitions,
             "character_reference_images": copy.deepcopy(
-                character_reference_images
+                segment_character_reference_images
+            ),
+            "reference_bindings": copy.deepcopy(
+                segment_reference_binding_snapshot
             ),
             "continuity_state": copy.deepcopy(continuity_state),
             "continuity_summary": payload.get(
@@ -36223,6 +36575,9 @@ def _run_main(
                 ),
                 "request2_result": request2_result_for_fixture,
                 "subject_definitions": h3_subject_definitions,
+                "reference_bindings": copy.deepcopy(
+                    segment_reference_binding_snapshot
+                ),
                 "loras": loras,
             }
         render_future = None
@@ -36260,7 +36615,7 @@ def _run_main(
                 h3_fixture_context=h3_fixture_context,
                 h3_fixture_path=h3_fixture_path if h3_fixture_context else None,
                 location_reference_video_path=location_reference_video_path,
-                character_reference_images=character_reference_images,
+                character_reference_images=segment_character_reference_images,
             )
             render_futures_by_segment[int(segment)] = render_future
             # A cadence-skipped final render must still be completed on the main
@@ -36519,6 +36874,13 @@ def _run_main(
                 )
                 completed_record["continuity_source"] = continuity_source
                 completed_record["h3_prompt"] = h3_prompt
+                completed_record["subject_definitions"] = h3_subject_definitions
+                completed_record["character_reference_images"] = copy.deepcopy(
+                    segment_character_reference_images
+                )
+                completed_record["reference_bindings"] = copy.deepcopy(
+                    segment_reference_binding_snapshot
+                )
                 generation_state["continuity_prompt_state"] = copy.deepcopy(
                     prompt_reduced_continuity_state
                 )
@@ -36575,6 +36937,13 @@ def _run_main(
             skipped_prop_ledger = copy.deepcopy(prop_ledger)
             skipped_prompt_completed_beat_ids = list(prompt_completed_beat_ids)
             skipped_opening_summary = prompt_only_opening_summary
+            skipped_subject_definitions = str(h3_subject_definitions)
+            skipped_character_reference_images = copy.deepcopy(
+                segment_character_reference_images
+            )
+            skipped_reference_bindings = copy.deepcopy(
+                segment_reference_binding_snapshot
+            )
 
             # Finalize a segment whose vision check was skipped.
             def finalize_skipped_vision_segment(future):
@@ -36634,6 +37003,13 @@ def _run_main(
                         skipped_prompt_state
                     )
                     completed_record["continuity_source"] = "prompt"
+                    completed_record["subject_definitions"] = skipped_subject_definitions
+                    completed_record["character_reference_images"] = copy.deepcopy(
+                        skipped_character_reference_images
+                    )
+                    completed_record["reference_bindings"] = copy.deepcopy(
+                        skipped_reference_bindings
+                    )
                     generation_state["continuity_source"] = "prompt"
                     if beats:
                         generation_state["beat_progress"] = {
@@ -36823,6 +37199,13 @@ def _run_main(
                 prompt_reduced_continuity_state
             )
             completed_record["continuity_source"] = continuity_source
+            completed_record["subject_definitions"] = h3_subject_definitions
+            completed_record["character_reference_images"] = copy.deepcopy(
+                segment_character_reference_images
+            )
+            completed_record["reference_bindings"] = copy.deepcopy(
+                segment_reference_binding_snapshot
+            )
             generation_state["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state
             )
