@@ -23,7 +23,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from minimax import LORA_DIRECTORY, parse_args, require_existing_beats
+from minimax import (
+    DEFAULT_REFRESH_INTERVAL,
+    DEFAULT_STORY_TEMPERATURE,
+    LORA_DIRECTORY,
+    parse_args,
+    require_existing_beats,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -51,12 +57,12 @@ DEFAULT_SETTINGS = {
     "resume": "1",
     "steps": "6",
     "trim_frames": "2",
-    "refresh": "999",
+    "refresh": str(DEFAULT_REFRESH_INTERVAL),
     "vision_continuity": "0",
     "retention": False,
     "repair": "",
     "model": "gpt",
-    "temp": "0.8",
+    "temp": str(DEFAULT_STORY_TEMPERATURE),
     "first_frame": False,
     "loras": [],
     "beat_count": "",
@@ -297,7 +303,7 @@ class MiniMaxBridge:
                 settings.get("trim_frames", 2), "Trim frames"
             ),
             "refresh": _positive_int(
-                settings.get("refresh", 999), "Legacy refresh fallback"
+                settings.get("refresh", DEFAULT_REFRESH_INTERVAL), "Legacy refresh fallback"
             ),
             "vision_continuity": _non_negative_int(
                 settings.get("vision_continuity", 0), "Vision continuity"
@@ -313,7 +319,7 @@ class MiniMaxBridge:
         if model not in {"gpt", "mistral", "qwen"}:
             raise ValueError("Model formatter must be 'gpt', 'mistral', or 'qwen'.")
         validated["model"] = model
-        validated["temp"] = _story_temperature(settings.get("temp", 0.8))
+        validated["temp"] = _story_temperature(settings.get("temp", DEFAULT_STORY_TEMPERATURE))
 
         repair_value = settings.get("repair")
         if repair_value not in (None, ""):
@@ -388,7 +394,7 @@ class MiniMaxBridge:
                 "--model",
                 model,
                 "--temp",
-                _number_argument(_story_temperature(settings.get("temp", 0.8))),
+                _number_argument(_story_temperature(settings.get("temp", DEFAULT_STORY_TEMPERATURE))),
             ]
 
         if not isinstance(settings, dict):
@@ -421,9 +427,9 @@ class MiniMaxBridge:
         effective = dict(settings)
         if render:
             effective.update(segment_length=1, total_segments=1, megapixels=0.5,
-                             steps=6, trim_frames=2, refresh=999, vision_continuity=0,
+                             steps=6, trim_frames=2, refresh=DEFAULT_REFRESH_INTERVAL, vision_continuity=0,
                              model="gpt", resume=1, first_frame=False,
-                             retention=False, loras=[], temp=0.8)
+                             retention=False, loras=[], temp=DEFAULT_STORY_TEMPERATURE)
         values = self._validate_settings(effective)
         command = [
             self.python_executable,
