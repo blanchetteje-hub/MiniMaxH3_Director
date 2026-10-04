@@ -109,6 +109,29 @@ class PostmortemRegressionTests(unittest.TestCase):
             validator_messages[-1]["content"],
         )
 
+    def test_story_setting_extractor_does_not_promote_relative_action_labels(self):
+        messages = minimax.build_story_setting_description_messages(
+            "Amy enters through the front door and later locks the back door.",
+            "tavern",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("Relative action wording is not proof of distinct static architecture", prompt)
+        self.assertIn("front/back/side door", prompt)
+        self.assertIn("entrance door rather than back door", prompt)
+
+    def test_director_prompt_separates_physical_prerequisites(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=3,
+            conditioning_mode="continuation",
+        )
+        self.assertIn("Budget enough visible time for every physical step", rules)
+        self.assertIn("give that prerequisite its own earlier timed micro-beat", rules)
+        self.assertIn("instead of compressing both steps into one timestamp", rules)
+
     def test_director_rules_require_frame_zero_microbeat(self):
         rules = minimax.build_director_rules(
             total_length=48,
