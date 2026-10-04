@@ -594,6 +594,66 @@ class ResumeTests(unittest.TestCase):
             self.assertEqual(len(restored["video_paths"]), 1)
             self.assertEqual(restored["continuity_summary"], "summary 1")
 
+    def test_prop_ledger_round_trip_and_resume_slice_use_last_completed_segment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = minimax.build_run_config(5, 15, 0.5, 3)
+            state = minimax.new_generation_state(config)
+            mug_at_table = {
+                "mug_1": {
+                    "kind": "mug",
+                    "owner": "Goblin1",
+                    "holder": "N/A",
+                    "location": "on Goblin1's table",
+                    "contents": "empty",
+                    "status": "present",
+                }
+            }
+            mug_held = {
+                "mug_1": {
+                    "kind": "mug",
+                    "owner": "Goblin1",
+                    "holder": "Goblin1",
+                    "location": "N/A",
+                    "contents": "beer",
+                    "status": "present",
+                }
+            }
+            for segment, ledger in ((1, mug_at_table), (2, mug_held)):
+                path = os.path.join(directory, f"segment_{segment:04d}.mp4")
+                with open(path, "wb") as video_file:
+                    video_file.write(b"video")
+                minimax.record_completed_segment(
+                    state,
+                    segment,
+                    path,
+                    formatted_result(segment),
+                    [],
+                    f"summary {segment}",
+                    prop_ledger=ledger,
+                )
+
+            checkpoint = os.path.join(directory, "generation_state.json")
+            minimax.save_generation_state(state, checkpoint)
+            loaded = minimax.load_generation_state(checkpoint)
+            self.assertEqual(
+                loaded["segments"][1]["prop_ledger"]["mug_1"]["holder"],
+                "Goblin1",
+            )
+
+            restored = minimax.restore_generation_state(
+                2,
+                [],
+                checkpoint,
+            )
+            self.assertEqual(
+                restored["prop_ledger"]["mug_1"]["location"],
+                "on Goblin1's table",
+            )
+            self.assertEqual(
+                restored["prop_ledger"]["mug_1"]["contents"],
+                "empty",
+            )
+
     def test_resume_marks_rendered_segment_with_pending_summary_for_rebuild(self):
         with tempfile.TemporaryDirectory() as directory:
             config = minimax.build_run_config(5, 15, 0.5, 3)
