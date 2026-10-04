@@ -4,7 +4,7 @@ import HelpTip from './HelpTip.jsx'
 
 const INITIAL_SETTINGS = {
   generation_mode: 'new', vram_mode: '32', segment_length: '', total_segments: '',
-  megapixels: '0.5', resume: '1', steps: '6', trim_frames: '2', refresh: '6',
+  megapixels: '0.5', resume: '1', steps: '6', trim_frames: '2', refresh: '999',
   vision_continuity: '0', retention: false, repair: '', model: 'gpt', temp: '0.8', first_frame: false,
   loras: [], beat_count: '', beat_length: '', use_prompts: '',
   test_prompt_generation: false, director_only: false,
