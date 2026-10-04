@@ -91,7 +91,10 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **Barrier/containment and irreversible-state bookkeeping** has deterministic/narrow semantic support from earlier acceptance work.
 - [x] **Persistent movable-prop ledger architecture is implemented.** The existing combined-continuity call now also maintains stable IDs and state for distinct reusable/interactable props (for example mugs, glasses, baskets, tools, weapons, keys, and containers), including kind, owner, holder, location, contents, and present/lost/destroyed status. Unchanged props copy forward even when offscreen, so this adds no new always-on LLM stage. Existing source-authorized item effects (held/equipped/stored/dropped/lost) deterministically override prompt-derived ledger state rather than creating a competing inventory authority.
 - [x] **Missing-prop handling is proactive rather than generate/reject/regenerate.** Before RAW, only prop-interaction Beats trigger a tiny temperature-0 micro-call. If a required usable prop is not established, it returns one minimal natural staging instruction for Request 1; otherwise it returns nothing. Existing validators remain backstops rather than the normal repair loop.
-- [ ] **Production-verify movable-prop persistence/pre-staging.** The latest tavern run still had appearing/disappearing glasses and basket before this ledger was added. The next run should verify stable mug/glass/basket identity, possession/location, and container contents across segment boundaries.
+- [x] **Basic movable-prop persistence accepted in production.** The latest tavern rerun eliminated the prior appearing/disappearing glasses/basket behavior, and liquid/container behavior was acceptable overall. The remaining demonstrated prop defect was semantic ownership: Segment 3 reused Goblin1's tracked mug as serving inventory for Elf1.
+- [x] **Owned/held props are not shared inventory.** The pre-RAW prop-staging micro-call and Director now treat another subject's owned/held prop as unavailable unless CURRENT BEAT explicitly authorizes that use/taking/transfer; missing serving props should be staged as distinct ordinary instances instead of hijacking a tracked patron prop.
+- [x] **Deterministic final-participant carry-forward.** After dynamic Subject resolution, Python now compares the final timed micro-action with the End continuity state. A named Subject still present in the final action but omitted by End state is copied into that state from the exact final-action evidence, without another LLM call. Explicit exits/leaving/occlusion are not carried.
+- [ ] **Production-verify ownership + final-subject carry-forward.** Rerun the tavern case and verify Goblin1 remains semantically located after Segment 2, does not wander into Elf1's seat in Segment 3, and Goblin1's mug is not repurposed to serve Elf1.
 - [ ] **End-to-end bookkeeping stress test.** Use a story that stores, drops, retrieves, transfers, equips, loses, and later reuses props while characters leave/re-enter rooms.
 
 ### Refresh / long-run quality / runtime robustness
@@ -2192,3 +2195,42 @@ cycle:
 Next acceptance should focus on mug/glass/basket persistence and transfer/container state.
 Do not reopen the location-reference or spatial-timing architecture unless that run shows
 a regression.
+
+## 2026-10-04 update — prop persistence accepted; ownership and final-subject carry-forward
+
+The next tavern acceptance showed that the persistent movable-prop ledger solved the main
+visible object-continuity problem: glasses/basket no longer appeared and disappeared, and
+fluid/container behavior was acceptable overall.
+
+One Segment 3 failure exposed two narrower bookkeeping defects:
+
+1. Segment 2's final timed action still had Goblin1 present and stepping back toward the
+   hearth, but Request 1's End continuity state omitted Goblin1 entirely. Combined
+   continuity therefore knew Goblin1 existed but lost his current position, leaving H3's
+   22-frame Guide to visually continue a subject whose semantic state was effectively
+   locationless.
+2. The prop ledger correctly preserved `mug_1` as Goblin1's owned mug on the counter,
+   but Director treated that tracked mug as generic serving inventory and used it as the
+   source for Elf1's drink.
+
+Implemented response:
+
+- After post-RAW Subject resolution gives every dynamic participant a stable name, Python
+  deterministically inspects the final timed micro-action. If a named Subject is still
+  present there but the End continuity state omits that Subject, the exact final-action
+  evidence is appended to End state. This is bookkeeping repair, not another semantic
+  validator or generate/reject/regenerate cycle. Explicit leave/exit/fully-occluded final
+  actions are not carried.
+- Prop ownership/holding is now an availability boundary. A ledger prop owned or held by
+  another Subject does not count as shared inventory unless CURRENT BEAT explicitly
+  authorizes reuse, taking, or transfer.
+- The existing conditional prop-staging micro-call is instructed to prefer a distinct
+  ordinary instance when the only matching tracked prop belongs to somebody else, and
+  Request 1 receives the same ownership rule in both its Director contract and injected
+  prop-state block.
+- No new always-on LLM call was added.
+
+Next acceptance: rerun the same tavern case and specifically verify Segment 2 -> 3:
+Goblin1 should retain his final location/state, should not drift into Elf1's seat, and his
+tracked mug should remain his rather than becoming Elf1's serving source.
+
