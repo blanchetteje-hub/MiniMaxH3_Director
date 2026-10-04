@@ -393,6 +393,21 @@ CREATIVE_GENERATION_LLM_SETTINGS = {
     "enable_thinking": True,
 }
 
+DIRECTOR_RAW_SCENE_LLM_SETTINGS = {
+    "temperature": 0.4,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0.05,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "repeat_penalty": 1.15,
+    "seed": None,
+    "reasoning_effort": "high",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
+}
+
 BEAT_WRITING_LLM_SETTINGS = {
     "temperature": 0,
     "top_p": None,
@@ -478,6 +493,9 @@ CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
     "macro_arc_create",
     "macro_arc_repair",
     "macro_arc_majority_tail_repair",
+})
+
+DIRECTOR_RAW_SCENE_LLM_PURPOSES = frozenset({
     "director_raw_scene",
 })
 
@@ -1077,6 +1095,7 @@ WRITE THE SCENE
 - Preserve spatial continuity literally. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut. This applies to every established position, not only doors or room changes.
 - Give every newly introduced foreground subject visible provenance. If the subject was not visible at frame 0, show it physically entering through a stated route/boundary, or explicitly move the camera to reveal that it was already present offscreen. Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
 - Preserve prop identity and provenance. A held or manipulated object must not silently become a different object. When a subject acquires a new prop, explicitly state where it comes from and the pickup/reach/take action before it is used, unless it is already established in the opening frame. When pouring or transferring between containers, keep the source container and destination container distinct and explicitly named through the transfer.
+- Budget enough visible time for every physical step you introduce. When movement, acquisition, positioning, opening, or another prerequisite must happen before a dependent action, give that prerequisite its own earlier timed micro-beat instead of compressing both steps into one timestamp.
 - Prefer names when a pronoun could be ambiguous.
 - If CURRENT BEAT explicitly says someone says, asks, orders, tells, replies, or otherwise speaks intelligibly, write a brief direct spoken line in the form Speaker said <d>exact words</d> rather than indirect narration. Use said as the attribution verb in the audiovisual RAW. Do not add intelligible dialogue when CURRENT BEAT contains no speech act.
 {camera_choreography_rules}
@@ -9063,6 +9082,8 @@ def ask_llm(
         llm_settings = MUSIC_GENERATION_LLM_SETTINGS
     elif history_purpose in BEAT_WRITING_LLM_PURPOSES:
         llm_settings = BEAT_WRITING_LLM_SETTINGS
+    elif history_purpose in DIRECTOR_RAW_SCENE_LLM_PURPOSES:
+        llm_settings = DIRECTOR_RAW_SCENE_LLM_SETTINGS
     elif history_purpose in CREATIVE_GENERATION_LLM_PURPOSES:
         llm_settings = CREATIVE_GENERATION_LLM_SETTINGS
     else:
@@ -17762,9 +17783,14 @@ def build_story_setting_description_messages(expanded_story, overall_location):
                 "characters, creatures, character actions, dialogue, plot events, held "
                 "props, and objects/furniture mentioned only because a later action "
                 "uses or introduces them. Do not promote every story prop into the "
-                "global setting. Do not invent details. If the story gives only a broad "
-                "setting, return only that broad setting and let the video model design "
-                "unspecified details. Return JSON only."
+                "global setting. Relative action wording is not proof of distinct static "
+                "architecture: labels such as front/back/side door or left/right table "
+                "should be kept only when the story clearly establishes multiple distinct "
+                "instances or that relative identity is itself a persistent architectural "
+                "fact. When only one instance is established, describe it generically "
+                "(for example, entrance door rather than back door). Do not invent details. "
+                "If the story gives only a broad setting, return only that broad setting "
+                "and let the video model design unspecified details. Return JSON only."
             ),
         },
         {
