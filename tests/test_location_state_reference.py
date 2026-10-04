@@ -28,7 +28,8 @@ class LocationStateReferenceTests(unittest.TestCase):
         prompt = minimax.build_location_reference_h3_prompt("medieval tavern")
         self.assertIn("wide panoramic establishing view of medieval tavern", prompt)
         self.assertIn("no people, characters, creatures, or story action", prompt)
-        self.assertIn("one continuous slow lateral camera pan", prompt)
+        self.assertIn("3-second, full 360 orbital camera shot", prompt)
+        self.assertEqual(minimax.LOCATION_REFERENCE_DURATION_SECONDS, 3.0)
 
     def test_h3_prompt_marks_video_one_as_static_location_only(self):
         prompt = minimax.inject_location_reference_into_h3_prompt(
