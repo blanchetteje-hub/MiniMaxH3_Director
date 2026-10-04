@@ -247,6 +247,12 @@ APPEND_GUIDE_CONTEXT_SECONDS = APPEND_GUIDE_CONTEXT_FRAMES / FRAME_RATE
 LOCATION_REFERENCE_DURATION_SECONDS = 3.0
 LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES = 4
 
+# Character wardrobe references use the same isolated H3 render path as the
+# location reference, but produce one front-facing second and sample its
+# midpoint into an ordinary Picture reference.
+CHARACTER_REFERENCE_DURATION_SECONDS = 1.0
+CHARACTER_REFERENCE_SAMPLE_SECONDS = 0.5
+
 # Clean refresh is intentionally different: it keeps the proven short latent
 # context window so the refresh boundary can reset accumulated generation drift.
 REFRESH_CONTEXT_FRAMES = 22
@@ -6576,6 +6582,8 @@ def new_generation_state(run_config):
         "visual_end_state": {},
         "visual_end_frame_paths": [],
         "prop_ledger": {},
+        "character_reference_images": {},
+        "base_reference_image_count": None,
         "subject_registry_state": new_continuity_state(),
         # This is the append-only identity contract for the run. Subject
         # continuity facts may change, but this lock may only gain a brand-new
@@ -7254,6 +7262,10 @@ def restore_generation_state(
         ),
         "continuity_state": copy.deepcopy(state.get("continuity_state", {})),
         "prop_ledger": copy.deepcopy(state.get("prop_ledger", {})),
+        "character_reference_images": normalize_character_reference_images(
+            state.get("character_reference_images", {})
+        ),
+        "base_reference_image_count": state.get("base_reference_image_count"),
         "subject_registry_state": migrate_continuity_state(
             state.get("subject_registry_state")
         ),
@@ -26840,8 +26852,24 @@ def _filter_h3_subject_definitions(
             r"(?i)^\s*(?:<\s*)?Picture\s+(\d+)\s*(?:>\s*)?",
             line,
         )
+        clothing_reference_match = re.match(
+            r"(?i)^\s*<Picture\s+(\d+)>\s+references\s+only\s+the\s+"
+            r"clothing\s+that\s+(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)"
+            r"\s+is\s+currently\s+wearing\.?\s*$",
+            line,
+        )
         match = subject_match or legacy_match
         if match is not None and int(match.group(1)) in visible:
+            rendered.append(line)
+            continue
+        if (
+            clothing_reference_match is not None
+            and isinstance(modified_description, str)
+            and re.search(
+                rf"(?i)(?<!\w){re.escape(clothing_reference_match.group('name'))}(?!\w)",
+                _h3_visual_identity_text(modified_description),
+            )
+        ):
             rendered.append(line)
 
     # Add synthesized lines for visible subjects missing from original defs
@@ -29040,6 +29068,528 @@ def capture_h3_fixture(
     console_log(f"Saved H3 experiment fixture to {output_path}", flush=True)
 
 
+# Normalize the run-local generated character-reference registry.
+def normalize_character_reference_images(value):
+    """Return canonical generated Picture metadata keyed by character name."""
+    if not isinstance(value, dict):
+        return {}
+    normalized = {}
+    for raw_name, raw_record in value.items():
+        if not isinstance(raw_record, dict):
+            continue
+        name = " ".join(str(raw_name or raw_record.get("name") or "").split()).strip()
+        try:
+            picture_number = int(raw_record.get("picture_number"))
+        except (TypeError, ValueError):
+            continue
+        image_name = str(raw_record.get("image_name") or "").strip()
+        signature = str(raw_record.get("signature") or "").strip()
+        try:
+            version = max(1, int(raw_record.get("version") or 1))
+        except (TypeError, ValueError):
+            version = 1
+        if not name or picture_number <= 0 or not image_name:
+            continue
+        normalized[name] = {
+            "name": name,
+            "picture_number": picture_number,
+            "image_name": image_name,
+            "signature": signature,
+            "version": version,
+            "description": " ".join(
+                str(raw_record.get("description") or "").split()
+            ),
+        }
+    return normalized
+
+
+def active_configured_reference_count(input_directory=None):
+    """Count actual connected/decodable template Pictures, ignoring empty slots."""
+    workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
+    _removed, picture_slot_map = prune_missing_reference_images(
+        workflow,
+        label,
+        "initial",
+        input_directory=input_directory,
+        return_picture_slot_map=True,
+    )
+    return len(picture_slot_map)
+
+
+def _character_reference_wardrobe_text(record):
+    """Render known current wardrobe without N/A/absent placeholders."""
+    wardrobe = record.get("wardrobe") if isinstance(record, dict) else {}
+    if not isinstance(wardrobe, dict):
+        return ""
+    values = []
+    for field in _WARDROBE_FIELDS:
+        value = _known_continuity_value(wardrobe.get(field))
+        if not value or value.casefold() == "absent":
+            continue
+        if value not in values:
+            values.append(value)
+    return _english_join(values)
+
+
+def _strip_character_description_clothing(description):
+    """Remove one static wearing-clause so current wardrobe can replace it."""
+    text = " ".join(str(description or "").split()).strip()
+    if not text:
+        return ""
+    # Canonical character prose is intentionally simple ("X is ... wearing Y.").
+    # Remove only the terminal static clothing clause; never touch action prose.
+    text = re.sub(
+        r"(?i)\s+\b(?:wearing|wears|dressed\s+in|clad\s+in|has\s+on|sports)\b"
+        r"\s+[^.]+(?=\.)",
+        "",
+        text,
+        count=1,
+    )
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def build_character_reference_description(
+    subject_name,
+    subject_record,
+    detailed_description="",
+    subject_descriptions=None,
+):
+    """Build one appearance description with current wardrobe as authority."""
+    name = " ".join(str(subject_name or "").split()).strip()
+    record = subject_record if isinstance(subject_record, dict) else {}
+    canonical = (
+        subject_descriptions.get(name, "")
+        if isinstance(subject_descriptions, dict)
+        else ""
+    )
+    if not canonical:
+        canonical = str(record.get("canonical_description") or "").strip()
+    if not canonical:
+        role = _functional_subject_role_description(name)
+        canonical = role or f"{name} is a person."
+
+    wardrobe = _character_reference_wardrobe_text(record)
+    if not wardrobe:
+        explicitly_stated = _explicit_wardrobe_from_description(
+            detailed_description,
+            name,
+        )
+        if explicitly_stated:
+            wardrobe = _english_join(
+                value
+                for field in _WARDROBE_FIELDS
+                if (value := _known_continuity_value(
+                    explicitly_stated.get(field)
+                ))
+                and value.casefold() != "absent"
+            )
+
+    if wardrobe:
+        canonical = _strip_character_description_clothing(canonical)
+        canonical = canonical.rstrip(" .") + "."
+        canonical += f" {name} is currently wearing {wardrobe}."
+    return " ".join(canonical.split()).strip()
+
+
+def build_character_reference_h3_prompt(character_description):
+    """Build a one-second front-facing character/clothing reference prompt."""
+    description = " ".join(str(character_description or "").split()).strip(" .")
+    if not description:
+        raise ValueError("Character reference requires a character description.")
+    return (
+        "detailed_description: [Shot 1] A single character stands centered and "
+        "front-facing in a neutral natural pose, with the complete current outfit "
+        "clearly visible. Use one continuous static shot for exactly 1 second. "
+        f"{description}. Keep the face, body, garments, footwear, and accessories "
+        "clear and unobstructed. Use a plain unobtrusive background. Do not orbit, "
+        "pan, zoom, cut, add another character, or invent story action.\n\n"
+        "overall_soundscape: N/A\n"
+        "non_diegetic_music: N/A\n"
+    )
+
+
+def character_reference_definition_lines(character_references):
+    """Describe generated Pictures as clothing-only authorities for H3."""
+    records = normalize_character_reference_images(character_references)
+    ordered = sorted(
+        records.values(),
+        key=lambda item: int(item["picture_number"]),
+    )
+    return [
+        f"<Picture {record['picture_number']}> references only the clothing "
+        f"that {record['name']} is currently wearing."
+        for record in ordered
+    ]
+
+
+def append_character_reference_definitions(
+    subject_definitions,
+    character_references,
+):
+    """Append clothing-only Picture semantics without changing Subject identity."""
+    parts = [str(subject_definitions or "").strip()]
+    parts.extend(character_reference_definition_lines(character_references))
+    return "\n".join(part for part in parts if part)
+
+
+def _ensure_character_reference_load_image(
+    workflow,
+    workflow_label,
+    picture_number,
+    image_name,
+):
+    """Reuse template LoadImage nodes through Picture 6, then create more."""
+    picture_number = int(picture_number)
+    if picture_number <= len(REFERENCE_IMAGE_NODE_NAMES):
+        node_name = REFERENCE_IMAGE_NODE_NAMES[picture_number - 1]
+        node_id, node = find_workflow_node(
+            workflow,
+            node_name,
+            workflow_label,
+            "LoadImage",
+        )
+    else:
+        node_name = f"Generated Reference Image {picture_number}"
+        matches = [
+            (str(node_id), node)
+            for node_id, node in workflow.items()
+            if isinstance(node, dict)
+            and node.get("class_type") == "LoadImage"
+            and node.get("_meta", {}).get("title") == node_name
+        ]
+        if len(matches) > 1:
+            raise WorkflowConfigurationError(
+                f"{workflow_label} contains multiple nodes named {node_name!r}."
+            )
+        if matches:
+            node_id, node = matches[0]
+        else:
+            node_id = _next_workflow_node_id(workflow)
+            node = {
+                "inputs": {"image": ""},
+                "class_type": "LoadImage",
+                "_meta": {"title": node_name},
+            }
+            workflow[node_id] = node
+    node.setdefault("inputs", {})["image"] = str(image_name)
+    return str(node_id), node
+
+
+def attach_character_reference_images(
+    workflow,
+    workflow_label,
+    workflow_kind,
+    character_references,
+):
+    """Attach generated Pictures in dense positional order, with no six-slot cap."""
+    records = normalize_character_reference_images(character_references)
+    if not records:
+        return {}
+    ordered = sorted(
+        records.values(),
+        key=lambda item: int(item["picture_number"]),
+    )
+    attached = {}
+    if workflow_kind in {"initial", "append"}:
+        _name, destination, _input_names = _reference_destination(
+            workflow,
+            workflow_label,
+            "initial",
+        )
+        for record in ordered:
+            picture_number = int(record["picture_number"])
+            node_id, _node = _ensure_character_reference_load_image(
+                workflow,
+                workflow_label,
+                picture_number,
+                record["image_name"],
+            )
+            input_name = f"ref_images.ref_image_{picture_number - 1}"
+            container, leaf_name = _reference_input_container(
+                destination,
+                input_name,
+            )
+            container[leaf_name] = [node_id, 0]
+            attached[picture_number] = node_id
+        return attached
+
+    if workflow_kind == "refresh":
+        batch_id, batch = find_workflow_node(
+            workflow,
+            REFRESH_REFERENCE_BATCH_NODE_NAME,
+            workflow_label,
+            "ImageBatchMulti",
+        )
+        for record in ordered:
+            picture_number = int(record["picture_number"])
+            node_id, _node = _ensure_character_reference_load_image(
+                workflow,
+                workflow_label,
+                picture_number,
+                record["image_name"],
+            )
+            batch["inputs"][f"image_{picture_number}"] = [node_id, 0]
+            attached[picture_number] = node_id
+        batch["inputs"]["inputcount"] = max(
+            int(batch["inputs"].get("inputcount") or 0),
+            max(attached),
+        )
+        _extend_id, extend = find_workflow_node(
+            workflow,
+            REFRESH_EXTEND_NODE_NAME,
+            workflow_label,
+            "MiniMaxH3VideoExtendPatched",
+        )
+        if len([
+            key for key in batch["inputs"]
+            if re.fullmatch(r"image_\d+", str(key))
+        ]) == 1:
+            only_node = next(iter(attached.values()))
+            extend["inputs"]["ref_images"] = [only_node, 0]
+        else:
+            extend["inputs"]["ref_images"] = [batch_id, 0]
+        return attached
+
+    if workflow_kind == "repair":
+        _name, destination, _input_names = _reference_destination(
+            workflow,
+            workflow_label,
+            "repair",
+        )
+        for record in ordered:
+            picture_number = int(record["picture_number"])
+            node_id, _node = _ensure_character_reference_load_image(
+                workflow,
+                workflow_label,
+                picture_number,
+                record["image_name"],
+            )
+            input_name = f"ref_images.ref_image_{picture_number - 1}"
+            container, leaf_name = _reference_input_container(
+                destination,
+                input_name,
+            )
+            container[leaf_name] = [node_id, 0]
+            attached[picture_number] = node_id
+        return attached
+    raise ValueError(f"Unknown workflow kind: {workflow_kind!r}")
+
+
+def prepare_character_reference_workflow(
+    character_description,
+    megapixels,
+    steps=6,
+    loras=None,
+    noise_seed=None,
+    picture_number=None,
+):
+    """Prepare the isolated one-second character/clothing reference render."""
+    workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    label = f"character reference workflow '{INITIAL_WORKFLOW_FILE}'"
+    validate_workflow(workflow, label, is_append=False)
+    _, conditioning = find_workflow_node(
+        workflow,
+        INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+        label,
+        "MiniMaxH3ReferenceToVideo",
+    )
+    inputs = conditioning.setdefault("inputs", {})
+    for key in list(inputs):
+        if (
+            str(key).startswith("ref_images.")
+            or str(key).startswith("ref_videos.")
+            or str(key).startswith("ref_video_audios.")
+        ):
+            inputs.pop(key, None)
+    inputs.pop("ref_images", None)
+    inputs.pop("ref_videos", None)
+    inputs.pop("ref_video_audios", None)
+
+    set_duration_input(workflow, label, CHARACTER_REFERENCE_DURATION_SECONDS)
+    set_node_input(
+        workflow,
+        PROMPT_NODE_NAME,
+        "text",
+        build_character_reference_h3_prompt(character_description),
+        label,
+        "DPRandomGenerator",
+    )
+    set_node_input(
+        workflow, STEPS_NODE_NAME, "value", steps, label, "INTConstant",
+    )
+    set_node_input(
+        workflow,
+        NOISE_NODE_NAME,
+        "noise_seed",
+        generate_random_seed() if noise_seed is None else int(noise_seed),
+        label,
+        "RandomNoise",
+    )
+    set_node_input(
+        workflow, QUALITY_NODE_NAME, "value", megapixels, label, "FloatConstant",
+    )
+    suffix = (
+        f"_picture_{int(picture_number):03d}"
+        if picture_number is not None else ""
+    )
+    set_node_input(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        "filename_prefix",
+        f"video/character_state/character_reference{suffix}",
+        label,
+        "SaveVideo",
+    )
+    configure_lora_chain(workflow, normalize_lora_list(loras), label)
+    return workflow
+
+
+def _character_reference_filename_token(name):
+    token = re.sub(r"[^A-Za-z0-9_-]+", "_", str(name or "").strip()).strip("_")
+    return token[:48] or "character"
+
+
+def render_character_reference_image(
+    character_name,
+    character_description,
+    picture_number,
+    version,
+    requested_megapixels,
+    steps,
+    *,
+    loras=None,
+):
+    """Render one second, then sample exactly the 0.5-second clothing frame."""
+    for retry_number in range(COMFY_RENDER_RETRIES + 1):
+        current_megapixels = max(
+            0.01,
+            requested_megapixels - retry_number * COMFY_RETRY_MEGAPIXEL_STEP,
+        )
+        workflow = prepare_character_reference_workflow(
+            character_description,
+            current_megapixels,
+            steps=steps,
+            loras=loras,
+            picture_number=picture_number,
+        )
+        try:
+            prompt_id = queue_workflow(workflow)
+            console_log(
+                f"Character-reference ComfyUI prompt ID for {character_name}: "
+                f"{prompt_id}",
+                flush=True,
+            )
+            result = wait_for_completion(prompt_id)
+            video_path = get_video_path(result, workflow)
+            frame_count = get_video_frame_count(video_path)
+            frame_index = min(
+                frame_count - 1,
+                int(round(CHARACTER_REFERENCE_SAMPLE_SECONDS * FRAME_RATE)),
+            )
+            frame_name = (
+                f"minimax_character_ref_{int(picture_number):03d}_"
+                f"{_character_reference_filename_token(character_name)}_"
+                f"v{int(version):03d}.png"
+            )
+            extract_video_frame(
+                video_path,
+                frame_name,
+                input_directory=COMFY_INPUT,
+                frame_index=frame_index,
+                temporary_prefix=f".character_ref_{int(picture_number):03d}_",
+                error_label=f"character reference for {character_name}",
+            )
+            console_log(
+                f"Character reference created: {character_name} -> "
+                f"<Picture {picture_number}> at {CHARACTER_REFERENCE_SAMPLE_SECONDS:g}s "
+                f"({frame_name})",
+                flush=True,
+            )
+            return frame_name
+        except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
+            if retry_number == COMFY_RENDER_RETRIES:
+                raise ComfyUIExecutionError(
+                    f"Character-reference render for {character_name} failed "
+                    f"after {COMFY_RENDER_RETRIES} retries."
+                ) from error
+    raise AssertionError("Character-reference render loop did not return or raise.")
+
+
+def ensure_character_reference_images(
+    detailed_description,
+    subject_definitions,
+    continuity_state,
+    character_references,
+    base_reference_count,
+    requested_megapixels,
+    steps,
+    *,
+    subject_descriptions=None,
+    loras=None,
+):
+    """Create/update clothing Pictures for visible Subjects before H3 rendering."""
+    references = normalize_character_reference_images(character_references)
+    state = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(continuity_state),
+    )
+    visual_text = _h3_visual_identity_text(detailed_description)
+    changed = []
+    for name, record in state.get("subjects", {}).items():
+        if not isinstance(record, dict):
+            continue
+        if re.search(
+            rf"(?i)(?<!\w){re.escape(str(name).strip())}(?!\w)",
+            visual_text,
+        ) is None:
+            continue
+        description = build_character_reference_description(
+            name,
+            record,
+            detailed_description=detailed_description,
+            subject_descriptions=subject_descriptions,
+        )
+        if not description:
+            continue
+        signature = hashlib.sha256(
+            description.casefold().encode("utf-8")
+        ).hexdigest()
+        existing = references.get(name)
+        if existing and existing.get("signature") == signature:
+            continue
+
+        if existing:
+            picture_number = int(existing["picture_number"])
+            version = int(existing.get("version") or 1) + 1
+        else:
+            # Picture numbering is dense/positional. Six template LoadImage
+            # nodes do not reserve six Pictures; the next generated reference
+            # follows the number of references actually in use.
+            picture_number = int(base_reference_count) + len(references) + 1
+            version = 1
+
+        image_name = render_character_reference_image(
+            name,
+            description,
+            picture_number,
+            version,
+            requested_megapixels,
+            steps,
+            loras=loras,
+        )
+        references[name] = {
+            "name": name,
+            "picture_number": picture_number,
+            "image_name": image_name,
+            "signature": signature,
+            "version": version,
+            "description": description,
+        }
+        changed.append(name)
+    return references, changed
+
+
 # Render one segment, retrying only recoverable ComfyUI failures.
 def prepare_location_reference_workflow(
     setting_description,
@@ -29230,6 +29780,7 @@ def _render_segment_with_retries(
     h3_fixture_path=None,
     macro_arc=None,
     location_reference_video_path=None,
+    character_reference_images=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     h3_prompt = _assert_h3_subject_identity(
@@ -29290,6 +29841,7 @@ def _render_segment_with_retries(
                 steps,
                 **lora_kwargs,
                 location_reference_video_path=location_reference_video_path,
+                character_reference_images=character_reference_images,
             )
         elif refresh_segment:
             workflow_type = "clean_refresh"
@@ -29304,6 +29856,7 @@ def _render_segment_with_retries(
                 continuity_state=continuity_state,
                 segment_length=segment_length,
                 location_reference_video_path=location_reference_video_path,
+                character_reference_images=character_reference_images,
             )
         else:
             workflow_type = "append"
@@ -29317,6 +29870,7 @@ def _render_segment_with_retries(
                 continuity_state=continuity_state,
                 segment_length=segment_length,
                 location_reference_video_path=location_reference_video_path,
+                character_reference_images=character_reference_images,
             )
 
         try:
@@ -29483,6 +30037,7 @@ def prepare_initial_workflow(
     noise_seed=None,
     output_prefix=None,
     location_reference_video_path=None,
+    character_reference_images=None,
 ):
     if lora_override is not None:
         if loras:
@@ -29492,6 +30047,12 @@ def prepare_initial_workflow(
     label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=False)
     prune_missing_reference_images(workflow, label, "initial")
+    attach_character_reference_images(
+        workflow,
+        label,
+        "initial",
+        character_reference_images,
+    )
     if location_reference_video_path:
         connect_location_reference_video(
             workflow,
@@ -29544,6 +30105,7 @@ def prepare_refresh_workflow(
     noise_seed=None,
     output_prefix=None,
     location_reference_video_path=None,
+    character_reference_images=None,
 ):
     """Prepare the Extend Backport context-latent refresh graph."""
 
@@ -29582,6 +30144,12 @@ def prepare_refresh_workflow(
         h3_prompt,
         removed_picture_ids,
         picture_slot_map,
+    )
+    attach_character_reference_images(
+        workflow,
+        label,
+        "refresh",
+        character_reference_images,
     )
 
     _, extend = find_workflow_node(
@@ -29951,6 +30519,7 @@ def prepare_append_workflow(
     noise_seed=None,
     output_prefix=None,
     location_reference_video_path=None,
+    character_reference_images=None,
 ):
     if lora_override is not None:
         if loras:
@@ -29974,6 +30543,12 @@ def prepare_append_workflow(
         h3_prompt,
         removed_picture_ids,
         picture_slot_map,
+    )
+    attach_character_reference_images(
+        workflow,
+        label,
+        "append",
+        character_reference_images,
     )
 
     previous_video_path = os.path.abspath(os.fspath(previous_video_path))
@@ -33270,6 +33845,9 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
         if not isinstance(continuity_state, dict):
             continuity_state = {}
         continuity_summary = str(record.get("continuity_summary") or "")
+        character_reference_images = normalize_character_reference_images(
+            record.get("character_reference_images", {})
+        )
         (
             _workflow,
             video_path,
@@ -33291,6 +33869,7 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
             subject_definitions=subject_definitions,
             segment_length=segment_length,
             location_reference_video_path=location_reference_video_path,
+            character_reference_images=character_reference_images,
         )
         previous_video_path = _append_unique_video_path(
             generated_video_paths,
@@ -33811,6 +34390,12 @@ def _run_main(
         generation_state.get("prop_ledger", {})
     )
     generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
+    character_reference_images = normalize_character_reference_images(
+        generation_state.get("character_reference_images", {})
+    )
+    base_reference_image_count = generation_state.get(
+        "base_reference_image_count"
+    )
 
     # A prefetched prompt belongs to a live executor/Future. It cannot be
     # trusted after process restart unless that Future is restored as well.
@@ -34006,6 +34591,18 @@ def _run_main(
             f"({len(phrase_exclusions)} {exclusion_count_label})."
         )
     verify_global_loras(global_loras, lora_directory)
+    if base_reference_image_count is None:
+        base_reference_image_count = active_configured_reference_count()
+        generation_state["base_reference_image_count"] = (
+            int(base_reference_image_count)
+        )
+        checkpoint_generation_state()
+    else:
+        base_reference_image_count = int(base_reference_image_count)
+    console_log(
+        f"Active base Picture references: {base_reference_image_count}",
+        flush=True,
+    )
     console_log(
         "Workflow validation passed."
         if not test_prompt_generation
@@ -34546,6 +35143,34 @@ def _run_main(
                 llm_result,
                 continuity_state,
             )
+        if not test_prompt_generation:
+            character_reference_images, changed_character_references = (
+                ensure_character_reference_images(
+                    detailed_description,
+                    subject_definitions,
+                    continuity_state,
+                    character_reference_images,
+                    base_reference_image_count,
+                    megapixels,
+                    args.steps,
+                    subject_descriptions=canonical_subject_descriptions,
+                    loras=global_loras,
+                )
+            )
+            if changed_character_references:
+                generation_state["character_reference_images"] = copy.deepcopy(
+                    character_reference_images
+                )
+                checkpoint_generation_state()
+                console_log(
+                    "Updated character clothing reference(s): "
+                    + ", ".join(changed_character_references),
+                    flush=True,
+                )
+        h3_subject_definitions = append_character_reference_definitions(
+            subject_definitions,
+            character_reference_images,
+        )
         previous_visible_subject_ids = extract_previous_visible_subject_ids(
             recent_results,
             segment,
@@ -34553,7 +35178,7 @@ def _run_main(
         )
         h3_prompt = build_h3_prompt(
             llm_result,
-            subject_definitions,
+            h3_subject_definitions,
             hard_cut_subject_continuity,
             payload["h3_opening_summary"],
             segment,
@@ -34592,7 +35217,10 @@ def _run_main(
             "duration": float(segment_bundle["current_duration"]),
             "conditioning_mode": segment_bundle["conditioning_mode"],
             "h3_prompt": h3_prompt,
-            "subject_definitions": subject_definitions,
+            "subject_definitions": h3_subject_definitions,
+            "character_reference_images": copy.deepcopy(
+                character_reference_images
+            ),
             "continuity_state": copy.deepcopy(continuity_state),
             "continuity_summary": payload.get(
                 "h3_opening_summary",
@@ -34771,7 +35399,7 @@ def _run_main(
                     payload.get("h3_opening_summary", ""),
                 ),
                 "request2_result": request2_result_for_fixture,
-                "subject_definitions": subject_definitions,
+                "subject_definitions": h3_subject_definitions,
                 "loras": loras,
             }
         render_future = None
@@ -34804,11 +35432,12 @@ def _run_main(
                     "h3_opening_summary",
                     segment_bundle.get("h3_opening_summary", ""),
                 ),
-                subject_definitions=subject_definitions,
+                subject_definitions=h3_subject_definitions,
                 segment_length=segment_length,
                 h3_fixture_context=h3_fixture_context,
                 h3_fixture_path=h3_fixture_path if h3_fixture_context else None,
                 location_reference_video_path=location_reference_video_path,
+                character_reference_images=character_reference_images,
             )
             render_futures_by_segment[int(segment)] = render_future
             # A cadence-skipped final render must still be completed on the main
@@ -35011,6 +35640,12 @@ def _run_main(
             continuity_state
         )
         generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
+        generation_state["character_reference_images"] = copy.deepcopy(
+            character_reference_images
+        )
+        generation_state["base_reference_image_count"] = int(
+            base_reference_image_count
+        )
 
         # Persist the two-phase continuity working state before waiting for
         # ComfyUI's render response. The completed-segment record is
