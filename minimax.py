@@ -1156,7 +1156,7 @@ WRITE THE SCENE
 - Give every newly introduced foreground subject visible provenance. If the subject was not visible at frame 0, show it physically entering through a stated route/boundary, or explicitly move the camera to reveal that it was already present offscreen. Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
 - Preserve prop identity and provenance. A held or manipulated object must not silently become a different object. When a subject acquires a new prop, explicitly state where it comes from and the pickup/reach/take action before it is used, unless it is already established in the opening frame. An established prop with an owner or holder belongs to that subject's physical state; do not treat it as shared inventory or repurpose it for another subject unless CURRENT BEAT explicitly authorizes that use or transfer. For any transfer, explicitly identify the source and destination, keep them distinct and traceable, and establish that what is transferred is at the source before it reaches the destination.
 - Preserve CURRENT BEAT's transfer roles and result literally. If CURRENT BEAT specifies what moves, where it goes, who receives it, or which container is filled/used, staging may clarify the physical mechanism but must not redirect that transfer or result to a different target, body, surface, or container.
-- For drinking, sipping, pouring, filling, or other material transfer, keep the material visibly bound to an established source/container until the transfer occurs. Do not invent source-less liquid, substitute drool/spillage for the assigned transfer, or treat a large/fixed source as a handheld vessel. Prefer the simplest direct source-to-destination action; explicitly acquire any truly necessary intermediary before using it.
+- For drinking, sipping, pouring, filling, or other material transfer, keep the material visibly bound to an established source/container until the transfer occurs. Do not invent source-less liquid, substitute drool/spillage for the assigned transfer, or treat a large/fixed source as a handheld vessel. A lid, cap, handle, rim, latch, or other component of a fixed container is not itself the source/container of the material inside it; name the actual container or an established dispensing opening/tap as the source. Prefer the simplest direct source-to-destination action; explicitly acquire any truly necessary intermediary before using it.
 - Do not invent an extra support, container, utensil, or other helper prop solely to settle a required prop after the Beat action. Prefer leaving the prop with its current holder or placing it on an already-established surface when that is physically natural.
 - Budget enough visible time for every physical step you introduce. When movement, acquisition, positioning, opening, or another prerequisite must happen before a dependent action, give that prerequisite its own earlier timed micro-beat instead of compressing both steps into one timestamp.
 - Prefer names when a pronoun could be ambiguous.
@@ -33636,7 +33636,12 @@ def build_director_raw_scene_coherence_messages(
                 "an actor interacts with an object or target at a different established "
                 "position, the timed scene must explicitly move the actor there first; "
                 "merely reaching, moving a held prop toward it, or changing framing does "
-                "not establish actor travel. Preserve object identity and provenance across "
+                "not establish actor travel. Treat distinct named fixture/interaction areas "
+                "from STATIC SETTING AUTHORITY (for example a table, counter, shelf, hearth, "
+                "barrel, doorway, or stool area) as distinct established positions when the "
+                "scene places the actor at one and later has that actor take/use something "
+                "at another; require an explicit move between them. Preserve object identity "
+                "and provenance across "
                 "timestamps: a held/manipulated prop cannot silently become another prop, "
                 "and a newly handled prop must be explicitly acquired from a stated source "
                 "unless it was already established in the opening frame. For any transfer, "
@@ -33649,7 +33654,11 @@ def build_director_raw_scene_coherence_messages(
                 "container. For drinking/sipping/pouring/filling, reject source-less liquid "
                 "or a substitute event such as drooling/spilling when the Beat requires a "
                 "drink/transfer; use the established source/container from PREVIOUS SHOT END "
-                "or PROP LEDGER when one exists. STATIC SETTING AUTHORITY, when supplied, "
+                "or PROP LEDGER when one exists. A lid, cap, handle, rim, latch, or other "
+                "component of a fixed container is not the material source/container merely "
+                "because it belongs to that container; reject wording that makes the contents "
+                "come from such a component instead of the actual container or an established "
+                "dispensing opening/tap. STATIC SETTING AUTHORITY, when supplied, "
                 "owns explicitly described fixed architecture, fixtures, persistent furniture, "
                 "entrances, surfaces, and lighting-source placement. Reject RAW that relocates, "
                 "duplicates, replaces, or restyles one of those fixed elements unless CURRENT "
@@ -33944,7 +33953,12 @@ def build_director_raw_scene_timing_messages(raw_scene):
                 "Pay special attention when a subject or object must enter, cross meaningful "
                 "space, reach a new established position, sit or stand, acquire or position "
                 "a prop, or complete multiple dependent physical steps before the next "
-                "timestamp. Do not impose a fixed minimum interval: simple gestures may be "
+                "timestamp. Also inspect multiple verbs inside one timestamp: simultaneous "
+                "motions may share a timestamp, but a sequential dependency chain such as "
+                "opening/unlatching a barrier, crossing it, closing it, and securing it cannot "
+                "be treated as one instantaneous action. Reject when that chain would require "
+                "hidden time or a cut instead of being split across executable timestamps. "
+                "Do not impose a fixed minimum interval: simple gestures may be "
                 "quick and nearby actions may need little time. Camera movement does not "
                 "erase the time required for subjects or objects to move. Judge only timing "
                 "feasibility, not prose style, camera taste, story choices, or whether an "
@@ -36386,7 +36400,7 @@ def _run_main(
         ) = build_segment_reference_bindings(
             segment_number=segment,
             total_segments=total_segments,
-            detailed_description=detailed_description,
+            detailed_description=payload.get("raw_scene", detailed_description),
             subject_definitions=subject_definitions,
             character_references=character_reference_images,
             base_reference_count=base_reference_image_count,
