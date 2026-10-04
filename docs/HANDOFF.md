@@ -1088,3 +1088,5 @@ to Request 1. Audio+video Guide conditioning from the prior commit remains enabl
 
 Next action: rerun the same 48-second tavern test from Segment 1. Acceptance remains 1→2
 audio continuity and 3→4 / 4→5 visual seams.
+
+Follow-up: post-shift pronoun/timestamp validation now uses the raw H3 prompt duration (delivered duration + Guide offset), while Request 1 structure validation remains on delivered duration only.

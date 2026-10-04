@@ -31712,6 +31712,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             "Director Request 1 returned no usable scene result."
         )
 
+    h3_prompt_duration = duration + continuation_offset
     if continuation_offset:
         raw_scene = _shift_continuation_timestamps_for_guide(
             raw_scene,
@@ -31730,7 +31731,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 "segment": segment_number,
                 "conditioning_mode": conditioning_mode,
             },
-            segment_seconds=duration,
+            segment_seconds=h3_prompt_duration,
         )
         if resolved_raw_scene != raw_scene:
             raw_scene = resolved_raw_scene
