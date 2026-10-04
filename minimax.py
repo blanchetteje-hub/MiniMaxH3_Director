@@ -394,7 +394,7 @@ CREATIVE_GENERATION_LLM_SETTINGS = {
 }
 
 DIRECTOR_RAW_SCENE_LLM_SETTINGS = {
-    "temperature": 0.4,
+    "temperature": 0.2,
     "top_p": 0.95,
     "top_k": 0,
     "min_p": 0.05,
@@ -517,6 +517,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "director_h3_soundscape",
     "director_h3_formatter",
     "director_raw_scene_coherence",
+    "director_raw_scene_timing",
     "director_raw_scene_pronoun_resolution",
     "director_raw_scene_subject_resolution",
     "final_h3_action_preservation",
@@ -1092,9 +1093,10 @@ WRITE THE SCENE
 - Show CURRENT BEAT clearly with concrete visible/audible action.
 - Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the End continuity state.
 - Use natural physical staging. Harmless local route or prop details are allowed when needed to make the action readable.
+- Keep invented staging economical. Add only details needed to physically connect or clearly show CURRENT BEAT. Do not add optional secondary reactions, extra consequences, or extra object/substance motion once the required action is already readable.
 - Preserve spatial continuity literally. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut. This applies to every established position, not only doors or room changes.
 - Give every newly introduced foreground subject visible provenance. If the subject was not visible at frame 0, show it physically entering through a stated route/boundary, or explicitly move the camera to reveal that it was already present offscreen. Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
-- Preserve prop identity and provenance. A held or manipulated object must not silently become a different object. When a subject acquires a new prop, explicitly state where it comes from and the pickup/reach/take action before it is used, unless it is already established in the opening frame. When pouring or transferring between containers, keep the source container and destination container distinct and explicitly named through the transfer.
+- Preserve prop identity and provenance. A held or manipulated object must not silently become a different object. When a subject acquires a new prop, explicitly state where it comes from and the pickup/reach/take action before it is used, unless it is already established in the opening frame. For any transfer, explicitly identify the source and destination, keep them distinct and traceable, and establish that what is transferred is at the source before it reaches the destination.
 - Budget enough visible time for every physical step you introduce. When movement, acquisition, positioning, opening, or another prerequisite must happen before a dependent action, give that prerequisite its own earlier timed micro-beat instead of compressing both steps into one timestamp.
 - Prefer names when a pronoun could be ambiguous.
 - If CURRENT BEAT explicitly says someone says, asks, orders, tells, replies, or otherwise speaks intelligibly, write a brief direct spoken line in the form Speaker said <d>exact words</d> rather than indirect narration. Use said as the attribution verb in the audiovisual RAW. Do not add intelligible dialogue when CURRENT BEAT contains no speech act.
@@ -31948,9 +31950,10 @@ def build_director_raw_scene_coherence_messages(
                 "not establish actor travel. Preserve object identity and provenance across "
                 "timestamps: a held/manipulated prop cannot silently become another prop, "
                 "and a newly handled prop must be explicitly acquired from a stated source "
-                "unless it was already established in the opening frame. For transfers or "
-                "pouring between containers, require the source and destination containers "
-                "to remain distinct and traceable through the action. The trailing "
+                "unless it was already established in the opening frame. For any transfer, "
+                "require an explicit source and destination, keep them distinct and "
+                "traceable, and require the transferred material or object to be established "
+                "at the source before it reaches the destination. The trailing "
                 "End continuity state is part "
                 "of this check and MUST describe the state produced by the final timed "
                 "action. Any foreground participant visibly present in the final timed "
@@ -31981,7 +31984,7 @@ def build_director_raw_scene_coherence_messages(
                 "new CURRENT BEAT participant, require a shown physical entry or an explicit "
                 "camera reveal rather than unexplained appearance. Track actor positions and "
                 "prop identities literally across every timestamp, including pickups and "
-                "container-to-container transfers. Then read the timed actions literally "
+                "transfers. Then read the timed actions literally "
                 "in order and explicitly compare the final timed action/result with "
                 "End continuity state.\n"
                 "If coherent: {\"valid\": true, \"issue\": \"\"}\n"
@@ -31990,6 +31993,69 @@ def build_director_raw_scene_coherence_messages(
             ),
         },
     ]
+
+
+def build_director_raw_scene_timing_messages(raw_scene):
+    """Build a narrow semantic check for whether RAW timing is visibly executable."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Validate only whether the sequential physical actions in one timed RAW "
+                "SCENE can visibly occur within the time available between its timestamps "
+                "as one continuous shot. Read each consecutive timed micro-beat literally. "
+                "Reject only obvious time compression that would force a hidden cut, "
+                "teleport, skipped prerequisite, or instantaneous relocation/manipulation. "
+                "Pay special attention when a subject or object must enter, cross meaningful "
+                "space, reach a new established position, sit or stand, acquire or position "
+                "a prop, or complete multiple dependent physical steps before the next "
+                "timestamp. Do not impose a fixed minimum interval: simple gestures may be "
+                "quick and nearby actions may need little time. Camera movement does not "
+                "erase the time required for subjects or objects to move. Judge only timing "
+                "feasibility, not prose style, camera taste, story choices, or whether an "
+                "invented detail was necessary. Return exactly one JSON object with boolean "
+                "valid and string issue. When invalid, report only the first clearly "
+                "compressed transition and name its two timestamps."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "RAW SCENE\n"
+                f"{str(raw_scene or '').strip()}\n\n"
+                "If every consecutive physical transition has enough visible time: "
+                "{\"valid\": true, \"issue\": \"\"}\n"
+                "If one is clearly too compressed: {\"valid\": false, \"issue\": "
+                "\"short concrete explanation with both timestamps\"}"
+            ),
+        },
+    ]
+
+
+def validate_director_raw_scene_timing(
+    raw_scene,
+    *,
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Return a narrow semantic timing-feasibility verdict for one RAW scene."""
+    if not str(raw_scene or "").strip():
+        return {"valid": True, "issue": ""}
+    result = llm_request(
+        build_director_raw_scene_timing_messages(raw_scene),
+        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+        parse_json_response=False,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_raw_scene_timing",
+        },
+        temperature=0,
+        top_p=1,
+        max_tokens=384,
+        seed=42,
+        repeat_penalty=1.15,
+    )
+    return parse_beat_validation_result(result)
 
 
 def validate_director_raw_scene_coherence(
@@ -32212,6 +32278,58 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                             f"RETRY: Fix this physical/action-order problem: {issue} "
                             "Keep CURRENT BEAT and its outcome unchanged. Do not begin "
                             "NEXT BEAT."
+                        )
+                    continue
+
+                try:
+                    timing = validate_director_raw_scene_timing(
+                        raw_scene,
+                        history_metadata={
+                            "run_id": run_id,
+                            "source_sha256": (run_config or {}).get("source_sha256"),
+                            "segment": segment_number,
+                            "attempt": request1_attempt,
+                            "conditioning_mode": conditioning_mode,
+                        },
+                    )
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    timing = {
+                        "valid": False,
+                        "issue": f"RAW timing validator failed: {error}",
+                    }
+
+                if not timing["valid"]:
+                    issue = (
+                        timing["issue"]
+                        or "RAW SCENE compresses a physical transition into too little visible time."
+                    )
+                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                        raise BeatGenerationError(
+                            f"Director Request 1 remained physically over-compressed for "
+                            f"Segment {segment_number}: {issue}"
+                        )
+                    console_log(
+                        f"Director Request 1 timing feasibility failed "
+                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                        f"retrying: {issue}",
+                        flush=True,
+                    )
+                    request1_messages = copy.deepcopy(request1_base_messages)
+                    if request1_messages:
+                        request1_messages[-1] = dict(request1_messages[-1])
+                        request1_messages[-1]["content"] = (
+                            f"{request1_messages[-1].get('content', '')}\n\n"
+                            f"RETRY: Fix this timing-feasibility problem: {issue} "
+                            "Give required travel and prerequisite actions enough visible "
+                            "time by simplifying optional staging and/or redistributing "
+                            "timestamps. Keep CURRENT BEAT and its outcome unchanged. "
+                            "Do not begin NEXT BEAT."
                         )
                     continue
 
