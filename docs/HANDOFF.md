@@ -411,3 +411,18 @@ on the target character's existing source Picture when available.
 A possible future alternative—standalone reusable outfit assets that can be applied to
 multiple characters—is documented in `docs/FUTURE_NOTES.md`.
 
+### 2026-10-04 — clothing-reference persistence + portrait reference canvas
+
+Two production fixes are now active on `location-state-test`:
+
+- Person/outfit reference renders use a portrait 13:19 canvas. Python computes width/height
+  from the requested megapixel budget and writes those dimensions directly into the isolated
+  character-reference conditioner. The 3-second location orbit keeps the normal landscape
+  workflow unchanged.
+- Generated clothing Pictures no longer regenerate because the vision observer describes
+  the rendered wardrobe differently. Each clothing Picture persists its intended wardrobe
+  and condition. A new version is authorized only when the immediately preceding segment
+  explicitly changes/removes/adds clothing or explicitly damages/soils/wets/burns it.
+- Authorized changes are applied to the prior intended clothing-reference state, not to
+  vision-observed wardrobe, preventing renderer drift from becoming canonical.
+
