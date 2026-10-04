@@ -24,6 +24,7 @@ console_logs.txt
 generation_state.json
 beat_validation_state.json
 prompt_history.txt
+generated_prompts.txt
 
 # Generated media / intermediates
 *.mp4
@@ -40,3 +41,4 @@ tests/requirements-test.txt
 
 # Detached worktree used by the ChatGPT bridge for allowlisted local tests
 .chatgpt_exec_worktree/
+
