@@ -235,7 +235,7 @@ class CombinedContinuityParserTests(unittest.TestCase):
                 defer_opening=True,
                 subject_definitions=definitions,
                 committed_state=committed,
-                ending_scene="Mark stands beside the window holding a tool.",
+                ending_scene="Mark stands beside the window.",
             )
 
         self.assertEqual(request.call_count, 1)
@@ -244,7 +244,29 @@ class CombinedContinuityParserTests(unittest.TestCase):
         self.assertEqual(mark["picture_ids"], [1])
         self.assertEqual(mark["speaker_id"], "(S1)")
         self.assertEqual(mark["position"], "beside the window")
-        self.assertEqual(mark["held_props"], ["tool"])
+        self.assertEqual(mark["held_props"], [])
+
+    def test_llm_held_prop_claim_without_python_authority_is_rejected(self):
+        definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
+        committed = minimax.continuity_state_for_registry(definitions)
+        request = Mock(return_value={
+            "environment": {"location": "room", "persistent_state": "N/A"},
+            "subjects": {"Mark": {"held_props": ["tool"]}},
+        })
+
+        with patch("minimax._print_continuity_phase_result"):
+            result = minimax.request_combined_continuity(
+                "FULL SEGMENT",
+                {},
+                llm_request=request,
+                content_attempts=1,
+                defer_opening=True,
+                subject_definitions=definitions,
+                committed_state=committed,
+                ending_scene="Mark stands beside the window.",
+            )
+
+        self.assertEqual(result["reduced_state"]["subjects"]["Mark"]["held_props"], [])
 
     def test_combined_continuity_marks_end_state_as_final_frame_authority(self):
         definitions = "<Subject 1> is Mark, referenced in <Picture 1>."

@@ -282,7 +282,9 @@ class CharacterCanonTests(unittest.TestCase):
         )
         prompt = messages[-1]["content"]
         self.assertIn("CANONICAL STARTING CHARACTER FACTS", prompt)
-        self.assertIn(CANONICAL_DATA, prompt)
+        self.assertIn("Amy canonical age: 34", prompt)
+        self.assertIn("canonical clothing: black tank top", prompt)
+        self.assertIn("canonical gender: female", prompt)
 
         later, _, _ = minimax.build_generation_messages(
             rules,
@@ -306,7 +308,7 @@ class CharacterCanonTests(unittest.TestCase):
             "CANONICAL STARTING CHARACTER FACTS",
             later[-1]["content"],
         )
-        self.assertNotIn(CANONICAL_DATA, later[-1]["content"])
+        self.assertNotIn("Amy canonical age: 34", later[-1]["content"])
 
 
 

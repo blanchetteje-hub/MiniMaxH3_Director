@@ -37,7 +37,7 @@ class ContinuitySchedulingTests(unittest.TestCase):
 
     def test_segment_two_warns_and_accepts_missing_continuity(self):
         formatted = {
-            "detailed_description": "[Shot 1] At 00:00.000, Amy looks toward the doorway.",
+            "detailed_description": "[Shot 1] At 00:00.000, Amy looks toward the doorway. At 00:05.000, Amy lowers her hand.",
             "overall_soundscape": "Room tone.",
             "non_diegetic_music": "N/A",
         }
@@ -47,6 +47,7 @@ class ContinuitySchedulingTests(unittest.TestCase):
                 {
                     "raw_scene": (
                         "At 00:00.000, Amy looks toward the doorway.\n"
+                        "At 00:05.000, Amy lowers her hand.\n"
                         "End continuity state: Amy stands beside the doorway."
                     ),
                     "beat_complete": True,
@@ -90,7 +91,7 @@ class ContinuitySchedulingTests(unittest.TestCase):
             "opening_state_sha256": "opening-hash",
         }
         formatted = {
-            "detailed_description": "[Shot 1] At 00:00.000, Amy looks toward the doorway.",
+            "detailed_description": "[Shot 1] At 00:00.000, Amy looks toward the doorway. At 00:05.000, Amy lowers her hand.",
             "overall_soundscape": "Room tone.",
             "non_diegetic_music": "N/A",
         }
@@ -100,6 +101,7 @@ class ContinuitySchedulingTests(unittest.TestCase):
                 {
                     "raw_scene": (
                         "At 00:00.000, Amy looks toward the doorway.\n"
+                        "At 00:05.000, Amy lowers her hand.\n"
                         "End continuity state: Amy stands beside the doorway."
                     ),
                     "beat_complete": True,

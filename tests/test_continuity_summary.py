@@ -1211,44 +1211,27 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(result["physical_condition"], "N/A")
         self.assertEqual(result["held_props"], [])
 
-    def test_background_workers_are_closed_when_generation_raises(self):
-        summary_worker = Mock()
-        summary_worker.__enter__ = Mock(return_value=summary_worker)
-        summary_worker.__exit__ = Mock(return_value=False)
-        director_worker = Mock()
-        director_worker.__enter__ = Mock(return_value=director_worker)
-        director_worker.__exit__ = Mock(return_value=False)
-        render_worker = Mock()
-        render_worker.__enter__ = Mock(return_value=render_worker)
-        render_worker.__exit__ = Mock(return_value=False)
+    def test_background_workers_are_closed_before_generation_retry(self):
+        workers = []
+        for _ in range(2):
+            for _name in ("continuity-summary", "director-prefetch", "comfyui-render"):
+                worker = Mock()
+                worker.__enter__ = Mock(return_value=worker)
+                worker.__exit__ = Mock(return_value=False)
+                workers.append(worker)
+
+        run_main = Mock(side_effect=[RuntimeError("temporary failure"), None])
         with patch(
             "minimax.ThreadPoolExecutor",
-            side_effect=[summary_worker, director_worker, render_worker],
-        ) as factory:
-            with patch("minimax._run_main", side_effect=RuntimeError("boom")):
-                with self.assertRaisesRegex(RuntimeError, "boom"):
-                    minimax.main()
+            side_effect=workers,
+        ) as factory, patch("minimax._run_main", run_main), patch("minimax.time.sleep"):
+            minimax.main()
 
-        self.assertEqual(
-            factory.call_args_list,
-            [
-                call(
-                    max_workers=1,
-                    thread_name_prefix="continuity-summary",
-                ),
-                call(
-                    max_workers=1,
-                    thread_name_prefix="director-prefetch",
-                ),
-                call(
-                    max_workers=1,
-                    thread_name_prefix="comfyui-render",
-                ),
-            ],
-        )
-        summary_worker.__exit__.assert_called_once()
-        director_worker.__exit__.assert_called_once()
-        render_worker.__exit__.assert_called_once()
+        self.assertEqual(factory.call_count, 6)
+        self.assertEqual(run_main.call_count, 2)
+        for worker in workers:
+            worker.__enter__.assert_called_once()
+            worker.__exit__.assert_called_once()
 
     @patch("minimax.requests.post")
     def test_plain_text_summary_uses_chat_completions_without_schema(

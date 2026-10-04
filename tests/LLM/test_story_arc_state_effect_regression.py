@@ -192,7 +192,7 @@ def test_story_arc_prompt_calls_out_wrong_event_state_effect_ownership():
             beat_instructions=FOCUSED_CASE.beat_instructions,
         )
     ).casefold()
-    assert "actually establishes" in prompt
+    assert "owning event" in prompt
     assert "earlier" in prompt
     assert "ordinary setup event" in prompt
     assert "later event also carries the effect" in prompt
@@ -208,7 +208,7 @@ def test_story_arc_prompt_calls_out_persistent_state_coverage():
     ).casefold()
     assert "check persistent state coverage" in prompt
     assert "same event" in prompt
-    assert "persistent change or result" in prompt
+    assert "persistent facts directly established" in prompt
     assert "temporary actions" in prompt
     for operation in (
         "set_location", "set_item_state", "set_barrier_state", "set_threat_state",

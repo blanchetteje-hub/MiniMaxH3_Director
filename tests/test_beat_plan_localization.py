@@ -25,7 +25,7 @@ class BeatPlanLocalizationTests(unittest.TestCase):
                     current_phase=phase,
                 )
                 prompt = messages[1]["content"]
-                assignment = prompt.split("REQUIRED EVENTS", 1)[1].split(
+                assignment = prompt.split("ASSIGNED EVENTS", 1)[1].split(
                     "\n\nWrite exactly", 1
                 )[0]
                 for number, job in enumerate(jobs, 1):
