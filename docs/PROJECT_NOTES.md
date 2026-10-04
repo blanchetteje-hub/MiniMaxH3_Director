@@ -2293,3 +2293,16 @@ Current fix:
 This preserves the intended authority split:
 original Picture -> identity/body; generated current-clothing Picture -> wardrobe.
 
+## 2026-10-04 update — portrait person refs and source-authorized wardrobe regeneration
+
+Person/outfit reference clips are now rendered on a portrait 13:19 canvas. This is isolated
+to the one-second character/clothing reference path; the location-reference orbit remains
+on the existing landscape canvas.
+
+Clothing-reference versioning is also now event-authorized. Once a character has a clothing
+Picture, vision-observed outfit differences do not create a new version. Regeneration occurs
+only when the immediately preceding generated segment explicitly changes/removes/adds a
+garment or explicitly changes garment condition (for example torn, ripped, stained, muddy,
+soaked, singed, or burned). The previous intended clothing-reference state is the base for
+that update, rather than the rendered/vision wardrobe.
+
