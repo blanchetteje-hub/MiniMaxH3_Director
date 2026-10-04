@@ -29971,13 +29971,16 @@ def _append_unique_video_path(video_paths, video_path, lock=None):
 
 # Delete raw ComfyUI segment renders only after the final stitch succeeds.
 def cleanup_raw_segment_videos(video_directory=VIDEO_OUTPUT):
-    """Delete raw segment_* video files while preserving guided_segment_* outputs."""
+    """Delete redundant raw segment_* videos after Segment 1, preserving guided outputs."""
     directory = os.path.abspath(os.fspath(video_directory))
     if not os.path.isdir(directory):
         return []
     deleted = []
     for name in os.listdir(directory):
         if not name.startswith("segment_"):
+            continue
+        match = re.match(r"^segment_(\d+)", name)
+        if match is None or int(match.group(1)) <= 1:
             continue
         if not name.lower().endswith((".mp4", ".mov", ".mkv", ".webm")):
             continue
@@ -30129,8 +30132,9 @@ def stitch_videos(
     deleted_raw_segments = cleanup_raw_segment_videos(VIDEO_OUTPUT)
     if deleted_raw_segments:
         console_log(
-            f"Successful-run cleanup: deleted {len(deleted_raw_segments)} raw "
-            "segment video(s); guided_segment videos were preserved."
+            f"Successful-run cleanup: deleted {len(deleted_raw_segments)} redundant "
+            "raw segment video(s) after Segment 1; Segment 1 and guided_segment "
+            "videos were preserved."
         )
 
     console_log(f"Stitching complete: {FINAL_VIDEO}")
