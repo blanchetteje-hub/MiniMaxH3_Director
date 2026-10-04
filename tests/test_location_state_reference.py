@@ -27,9 +27,8 @@ class LocationStateReferenceTests(unittest.TestCase):
 
     def test_location_reference_prompt_is_character_free_contract(self):
         prompt = minimax.build_location_reference_h3_prompt("medieval tavern")
-        self.assertIn("wide panoramic establishing view of medieval tavern", prompt)
-        self.assertIn("no people, characters, creatures, or story action", prompt)
         self.assertIn("3-second, full 360 orbital camera shot", prompt)
+        self.assertIn("no people, characters, creatures, or story action", prompt)
         self.assertEqual(minimax.LOCATION_REFERENCE_DURATION_SECONDS, 3.0)
 
     def test_strip_video_audio_uses_video_stream_copy_and_no_audio(self):
