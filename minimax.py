@@ -1140,7 +1140,7 @@ WRITE THE SCENE
 - Keep invented staging economical. Add only details needed to physically connect or clearly show CURRENT BEAT. Do not add optional secondary reactions, extra consequences, or extra object/substance motion once the required action is already readable.
 - Preserve spatial continuity literally. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut. This applies to every established position, not only doors or room changes.
 - Give every newly introduced foreground subject visible provenance. If the subject was not visible at frame 0, show it physically entering through a stated route/boundary, or explicitly move the camera to reveal that it was already present offscreen. Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
-- Preserve prop identity and provenance. A held or manipulated object must not silently become a different object. When a subject acquires a new prop, explicitly state where it comes from and the pickup/reach/take action before it is used, unless it is already established in the opening frame. For any transfer, explicitly identify the source and destination, keep them distinct and traceable, and establish that what is transferred is at the source before it reaches the destination.
+- Preserve prop identity and provenance. A held or manipulated object must not silently become a different object. When a subject acquires a new prop, explicitly state where it comes from and the pickup/reach/take action before it is used, unless it is already established in the opening frame. An established prop with an owner or holder belongs to that subject's physical state; do not treat it as shared inventory or repurpose it for another subject unless CURRENT BEAT explicitly authorizes that use or transfer. For any transfer, explicitly identify the source and destination, keep them distinct and traceable, and establish that what is transferred is at the source before it reaches the destination.
 - Budget enough visible time for every physical step you introduce. When movement, acquisition, positioning, opening, or another prerequisite must happen before a dependent action, give that prerequisite its own earlier timed micro-beat instead of compressing both steps into one timestamp.
 - Prefer names when a pronoun could be ambiguous.
 - If CURRENT BEAT explicitly says someone says, asks, orders, tells, replies, or otherwise speaks intelligibly, write a brief direct spoken line in the form Speaker said <d>exact words</d> rather than indirect narration. Use said as the attribution verb in the audiovisual RAW. Do not add intelligible dialogue when CURRENT BEAT contains no speech act.
@@ -31840,6 +31840,109 @@ def _canonicalize_end_continuity_functional_subjects(
     return text
 
 
+def _director_subject_explicitly_leaves_final_frame(subject_name, final_action):
+    """Return whether the final action explicitly removes one Subject from view."""
+    name = " ".join(str(subject_name or "").split()).strip()
+    action = " ".join(str(final_action or "").split()).strip()
+    if not name or not action:
+        return False
+    escaped = re.escape(name)
+    pattern = re.compile(
+        rf"(?i)(?<![\w]){escaped}(?![\w])[^.!?;]{{0,120}}?"
+        r"(?:\b(?:leave(?:s|d|ing)?|exit(?:s|ed|ing)?|depart(?:s|ed|ing)?)\b|"
+        r"\b(?:walk|step|run|move|go|pass)(?:s|ed|ing)?\s+"
+        r"(?:out(?:\s+of\s+(?:the\s+)?(?:room|scene|frame))?|"
+        r"off(?:screen|-screen)?|away\s+out\s+of\s+frame)\b|"
+        r"\b(?:is|becomes?)\s+(?:fully\s+)?(?:occluded|hidden)\b)"
+    )
+    return pattern.search(action) is not None
+
+
+def _director_carry_forward_final_subjects(
+    raw_scene,
+    subject_definitions="",
+    resolved_subject_names=None,
+):
+    """Deterministically preserve final-timed Subjects omitted by End state.
+
+    Dynamic Subject names are stable only after the post-RAW resolver. Once they
+    are stable, the final timed micro-action is stronger evidence of presence
+    than an accidentally incomplete End continuity sentence. Copy that exact
+    final-action evidence into the End state for Subjects still present there;
+    never ask another LLM to repair the scene.
+    """
+    original = _canonicalize_director_timestamps(raw_scene).strip()
+    end_match = _DIRECTOR_END_CONTINUITY_RE.search(original)
+    if not original or end_match is None:
+        return original, []
+
+    timed = original[:end_match.start()].rstrip()
+    actions = _director_timed_action_map(timed)
+    if not actions:
+        return original, []
+    final_action = " ".join(list(actions.values())[-1].split()).strip()
+    if not final_action:
+        return original, []
+
+    candidates = [
+        name for _subject_number, name in parse_defined_subjects(subject_definitions)
+    ]
+    candidates.extend(
+        " ".join(str(name or "").split()).strip()
+        for name in (resolved_subject_names or [])
+    )
+    unique_candidates = []
+    seen = set()
+    for name in candidates:
+        key = _subject_identity_key(name)
+        if not name or not key or key in seen:
+            continue
+        seen.add(key)
+        unique_candidates.append(name)
+
+    end_state = str(end_match.group("state") or "").strip()
+    carried = []
+    for name in unique_candidates:
+        subject_pattern = rf"(?i)(?<![\w]){re.escape(name)}(?![\w])"
+        if re.search(subject_pattern, final_action) is None:
+            continue
+        if re.search(subject_pattern, end_state) is not None:
+            continue
+        if _director_subject_explicitly_leaves_final_frame(name, final_action):
+            continue
+        carried.append(name)
+
+    if not carried:
+        return original, []
+
+    if len(carried) == 1:
+        subject_phrase = carried[0]
+        verb = "remains"
+    elif len(carried) == 2:
+        subject_phrase = f"{carried[0]} and {carried[1]}"
+        verb = "remain"
+    else:
+        subject_phrase = ", ".join(carried[:-1]) + f", and {carried[-1]}"
+        verb = "remain"
+
+    carry_sentence = (
+        f"{subject_phrase} {verb} present in the state established by the final "
+        f"timed action: {final_action.rstrip(' .')}."
+    )
+    base_state = end_state.rstrip()
+    if base_state and base_state[-1] not in ".!?":
+        base_state += "."
+    if base_state:
+        base_state += " "
+    repaired = (
+        timed
+        + "\nEnd continuity state: "
+        + base_state
+        + carry_sentence
+    ).strip()
+    return repaired, carried
+
+
 def resolve_director_raw_scene_subjects(
     raw_scene,
     subject_definitions="",
@@ -32239,15 +32342,19 @@ def build_director_prop_staging_messages(
             "content": (
                 "You do one narrow pre-staging task for a film scene. Determine whether "
                 "CURRENT BEAT assumes use of a movable/interactable prop whose usable "
-                "instance is not established by PROP LEDGER or PREVIOUS SHOT END. If all "
-                "required props are already available, or CURRENT BEAT itself explicitly "
+                "instance is not established by PROP LEDGER or PREVIOUS SHOT END. A prop "
+                "owned by or held by another subject does NOT count as generic available "
+                "inventory for somebody else unless CURRENT BEAT explicitly authorizes "
+                "that reuse, taking, or transfer. If all required props are already "
+                "available to the subject who needs them, or CURRENT BEAT itself explicitly "
                 "introduces/acquires the prop, return an empty staging string. Otherwise "
                 "return one short natural staging sentence that makes only the missing "
-                "prop available before the dependent action. Do not rewrite the Beat, add "
-                "dialogue, add characters, change the outcome, replace an established "
-                "prop, or invent architecture/storage that is not established. If no "
-                "storage/source is established, place the needed prop directly at a "
-                "natural interaction point instead. Return JSON only."
+                "required prop or props available before the dependent action. Prefer a "
+                "distinct ordinary instance over repurposing another subject's owned prop. "
+                "Do not rewrite the Beat, add dialogue, add characters, change the outcome, "
+                "replace an established prop, or invent architecture/storage that is not "
+                "established. If no storage/source is established, place the needed prop "
+                "directly at a natural interaction point instead. Return JSON only."
             ),
         },
         {
@@ -32474,7 +32581,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         request1_base_messages[-1] = dict(request1_base_messages[-1])
         prop_block = (
             "\n\nPERSISTENT MOVABLE PROP STATE — authoritative physical state; "
-            "reuse these exact objects unless CURRENT BEAT explicitly changes them:\n"
+            "reuse these exact objects unless CURRENT BEAT explicitly changes them. "
+            "owner/holder fields are exclusive continuity facts: do not treat another "
+            "subject's owned or held prop as shared inventory unless CURRENT BEAT "
+            "explicitly authorizes that use or transfer:\n"
             + format_prop_ledger_for_prompt(prop_ledger)
         )
         if prop_staging:
@@ -34307,7 +34417,22 @@ def _run_main(
                 f"RAW Subject resolution failed for Segment {segment} after "
                 f"2 attempts: {subject_resolution_error}"
             )
+        resolved_raw_scene, carried_final_subjects = (
+            _director_carry_forward_final_subjects(
+                resolved_raw_scene,
+                subject_definitions=subject_definitions,
+                resolved_subject_names=raw_subject_names,
+            )
+        )
+        if carried_final_subjects:
+            console_log(
+                f"Segment {segment} deterministic final-participant carry-forward: "
+                + ", ".join(carried_final_subjects),
+                flush=True,
+            )
         payload["raw_scene"] = resolved_raw_scene
+        if isinstance(payload.get("request1_result"), dict):
+            payload["request1_result"]["raw_scene"] = resolved_raw_scene
         llm_result["detailed_description"] = inject_persistent_state_into_description(
             _raw_scene_timed_description(resolved_raw_scene),
         )
