@@ -320,6 +320,35 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         self.assertIn("<Subject 2> Jenny", prompt)
         self.assertIn("Jenny moves above Amy", prompt)
 
+    def test_refresh_loader_stays_unambiguous_with_location_reference_video(self):
+        workflow = load_json(minimax.REFRESH_WORKFLOW_FILE)
+
+        with tempfile.TemporaryDirectory() as directory:
+            location_video = os.path.join(directory, "location.mp4")
+            with open(location_video, "wb") as file:
+                file.write(b"location video")
+            minimax._new_location_reference_loader(
+                workflow,
+                location_video,
+                sample_for_refresh=True,
+            )
+
+        loader_id, loader = minimax.find_workflow_node(
+            workflow,
+            minimax.REFRESH_LOAD_VIDEO_NODE_NAME,
+            "refresh workflow with location reference",
+            "VHS_LoadVideoPath",
+        )
+
+        self.assertEqual(
+            loader.get("_meta", {}).get("title"),
+            minimax.LOAD_VIDEO_NODE_NAME,
+        )
+        self.assertNotEqual(
+            loader.get("_meta", {}).get("title"),
+            minimax.LOCATION_REFERENCE_VIDEO_NODE_NAME,
+        )
+
     def test_append_validation_is_independent_of_exported_node_ids(self):
         workflow = renumber_workflow(self.append)
 
