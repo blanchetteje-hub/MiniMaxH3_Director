@@ -493,3 +493,30 @@ and one explicit clothing-condition change, inspect `generated_prompts.txt` befo
 ComfyUI, then verify v001 and v002 both remain under `output/video/state` and the appropriate
 segment uses each version.
 
+### 2026-10-04 — sliding dynamic-Subject references + per-segment Picture map
+
+Implemented the requested conservative dynamic-reference lifecycle:
+
+- persistent Subject/reference records are never deleted or renumbered;
+- each segment gets a frozen `reference_bindings` map that records both the persistent
+  canonical Picture number and the segment-local Picture number;
+- H3 Subject definitions and ComfyUI reference wiring use the same segment-local generated
+  reference map;
+- a Subject remains retained for `ceil(total_segments / 2)` segments since its last
+  explicit visual appearance, so a potentially passive/background Subject is not dropped
+  immediately;
+- after expiry, its Subject definition and configured/generated reference conditioning are
+  removed only for the current segment; a later explicit re-entry restores the same
+  persistent identity/reference version;
+- `--disable-subject-removal` (also exposed in the desktop UI) keeps every previously seen
+  Subject bound indefinitely;
+- `generation_state.json` keeps the full tracking/binding history, and each completed
+  segment plus `generated_prompts.txt` freezes the exact map/exclusions needed for 16GB
+  replay.
+
+Production acceptance: use a run with several dynamic Subjects entering/leaving. Verify an
+inactive Subject remains bound through the sliding window, ages out at the threshold, its
+configured/generated Picture is disconnected, another generated Subject can pack into the
+vacated dynamic slot, and later re-entry restores the original identity asset even if the
+H3 Picture number differs from its earlier segment.
+
