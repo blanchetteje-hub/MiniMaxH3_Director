@@ -34463,6 +34463,20 @@ def render_saved_reference_jobs(reference_jobs):
                 raise ValueError(
                     f"Saved character reference job {job_id!r} has no output_reference."
                 )
+            expected_path = os.path.abspath(
+                str(output_reference.get("image_path") or "")
+            )
+            if (
+                expected_path
+                and os.path.isfile(expected_path)
+                and os.path.getsize(expected_path) > 0
+            ):
+                console_log(
+                    f"Reusing completed saved character reference: {expected_path}",
+                    flush=True,
+                )
+                completed.add(job_id)
+                continue
             identity_image_name = _saved_reference_job_identity_image(
                 job.get("identity_source")
             )
@@ -34477,9 +34491,6 @@ def render_saved_reference_jobs(reference_jobs):
                 identity_image_name=identity_image_name,
                 noise_seed=int(job["noise_seed"]),
                 file_token=str(job.get("file_token") or ""),
-            )
-            expected_path = os.path.abspath(
-                str(output_reference.get("image_path") or "")
             )
             if expected_path and os.path.abspath(actual_path) != expected_path:
                 raise RuntimeError(
