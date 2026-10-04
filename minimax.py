@@ -331,10 +331,9 @@ _PROP_STAGING_TRIGGER_RE = re.compile(
     r"take(?:s|n|ing)?|pick(?:s|ed|ing)?\s+up|set(?:s|ting)?\s+down|"
     r"place(?:s|d|ing)?|put(?:s|ting)?|hand(?:s|ed|ing)?|give(?:s|n|ing)?|"
     r"pass(?:es|ed|ing)?|receive(?:s|d|ing)?|retriev(?:e|es|ed|ing)|"
-    r"use(?:s|d|ing)?|wipe(?:s|d|ing)?|fill(?:s|ed|ing)?|"
+    r"wipe(?:s|d|ing)?|fill(?:s|ed|ing)?|"
     r"empty(?:ies|ied|ing)?|drop(?:s|ped|ping)?|throw(?:s|n|ing)?|"
-    r"open(?:s|ed|ing)?|close(?:s|d|ing)?|load(?:s|ed|ing)?|"
-    r"fire(?:s|d|ing)?|aim(?:s|ed|ing)?|swing(?:s|ing)?|"
+    r"load(?:s|ed|ing)?|fire(?:s|d|ing)?|aim(?:s|ed|ing)?|swing(?:s|ing)?|"
     r"insert(?:s|ed|ing)?|remove(?:s|d|ing)?|store(?:s|d|ing)?|"
     r"stash(?:es|ed|ing)?|equip(?:s|ped|ping)?)\b"
 )
