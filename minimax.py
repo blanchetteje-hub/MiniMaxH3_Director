@@ -26887,15 +26887,24 @@ def _filter_h3_subject_definitions(
             r"\s+is\s+currently\s+wearing\.?\s*$",
             line,
         )
+        identity_reference_match = re.match(
+            r"(?i)^\s*<Picture\s+(\d+)>\s+defines\s+"
+            r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)(?:'s|’s)\s+"
+            r"identity\b.*$",
+            line,
+        )
         match = subject_match or legacy_match
         if match is not None and int(match.group(1)) in visible:
             rendered.append(line)
             continue
+        generated_reference_match = (
+            clothing_reference_match or identity_reference_match
+        )
         if (
-            clothing_reference_match is not None
+            generated_reference_match is not None
             and isinstance(modified_description, str)
             and re.search(
-                rf"(?i)(?<!\w){re.escape(clothing_reference_match.group('name'))}(?!\w)",
+                rf"(?i)(?<!\w){re.escape(generated_reference_match.group('name'))}(?!\w)",
                 _h3_visual_identity_text(modified_description),
             )
         ):

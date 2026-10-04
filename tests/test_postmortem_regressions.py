@@ -1080,6 +1080,24 @@ class PostmortemRegressionTests(unittest.TestCase):
             filtered,
         )
 
+    def test_dynamic_identity_picture_definition_is_kept_for_visible_subject(self):
+        definitions = (
+            "<Subject 4> is Dragon1 (S4). Dragon1 is a dragon. "
+            "Dragon1 is referenced in <Picture 5> for identity and current appearance.\n"
+            "<Picture 5> defines Dragon1's identity, physical appearance, "
+            "species/distinguishing traits, and current clothing."
+        )
+        filtered, _description = minimax._filter_h3_subject_definitions(
+            definitions,
+            {4},
+            "At 00:01.000, Dragon1 enters through the doorway.",
+        )
+        self.assertIn("<Subject 4> is Dragon1", filtered)
+        self.assertIn(
+            "<Picture 5> defines Dragon1's identity, physical appearance",
+            filtered,
+        )
+
     def test_state_media_paths_live_under_output_video_state(self):
         self.assertEqual(
             minimax.STATE_MEDIA_OUTPUT,
