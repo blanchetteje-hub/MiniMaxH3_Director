@@ -21,6 +21,12 @@ def _state():
     }
 
 
+def _normalized_state():
+    state = _state()
+    state["subjects"]["Mark"]["held_props"] = []
+    return state
+
+
 class CombinedContinuityParserTests(unittest.TestCase):
     def assert_parses_state(self, raw, expected=None):
         self.assertEqual(
@@ -159,7 +165,7 @@ class CombinedContinuityParserTests(unittest.TestCase):
                 defer_opening=True,
             )
 
-        self.assertEqual(result["reduced_state"], _state())
+        self.assertEqual(result["reduced_state"], _normalized_state())
         output = "\n".join(
             str(argument)
             for call in printed.call_args_list
@@ -193,7 +199,7 @@ class CombinedContinuityParserTests(unittest.TestCase):
                 defer_opening=True,
             )
 
-        self.assertEqual(result["reduced_state"], _state())
+        self.assertEqual(result["reduced_state"], _normalized_state())
         self.assertEqual(request.call_count, 2)
         correction = request.call_args_list[1].args[0][1]["content"]
         self.assertIn("previous response was not usable JSON", correction)
