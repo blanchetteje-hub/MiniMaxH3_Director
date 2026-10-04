@@ -33637,6 +33637,11 @@ def _run_main(
             continuity_summary_pending = restored["continuity_summary_pending"]
             generation_state.pop("additional_subject_definitions", None)
 
+    prop_ledger = normalize_prop_ledger(
+        generation_state.get("prop_ledger", {})
+    )
+    generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
+
     # A prefetched prompt belongs to a live executor/Future. It cannot be
     # trusted after process restart unless that Future is restored as well.
     generation_state.pop("prefetched_next_prompt", None)
@@ -33858,6 +33863,7 @@ def _run_main(
         opening_state,
         opening_summary_text,
         dialogue_exclusions,
+        prop_ledger_state,
     ):
         conditioning_mode = conditioning_mode_for_segment(
             segment_number,
@@ -33880,6 +33886,9 @@ def _run_main(
                 ).hexdigest(),
                 "subject_definitions_sha256": hashlib.sha256(
                     str(subject_definitions or "").encode("utf-8")
+                ).hexdigest(),
+                "prop_ledger_sha256": hashlib.sha256(
+                    format_prop_ledger_for_prompt(prop_ledger_state).encode("utf-8")
                 ).hexdigest(),
             },
             ensure_ascii=False,
@@ -33987,6 +33996,7 @@ def _run_main(
             )
             if conditioning_mode != "initial" else set()
         )
+        prop_ledger_snapshot = copy.deepcopy(prop_ledger)
         messages, estimated_tokens, recent_count = build_generation_messages(
             director_rules=segment_director_rules,
             story=story,
@@ -34030,6 +34040,7 @@ def _run_main(
                 previous_result.get("non_diegetic_music") or ""
             ).strip(),
             "registry_state": opening_state,
+            "prop_ledger": prop_ledger_snapshot,
             "opening_summary": director_opening_summary,
             "h3_opening_summary": h3_opening_summary,
             "continuity_source": (
@@ -34048,6 +34059,7 @@ def _run_main(
                 opening_state,
                 director_opening_summary,
                 dialogue_exclusions,
+                prop_ledger_snapshot,
             ),
         }
 
@@ -34487,6 +34499,7 @@ def _run_main(
                 barrier_binding=build_director_barrier_binding_contract(
                     segment_bundle.get("assigned_state_effects", [])
                 ),
+                committed_prop_ledger=copy.deepcopy(prop_ledger),
             )
             console_log(
                 f"Combined continuity requested for segment {segment} "
@@ -34655,12 +34668,17 @@ def _run_main(
                         copy.deepcopy(continuity_state),
                     ),
                     "opening_state": "",
+                    "prop_ledger": copy.deepcopy(prop_ledger),
                 }
 
         if continuity_pipeline_result is not None:
             prompt_reduced_continuity_state = copy.deepcopy(
                 continuity_pipeline_result["reduced_state"]
             )
+            prop_ledger = normalize_prop_ledger(
+                continuity_pipeline_result.get("prop_ledger", prop_ledger)
+            )
+            generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
             # The source story is the only authority for the opening outfit;
             # restore it when the combined continuity response omitted the
             # still-unknown slots. Rendered observations below may override it.
@@ -34688,6 +34706,7 @@ def _run_main(
                     copy.deepcopy(continuity_state),
                 ),
                 "opening_state": "",
+                "prop_ledger": copy.deepcopy(prop_ledger),
             }
             console_log(
                 f"WARNING: Segment {segment} prompt-derived continuity is "
@@ -34812,6 +34831,7 @@ def _run_main(
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
         )
+        generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
 
         # Persist the two-phase continuity working state before waiting for
         # ComfyUI's render response. The completed-segment record is
@@ -34853,6 +34873,7 @@ def _run_main(
                     completed_beat_ids,
                     continuity_summary,
                     continuity_state=reduced_continuity_state,
+                    prop_ledger=prop_ledger,
                     continuity_summary_pending=False,
                     subject_registry_state=continuity_state,
                 )
@@ -34914,6 +34935,7 @@ def _run_main(
             skipped_completed_beat_ids = sorted(set(completed_beat_ids))
             skipped_prompt_state = copy.deepcopy(prompt_reduced_continuity_state)
             skipped_registry_state = migrate_continuity_state(continuity_state)
+            skipped_prop_ledger = copy.deepcopy(prop_ledger)
             skipped_prompt_completed_beat_ids = list(prompt_completed_beat_ids)
             skipped_opening_summary = prompt_only_opening_summary
 
@@ -34964,6 +34986,7 @@ def _run_main(
                         skipped_completed_beat_ids,
                         continuity_summary,
                         continuity_state=reduced_continuity_state,
+                        prop_ledger=skipped_prop_ledger,
                         continuity_summary_pending=False,
                         subject_registry_state=skipped_registry_state,
                     )
@@ -35135,6 +35158,7 @@ def _run_main(
         )
         generation_state["continuity_summary"] = continuity_summary
         generation_state["continuity_source"] = continuity_source
+        generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
 
         previous_video_path = _append_unique_video_path(
             generated_video_paths,
@@ -35154,6 +35178,7 @@ def _run_main(
                 completed_beat_ids,
                 continuity_summary,
                 continuity_state=reduced_continuity_state,
+                prop_ledger=prop_ledger,
                 continuity_summary_pending=False,
                 subject_registry_state=continuity_state,
             )
