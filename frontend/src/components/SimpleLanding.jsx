@@ -11,6 +11,7 @@ export default function SimpleLanding({ disabled, onGenerate }) {
   const [files, setFiles] = useState({ story: '', subjects: '' })
   const [saved, setSaved] = useState({ story: '', subjects: '' })
   const [message, setMessage] = useState('')
+  const [images, setImages] = useState([])
 
   useEffect(() => {
     invokeBridge('get_settings').then(savedSettings => setSettings(current => ({
@@ -22,6 +23,13 @@ export default function SimpleLanding({ disabled, onGenerate }) {
       setFiles(values)
       setSaved(values)
     }).catch(error => setMessage(error.message))
+    let active = true
+    const refreshImages = () => invokeBridge('get_output_images')
+      .then(result => active && setImages(result))
+      .catch(() => {})
+    refreshImages()
+    const timer = window.setInterval(refreshImages, 3000)
+    return () => { active = false; window.clearInterval(timer) }
   }, [])
 
   const update = (key, value) => {
@@ -73,5 +81,9 @@ export default function SimpleLanding({ disabled, onGenerate }) {
       <button type="button" className="primary-button generate-button" disabled={disabled} onClick={() => generate('32', 'generate')}>32+ GB · Generate</button>
     </div>
     <div className="editor-footer"><span className="editor-message" role="status">{message}</span><button type="button" className="secondary-button" onClick={saveFiles} disabled={disabled || (files.story === saved.story && files.subjects === saved.subjects)}>Save story and subjects</button></div>
+    <section className="simple-image-gallery" aria-label="Generated images">
+      <div className="panel-heading"><div><p className="eyebrow">Output</p><h2>Generated images</h2></div><span className="muted-note">Latest images in the video output folder</span></div>
+      {images.length ? <div className="simple-image-grid">{images.map(image => <figure className="simple-image-card" key={`${image.name}-${image.modified_at}`}><img src={image.src} alt={image.name} loading="lazy" /><figcaption title={image.name}>{image.name}</figcaption></figure>)}</div> : <p className="muted-note">No generated images yet.</p>}
+    </section>
   </section>
 }

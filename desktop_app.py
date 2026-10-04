@@ -8,6 +8,7 @@ handling as the single source of truth.
 from __future__ import annotations
 
 import contextlib
+import base64
 import io
 import json
 import math
@@ -27,6 +28,7 @@ from minimax import (
     DEFAULT_REFRESH_INTERVAL,
     DEFAULT_STORY_TEMPERATURE,
     LORA_DIRECTORY,
+    VIDEO_OUTPUT,
     parse_args,
     require_existing_beats,
 )
@@ -822,6 +824,42 @@ class MiniMaxBridge:
         with self._lock:
             self._logs.clear()
         return {"ok": True, "next_offset": 0}
+
+    def get_output_images(self) -> list[dict[str, Any]]:
+        """Return recent PNG/JPEG previews from the configured video output."""
+        root = Path(VIDEO_OUTPUT).resolve()
+        if not root.is_dir():
+            return []
+        candidates = []
+        try:
+            for path in root.rglob("*"):
+                if path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+                    continue
+                try:
+                    resolved = path.resolve()
+                    if not resolved.is_relative_to(root) or not resolved.is_file():
+                        continue
+                    stat = resolved.stat()
+                    if stat.st_size > 12 * 1024 * 1024:
+                        continue
+                    candidates.append((stat.st_mtime, resolved, stat.st_size))
+                except OSError:
+                    continue
+        except OSError:
+            return []
+        images = []
+        mime_types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+        for modified, path, _size in sorted(candidates, reverse=True)[:24]:
+            try:
+                encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+            except OSError:
+                continue
+            images.append({
+                "name": path.name,
+                "modified_at": datetime.fromtimestamp(modified, tz=timezone.utc).isoformat(),
+                "src": f"data:{mime_types[path.suffix.lower()]};base64,{encoded}",
+            })
+        return images
 
     def is_running(self) -> bool:
         with self._lock:

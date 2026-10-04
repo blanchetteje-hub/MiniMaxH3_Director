@@ -34984,6 +34984,26 @@ def prepare_new_generation():
     console_log("New run: cleared beats and generated planning checkpoints.", flush=True)
 
 
+def clear_state_media_output():
+    """Remove all prior generated files and directories from video/state."""
+    state_directory = os.path.abspath(STATE_MEDIA_OUTPUT)
+    os.makedirs(state_directory, exist_ok=True)
+    for name in os.listdir(state_directory):
+        path = os.path.join(state_directory, name)
+        try:
+            if os.path.islink(path) or not os.path.isdir(path):
+                os.remove(path)
+            else:
+                shutil.rmtree(path)
+        except FileNotFoundError:
+            pass
+        except OSError as error:
+            raise RuntimeError(
+                f"Could not clear prior run state from {path}: {error}"
+            ) from error
+    console_log("Run start: cleared files and folders in the video state directory.", flush=True)
+
+
 def require_existing_beats(path, total_segments):
     """Read user-selected beats without any fallback that rewrites the file."""
     try:
@@ -37469,6 +37489,7 @@ def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
 def main():
     reset_console_logs()
     console_log("Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
+    clear_state_media_output()
     recovery_resume_segment = None
     normalized_args = set(normalize_command_line(sys.argv[1:]))
     fail_fast_generation = bool(

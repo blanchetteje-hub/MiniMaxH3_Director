@@ -878,6 +878,12 @@ button:disabled {
 .simple-file textarea { width: 100%; min-height: 120px; resize: vertical; }
 .simple-actions { margin: 16px 0; }
 .simple-actions .generate-button { flex: 1; min-width: 180px; }
+.simple-image-gallery { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border-soft); }
+.simple-image-gallery .panel-heading { align-items: center; margin-bottom: 12px; }
+.simple-image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.simple-image-card { min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: #0a1016; }
+.simple-image-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #080c11; }
+.simple-image-card figcaption { overflow: hidden; padding: 7px 9px; color: #adbed4; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 700px) { .simple-fields { grid-template-columns: 1fr; } }
 .generation-tab { display: flex; align-items: center; gap: 6px; flex: 1; }
 .generation-tab .mode-button { flex: 1; }
