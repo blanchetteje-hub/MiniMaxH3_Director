@@ -1155,6 +1155,9 @@ WRITE THE SCENE
 - Preserve spatial continuity literally. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut. This applies to every established position, not only doors or room changes.
 - Give every newly introduced foreground subject visible provenance. If the subject was not visible at frame 0, show it physically entering through a stated route/boundary, or explicitly move the camera to reveal that it was already present offscreen. Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
 - Preserve prop identity and provenance. A held or manipulated object must not silently become a different object. When a subject acquires a new prop, explicitly state where it comes from and the pickup/reach/take action before it is used, unless it is already established in the opening frame. An established prop with an owner or holder belongs to that subject's physical state; do not treat it as shared inventory or repurpose it for another subject unless CURRENT BEAT explicitly authorizes that use or transfer. For any transfer, explicitly identify the source and destination, keep them distinct and traceable, and establish that what is transferred is at the source before it reaches the destination.
+- Preserve CURRENT BEAT's transfer roles and result literally. If CURRENT BEAT specifies what moves, where it goes, who receives it, or which container is filled/used, staging may clarify the physical mechanism but must not redirect that transfer or result to a different target, body, surface, or container.
+- For drinking, sipping, pouring, filling, or other material transfer, keep the material visibly bound to an established source/container until the transfer occurs. Do not invent source-less liquid, substitute drool/spillage for the assigned transfer, or treat a large/fixed source as a handheld vessel. Prefer the simplest direct source-to-destination action; explicitly acquire any truly necessary intermediary before using it.
+- Do not invent an extra support, container, utensil, or other helper prop solely to settle a required prop after the Beat action. Prefer leaving the prop with its current holder or placing it on an already-established surface when that is physically natural.
 - Budget enough visible time for every physical step you introduce. When movement, acquisition, positioning, opening, or another prerequisite must happen before a dependent action, give that prerequisite its own earlier timed micro-beat instead of compressing both steps into one timestamp.
 - Prefer names when a pronoun could be ambiguous.
 - If CURRENT BEAT explicitly says someone says, asks, orders, tells, replies, or otherwise speaks intelligibly, write a brief direct spoken line in the form Speaker said <d>exact words</d> rather than indirect narration. Use said as the attribution verb in the audiovisual RAW. Do not add intelligible dialogue when CURRENT BEAT contains no speech act.
@@ -25412,6 +25415,7 @@ def build_generation_messages(
     phrase_exclusions=(),
     canonical_character_facts="",
     canonical_data="",
+    static_setting_description="",
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
@@ -25454,6 +25458,22 @@ def build_generation_messages(
         if phrase_exclusion_text
         else ""
     )
+    static_setting = " ".join(
+        str(static_setting_description or "").split()
+    ).strip(" .")
+    static_setting_block = ""
+    if static_setting:
+        static_setting_block = (
+            "\n\nSTATIC SETTING AUTHORITY — preserve these established static "
+            "environment facts:\n"
+            + static_setting
+            + "\nThese facts constrain static architecture, fixed fixtures, persistent "
+            "furniture, entrances, surfaces, and lighting sources only. Do not relocate, "
+            "duplicate, replace, or restyle an explicitly described fixed element unless "
+            "CURRENT BEAT explicitly changes it. When CURRENT BEAT interacts with one, "
+            "use its established placement/form. Do not force off-camera fixtures into "
+            "the frame."
+        )
 
     assigned_source = director_assigned_source(current_phase, current_segment)
     source_block = (
@@ -25462,7 +25482,7 @@ def build_generation_messages(
         if assigned_source else ""
     )
     user_content = f"""SUBJECT DEFINITIONS:
-{subject_text}{canonical_starting_block}
+{subject_text}{canonical_starting_block}{static_setting_block}
 
 {source_block}CURRENT BEAT — EXECUTE ONLY THIS:
 {current_beat_text}
@@ -29123,6 +29143,9 @@ def normalize_character_reference_images(value):
         }
         if not wardrobe and description:
             wardrobe = _explicit_wardrobe_from_description(description, name)
+        authority = str(raw_record.get("authority") or "").strip().casefold()
+        if authority not in {"clothing_only", "identity_and_clothing"}:
+            authority = ""
         normalized[name] = {
             "name": name,
             "picture_number": picture_number,
@@ -29135,6 +29158,7 @@ def normalize_character_reference_images(value):
             "clothing_condition": " ".join(
                 str(raw_record.get("clothing_condition") or "").split()
             ),
+            "authority": authority,
         }
     return normalized
 
@@ -29350,20 +29374,34 @@ def build_character_reference_target_description(
     return " ".join(canonical.split()).strip(), wardrobe, condition
 
 
-def build_character_reference_h3_prompt(character_description):
-    """Build a one-second front-facing character/clothing reference prompt."""
+def build_character_reference_h3_prompt(
+    character_description,
+    *,
+    has_identity_reference=True,
+):
+    """Build a one-second front-facing character/current-appearance reference prompt."""
     description = " ".join(str(character_description or "").split()).strip(" .")
     if not description:
         raise ValueError("Character reference requires a character description.")
+    identity_clause = (
+        "<Picture 1> references only the identity and physical appearance of this "
+        "character; preserve that same face/head, hair, age, build, species, body, "
+        "and distinguishing traits. Do not copy clothing from <Picture 1>; the "
+        "clothing described in text is authoritative for this reference render. "
+        if has_identity_reference
+        else (
+            "No prior identity Picture is supplied. The text description is authoritative "
+            "for this character's identity and current physical appearance; establish one "
+            "stable face/head, hair, age, build, species, body, and distinguishing traits "
+            "that this generated Picture will own for later segments. "
+        )
+    )
     return (
         "detailed_description: [Shot 1] A single character stands centered and "
         "front-facing in a neutral natural pose, with the complete current outfit "
         "clearly visible. Use one continuous static shot for exactly 1 second. "
-        "<Picture 1> references only the identity and physical appearance of this "
-        "person; preserve that same face, hair, age, build, species, and body. "
-        "Do not copy clothing from <Picture 1>; the clothing described in text is "
-        "authoritative for this reference render. "
-        f"{description}. Keep the face, body, garments, footwear, and accessories "
+        + identity_clause
+        + f"{description}. Keep the face/head, body, garments, footwear, and accessories "
         "clear and unobstructed. Use a plain unobtrusive background. Do not orbit, "
         "pan, zoom, cut, add another character, or invent story action.\n\n"
         "overall_soundscape: N/A\n"
@@ -29372,26 +29410,62 @@ def build_character_reference_h3_prompt(character_description):
 
 
 def character_reference_definition_lines(character_references):
-    """Describe generated Pictures as clothing-only authorities for H3."""
+    """Describe generated Picture authority for H3."""
     records = normalize_character_reference_images(character_references)
     ordered = sorted(
         records.values(),
         key=lambda item: int(item["picture_number"]),
     )
-    return [
-        f"<Picture {record['picture_number']}> references only the clothing "
-        f"that {record['name']} is currently wearing."
-        for record in ordered
-    ]
+    lines = []
+    for record in ordered:
+        picture_number = int(record["picture_number"])
+        name = record["name"]
+        if record.get("authority") == "identity_and_clothing":
+            lines.append(
+                f"<Picture {picture_number}> defines {name}'s identity, physical "
+                "appearance, species/distinguishing traits, and current clothing."
+            )
+        else:
+            lines.append(
+                f"<Picture {picture_number}> references only the clothing "
+                f"that {name} is currently wearing."
+            )
+    return lines
 
 
 def append_character_reference_definitions(
     subject_definitions,
     character_references,
 ):
-    """Append clothing-only Picture semantics without changing Subject identity."""
-    parts = [str(subject_definitions or "").strip()]
-    parts.extend(character_reference_definition_lines(character_references))
+    """Append generated Picture semantics and bind full-identity Pictures to Subjects."""
+    records = normalize_character_reference_images(character_references)
+    definitions = str(subject_definitions or "").strip()
+    for record in records.values():
+        if record.get("authority") != "identity_and_clothing":
+            continue
+        name = str(record.get("name") or "").strip()
+        picture_number = int(record["picture_number"])
+        if not name:
+            continue
+        pattern = re.compile(
+            rf"(?im)^(\s*<Subject\s+\d+>\s+is\s+{re.escape(name)}\b[^\n]*)$"
+        )
+        match = pattern.search(definitions)
+        if match is None or f"<Picture {picture_number}>" in match.group(1):
+            continue
+        replacement = (
+            match.group(1).rstrip()
+            + f" {name} is referenced in <Picture {picture_number}> for identity "
+            "and current appearance."
+        )
+        definitions = (
+            definitions[:match.start(1)]
+            + replacement
+            + definitions[match.end(1):]
+        )
+
+    parts = [definitions]
+    parts.extend(character_reference_definition_lines(records))
     return "\n".join(part for part in parts if part)
 
 
@@ -29680,7 +29754,10 @@ def prepare_character_reference_workflow(
         workflow,
         PROMPT_NODE_NAME,
         "text",
-        build_character_reference_h3_prompt(character_description),
+        build_character_reference_h3_prompt(
+            character_description,
+            has_identity_reference=bool(identity_image_name),
+        ),
         label,
         "DPRandomGenerator",
     )
@@ -29821,13 +29898,20 @@ def ensure_character_reference_images(
         ) is None:
             continue
         existing = references.get(name)
+        source_identity_image_name = subject_identity_reference_image(record)
+        if existing and not existing.get("authority"):
+            existing["authority"] = (
+                "clothing_only"
+                if source_identity_image_name
+                else "identity_and_clothing"
+            )
         if existing and not _wardrobe_reference_change_authorized(
             prior_detailed_description,
             name,
         ):
             # Vision may describe a rendered outfit differently, but that is
             # observational continuity rather than permission to replace the
-            # intended clothing reference.
+            # intended character/current-clothing reference.
             continue
 
         description, intended_wardrobe, clothing_condition = (
@@ -29858,12 +29942,30 @@ def ensure_character_reference_images(
             picture_number = int(base_reference_count) + len(references) + 1
             version = 1
 
-        identity_image_name = subject_identity_reference_image(record)
-        if not identity_image_name:
+        authority = (
+            str(existing.get("authority") or "").strip()
+            if existing
+            else (
+                "clothing_only"
+                if source_identity_image_name
+                else "identity_and_clothing"
+            )
+        )
+        identity_image_name = source_identity_image_name
+        if (
+            not identity_image_name
+            and existing
+            and authority == "identity_and_clothing"
+        ):
+            # Dynamic Subjects have no external identity Picture. Once the first
+            # generated Picture establishes identity, use it to preserve identity
+            # while intentionally updating wardrobe/condition later.
+            identity_image_name = stage_character_reference_image(existing)
+        if not identity_image_name and not existing:
             console_log(
-                f"WARNING: no source identity Picture is available for {name!r}; "
-                "the generated clothing reference will be rendered without "
-                "identity-image conditioning.",
+                f"No source identity Picture is available for {name!r}; "
+                "the first generated character reference will establish persistent "
+                "identity and current appearance.",
                 flush=True,
             )
         image_path = render_character_reference_image(
@@ -29886,6 +29988,7 @@ def ensure_character_reference_images(
             "description": description,
             "wardrobe": copy.deepcopy(intended_wardrobe),
             "clothing_condition": clothing_condition,
+            "authority": authority,
         }
         changed.append(name)
     return references, changed
@@ -32984,6 +33087,9 @@ def build_director_raw_scene_coherence_messages(
     current_beat,
     raw_scene,
     previous_shot_end="",
+    *,
+    prop_ledger=None,
+    static_setting_description="",
 ):
     """Build a narrow semantic check for Request 1 physical/order coherence."""
     return [
@@ -33023,14 +33129,29 @@ def build_director_raw_scene_coherence_messages(
                 "unless it was already established in the opening frame. For any transfer, "
                 "require an explicit source and destination, keep them distinct and "
                 "traceable, and require the transferred material or object to be established "
-                "at the source before it reaches the destination. The trailing "
+                "at the source before it reaches the destination. CURRENT BEAT's explicit "
+                "transfer roles/results are semantic constraints: if it specifies what moves, "
+                "where it goes, who receives it, or which container is filled/used, reject RAW "
+                "that redirects the transfer/result to a different target, body, surface, or "
+                "container. For drinking/sipping/pouring/filling, reject source-less liquid "
+                "or a substitute event such as drooling/spilling when the Beat requires a "
+                "drink/transfer; use the established source/container from PREVIOUS SHOT END "
+                "or PROP LEDGER when one exists. STATIC SETTING AUTHORITY, when supplied, "
+                "owns explicitly described fixed architecture, fixtures, persistent furniture, "
+                "entrances, surfaces, and lighting-source placement. Reject RAW that relocates, "
+                "duplicates, replaces, or restyles one of those fixed elements unless CURRENT "
+                "BEAT explicitly changes it. The trailing "
                 "End continuity state is part "
                 "of this check and MUST describe the state produced by the final timed "
                 "action. Any foreground participant visibly present in the final timed "
                 "action remains present at the final frame unless that final action "
                 "explicitly shows the participant leaving, becoming fully occluded, or "
                 "otherwise no longer visible; reject an End continuity state that simply "
-                "omits such a participant. Reject an End continuity state that moves a "
+                "omits such a participant. Likewise, a movable prop acquired, transferred, "
+                "held, placed, filled, emptied, or otherwise materially changed in the final "
+                "timed action must remain represented in End continuity state with its final "
+                "holder/location/meaningful contents unless that final action explicitly "
+                "destroys, loses, or removes it from the scene. Reject an End continuity state that moves a "
                 "subject/object back to an earlier location, restores an earlier held "
                 "prop or pose, reverses "
                 "a barrier/door result, or otherwise contradicts the final timed frame. "
@@ -33047,6 +33168,10 @@ def build_director_raw_scene_coherence_messages(
                 f"{str(current_beat or '').strip()}\n\n"
                 "PREVIOUS SHOT END\n"
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
+                "PROP LEDGER\n"
+                f"{format_prop_ledger_for_prompt(prop_ledger)}\n\n"
+                "STATIC SETTING AUTHORITY\n"
+                f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
                 "First compare PREVIOUS SHOT END with the inherited 00:00.000 anchor and reject "
@@ -33360,6 +33485,8 @@ def validate_director_raw_scene_coherence(
     raw_scene,
     *,
     previous_shot_end="",
+    prop_ledger=None,
+    static_setting_description="",
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -33371,6 +33498,8 @@ def validate_director_raw_scene_coherence(
             current_beat,
             raw_scene,
             previous_shot_end=previous_shot_end,
+            prop_ledger=prop_ledger,
+            static_setting_description=static_setting_description,
         ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
@@ -33586,6 +33715,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                             bundle.get("previous_final_frame", "")
                             if segment_number > 1
                             else ""
+                        ),
+                        prop_ledger=prop_ledger,
+                        static_setting_description=bundle.get(
+                            "static_setting_description", ""
                         ),
                         history_metadata={
                             "run_id": run_id,
@@ -34959,6 +35092,9 @@ def _run_main(
                 "subject_definitions_sha256": hashlib.sha256(
                     str(subject_definitions or "").encode("utf-8")
                 ).hexdigest(),
+                "static_setting_sha256": hashlib.sha256(
+                    str(location_setting_description or "").encode("utf-8")
+                ).hexdigest(),
                 "prop_ledger_sha256": hashlib.sha256(
                     format_prop_ledger_for_prompt(prop_ledger_state).encode("utf-8")
                 ).hexdigest(),
@@ -35087,6 +35223,7 @@ def _run_main(
             phrase_exclusions=phrase_exclusions,
             canonical_character_facts=canonical_character_facts,
             canonical_data=canonical_data,
+            static_setting_description=location_setting_description,
         )
         return {
             "segment": segment_number,
@@ -35113,6 +35250,7 @@ def _run_main(
             ).strip(),
             "registry_state": opening_state,
             "prop_ledger": prop_ledger_snapshot,
+            "static_setting_description": location_setting_description,
             "opening_summary": director_opening_summary,
             "h3_opening_summary": h3_opening_summary,
             "continuity_source": (
@@ -35480,7 +35618,7 @@ def _run_main(
                 )
                 checkpoint_generation_state()
                 console_log(
-                    "Updated character clothing reference(s): "
+                    "Updated character reference(s): "
                     + ", ".join(changed_character_references),
                     flush=True,
                 )

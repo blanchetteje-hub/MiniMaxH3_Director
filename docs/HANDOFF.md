@@ -426,3 +426,44 @@ Two production fixes are now active on `location-state-test`:
 - Authorized changes are applied to the prior intended clothing-reference state, not to
   vision-observed wardrobe, preventing renderer drift from becoming canonical.
 
+### 2026-10-04 — newest tavern postmortem: dynamic identity, transfer semantics, fixed fixtures
+
+Newest production evidence separated four visible symptoms into three upstream causes:
+
+1. Segment 2's extra plate was actually RAW's invented \`small wooden tray\`; the apparent
+   extra cup is consistent with H3 compensating for RAW telling Amy to tilt a barrel as if
+   it were a handheld pouring vessel.
+2. Segment 4's generated Dragon1 state Picture existed before the render, but final H3
+   labeled it clothing-only while the Subject definition said only \`Dragon1 is a dragon\`.
+   H3 therefore had no Picture-owned dragon identity on first appearance. RAW also
+   explicitly misdirected the brew onto Dragon1's scales instead of filling the cup.
+3. Segment 5 used source-less liquid on Dragon1's tongue because the prior End continuity
+   omitted the just-handed crystal cup, so the prop ledger did not carry that drink source
+   forward. Segment 6 then conflicted with location authority by moving an established
+   hanging lantern onto a table.
+
+Implemented:
+
+- dynamic Subjects with no external Picture now promote their generated state Picture to
+  identity + current-appearance authority; source-backed characters retain the separate
+  identity-Picture + clothing-Picture model;
+- later outfit changes for dynamic Subjects reuse the previous generated Picture as identity
+  conditioning;
+- first unconditioned dynamic-reference generation no longer mentions nonexistent
+  \`<Picture 1>\`;
+- RAW generation/validation preserves the Beat's transfer destination/recipient/container,
+  binds drinks/material to a real established source, and rejects final End states that drop
+  a just-transferred/materially changed prop;
+- RAW avoids unnecessary helper supports/containers/utensils used only to settle props;
+- the existing extracted static-setting sentence is now supplied to Request 1 and coherence
+  validation, preventing RAW from relocating explicit fixed fixtures before final H3
+  location-reference injection.
+
+Next production acceptance: rerun the same tavern case. Check Segment 2 for direct,
+provenanced barrel -> Goblin1 mug transfer without a surprise helper prop; Segment 4 must
+use the generated Dragon1 identity on its first appearance and fill/hand over the crystal
+cup rather than pour onto the dragon; Segment 5 must sip from that carried cup; Segment 6
+must preserve the established lantern placement and Elf1's table. Do not chase the apparent
+overall quality degradation yet: this analyzed run predates the 13:19 character-reference
+and clothing-reference persistence fixes.
+

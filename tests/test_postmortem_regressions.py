@@ -175,6 +175,61 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("transferred material or object", prompt)
         self.assertNotIn("pouring between containers", prompt)
 
+    def test_director_coherence_preserves_assigned_transfer_destination_and_final_prop(self):
+        messages = minimax.build_director_raw_scene_coherence_messages(
+            "Amy pours a special brew into a crystal cup and hands it to Dragon1.",
+            (
+                "At 00:00.000, Amy stands by the shelf.\n\n"
+                "At 00:04.000, Amy lifts a crystal cup.\n\n"
+                "At 00:06.000, Amy pours the brew onto Dragon1's scales.\n\n"
+                "At 00:07.000, Amy hands the crystal cup to Dragon1.\n"
+                "End continuity state: Dragon1 sits on the stool."
+            ),
+            prop_ledger={},
+            static_setting_description="Lanterns hang above each table.",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("transfer roles/results are semantic constraints", prompt)
+        self.assertIn("different target, body, surface, or container", prompt)
+        self.assertIn("movable prop acquired, transferred", prompt)
+        self.assertIn("STATIC SETTING AUTHORITY", prompt)
+        self.assertIn("Lanterns hang above each table.", prompt)
+
+    def test_director_rules_avoid_source_less_material_and_helper_props(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=5,
+            conditioning_mode="continuation",
+        )
+        self.assertIn("Do not invent source-less liquid", rules)
+        self.assertIn("must not redirect that transfer or result", rules)
+        self.assertIn(
+            "Do not invent an extra support, container, utensil, or other helper prop",
+            rules,
+        )
+
+    def test_director_request_receives_static_setting_authority(self):
+        messages, _tokens, _recent = minimax.build_generation_messages(
+            director_rules="rules",
+            story="story",
+            beats=["Amy turns off a lantern.", "Amy leaves."],
+            completed_beat_ids=set(),
+            recent_results=[],
+            current_segment=1,
+            total_segments=2,
+            segment_length=8,
+            total_length=16,
+            static_setting_description="Lanterns hang above each table.",
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn("STATIC SETTING AUTHORITY", prompt)
+        self.assertIn("Lanterns hang above each table.", prompt)
+        self.assertIn("Do not relocate, duplicate, replace, or restyle", prompt)
+        self.assertIn("Do not force off-camera fixtures into the frame", prompt)
+
     def test_director_timing_validator_is_narrow_and_has_no_fixed_minimum(self):
         messages = minimax.build_director_raw_scene_timing_messages(
             (
@@ -685,6 +740,103 @@ class PostmortemRegressionTests(unittest.TestCase):
             render.call_args.kwargs["identity_image_name"],
             "amy_identity.png",
         )
+        self.assertEqual(refs["Amy"]["authority"], "clothing_only")
+
+    def test_dynamic_character_reference_owns_identity_and_current_appearance(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Dragon1"] = minimax.new_subject_continuity_record({
+            "subject_id": 4,
+            "name": "Dragon1",
+            "canonical_description": "Dragon1 is a dragon.",
+        })
+
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="",
+        ), mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="/tmp/video/state/dragon_v001.png",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Dragon1 enters, scales glittering like obsidian.",
+                "<Subject 4> is Dragon1 (S4). Dragon1 is a dragon.",
+                state,
+                {},
+                1,
+                0.5,
+                6,
+            )
+
+        self.assertEqual(changed, ["Dragon1"])
+        self.assertEqual(refs["Dragon1"]["authority"], "identity_and_clothing")
+        self.assertEqual(render.call_args.kwargs["identity_image_name"], "")
+        definitions = minimax.append_character_reference_definitions(
+            "<Subject 4> is Dragon1 (S4). Dragon1 is a dragon.",
+            refs,
+        )
+        self.assertIn(
+            "Dragon1 is referenced in <Picture 2> for identity and current appearance.",
+            definitions,
+        )
+        self.assertIn(
+            "<Picture 2> defines Dragon1's identity, physical appearance",
+            definitions,
+        )
+
+    def test_dynamic_character_outfit_update_reuses_generated_identity_picture(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Traveler1"] = minimax.new_subject_continuity_record({
+            "subject_id": 2,
+            "name": "Traveler1",
+            "canonical_description": "Traveler1 is a traveler.",
+        })
+        existing = {
+            "Traveler1": {
+                "name": "Traveler1",
+                "picture_number": 2,
+                "image_name": "traveler_v001.png",
+                "image_path": "/tmp/video/state/traveler_v001.png",
+                "signature": "old",
+                "version": 1,
+                "description": "Traveler1 is a traveler wearing a brown coat.",
+                "wardrobe": {"upper": "a brown coat"},
+                "clothing_condition": "",
+                "authority": "identity_and_clothing",
+            }
+        }
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="",
+        ), mock.patch.object(
+            minimax,
+            "stage_character_reference_image",
+            return_value="traveler_v001.png",
+        ) as stage, mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="/tmp/video/state/traveler_v002.png",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Traveler1 keeps walking.",
+                "<Subject 2> is Traveler1 (S2). Traveler1 is a traveler.",
+                state,
+                existing,
+                1,
+                0.5,
+                6,
+                prior_detailed_description="Traveler1's brown coat is torn.",
+            )
+
+        self.assertEqual(changed, ["Traveler1"])
+        stage.assert_called_once()
+        self.assertEqual(
+            render.call_args.kwargs["identity_image_name"],
+            "traveler_v001.png",
+        )
+        self.assertEqual(refs["Traveler1"]["authority"], "identity_and_clothing")
 
     def test_character_reference_picture_number_stays_stable_on_outfit_change(self):
         state = minimax.new_continuity_state()
@@ -1008,6 +1160,18 @@ class PostmortemRegressionTests(unittest.TestCase):
             "clothing described in text is authoritative",
             prompt,
         )
+
+    def test_unconditioned_character_reference_prompt_does_not_claim_picture_one(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Dragon1 is a dragon with obsidian scales.",
+            has_identity_reference=False,
+        )
+        self.assertNotIn("<Picture 1>", prompt)
+        self.assertIn(
+            "The text description is authoritative for this character's identity",
+            prompt,
+        )
+        self.assertIn("generated Picture will own for later segments", prompt)
 
     def test_character_reference_prompt_is_front_facing_one_second_not_orbit(self):
         prompt = minimax.build_character_reference_h3_prompt(

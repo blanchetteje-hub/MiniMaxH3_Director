@@ -2306,3 +2306,47 @@ garment or explicitly changes garment condition (for example torn, ripped, stain
 soaked, singed, or burned). The previous intended clothing-reference state is the base for
 that update, rather than the rendered/vision wardrobe.
 
+### 2026-10-04 — dynamic identity Picture authority + transfer/static-setting fixes
+
+The latest tavern render exposed three distinct upstream failures rather than one general
+continuity regression:
+
+- generated Pictures for dynamic Subjects (Goblin1/Elf1/Dragon1) existed before their
+  story render but were labeled clothing-only, leaving H3 free to invent a different
+  creature identity on first appearance;
+- Director RAW could preserve transfer provenance while still redirecting the Beat's
+  semantic destination (for example, pouring a drink onto a recipient instead of into
+  the cup the Beat says is filled), and final End continuity could omit a just-transferred
+  prop;
+- Request 1 did not receive the already-extracted static setting facts, so RAW could
+  relocate a fixed fixture such as a hanging lantern onto a tabletop and then conflict
+  with the persistent location reference injected only at final H3 assembly.
+
+Current implementation on \`location-state-test\`:
+
+- a source-backed Subject keeps its generated current-clothing Picture as clothing-only
+  authority;
+- a dynamic Subject with no source identity Picture now uses its first generated Picture
+  as full identity + current-appearance authority and is explicitly bound to that Picture
+  in H3 subject definitions;
+- later intentional wardrobe/condition changes for such a dynamic Subject condition the
+  replacement render on its prior generated identity Picture rather than inventing a new
+  identity;
+- an unconditioned first character-reference render no longer refers to a nonexistent
+  \`<Picture 1>\`;
+- RAW rules and coherence validation now preserve CURRENT BEAT transfer roles/results,
+  reject source-less material motion or substitute spill/drool behavior for an assigned
+  drink/transfer, and require a materially changed/transferred final prop to survive into
+  End continuity state;
+- RAW staging now discourages disposable helper supports/containers/utensils that are
+  invented only to settle a prop after the required action;
+- Request 1 and the coherence validator now receive the compact extracted static-setting
+  description and treat explicitly described fixed fixtures/lighting placement as
+  authoritative without forcing off-camera elements into frame.
+
+Production verification is still required. Re-run the tavern case and inspect Segment 2
+direct barrel-to-mug staging, Dragon1's first appearance in Segment 4, cup/ale continuity
+through Segment 5, and lantern/Elf/table geometry in Segment 6. The broader per-segment
+quality-degradation question remains intentionally back-pocketed because this run predates
+the exact 13:19 person-reference and no-spurious-regeneration fixes.
+
