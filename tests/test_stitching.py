@@ -121,6 +121,19 @@ class StitchingTests(unittest.TestCase):
             ],
         )
 
+    def test_guided_segment_gets_no_additional_stitch_trim(self):
+        with tempfile.TemporaryDirectory() as directory:
+            first = os.path.join(directory, "segment_0001.mp4")
+            guided = os.path.join(directory, "guided_segment_0002.mp4")
+            with mock.patch.object(minimax, "VIDEO_OUTPUT", directory), mock.patch.object(
+                minimax, "FINAL_VIDEO", os.path.join(directory, "final.mp4")
+            ), mock.patch("minimax.trim_video_start") as trim, mock.patch(
+                "minimax.subprocess.run"
+            ):
+                minimax.stitch_videos([first, guided], trim_frames=2)
+
+        self.assertEqual(trim.call_args.args[2], 0)
+
     def test_stitching_uses_configured_trim_frame_count(self):
         with tempfile.TemporaryDirectory() as directory:
             video_paths = [
