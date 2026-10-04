@@ -130,7 +130,7 @@ def test_source_span_chapter_starts_drive_refresh_modes():
     assert [
         minimax.conditioning_mode_for_segment(
             segment,
-            refresh_interval=2,
+            refresh_interval=None,
             macro_arc=arc,
         )
         for segment in range(1, 9)
@@ -144,9 +144,9 @@ def test_source_span_chapter_starts_drive_refresh_modes():
         "clean_refresh",
         "continuation",
     ]
-    assert minimax.is_refresh_segment(7, refresh_interval=2, macro_arc=arc)
-    assert not minimax.is_refresh_segment(2, refresh_interval=2, macro_arc=arc)
-    assert not minimax.is_refresh_segment(8, refresh_interval=2, macro_arc=arc)
+    assert minimax.is_refresh_segment(7, refresh_interval=None, macro_arc=arc)
+    assert not minimax.is_refresh_segment(2, refresh_interval=None, macro_arc=arc)
+    assert not minimax.is_refresh_segment(8, refresh_interval=None, macro_arc=arc)
 
 
 def test_legacy_refresh_interval_remains_fallback_without_source_span_arc():
