@@ -26,8 +26,8 @@ Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/
 
 Continuity
 
-Location continuity -> currently testing 2-second 360 orbit video as room reference
-State continuity -> TBD
+Location continuity -> 3-second persistent 360-orbit room reference is accepted; covered geometry stayed ~99% consistent in the latest tavern run
+State/subject/action continuity -> active work
 
 Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture/prompt changes.
 
@@ -98,14 +98,14 @@ Follow-up: post-shift pronoun/timestamp validation now uses the raw H3 prompt du
 Created branch `location-state-test` from main commit
 `40f4727030507e116c1631367a80ba0711ca000e`.
 
-Goal: test whether one persistent two-second character-free panoramic location reference
+Goal: test whether one persistent three-second character-free panoramic location reference
 prevents H3 from rewriting off-camera environment (for example shelves becoming a torch)
 while preserving the validated seamless 22-frame AddGuide seam.
 
 Implementation:
 - extract static setting facts from expanded_story.txt with a narrow temperature-0 call;
 - fallback to overall_location when the story does not specify detail;
-- render one 2-second wide slow-pan environment clip before Segment 1, with all Picture
+- render one 3-second wide orbital environment clip before Segment 1, with all Picture
   references disconnected;
 - save/checkpoint the location-reference path;
 - pass it as Ref2V Video 1 to initial and append segments, visual-only/no reference audio;
@@ -144,3 +144,43 @@ loader remains uniquely resolvable after a location-reference loader is added.
 
 Next acceptance: rerun/resume through the next clean refresh and verify Segment 6 renders;
 then evaluate the location-reference experiment on background geometry/fixtures as planned.
+
+
+## 2026-10-04 handoff — tavern location-reference acceptance and prompt/state fixes
+
+Latest 48-second tavern run established a useful split:
+
+- the persistent 3-second location-reference video is successful for environment
+  continuity; Segments 1-5 matched the covered room geometry extremely closely,
+  with invention limited mainly to the slice the orbit did not show reliably;
+- remaining failures were primarily prompt/state problems: ambiguous physical
+  prose, indirect speech conflicting with the no-dialogue constraint, spatially
+  impossible staging, dynamic Subject registration lag, and a Segment 6 clean
+  refresh discontinuity.
+
+Fixes now on `location-state-test`:
+
+- CLI/default automatic refresh is `999`, matching desktop/web defaults;
+- an explicit refresh interval is authoritative and no longer loses to
+  source-span chapter-boundary refresh scheduling; `None` retains the legacy
+  source-span fallback for programmatic callers;
+- story-expansion default temperature is 0.4 and its prompt asks for film-ready,
+  literal, physically unambiguous prose rather than literary ambiguity;
+- an explicit Beat speech act (asks/orders/says/etc.) must become direct
+  `<d>...</d>` dialogue in RAW; after same-segment Subject registration the
+  final H3 identity repair emits the stable form such as
+  `Goblin1 (S3) said <d>Give me a pint.</d>`;
+- Director/RAW coherence now explicitly rejects hidden spatial teleportation such
+  as serving a distant bar/table while still established at the door;
+- post-RAW Subject resolution gets two attempts and is no longer allowed to fail
+  open. Every resolved dynamic Subject must be registered before that segment's
+  H3 prompt is assembled;
+- Subject-resolver responses are now retained in prompt history for diagnosis;
+- guided append postprocessing removes all 22 native Guide overlap frames and
+  guided clips receive no additional two-frame stitch trim.
+
+Next acceptance: rerun the tavern test as a new run with the revised humanoid-
+creature story. Verify Segment 6 stays on normal Guide continuation (not
+clean-refresh), new creatures are registered in the segment where they first
+appear, explicit speech is tagged, and door/bar movement is physically staged.
+Do not change the accepted location-reference architecture before this rerun.
