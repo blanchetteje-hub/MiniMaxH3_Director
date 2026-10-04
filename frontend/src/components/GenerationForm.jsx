@@ -5,7 +5,8 @@ import HelpTip from './HelpTip.jsx'
 const INITIAL_SETTINGS = {
   generation_mode: 'new', vram_mode: '32', segment_length: '', total_segments: '',
   megapixels: '0.5', resume: '1', steps: '6', trim_frames: '2', refresh: '999',
-  vision_continuity: '0', retention: false, repair: '', model: 'gpt', temp: '0.4', first_frame: false,
+  vision_continuity: '0', retention: false, disable_subject_removal: false,
+  repair: '', model: 'gpt', temp: '0.4', first_frame: false,
   loras: [], beat_count: '', beat_length: '', use_prompts: '',
   test_prompt_generation: false, director_only: false,
   capture_h3_segment: '', capture_h3_fixture: '', capture_h3_validation_segment: '',
@@ -94,7 +95,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
         {!rendering && <details className="advanced"><summary>Prompt & story options</summary><div className="field-grid">
           {mode === 'new' && input('temp', 'Story temperature', 'Controls creativity in the initial story-writing LLM call only (--temp). Default: 0.4. Zero is allowed; later LLM calls keep their own settings.', 'number', { min: '0', step: 'any' })}
           <Field label="Response formatter" help="Choose how the LLM response is parsed. Match this to your configured model."><select aria-label="Response formatter" value={settings.model} onChange={event => setField('model', event.target.value)} disabled={disabled}><option value="gpt">GPT</option><option value="mistral">Mistral</option><option value="qwen">Qwen</option></select></Field>
-        </div>{check('retention', 'Include retention analysis', 'Append retention analysis to every clip after the first.')}{check('first_frame', 'First-frame instructions', 'Add first-frame guidance to the prompt for segment 1.')}
+        </div>{check('retention', 'Include retention analysis', 'Append retention analysis to every clip after the first.')}{check('disable_subject_removal', 'Disable subject removal', 'Keep every previously seen Subject/reference bound instead of aging inactive Subjects out after half the story.')}{check('first_frame', 'First-frame instructions', 'Add first-frame guidance to the prompt for segment 1.')}
         {!limited && mode === 'new' && <div className="story-tools"><p>Prepare beats separately without rendering a video.</p><div className="field-grid">{input('beat_count', 'Story beat count', 'Number of beats to write from story.txt using Generate Beats.', 'number', { min: '1' })}{input('beat_length', 'Beat duration (seconds)', 'Duration per story beat. If blank, use clip duration.', 'number', { min: '0.01', step: 'any' })}</div><button type="button" className="secondary-button" disabled={disabled} onClick={generateBeats}>Generate Beats</button></div>}
         </details>}
         <details className="advanced"><summary>{rendering ? 'Reference images' : 'Reference images & LoRAs'}</summary><p className="muted-note">Set all six reference image overrides in Defined Images above. Their order determines Picture 1 through Picture 6. Edit project files below for character definitions.</p><div className="field-grid"></div>
