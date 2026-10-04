@@ -872,6 +872,13 @@ button:disabled {
 .help-tip:hover .help-tip-content, .help-tip:focus-within .help-tip-content { display: block; }
 .field-label { display: flex; align-items: center; gap: 8px; }
 .generation-tabs { margin-top: 0; gap: 8px; }
+.screen-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.screen-tabs .mode-button { min-width: 120px; }
+.simple-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.simple-file textarea { width: 100%; min-height: 120px; resize: vertical; }
+.simple-actions { margin: 16px 0; }
+.simple-actions .generate-button { flex: 1; min-width: 180px; }
+@media (max-width: 700px) { .simple-fields { grid-template-columns: 1fr; } }
 .generation-tab { display: flex; align-items: center; gap: 6px; flex: 1; }
 .generation-tab .mode-button { flex: 1; }
 .mode-description { color: #adbed4; margin: 16px 0; font-size: 13px; line-height: 1.5; }

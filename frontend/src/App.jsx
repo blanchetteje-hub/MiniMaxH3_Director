@@ -4,6 +4,7 @@ import FileSettings from './components/FileSettings.jsx'
 import GenerationForm from './components/GenerationForm.jsx'
 import LogViewer from './components/LogViewer.jsx'
 import StatusPanel from './components/StatusPanel.jsx'
+import SimpleLanding from './components/SimpleLanding.jsx'
 import { invokeBridge, waitForBridge } from './lib/pywebview.js'
 
 const IDLE_STATUS = {
@@ -20,6 +21,7 @@ export default function App() {
   const [status, setStatus] = useState(IDLE_STATUS)
   const [logOutput, setLogOutput] = useState('')
   const [files, setFiles] = useState([])
+  const [screen, setScreen] = useState('simple')
   const logOffset = useRef(0)
 
   const refreshFiles = useCallback(async () => {
@@ -145,6 +147,10 @@ export default function App() {
       {bridgeError && <div className="bridge-banner">{bridgeError}</div>}
 
       <main>
+        <div className="screen-tabs" role="tablist" aria-label="Interface mode">
+          {['simple', 'advanced'].map(tab => <button key={tab} type="button" role="tab" aria-selected={screen === tab} className={`mode-button ${screen === tab ? 'selected' : ''}`} onClick={() => setScreen(tab)}>{tab === 'simple' ? 'Simple' : 'Advanced'}</button>)}
+        </div>
+        {screen === 'simple' ? <div className="dashboard-grid"><SimpleLanding disabled={!ready || running} onGenerate={startGeneration} /><StatusPanel bridgeState={bridgeState} status={status} onStop={stopGeneration} /></div> : <>
         <Configuration />
         <div className="dashboard-grid">
           <GenerationForm
@@ -161,6 +167,7 @@ export default function App() {
           bridgeReady={ready}
           onFilesChanged={refreshFiles}
         />
+        </>}
       </main>
     </div>
   )
