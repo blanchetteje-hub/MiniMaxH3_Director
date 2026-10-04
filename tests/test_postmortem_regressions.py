@@ -372,6 +372,32 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("PROP LEDGER", prompt)
         self.assertIn("Do not rewrite the Beat", prompt)
         self.assertIn("do not invent architecture/storage", prompt)
+        self.assertIn(
+            "owned by or held by another subject does NOT count as generic available",
+            prompt,
+        )
+        self.assertIn(
+            "Prefer a distinct ordinary instance over repurposing another subject's owned prop",
+            prompt,
+        )
+
+    def test_director_owned_prop_is_not_shared_inventory(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=3,
+            conditioning_mode="continuation",
+        )
+        self.assertIn(
+            "do not treat it as shared inventory or repurpose it for another subject",
+            rules,
+        )
+        self.assertIn(
+            "unless CURRENT BEAT explicitly authorizes that use or transfer",
+            rules,
+        )
 
     def test_prop_staging_skips_non_prop_beat_without_llm_call(self):
         def fail_if_called(*_args, **_kwargs):
@@ -477,6 +503,58 @@ class PostmortemRegressionTests(unittest.TestCase):
             "End continuity state: The tall Centaur1 sits across from Amy.",
             resolved,
         )
+
+    def test_final_timed_subject_is_carried_into_incomplete_end_state(self):
+        raw = (
+            "At 00:00.000, Amy stands behind the bar.\n\n"
+            "At 00:06.917, Goblin1 sets mug_1 on the counter, nods at Amy, "
+            "and steps back toward the hearth.\n"
+            "End continuity state: Amy stands behind the bar."
+        )
+        repaired, carried = minimax._director_carry_forward_final_subjects(
+            raw,
+            subject_definitions=(
+                "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+                "<Subject 2> is Goblin1 (S2). Goblin1 is a goblin."
+            ),
+        )
+        self.assertEqual(carried, ["Goblin1"])
+        self.assertIn(
+            "Goblin1 remains present in the state established by the final timed action",
+            repaired,
+        )
+        self.assertIn("steps back toward the hearth", repaired)
+        self.assertEqual(repaired.count("End continuity state:"), 1)
+
+    def test_final_timed_subject_explicit_exit_is_not_carried_forward(self):
+        raw = (
+            "At 00:00.000, Amy stands behind the bar.\n\n"
+            "At 00:06.917, Goblin1 exits through the tavern doorway.\n"
+            "End continuity state: Amy stands behind the bar."
+        )
+        repaired, carried = minimax._director_carry_forward_final_subjects(
+            raw,
+            subject_definitions=(
+                "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+                "<Subject 2> is Goblin1 (S2). Goblin1 is a goblin."
+            ),
+        )
+        self.assertEqual(carried, [])
+        self.assertEqual(repaired, raw)
+
+    def test_newly_resolved_subject_can_be_carried_before_registry_append(self):
+        raw = (
+            "At 00:00.000, Amy stands at the counter.\n\n"
+            "At 00:06.500, Elf1 sits at the back table.\n"
+            "End continuity state: Amy stands at the counter."
+        )
+        repaired, carried = minimax._director_carry_forward_final_subjects(
+            raw,
+            subject_definitions="<Subject 1> is Amy, referenced in <Picture 1>.",
+            resolved_subject_names=["Elf1"],
+        )
+        self.assertEqual(carried, ["Elf1"])
+        self.assertIn("Elf1 remains present", repaired)
 
     def test_story_to_beats_preserves_explicit_enumerations(self):
         messages = minimax.build_story_to_beats_messages(
