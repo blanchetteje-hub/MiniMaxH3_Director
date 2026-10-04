@@ -257,6 +257,9 @@ LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES = 4
 # midpoint into an ordinary Picture reference.
 CHARACTER_REFERENCE_DURATION_SECONDS = 1.0
 CHARACTER_REFERENCE_SAMPLE_SECONDS = 0.5
+CHARACTER_REFERENCE_ASPECT_WIDTH = 13
+CHARACTER_REFERENCE_ASPECT_HEIGHT = 19
+CHARACTER_REFERENCE_RESOLUTION_MULTIPLE = 64
 
 # Clean refresh is intentionally different: it keeps the proven short latent
 # context window so the refresh boundary can reset accumulated generation drift.
@@ -29465,6 +29468,29 @@ def subject_identity_reference_image(subject_record):
     return image_name
 
 
+def character_reference_resolution(
+    megapixels,
+    *,
+    aspect_width=CHARACTER_REFERENCE_ASPECT_WIDTH,
+    aspect_height=CHARACTER_REFERENCE_ASPECT_HEIGHT,
+    multiple=CHARACTER_REFERENCE_RESOLUTION_MULTIPLE,
+):
+    """Return a portrait resolution for isolated person/outfit references."""
+    megapixels = float(megapixels)
+    if not math.isfinite(megapixels) or megapixels <= 0:
+        raise ValueError("Character-reference megapixels must be positive and finite.")
+    aspect_width = int(aspect_width)
+    aspect_height = int(aspect_height)
+    multiple = int(multiple)
+    if aspect_width <= 0 or aspect_height <= 0 or multiple <= 0:
+        raise ValueError("Character-reference aspect terms and multiple must be positive.")
+    total_pixels = megapixels * 1024 * 1024
+    scale = math.sqrt(total_pixels / (aspect_width * aspect_height))
+    width = max(multiple, round(aspect_width * scale / multiple) * multiple)
+    height = max(multiple, round(aspect_height * scale / multiple) * multiple)
+    return int(width), int(height)
+
+
 def prepare_character_reference_workflow(
     character_description,
     megapixels,
@@ -29530,6 +29556,9 @@ def prepare_character_reference_workflow(
     set_node_input(
         workflow, QUALITY_NODE_NAME, "value", megapixels, label, "FloatConstant",
     )
+    character_width, character_height = character_reference_resolution(megapixels)
+    conditioning["inputs"]["width"] = character_width
+    conditioning["inputs"]["height"] = character_height
     suffix = (
         f"_picture_{int(picture_number):03d}"
         if picture_number is not None else ""
