@@ -199,6 +199,30 @@ class DesktopBridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "capture-h3-fixture"):
             self.make_bridge().build_command(dict(BASE_SETTINGS, capture_h3_segment="2"))
 
+    def test_legacy_saved_defaults_migrate_once(self):
+        bridge = self.make_bridge()
+        with tempfile.TemporaryDirectory() as directory:
+            settings_path = Path(directory) / "gui_settings.json"
+            settings_path.write_text(
+                '{"refresh": "6", "temp": "0.8"}',
+                encoding="utf-8",
+            )
+            with mock.patch.object(desktop_app, "SETTINGS_FILE", settings_path):
+                migrated = bridge.get_settings()
+                persisted = json.loads(settings_path.read_text(encoding="utf-8"))
+                self.assertEqual(migrated["refresh"], "999")
+                self.assertEqual(migrated["temp"], "0.4")
+                self.assertEqual(persisted["settings_version"], 2)
+
+                # Version 2 means a later deliberate choice of the old values
+                # is explicit and must not be migrated again.
+                persisted["refresh"] = "6"
+                persisted["temp"] = "0.8"
+                settings_path.write_text(json.dumps(persisted), encoding="utf-8")
+                explicit = bridge.get_settings()
+                self.assertEqual(explicit["refresh"], "6")
+                self.assertEqual(explicit["temp"], "0.8")
+
     def test_all_new_settings_are_persisted(self):
         with tempfile.TemporaryDirectory() as directory:
             with mock.patch.object(desktop_app, "SETTINGS_FILE", Path(directory) / "settings.json"):
