@@ -6621,6 +6621,7 @@ def new_generation_state(run_config):
             "current_active_subject_ids": [],
             "current_explicit_subject_ids": [],
             "current_removed_subject_ids": [],
+            "current_excluded_configured_picture_ids": [],
             "subjects": {},
         },
         "subject_registry_state": new_continuity_state(),
@@ -29334,6 +29335,30 @@ def build_segment_reference_bindings(
         retained_subject_ids=active_ids,
     )
 
+    configured_picture_ids = set()
+    active_configured_picture_ids = set()
+    for subject_id, _name, record in _subject_registry_records(registry):
+        subject_pictures = set()
+        for raw_id in record.get("picture_ids", []) or []:
+            try:
+                subject_pictures.add(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+        raw_picture_id = record.get("picture_id")
+        if raw_picture_id is not None:
+            try:
+                subject_pictures.add(int(raw_picture_id))
+            except (TypeError, ValueError):
+                pass
+        configured_picture_ids.update(subject_pictures)
+        if int(subject_id) in active_ids:
+            active_configured_picture_ids.update(subject_pictures)
+    excluded_configured_picture_ids = sorted(
+        picture_id
+        for picture_id in configured_picture_ids - active_configured_picture_ids
+        if picture_id > 0
+    )
+
     persistent_refs = normalize_character_reference_images(character_references)
     active_names = {
         _reference_binding_subject_name(registry, subject_id)
@@ -29451,6 +29476,9 @@ def build_segment_reference_bindings(
         "current_active_subject_ids": sorted(active_ids),
         "current_explicit_subject_ids": sorted(explicit_ids),
         "current_removed_subject_ids": sorted(removed_ids),
+        "current_excluded_configured_picture_ids": list(
+            excluded_configured_picture_ids
+        ),
         "subjects": subjects,
     })
     snapshot = {
@@ -29460,6 +29488,9 @@ def build_segment_reference_bindings(
         "explicit_subject_ids": sorted(explicit_ids),
         "active_subject_ids": sorted(active_ids),
         "removed_subject_ids": sorted(removed_ids),
+        "excluded_configured_picture_ids": list(
+            excluded_configured_picture_ids
+        ),
         "bindings": copy.deepcopy(bindings),
     }
     return segment_refs, segment_subject_definitions, state, snapshot
@@ -30657,6 +30688,7 @@ def _render_segment_with_retries(
     macro_arc=None,
     location_reference_video_path=None,
     character_reference_images=None,
+    excluded_picture_ids=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     h3_prompt = _assert_h3_subject_identity(
@@ -30718,6 +30750,7 @@ def _render_segment_with_retries(
                 **lora_kwargs,
                 location_reference_video_path=location_reference_video_path,
                 character_reference_images=character_reference_images,
+                excluded_picture_ids=excluded_picture_ids,
             )
         elif refresh_segment:
             workflow_type = "clean_refresh"
@@ -30730,6 +30763,7 @@ def _render_segment_with_retries(
                 steps,
                 **lora_kwargs,
                 continuity_state=continuity_state,
+                excluded_picture_ids=excluded_picture_ids,
                 segment_length=segment_length,
                 location_reference_video_path=location_reference_video_path,
                 character_reference_images=character_reference_images,
@@ -30744,6 +30778,7 @@ def _render_segment_with_retries(
                 steps,
                 **lora_kwargs,
                 continuity_state=continuity_state,
+                excluded_picture_ids=excluded_picture_ids,
                 segment_length=segment_length,
                 location_reference_video_path=location_reference_video_path,
                 character_reference_images=character_reference_images,
@@ -30914,6 +30949,7 @@ def prepare_initial_workflow(
     output_prefix=None,
     location_reference_video_path=None,
     character_reference_images=None,
+    excluded_picture_ids=None,
 ):
     if lora_override is not None:
         if loras:
@@ -30922,7 +30958,12 @@ def prepare_initial_workflow(
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=False)
-    prune_missing_reference_images(workflow, label, "initial")
+    prune_missing_reference_images(
+        workflow,
+        label,
+        "initial",
+        excluded_picture_ids=excluded_picture_ids,
+    )
     attach_character_reference_images(
         workflow,
         label,
@@ -34898,6 +34939,7 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
             segment_length=segment_length,
             location_reference_video_path=location_reference_video_path,
             character_reference_images=character_reference_images,
+            excluded_picture_ids=record.get("excluded_picture_ids", []),
         )
         previous_video_path = _append_unique_video_path(
             generated_video_paths,
@@ -36342,6 +36384,14 @@ def _run_main(
             segment,
             subject_definitions,
         )
+        segment_excluded_picture_ids = set(
+            segment_bundle.get("excluded_picture_ids") or ()
+        )
+        segment_excluded_picture_ids.update(
+            segment_reference_binding_snapshot.get(
+                "excluded_configured_picture_ids", []
+            )
+        )
         h3_prompt = build_h3_prompt(
             llm_result,
             h3_subject_definitions,
@@ -36350,7 +36400,7 @@ def _run_main(
             segment,
             ff=args.ff,
             conditioning_mode=segment_bundle["conditioning_mode"],
-            excluded_picture_ids=segment_bundle.get("excluded_picture_ids"),
+            excluded_picture_ids=segment_excluded_picture_ids,
             continuity_state=continuity_state,
             previous_visible_subject_ids=previous_visible_subject_ids,
             character_canon=character_canon,
@@ -36396,6 +36446,7 @@ def _run_main(
             "reference_bindings": copy.deepcopy(
                 segment_reference_binding_snapshot
             ),
+            "excluded_picture_ids": sorted(segment_excluded_picture_ids),
             "continuity_state": copy.deepcopy(continuity_state),
             "continuity_summary": payload.get(
                 "h3_opening_summary",
@@ -36616,6 +36667,7 @@ def _run_main(
                 h3_fixture_path=h3_fixture_path if h3_fixture_context else None,
                 location_reference_video_path=location_reference_video_path,
                 character_reference_images=segment_character_reference_images,
+                excluded_picture_ids=segment_excluded_picture_ids,
             )
             render_futures_by_segment[int(segment)] = render_future
             # A cadence-skipped final render must still be completed on the main
