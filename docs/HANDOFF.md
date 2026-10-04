@@ -297,3 +297,42 @@ Implemented on `location-state-test`:
 Next acceptance: reuse the tavern story/Beats and inspect mug/glass/basket identity,
 location/possession, transfer contents, and whether the pre-RAW staging call fires only when
 needed. No spatial/location changes should be made unless that regression reappears.
+
+### 2026-10-04 — prop persistence accepted; Segment 2→3 ownership/state fix
+
+Latest tavern acceptance materially improved movable-object continuity:
+
+- the prior appearing/disappearing glasses and basket were gone;
+- fluid/container behavior was acceptable overall;
+- location geometry and earlier spatial/travel fixes remained stable.
+
+The remaining Segment 3 failure was not renderer-only. Logs showed two upstream causes:
+
+1. Segment 2's final timed action still had Goblin1 present, putting his mug on the counter
+   and stepping back toward the hearth, but the End continuity state omitted Goblin1.
+   Combined continuity therefore preserved the Subject identity but lost his position.
+2. The prop ledger correctly tracked `mug_1` as owned by Goblin1 and sitting on the
+   counter, but Segment 3 Director repurposed that mug as the source for Elf1's drink.
+
+Implemented on `location-state-test`:
+
+- post-RAW Subject resolution is followed by deterministic final-participant carry-forward:
+  if a stable named Subject is present in the final timed micro-action but omitted by End
+  continuity state, Python copies that exact final-action evidence into End state;
+- explicit leave/exit/fully-occluded final actions are excluded from carry-forward;
+- this adds no LLM call and does not alter the H3 timed action itself; it repairs semantic
+  bookkeeping used by the next segment;
+- Director now treats ledger `owner` / `holder` as exclusive continuity facts rather
+  than generic inventory;
+- the existing conditional prop pre-staging micro-call treats a matching prop owned/held
+  by another Subject as unavailable unless CURRENT BEAT explicitly authorizes taking,
+  reuse, or transfer, and should stage a distinct ordinary instance instead;
+- Request 1 receives the same ownership rule in the injected prop-state block.
+
+Focused regressions were added for omitted final Subjects, explicit exits, newly resolved
+Subjects before registry append, and owned-prop prompt policy.
+
+Next acceptance: rerun the same tavern case. Segment 2→3 is the key checkpoint:
+Goblin1 should retain his semantic position near the hearth, should not drift into Elf1's
+seat, and `mug_1` should remain Goblin1's instead of being reused to serve Elf1.
+
