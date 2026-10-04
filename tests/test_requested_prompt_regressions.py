@@ -1,3 +1,4 @@
+import inspect
 import json
 import os
 import tempfile
@@ -128,6 +129,20 @@ class RequestedPromptRegressionTests(unittest.TestCase):
                 2,
             )
             stitch.assert_called_once()
+
+    def test_resume_package_preserves_prior_reference_jobs_and_token(self):
+        source = inspect.getsource(minimax._run_main)
+        self.assertIn("saved_reference_jobs = []", source)
+        self.assertIn("saved_reference_file_token = \"\"", source)
+        self.assertIn(
+            "\"reference_jobs\": saved_reference_jobs",
+            source,
+        )
+        self.assertIn(
+            "saved_reference_file_token\\n                or run_id.replace",
+            source,
+        )
+        self.assertIn("job.get(\"job_id\") == \"location:primary\"", source)
 
     def test_render_from_prompts_executes_saved_reference_jobs_before_segments(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -34916,6 +34916,8 @@ def _run_main(
         raise
 
     saved_prompt_prefix = []
+    saved_reference_jobs = []
+    saved_reference_file_token = ""
     if resume_segment > 1 and os.path.isfile(GENERATED_PROMPTS_FILE):
         try:
             previous_payload = load_generated_prompts_file(
@@ -34926,6 +34928,19 @@ def _run_main(
                 for record in previous_payload.get("prompts", [])
                 if int(record.get("segment", 0)) < resume_segment
             ]
+            saved_reference_jobs = [
+                copy.deepcopy(job)
+                for job in previous_payload.get("reference_jobs", [])
+                if (
+                    isinstance(job, dict)
+                    and int(job.get("before_segment", 0)) < resume_segment
+                )
+            ]
+            previous_config = previous_payload.get("config")
+            if isinstance(previous_config, dict):
+                saved_reference_file_token = str(
+                    previous_config.get("reference_file_token") or ""
+                ).strip()
         except Exception as error:
             console_log(
                 f"WARNING: could not reuse saved prompt prefix during "
@@ -34943,14 +34958,17 @@ def _run_main(
             "trim_frames": trim_frames,
             "refresh_interval": refresh_interval,
             "total_segments": total_segments,
-            "reference_file_token": run_id.replace("-", "")[:12],
+            "reference_file_token": (
+                saved_reference_file_token
+                or run_id.replace("-", "")[:12]
+            ),
             "reference_image_overrides": {
                 str(number): path
                 for number, path in REFERENCE_IMAGE_OVERRIDES.items()
             },
         },
         "macro_arc": copy.deepcopy(macro_arc),
-        "reference_jobs": [],
+        "reference_jobs": saved_reference_jobs,
         "prompts": saved_prompt_prefix,
     }
     save_generated_prompts_file(generated_prompts_payload)
@@ -35217,19 +35235,24 @@ def _run_main(
             )
             save_generated_prompts_file(generated_prompts_payload)
     elif test_prompt_generation and location_setting_description:
-        generated_prompts_payload["reference_jobs"].append({
-            "job_id": "location:primary",
-            "kind": "location_reference",
-            "before_segment": 1,
-            "setting_description": location_setting_description,
-            "megapixels": float(megapixels),
-            "steps": int(args.steps),
-            "loras": [
-                list(item)
-                for item in normalize_lora_list(global_loras)
-            ],
-            "noise_seed": generate_random_seed(),
-        })
+        if not any(
+            isinstance(job, dict)
+            and job.get("job_id") == "location:primary"
+            for job in generated_prompts_payload["reference_jobs"]
+        ):
+            generated_prompts_payload["reference_jobs"].insert(0, {
+                "job_id": "location:primary",
+                "kind": "location_reference",
+                "before_segment": 1,
+                "setting_description": location_setting_description,
+                "megapixels": float(megapixels),
+                "steps": int(args.steps),
+                "loras": [
+                    list(item)
+                    for item in normalize_lora_list(global_loras)
+                ],
+                "noise_seed": generate_random_seed(),
+            })
         save_generated_prompts_file(generated_prompts_payload)
         console_log(
             "Prompt-only mode planned the persistent location reference for "
