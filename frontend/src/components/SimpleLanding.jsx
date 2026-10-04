@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { invokeBridge } from '../lib/pywebview.js'
 
-const defaults = { vram_mode: '32', segment_length: '8', total_segments: '5', megapixels: '0.5' }
+const defaults = {
+  vram_mode: '32', segment_length: '8', total_segments: '5', megapixels: '0.5',
+  comfyui_url: 'http://127.0.0.1:8188', llm_host_url: 'http://127.0.0.1:1234',
+}
 
 export default function SimpleLanding({ disabled, onGenerate }) {
   const [settings, setSettings] = useState(defaults)
@@ -59,6 +62,8 @@ export default function SimpleLanding({ disabled, onGenerate }) {
       <label className="field"><span className="field-label">Segment length (seconds)</span><input type="number" min="0.01" step="any" value={settings.segment_length} disabled={disabled} onChange={event => update('segment_length', event.target.value)} /></label>
       <label className="field"><span className="field-label">Total segments</span><input type="number" min="1" step="1" value={settings.total_segments} disabled={disabled} onChange={event => update('total_segments', event.target.value)} /></label>
       <label className="field"><span className="field-label">Quality (megapixels)</span><input type="number" min="0.01" step="any" value={settings.megapixels} disabled={disabled} onChange={event => update('megapixels', event.target.value)} /></label>
+      <label className="field"><span className="field-label">ComfyUI URL</span><input type="url" value={settings.comfyui_url} placeholder="http://127.0.0.1:8188" disabled={disabled} onChange={event => update('comfyui_url', event.target.value)} /></label>
+      <label className="field"><span className="field-label">LLM URL</span><input type="url" value={settings.llm_host_url} placeholder="http://127.0.0.1:1234" disabled={disabled} onChange={event => update('llm_host_url', event.target.value)} /></label>
     </div>
     <p className="muted-note">Video always renders in 16:9.</p>
     {['story', 'subjects'].map(key => <label className="field simple-file" key={key}><span className="field-label">{key === 'story' ? 'Story' : 'Subjects'}</span><textarea aria-label={key === 'story' ? 'Story' : 'Subjects'} value={files[key]} disabled={disabled} onChange={event => updateFile(key, event.target.value)} /></label>)}
