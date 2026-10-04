@@ -132,6 +132,62 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("give that prerequisite its own earlier timed micro-beat", rules)
         self.assertIn("instead of compressing both steps into one timestamp", rules)
 
+    def test_director_prompt_keeps_invented_staging_economical(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=4,
+            conditioning_mode="continuation",
+        )
+        self.assertIn("Keep invented staging economical", rules)
+        self.assertIn("Do not add optional secondary reactions", rules)
+        self.assertIn("extra object/substance motion", rules)
+
+    def test_director_transfer_rule_is_generic_and_tracks_source_destination(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=4,
+            conditioning_mode="continuation",
+        )
+        self.assertIn("For any transfer", rules)
+        self.assertIn("explicitly identify the source and destination", rules)
+        self.assertIn("what is transferred is at the source", rules)
+        self.assertNotIn("pouring or transferring between containers", rules)
+
+        messages = minimax.build_director_raw_scene_coherence_messages(
+            "Amy transfers the drink to the guest.",
+            (
+                "At 00:00.000, Amy holds a cup.\n\n"
+                "At 00:06.500, Amy transfers the drink.\n\n"
+                "End continuity state: The guest has the drink."
+            ),
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("For any transfer", prompt)
+        self.assertIn("explicit source and destination", prompt)
+        self.assertIn("transferred material or object", prompt)
+        self.assertNotIn("pouring between containers", prompt)
+
+    def test_director_timing_validator_is_narrow_and_has_no_fixed_minimum(self):
+        messages = minimax.build_director_raw_scene_timing_messages(
+            (
+                "At 00:00.000, an elf enters through the doorway.\n\n"
+                "At 00:01.500, the elf sits at the far table.\n\n"
+                "End continuity state: the elf is seated."
+            )
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("can visibly occur within the time available", prompt)
+        self.assertIn("one continuous shot", prompt)
+        self.assertIn("Do not impose a fixed minimum interval", prompt)
+        self.assertIn("first clearly compressed transition", prompt)
+        self.assertIn("name its two timestamps", prompt)
+
     def test_director_rules_require_frame_zero_microbeat(self):
         rules = minimax.build_director_rules(
             total_length=48,
