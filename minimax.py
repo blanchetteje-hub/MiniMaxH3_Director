@@ -29914,22 +29914,17 @@ def postprocess_guided_append_video(
     segment_number,
     delivered_duration,
 ):
-    """Remove 20/22 guide frames now; normal stitching removes the final two."""
-    if TRIM_FRAMES_AFTER_FIRST > APPEND_GUIDE_CONTEXT_FRAMES:
-        raise RuntimeError(
-            "Final stitch trim cannot exceed native guide overlap."
-        )
-    pretrim_frames = APPEND_GUIDE_CONTEXT_FRAMES - TRIM_FRAMES_AFTER_FIRST
+    """Remove the full native Guide overlap before stitching."""
+    pretrim_frames = APPEND_GUIDE_CONTEXT_FRAMES
     output_path = os.path.join(
         os.path.dirname(video_path),
         f"guided_{os.path.basename(video_path)}",
     )
-    retained_seconds = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
     trim_video_start(
         video_path,
         output_path,
         pretrim_frames / FRAME_RATE,
-        duration_seconds=float(delivered_duration) + retained_seconds,
+        duration_seconds=float(delivered_duration),
         crf=0,
         preset="ultrafast",
     )
@@ -29939,9 +29934,8 @@ def postprocess_guided_append_video(
             f"{output_path}"
         )
     console_log(
-        f"Native Guide overlap: removed {pretrim_frames}/"
-        f"{APPEND_GUIDE_CONTEXT_FRAMES} frames after render; normal stitching "
-        f"removes the remaining {TRIM_FRAMES_AFTER_FIRST}."
+        f"Native Guide overlap: removed all {APPEND_GUIDE_CONTEXT_FRAMES} "
+        "frames after render; guided segments require no additional seam trim."
     )
     return output_path
 
@@ -30058,6 +30052,18 @@ def stitch_videos(
                 f"Trimming segment {index + 1} to "
                 f"{target_duration:g} seconds."
             )
+        elif os.path.basename(video_path).startswith("guided_segment_"):
+            if target_duration is None:
+                console_log(
+                    f"Guided segment {index + 1} already has its full Guide overlap "
+                    "removed; no additional seam trim is applied."
+                )
+            else:
+                console_log(
+                    f"Guided segment {index + 1} already has its full Guide overlap "
+                    f"removed; limiting it to {target_duration:g} seconds without "
+                    "additional seam trim."
+                )
         elif target_duration is None:
             console_log(
                 f"Trimming first {trim_frames} frames from "
@@ -30069,10 +30075,12 @@ def stitch_videos(
                 f"segment {index + 1} and limiting it to "
                 f"{target_duration:g} seconds."
             )
+        is_guided_segment = os.path.basename(video_path).startswith("guided_segment_")
+        trim_seconds = 0 if index == 0 or is_guided_segment else trim_seconds_after_first
         trim_arguments = (
             video_path,
             trimmed_path,
-            trim_seconds_after_first if index else 0,
+            trim_seconds,
         )
         if target_duration is None:
             trim_video_start(*trim_arguments)
