@@ -185,3 +185,38 @@ creature story. Verify Segment 6 stays on normal Guide continuation (not
 clean-refresh), new creatures are registered in the segment where they first
 appear, explicit speech is tagged, and door/bar movement is physically staged.
 Do not change the accepted location-reference architecture before this rerun.
+
+
+### 2026-10-04 — provenance fixes after second tavern acceptance
+
+The second tavern run kept room/location continuity strong but exposed four
+specific upstream failures:
+
+- reference-video audio could still be heard even though Ref2V audio inputs were
+  disconnected and the location prompt requested N/A audio;
+- a new goblin could "appear" in a chair without a physical entrance/reveal;
+- held/container props could silently change identity (bucket -> mug,
+  mug -> glass/chalice);
+- an established actor could interact with a distant object without explicit
+  travel (Amy at barrel -> crystal shelf/bar).
+
+Current fixes:
+
+- every rendered location-reference video is now atomically remuxed with ffmpeg
+  using video stream-copy plus `-an`; the file used by all later conditioning
+  therefore contains no audio stream regardless of what H3 generated;
+- Director generation and RAW coherence validation both require visible
+  provenance for a newly introduced foreground Subject: explicit physical entry
+  through a route/boundary or explicit continuous camera motion revealing an
+  already-present offscreen Subject; "appears" alone is insufficient;
+- Director/validator preserve prop identity and acquisition provenance. A prop
+  cannot silently become another prop, newly handled props need a stated source
+  and acquisition action unless already established, and source/destination
+  containers stay distinct during pours/transfers;
+- spatial travel validation is generalized: interaction with any different
+  established position requires explicit actor movement there first. This is no
+  longer a door/bar-specific rule.
+
+These are prompt + low-temperature semantic-validator contracts, not
+tavern-specific deterministic rewrites. The ffmpeg audio removal is the only
+deterministic media transformation in this change.
