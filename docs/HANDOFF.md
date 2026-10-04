@@ -336,3 +336,41 @@ Next acceptance: rerun the same tavern case. Segment 2→3 is the key checkpoint
 Goblin1 should retain his semantic position near the hearth, should not drift into Elf1's
 seat, and `mug_1` should remain Goblin1's instead of being reused to serve Elf1.
 
+### 2026-10-04 — generated current-clothing Picture references
+
+The tavern acceptance showed that Amy's correct rendered wardrobe survived only Segment 1;
+later segments fell back toward the clothing in her original identity Picture. A separate
+current-clothing visual authority is now implemented on `location-state-test`.
+
+Implementation:
+
+- when a visible character has no generated clothing reference yet, or the character's
+  canonical current wardrobe changes, Python renders an isolated 1-second H3 character
+  reference using the same base render path as the location reference;
+- the character is front-facing in a neutral pose with the current outfit visible; there is
+  no 360 orbit, camera move, cut, or story action;
+- Python samples the 0.5-second frame and places that PNG in the ComfyUI input directory;
+- the generated Picture is added to H3 subject definitions as clothing-only authority, e.g.
+  `<Picture 2> references only the clothing that Amy is currently wearing.`;
+- Picture numbering is dense and positional. Empty template `LoadImage` nodes do not
+  reserve Picture numbers: if only Picture 1 is active, the first generated reference is
+  Picture 2;
+- Pictures 1-6 reuse the existing template LoadImage nodes when available. Once all active
+  positions through 6 are occupied, Python dynamically creates `LoadImage` nodes for
+  Picture 7, Picture 8, and so on; six is not a hard maximum;
+- each character keeps the same generated Picture number after assignment. A later wardrobe
+  change creates a versioned replacement PNG for that Picture instead of shifting every
+  later Picture number;
+- generated reference metadata is checkpointed and stored with each finalized H3 prompt so
+  resume and saved-prompt rendering retain the exact image version used by that segment;
+- no extra LLM call is added. The trigger/description comes from the existing canonical
+  Subject/wardrobe state.
+
+Focused regressions assert the dense Picture-2 case, stable numbering across an outfit
+change, dynamic creation above Picture 6, clothing-only definition filtering, and the
+front-facing one-second/no-orbit prompt contract.
+
+Next acceptance: rerun the tavern story. Amy should use Picture 1 for identity and the new
+generated Picture for her current clothing, so the post-Segment-1 renders should stop
+reverting to the outfit in the original identity reference.
+

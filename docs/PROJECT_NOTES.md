@@ -2121,15 +2121,14 @@ state instead of asking one representation to solve every continuity problem:
   location's appearance, geometry, layout, fixtures, entrances, furniture, and
   other static spatial relationships. Text/JSON should not attempt to reproduce
   its geometry when the visual reference already carries that information.
-- **Named character not externally referenced:** target a parallel
-  pre-generation path that creates a short (~1-second) neutral character clip
-  from the character's canonical physical description before the character's
-  first story appearance. Select a clean middle frame and register it as that
-  character's persistent reference image for first and later appearances. The
-  generated reference should primarily establish identity/body appearance
-  (face, hair, age, build, species, distinguishing physical traits), not
-  story-specific wardrobe, so later clothing changes do not fight the identity
-  reference. This remains a planned experiment until validated against H3.
+- **Current character clothing:** implemented as a parallel generated
+  Picture reference. When a visible character first needs a generated visual
+  reference, or the canonical current wardrobe changes, render a 1-second
+  front-facing neutral character clip from the existing character description
+  and current wardrobe, sample the 0.5-second frame, and register that Picture
+  as clothing-only authority. External/original Pictures continue to own
+  identity; the generated Picture exists specifically so old reference-image
+  clothing cannot override current wardrobe.
 - **Immediate visual state:** native AddGuide continuation frames own the exact
   state at ordinary segment seams: current composition, pose, visible clothing,
   held objects, nearby subjects, and other details H3 can directly continue
@@ -2146,7 +2145,7 @@ state instead of asking one representation to solve every continuity problem:
 In short, the intended authority split is:
 
 - unreferenced location -> generated 3-second orbit -> persistent location ref
-- unreferenced named character -> generated ~1-second neutral clip -> middle-frame persistent character ref
+- current character wardrobe -> generated 1-second front-facing clip -> 0.5-second clothing-only Picture
 - immediate seam state -> AddGuide overlap frames
 - nonvisual/history-dependent facts -> semantic bookkeeping
 
@@ -2233,4 +2232,31 @@ Implemented response:
 Next acceptance: rerun the same tavern case and specifically verify Segment 2 -> 3:
 Goblin1 should retain his final location/state, should not drift into Elf1's seat, and his
 tracked mug should remain his rather than becoming Elf1's serving source.
+
+## 2026-10-04 update — one-second character clip -> current-clothing Picture
+
+The planned character-reference experiment has been replaced by a narrower implementation
+driven by the observed Amy wardrobe regression.
+
+- Trigger: a visible character has no generated clothing Picture yet, or the character's
+  canonical current wardrobe has changed since the last generated Picture.
+- Render: an isolated 1-second H3 clip using the same base workflow strategy as the
+  location-reference render, but with a static front-facing character instead of a 360
+  environment orbit.
+- Sample: frame at 0.5 seconds becomes the generated reference PNG.
+- Semantics: the added prompt line is clothing-only, e.g.
+  `<Picture 2> references only the clothing that Amy is currently wearing.` Identity
+  remains owned by the normal Subject/original Picture/video-continuation system.
+- Ordering: H3 Pictures are treated as dense positional inputs. Six template LoadImage
+  nodes do not reserve six positions. With only Picture 1 active, the first generated
+  clothing reference is Picture 2.
+- Capacity: existing LoadImage nodes are reused through active Picture 6; Picture 7+ causes
+  Python to create additional LoadImage nodes and autogrow reference inputs dynamically.
+- Stability: once a character receives a generated Picture number, later wardrobe changes
+  replace that Picture's versioned PNG instead of allocating a new number.
+- Persistence: generated reference metadata is kept in generation_state.json and copied
+  into each saved finalized prompt record.
+
+This adds ComfyUI work only when a character reference is first created or its current
+wardrobe changes. It adds no LLM request.
 
