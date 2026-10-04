@@ -28,7 +28,7 @@ def test_only_story_request_uses_dynamic_temperature():
     profiles = {
         'story_to_beats': minimax.STORY_TO_BEATS_LLM_SETTINGS,
         'character_canon': minimax.CREATIVE_GENERATION_LLM_SETTINGS,
-        'director_raw_scene': minimax.CREATIVE_GENERATION_LLM_SETTINGS,
+        'director_raw_scene': minimax.DIRECTOR_RAW_SCENE_LLM_SETTINGS,
         'director_h3_music': minimax.MUSIC_GENERATION_LLM_SETTINGS,
         'beat_generation': minimax.BEAT_WRITING_LLM_SETTINGS,
         'continuity_state_validation': minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS,
