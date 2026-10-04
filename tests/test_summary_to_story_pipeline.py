@@ -33,7 +33,8 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             64,
             total_segments=8,
         )
-        self.assertIn("You are a novelist", messages[0]["content"])
+        self.assertIn("film-ready story", messages[0]["content"])
+        self.assertIn("physically unambiguous prose", messages[0]["content"])
         self.assertIn("A ranger crosses a flooded valley.", messages[1]["content"])
         self.assertIn("64-second timeframe", messages[1]["content"])
         self.assertIn("Preserve every explicit event and outcome", messages[1]["content"])
