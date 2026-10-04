@@ -1090,3 +1090,29 @@ Next action: rerun the same 48-second tavern test from Segment 1. Acceptance rem
 audio continuity and 3→4 / 4→5 visual seams.
 
 Follow-up: post-shift pronoun/timestamp validation now uses the raw H3 prompt duration (delivered duration + Guide offset), while Request 1 structure validation remains on delivered duration only.
+
+
+## 2026-10-04 handoff — location-state-test
+
+Created branch `location-state-test` from main commit
+`40f4727030507e116c1631367a80ba0711ca000e`.
+
+Goal: test whether one persistent two-second character-free panoramic location reference
+prevents H3 from rewriting off-camera environment (for example shelves becoming a torch)
+while preserving the validated seamless 22-frame AddGuide seam.
+
+Implementation:
+- extract static setting facts from expanded_story.txt with a narrow temperature-0 call;
+- fallback to overall_location when the story does not specify detail;
+- render one 2-second wide slow-pan environment clip before Segment 1, with all Picture
+  references disconnected;
+- save/checkpoint the location-reference path;
+- pass it as Ref2V Video 1 to initial and append segments, visual-only/no reference audio;
+- keep append AddGuide on its own loader and unchanged;
+- clean refresh receives four sampled frames from the same location clip through ref_images;
+- final H3 prompt explicitly says the location reference owns static spatial layout only,
+  never characters or current camera framing.
+
+Next acceptance should focus only on background geometry/fixtures when the camera reveals an
+area that was previously off-screen. Do not evaluate character persistence as part of this
+test.

@@ -243,6 +243,11 @@ REFERENCE_VIDEO_CONTEXT_FRAMES = 56
 APPEND_GUIDE_CONTEXT_FRAMES = 22
 APPEND_GUIDE_CONTEXT_SECONDS = APPEND_GUIDE_CONTEXT_FRAMES / FRAME_RATE
 
+# One short static-environment reference is rendered before story Segment 1 and
+# reused for the complete run. It is never stitched into the story video.
+LOCATION_REFERENCE_DURATION_SECONDS = 2.0
+LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES = 4
+
 # Clean refresh is intentionally different: it keeps the proven short latent
 # context window so the refresh boundary can reset accumulated generation drift.
 REFRESH_CONTEXT_FRAMES = 22
@@ -500,6 +505,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "macro_arc_validate",
     "source_unit_state_effects",
     "story_location_extract",
+    "story_setting_extract",
     "subject_continuity",
     "visual_end_state",
 })
@@ -535,6 +541,7 @@ SCHEDULER_NODE_NAME = "BasicScheduler"
 MATH_NODE_NAME = "Math Expression"
 
 LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
+LOCATION_REFERENCE_VIDEO_NODE_NAME = "Location Reference Video"
 
 REFRESH_LOAD_VIDEO_NODE_NAME = "Load Video"
 
@@ -7438,6 +7445,182 @@ def connect_named_connection(
 
 
 # Restore the complete append video-to-conditioning graph by node title.
+def build_location_reference_h3_prompt(setting_description):
+    """Build the character-free two-second persistent location reference prompt."""
+    setting = " ".join(str(setting_description or "").split()).strip(" .")
+    if not setting:
+        raise ValueError("Location reference requires a setting description.")
+    return (
+        "detailed_description: [Shot 1] Static environment reference only. "
+        f"A wide panoramic establishing view of {setting}. "
+        "The space contains no people, characters, creatures, or story action. "
+        "Use one continuous slow lateral camera pan that clearly establishes the "
+        "spatial relationships of major architecture, fixed fixtures, entrances, "
+        "surfaces, persistent furniture, landmarks, and lighting sources that are "
+        "actually present. Keep the view broad and readable; do not cut, zoom into "
+        "an object, or invent a plot event. Unspecified environmental details may be "
+        "designed coherently by the video model and should remain internally consistent.\n\n"
+        "overall_soundscape: N/A\n\n"
+        "non_diegetic_music: N/A\n\n"
+        "No intelligible spoken dialogue is heard in this segment."
+    )
+
+
+def inject_location_reference_into_h3_prompt(
+    h3_prompt,
+    setting_description,
+    *,
+    conditioning_mode,
+):
+    """Tell H3 which conditioning source owns persistent static world layout."""
+    prompt = str(h3_prompt or "")
+    setting = " ".join(str(setting_description or "").split()).strip(" .")
+    if not prompt or not setting:
+        return prompt
+    if str(conditioning_mode or "").strip().lower() == "clean_refresh":
+        clause = (
+            "The supplied location-reference frames define the persistent static "
+            f"environment and spatial layout ({setting}). Preserve architecture, fixed "
+            "fixtures, entrances, surfaces, persistent furniture, landmarks, and "
+            "background placement when those areas enter frame. They do not define "
+            "characters or the current camera composition. "
+        )
+    else:
+        clause = (
+            "<Video 1> is the persistent LOCATION REFERENCE for the static environment "
+            f"and spatial layout ({setting}). Preserve its architecture, fixed fixtures, "
+            "entrances, surfaces, persistent furniture, landmarks, and background "
+            "placement when those areas enter frame. Do not use <Video 1> for characters "
+            "or current camera framing. "
+        )
+    marker = "detailed_description:"
+    if marker not in prompt:
+        return clause + prompt
+    return prompt.replace(marker, marker + " " + clause, 1)
+
+
+def _new_location_reference_loader(workflow, video_path, *, sample_for_refresh=False):
+    node_id = _next_workflow_node_id(workflow)
+    inputs = {
+        "video": os.path.abspath(os.fspath(video_path)),
+        "force_rate": 0,
+        "custom_width": 0,
+        "custom_height": 0,
+        "frame_load_cap": (
+            LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES
+            if sample_for_refresh else 0
+        ),
+        "skip_first_frames": 0,
+        "select_every_nth": (
+            max(
+                1,
+                int(round(
+                    FRAME_RATE * LOCATION_REFERENCE_DURATION_SECONDS
+                    / LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES
+                )),
+            )
+            if sample_for_refresh else 1
+        ),
+        "format": "H3",
+    }
+    workflow[node_id] = {
+        "inputs": inputs,
+        "class_type": "VHS_LoadVideoPath",
+        "_meta": {"title": LOCATION_REFERENCE_VIDEO_NODE_NAME},
+    }
+    return node_id
+
+
+def _validate_location_reference_path(video_path):
+    path = os.path.abspath(os.fspath(video_path))
+    if not os.path.isfile(path) or os.path.getsize(path) == 0:
+        raise FileNotFoundError(
+            f"Location reference video is missing or empty: {path}"
+        )
+    return path
+
+
+def connect_location_reference_video(
+    workflow,
+    workflow_label,
+    video_path,
+    *,
+    reuse_existing_loader=False,
+):
+    """Attach persistent spatial memory to a ReferenceToVideo conditioner."""
+    path = _validate_location_reference_path(video_path)
+    if reuse_existing_loader:
+        loader_id, loader = find_workflow_node(
+            workflow,
+            LOAD_VIDEO_NODE_NAME,
+            workflow_label,
+            "VHS_LoadVideoPath",
+        )
+        loader["inputs"].update({
+            "video": path,
+            "format": "H3",
+            "skip_first_frames": 0,
+            "frame_load_cap": 0,
+            "select_every_nth": 1,
+        })
+    else:
+        loader_id = _new_location_reference_loader(workflow, path)
+
+    _, conditioning = find_workflow_node(
+        workflow,
+        INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3ReferenceToVideo",
+    )
+    inputs = conditioning.setdefault("inputs", {})
+    inputs["ref_videos.ref_video_0"] = [loader_id, 0]
+    # Spatial memory only: do not let the location clip's generated soundtrack
+    # influence story audio.
+    inputs.pop("ref_video_audios.ref_video_audio_0", None)
+    if isinstance(inputs.get("ref_video_audios"), dict):
+        inputs["ref_video_audios"].pop("ref_video_audio_0", None)
+    return loader_id
+
+
+def attach_location_reference_frames_to_refresh(
+    workflow,
+    workflow_label,
+    video_path,
+):
+    """Use sampled location frames when the clean-refresh node has no Ref2V input."""
+    path = _validate_location_reference_path(video_path)
+    location_loader_id = _new_location_reference_loader(
+        workflow,
+        path,
+        sample_for_refresh=True,
+    )
+    extend_id, extend = find_workflow_node(
+        workflow,
+        REFRESH_EXTEND_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3VideoExtendPatched",
+    )
+    batch_id, batch = find_workflow_node(
+        workflow,
+        REFRESH_REFERENCE_BATCH_NODE_NAME,
+        workflow_label,
+        "ImageBatchMulti",
+    )
+    image_slots = []
+    for key in batch.get("inputs", {}):
+        match = re.fullmatch(r"image_(\d+)", str(key))
+        if match:
+            image_slots.append(int(match.group(1)))
+    next_slot = max(image_slots, default=0) + 1
+    batch["inputs"][f"image_{next_slot}"] = [location_loader_id, 0]
+    batch["inputs"]["inputcount"] = max(
+        int(batch["inputs"].get("inputcount") or 0),
+        next_slot,
+    )
+    extend["inputs"]["ref_images"] = [batch_id, 0]
+    return location_loader_id
+
+
 def _ensure_append_guide_node(workflow, workflow_label):
     """Return one native MiniMaxH3AddGuide node, adding it when absent."""
     matches = []
@@ -17554,6 +17737,113 @@ def extract_story_locations(
         "Could not extract story locations: "
         + str(last_error or "unknown location extraction error")
     )
+
+
+def build_story_setting_description_messages(expanded_story, overall_location):
+    """Build a narrow extractor for persistent static environment facts."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract a concise static setting description for a video location "
+                "reference. Use only environment facts established by the expanded "
+                "story: architecture, terrain, room layout, fixed fixtures, entrances, "
+                "surfaces, persistent furniture, lighting sources, and other stable "
+                "spatial features. Exclude characters, creatures, character actions, "
+                "temporary held props, dialogue, and plot events. Do not invent details. "
+                "If the story gives only a broad setting, return only that broad setting "
+                "and let the video model design unspecified details. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "OVERALL LOCATION\n"
+                f"{str(overall_location or '').strip()}\n\n"
+                "EXPANDED STORY\n"
+                f"{str(expanded_story or '').strip()}\n\n"
+                "Return exactly setting_description."
+            ),
+        },
+    ]
+
+
+def build_story_setting_description_response_format():
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_setting_extract",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "setting_description": {"type": "string", "minLength": 1},
+                },
+                "required": ["setting_description"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_story_setting_description(raw_result, fallback=""):
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"setting_description"}:
+        raise ValueError(
+            "Story setting extraction must contain only setting_description."
+        )
+    value = " ".join(str(candidate.get("setting_description") or "").split()).strip(" .")
+    if not value or value.casefold() in {"n/a", "na", "none", "null", "unknown"}:
+        value = " ".join(str(fallback or "").split()).strip(" .")
+    if not value:
+        raise ValueError("Story setting extraction returned no usable description.")
+    return value
+
+
+def extract_story_setting_description(
+    expanded_story,
+    overall_location,
+    *,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Extract only persistent spatial/environment facts from the expanded story."""
+    if llm_request is None:
+        llm_request = ask_llm
+    fallback = " ".join(str(overall_location or "").split()).strip(" .")
+    try:
+        raw = llm_request(
+            build_story_setting_description_messages(
+                expanded_story,
+                overall_location,
+            ),
+            response_format=build_story_setting_description_response_format(),
+            parse_json_response=False,
+            max_tokens=512,
+            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "purpose": "story_setting_extract",
+                "attempt": 1,
+            },
+            temperature=0,
+            top_p=1,
+            seed=42,
+        )
+        return parse_story_setting_description(raw, fallback=fallback)
+    except LLMConnectionError:
+        raise
+    except (TypeError, ValueError) as error:
+        if fallback:
+            console_log(
+                f"WARNING: setting-detail extraction failed ({error}); "
+                f"using overall location {fallback!r}.",
+                flush=True,
+            )
+            return fallback
+        raise
 
 
 def format_story_starting_location(starting_location):
@@ -28606,6 +28896,126 @@ def capture_h3_fixture(
 
 
 # Render one segment, retrying only recoverable ComfyUI failures.
+def prepare_location_reference_workflow(
+    setting_description,
+    megapixels,
+    steps=6,
+    loras=None,
+    noise_seed=None,
+):
+    """Prepare a character-free two-second static-environment reference render."""
+    workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    label = f"location reference workflow '{INITIAL_WORKFLOW_FILE}'"
+    validate_workflow(workflow, label, is_append=False)
+    _, conditioning = find_workflow_node(
+        workflow,
+        INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+        label,
+        "MiniMaxH3ReferenceToVideo",
+    )
+    inputs = conditioning.setdefault("inputs", {})
+    for key in list(inputs):
+        if (
+            str(key).startswith("ref_images.")
+            or str(key).startswith("ref_videos.")
+            or str(key).startswith("ref_video_audios.")
+        ):
+            inputs.pop(key, None)
+    inputs.pop("ref_images", None)
+    inputs.pop("ref_videos", None)
+    inputs.pop("ref_video_audios", None)
+
+    set_duration_input(
+        workflow,
+        label,
+        LOCATION_REFERENCE_DURATION_SECONDS,
+    )
+    set_node_input(
+        workflow,
+        PROMPT_NODE_NAME,
+        "text",
+        build_location_reference_h3_prompt(setting_description),
+        label,
+        "DPRandomGenerator",
+    )
+    set_node_input(
+        workflow, STEPS_NODE_NAME, "value", steps, label, "INTConstant",
+    )
+    set_node_input(
+        workflow,
+        NOISE_NODE_NAME,
+        "noise_seed",
+        generate_random_seed() if noise_seed is None else int(noise_seed),
+        label,
+        "RandomNoise",
+    )
+    set_node_input(
+        workflow, QUALITY_NODE_NAME, "value", megapixels, label, "FloatConstant",
+    )
+    set_node_input(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        "filename_prefix",
+        "video/location_state/location_reference",
+        label,
+        "SaveVideo",
+    )
+    configure_lora_chain(workflow, normalize_lora_list(loras), label)
+    return workflow
+
+
+def render_location_reference_video(
+    setting_description,
+    requested_megapixels,
+    steps,
+    *,
+    loras=None,
+):
+    """Render the one persistent location-memory video for the run."""
+    for retry_number in range(COMFY_RENDER_RETRIES + 1):
+        current_megapixels = max(
+            0.01,
+            requested_megapixels - retry_number * COMFY_RETRY_MEGAPIXEL_STEP,
+        )
+        if retry_number:
+            console_log(
+                f"Retrying location-reference render "
+                f"({retry_number}/{COMFY_RENDER_RETRIES}) at "
+                f"{current_megapixels:.2f} MP.",
+                flush=True,
+            )
+        workflow = prepare_location_reference_workflow(
+            setting_description,
+            current_megapixels,
+            steps=steps,
+            loras=loras,
+        )
+        try:
+            prompt_id = queue_workflow(workflow)
+            console_log(
+                f"Location-reference ComfyUI prompt ID: {prompt_id}",
+                flush=True,
+            )
+            result = wait_for_completion(prompt_id)
+            path = get_video_path(result, workflow)
+            path = _validate_location_reference_path(path)
+            width, height = get_video_resolution(path)
+            console_log(
+                f"Location reference created: {path}\n"
+                f"Resolution: {width} x {height}; "
+                f"duration={LOCATION_REFERENCE_DURATION_SECONDS:g}s",
+                flush=True,
+            )
+            return path
+        except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
+            if retry_number == COMFY_RENDER_RETRIES:
+                raise ComfyUIExecutionError(
+                    "Location-reference render failed after "
+                    f"{COMFY_RENDER_RETRIES} retries."
+                ) from error
+    raise AssertionError("Location-reference render loop did not return or raise.")
+
+
 def _render_segment_with_retries(
     segment,
     current_duration,
@@ -28625,6 +29035,7 @@ def _render_segment_with_retries(
     h3_fixture_context=None,
     h3_fixture_path=None,
     macro_arc=None,
+    location_reference_video_path=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     h3_prompt = _assert_h3_subject_identity(
@@ -28684,6 +29095,7 @@ def _render_segment_with_retries(
                 segment,
                 steps,
                 **lora_kwargs,
+                location_reference_video_path=location_reference_video_path,
             )
         elif refresh_segment:
             workflow_type = "clean_refresh"
@@ -28697,6 +29109,7 @@ def _render_segment_with_retries(
                 **lora_kwargs,
                 continuity_state=continuity_state,
                 segment_length=segment_length,
+                location_reference_video_path=location_reference_video_path,
             )
         else:
             workflow_type = "append"
@@ -28709,6 +29122,7 @@ def _render_segment_with_retries(
                 **lora_kwargs,
                 continuity_state=continuity_state,
                 segment_length=segment_length,
+                location_reference_video_path=location_reference_video_path,
             )
 
         try:
@@ -28874,6 +29288,7 @@ def prepare_initial_workflow(
     lora_override=None,
     noise_seed=None,
     output_prefix=None,
+    location_reference_video_path=None,
 ):
     if lora_override is not None:
         if loras:
@@ -28883,6 +29298,13 @@ def prepare_initial_workflow(
     label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=False)
     prune_missing_reference_images(workflow, label, "initial")
+    if location_reference_video_path:
+        connect_location_reference_video(
+            workflow,
+            label,
+            location_reference_video_path,
+            reuse_existing_loader=True,
+        )
 
     set_duration_input(workflow, label, duration)
     set_node_input(
@@ -28927,6 +29349,7 @@ def prepare_refresh_workflow(
     segment_length=None,
     noise_seed=None,
     output_prefix=None,
+    location_reference_video_path=None,
 ):
     """Prepare the Extend Backport context-latent refresh graph."""
 
@@ -28991,6 +29414,13 @@ def prepare_refresh_workflow(
         )
     else:
         extend["inputs"].pop("ref_images", None)
+
+    if location_reference_video_path:
+        attach_location_reference_frames_to_refresh(
+            workflow,
+            label,
+            location_reference_video_path,
+        )
 
     set_duration_input(workflow, label, duration)
     set_node_input(
@@ -29326,6 +29756,7 @@ def prepare_append_workflow(
     segment_length=None,
     noise_seed=None,
     output_prefix=None,
+    location_reference_video_path=None,
 ):
     if lora_override is not None:
         if loras:
@@ -29435,6 +29866,13 @@ def prepare_append_workflow(
         label, "RandomNoise"
     )
     connect_append_workflow_inputs(workflow, label)
+    if location_reference_video_path:
+        connect_location_reference_video(
+            workflow,
+            label,
+            location_reference_video_path,
+            reuse_existing_loader=False,
+        )
     configure_lora_chain(workflow, loras, label)
     return workflow
 
@@ -32012,6 +32450,9 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
     refresh_interval = config.get("refresh_interval")
     macro_arc = payload.get("macro_arc")
     total_segments = len(prompts)
+    location_reference_video_path = str(
+        config.get("location_reference_video") or ""
+    ).strip()
 
     validate_runtime_environment()
     generated_video_paths = []
@@ -32064,6 +32505,7 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
             continuity_summary=continuity_summary,
             subject_definitions=subject_definitions,
             segment_length=segment_length,
+            location_reference_video_path=location_reference_video_path,
         )
         previous_video_path = _append_unique_video_path(
             generated_video_paths,
@@ -32327,10 +32769,18 @@ def _run_main(
                 expanded_story_for_locations,
                 history_metadata={"run_id": run_id},
             )
+            story_location_metadata["setting_description"] = (
+                extract_story_setting_description(
+                    expanded_story_for_locations,
+                    story_location_metadata["overall_location"],
+                    history_metadata={"run_id": run_id},
+                )
+            )
             console_log(
                 "Story location metadata: "
                 f"overall={story_location_metadata['overall_location']!r}; "
-                f"starting={story_location_metadata['starting_location']!r}",
+                f"starting={story_location_metadata['starting_location']!r}; "
+                f"setting={story_location_metadata['setting_description']!r}",
                 flush=True,
             )
         else:
@@ -32599,6 +33049,66 @@ def _run_main(
         """Serialize the shared checkpoint without racing a prefetch worker."""
         with generation_state_lock:
             save_generation_state(generation_state)
+
+    location_metadata = (
+        generation_state.get("metadata")
+        if isinstance(generation_state.get("metadata"), dict)
+        else {}
+    )
+    location_setting_description = str(
+        location_metadata.get("setting_description")
+        or location_metadata.get("overall_location")
+        or ""
+    ).strip()
+    location_reference_video_path = str(
+        location_metadata.get("location_reference_video")
+        or ""
+    ).strip()
+
+    if not test_prompt_generation and location_setting_description:
+        if (
+            not location_reference_video_path
+            or not os.path.isfile(location_reference_video_path)
+            or os.path.getsize(location_reference_video_path) == 0
+        ):
+            console_log()
+            console_log("=" * 64)
+            console_log("LOCATION STATE REFERENCE")
+            console_log("=" * 64)
+            console_log(
+                f"Setting: {location_setting_description}\n"
+                "Rendering one character-free 2-second panoramic reference.",
+                flush=True,
+            )
+            location_reference_video_path = render_location_reference_video(
+                location_setting_description,
+                megapixels,
+                args.steps,
+                loras=global_loras,
+            )
+            location_metadata["location_reference_video"] = (
+                location_reference_video_path
+            )
+            generation_state["metadata"] = location_metadata
+            generated_prompts_payload["config"]["location_reference_video"] = (
+                location_reference_video_path
+            )
+            generated_prompts_payload["config"]["setting_description"] = (
+                location_setting_description
+            )
+            save_generated_prompts_file(generated_prompts_payload)
+            checkpoint_generation_state()
+        else:
+            console_log(
+                f"Reusing location reference: {location_reference_video_path}",
+                flush=True,
+            )
+    elif test_prompt_generation and location_setting_description:
+        console_log(
+            "Location-state test: prompt-generation mode skips the 2-second "
+            "location reference render.",
+            flush=True,
+        )
 
     console_log()
     console_log("=" * 64)
@@ -33222,6 +33732,13 @@ def _run_main(
                 else ""
             ),
         )
+        if location_reference_video_path and location_setting_description:
+            h3_prompt = inject_location_reference_into_h3_prompt(
+                h3_prompt,
+                location_setting_description,
+                conditioning_mode=segment_bundle["conditioning_mode"],
+            )
+
         # detailed_description is copied directly from canonical cleaned RAW,
         # so action preservation is deterministic by construction.
         h3_action_validation = {
@@ -33450,6 +33967,7 @@ def _run_main(
                 segment_length=segment_length,
                 h3_fixture_context=h3_fixture_context,
                 h3_fixture_path=h3_fixture_path if h3_fixture_context else None,
+                location_reference_video_path=location_reference_video_path,
             )
             render_futures_by_segment[int(segment)] = render_future
             # A cadence-skipped final render must still be completed on the main

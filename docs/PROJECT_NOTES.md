@@ -1897,3 +1897,32 @@ Architecture is simplified again:
   8-second Director plan.
 
 This keeps hidden render mechanics deterministic and outside the local model's job.
+
+
+## 2026-10-04 experiment — persistent location-state reference
+
+Active experiment branch: `location-state-test`.
+
+The seamless 22-frame native AddGuide continuation is frozen. This experiment targets only
+off-camera spatial persistence.
+
+At run start, the expanded story is used to establish the broad location as before. A second
+small deterministic-temperature LLM extraction now returns only static setting facts actually
+supported by the expanded story (architecture, layout, fixtures, entrances, surfaces,
+persistent furniture, landmarks, lighting sources). When the story is vague, the extractor
+falls back to the broad location and H3 is allowed to design unspecified details.
+
+Before Segment 1, Python renders one character-free 2-second panoramic H3 location video.
+Configured Picture references are deliberately disconnected for this render. The resulting
+video is saved separately and is never stitched into the story.
+
+For normal initial/append segments, the same clip is supplied as Ref2V `<Video 1>` and the
+prompt states that it owns only static environment/spatial layout. Append's existing 22-frame
+native AddGuide remains a separate loader and continues to own exact seam composition and
+temporal continuation. Location-reference audio is never supplied.
+
+The clean-refresh conditioner has no Ref2V video input, so refresh samples four frames from
+the same location clip into its existing reference-image batch. This avoids replacing the
+proven refresh architecture while keeping static environment evidence available.
+
+Characters/dynamic subject state are explicitly out of scope for this experiment.
