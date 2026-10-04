@@ -1309,7 +1309,8 @@ _WARDROBE_ACTION_BOUNDARY_RE = re.compile(
 _WARDROBE_CONDITION_CHANGE_RE = re.compile(
     r"(?i)\b(?:becomes?|become|gets?|get|turns?|turn|now|is\s+now|"
     r"covered|soaked|drenched|stained|muddy|mud[- ]streaked|"
-    r"dusty|dirty|torn|ripped|tattered|singed|burned|burnt)\b"
+    r"dusty|dirty|torn|ripped|tattered|singed|burned|burnt|"
+    r"tears?|tearing|rips?|ripping|stains?|staining)\b"
 )
 
 _CONTINUITY_FACT_STOPWORDS = frozenset({
@@ -29109,6 +29110,19 @@ def normalize_character_reference_images(value):
             version = 1
         if not name or picture_number <= 0 or not image_name:
             continue
+        description = " ".join(
+            str(raw_record.get("description") or "").split()
+        )
+        raw_wardrobe = raw_record.get("wardrobe")
+        if not isinstance(raw_wardrobe, dict):
+            raw_wardrobe = {}
+        wardrobe = {
+            field: str(raw_wardrobe.get(field) or "").strip()
+            for field in _WARDROBE_FIELDS
+            if str(raw_wardrobe.get(field) or "").strip()
+        }
+        if not wardrobe and description:
+            wardrobe = _explicit_wardrobe_from_description(description, name)
         normalized[name] = {
             "name": name,
             "picture_number": picture_number,
@@ -29116,8 +29130,10 @@ def normalize_character_reference_images(value):
             "image_path": image_path,
             "signature": signature,
             "version": version,
-            "description": " ".join(
-                str(raw_record.get("description") or "").split()
+            "description": description,
+            "wardrobe": wardrobe,
+            "clothing_condition": " ".join(
+                str(raw_record.get("clothing_condition") or "").split()
             ),
         }
     return normalized
@@ -29210,6 +29226,128 @@ def build_character_reference_description(
         canonical = canonical.rstrip(" .") + "."
         canonical += f" {name} is currently wearing {wardrobe}."
     return " ".join(canonical.split()).strip()
+
+
+def _wardrobe_reference_change_authorized(description, subject_name):
+    """Return whether prior story prose explicitly changes this wardrobe."""
+    text = str(description or "")
+    name = str(subject_name or "").strip()
+    if not text.strip() or not name:
+        return False
+    context = _subject_description_context(text, name)
+    if not context.strip():
+        return False
+    if _wardrobe_action_updates(text, name):
+        return True
+    if _wardrobe_absence_fields(text, name):
+        return True
+    return bool(
+        _WARDROBE_CONDITION_CHANGE_RE.search(context)
+        and _CLOTHING_NOUN.search(context)
+    )
+
+
+def _character_reference_clothing_condition(description, subject_name):
+    """Return an explicit persistent clothing-condition change, if present."""
+    state = extract_subject_clothing_state(subject_name, [description])
+    if state:
+        return state
+    context = _subject_description_context(description, subject_name)
+    if not _CLOTHING_NOUN.search(context):
+        return ""
+    if re.search(r"(?i)\b(?:tears?|tearing)\b", context):
+        return "torn"
+    if re.search(r"(?i)\b(?:rips?|ripping)\b", context):
+        return "ripped"
+    if re.search(r"(?i)\b(?:stains?|staining)\b", context):
+        return "stained"
+    return ""
+
+
+def build_character_reference_target_description(
+    subject_name,
+    subject_record,
+    *,
+    existing_reference=None,
+    prior_change_description="",
+    subject_descriptions=None,
+    current_description="",
+):
+    """Build the intended clothing reference without learning visual drift."""
+    name = " ".join(str(subject_name or "").split()).strip()
+    record = subject_record if isinstance(subject_record, dict) else {}
+    existing = existing_reference if isinstance(existing_reference, dict) else {}
+
+    if existing:
+        wardrobe = {
+            field: str((existing.get("wardrobe") or {}).get(field) or "").strip()
+            for field in _WARDROBE_FIELDS
+        }
+        wardrobe = {field: value for field, value in wardrobe.items() if value}
+        if not wardrobe:
+            wardrobe = _explicit_wardrobe_from_description(
+                existing.get("description", ""),
+                name,
+            )
+        for field, value in _explicit_wardrobe_from_description(
+            prior_change_description,
+            name,
+        ).items():
+            wardrobe[field] = value
+        for field, value in _wardrobe_action_updates(
+            prior_change_description,
+            name,
+        ).items():
+            if value == "absent":
+                wardrobe.pop(field, None)
+            else:
+                wardrobe[field] = value
+        for field in _wardrobe_absence_fields(prior_change_description, name):
+            wardrobe.pop(field, None)
+        condition = str(existing.get("clothing_condition") or "").strip()
+        changed_condition = _character_reference_clothing_condition(
+            prior_change_description,
+            name,
+        )
+        if changed_condition:
+            condition = changed_condition
+    else:
+        wardrobe = {}
+        for field in _WARDROBE_FIELDS:
+            value = _known_continuity_value(
+                (record.get("wardrobe") or {}).get(field)
+            )
+            if value and value.casefold() != "absent":
+                wardrobe[field] = value
+        condition = ""
+
+    canonical = (
+        subject_descriptions.get(name, "")
+        if isinstance(subject_descriptions, dict)
+        else ""
+    )
+    if not canonical:
+        canonical = str(record.get("canonical_description") or "").strip()
+    if not canonical:
+        canonical = _functional_subject_role_description(name) or f"{name} is a person."
+    canonical = _strip_character_description_clothing(canonical).rstrip(" .") + "."
+
+    wardrobe_text = _english_join(wardrobe.values())
+    if not wardrobe_text and not existing:
+        fallback = build_character_reference_description(
+            name,
+            record,
+            detailed_description=current_description,
+            subject_descriptions=subject_descriptions,
+        )
+        wardrobe = _explicit_wardrobe_from_description(fallback, name)
+        return fallback, wardrobe, condition
+
+    if wardrobe_text:
+        canonical += f" {name} is currently wearing {wardrobe_text}."
+    if condition:
+        canonical += f" The current clothing condition is {condition}."
+    return " ".join(canonical.split()).strip(), wardrobe, condition
 
 
 def build_character_reference_h3_prompt(character_description):
@@ -29660,6 +29798,7 @@ def ensure_character_reference_images(
     *,
     subject_descriptions=None,
     loras=None,
+    prior_detailed_description="",
 ):
     """Create/update clothing Pictures for visible Subjects before H3 rendering."""
     references = normalize_character_reference_images(character_references)
@@ -29677,18 +29816,31 @@ def ensure_character_reference_images(
             visual_text,
         ) is None:
             continue
-        description = build_character_reference_description(
+        existing = references.get(name)
+        if existing and not _wardrobe_reference_change_authorized(
+            prior_detailed_description,
             name,
-            record,
-            detailed_description=detailed_description,
-            subject_descriptions=subject_descriptions,
+        ):
+            # Vision may describe a rendered outfit differently, but that is
+            # observational continuity rather than permission to replace the
+            # intended clothing reference.
+            continue
+
+        description, intended_wardrobe, clothing_condition = (
+            build_character_reference_target_description(
+                name,
+                record,
+                existing_reference=existing,
+                prior_change_description=prior_detailed_description,
+                subject_descriptions=subject_descriptions,
+                current_description=detailed_description,
+            )
         )
         if not description:
             continue
         signature = hashlib.sha256(
             description.casefold().encode("utf-8")
         ).hexdigest()
-        existing = references.get(name)
         if existing and existing.get("signature") == signature:
             continue
 
@@ -29728,6 +29880,8 @@ def ensure_character_reference_images(
             "signature": signature,
             "version": version,
             "description": description,
+            "wardrobe": copy.deepcopy(intended_wardrobe),
+            "clothing_condition": clothing_condition,
         }
         changed.append(name)
     return references, changed
@@ -35290,6 +35444,17 @@ def _run_main(
                 llm_result,
                 continuity_state,
             )
+        prior_clothing_reference_description = ""
+        if recent_results:
+            prior_segment_number, prior_result = recent_results[-1]
+            try:
+                immediate_prior = int(prior_segment_number) == int(segment) - 1
+            except (TypeError, ValueError):
+                immediate_prior = False
+            if immediate_prior and isinstance(prior_result, dict):
+                prior_clothing_reference_description = get_detailed_description(
+                    prior_result
+                )
         if not test_prompt_generation:
             character_reference_images, changed_character_references = (
                 ensure_character_reference_images(
@@ -35302,6 +35467,7 @@ def _run_main(
                     args.steps,
                     subject_descriptions=canonical_subject_descriptions,
                     loras=global_loras,
+                    prior_detailed_description=prior_clothing_reference_description,
                 )
             )
             if changed_character_references:
