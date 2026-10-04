@@ -130,6 +130,36 @@ Keep this deterministic and structural where possible. The purpose is not to bui
 Status: SOLVED.  3-second 360 orbit view of location.
 
 
+## Structured static-space catalog experiment
+
+Potential future implementation: expand the current prose setting extractor, or
+add one narrow companion call, that returns a JSON catalog of persistent static
+elements for the location reference.
+
+Possible fields could include:
+- entrances/barriers and whether multiple distinct instances are established;
+- fixed fixtures and landmarks;
+- persistent furniture;
+- major surfaces/architectural features;
+- lighting sources;
+- broad spatial relationships when explicitly supported.
+
+The purpose would be to compare the **textual static-space contract** against the
+generated location-reference video/prompt and reduce ambiguity such as one story
+door being described as a separate `back door`.
+
+Constraints:
+- Do not turn this into a full 3D scene graph.
+- Do not catalog action-only props or transient objects.
+- Do not invent counts, relative labels, or connectivity the story does not
+  establish.
+- Keep the 3-second persistent location-reference video as the visual continuity
+  mechanism; the JSON catalog would be supporting authority/validation only.
+
+Status: back-pocket experiment only. First evaluate the simpler relative-label
+extractor fix.
+
+
 ## RefMod reference-conditioning experiment
 
 Potential future implementation: evaluate **RefMod / MiniMax H3 reference conditioning** as an optimization and continuity tool. Do not integrate it into the current pipeline until controlled tests show a meaningful advantage over the existing reference-image/video workflow.
