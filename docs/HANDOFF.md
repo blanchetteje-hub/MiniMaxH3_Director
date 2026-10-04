@@ -1073,3 +1073,18 @@ Next acceptance: rerun the same tavern torture test and inspect 1→2 audio plus
 4→5 visual/camera seams. If hard cuts remain after the prompt conflict is removed, the
 next architectural candidate is a preserved/masked AV overlap rather than adding more
 Director wording or immediately increasing reference length.
+
+
+## 2026-10-03 handoff — Director timing regression fixed
+
+The Guide test initially stalled on Segment 2 because Request 1 was being asked to write a
+synthetic 8.91667-second timeline. The local 20B model began emitting malformed timestamps
+(`01:00.000`, `02:500.000`, etc.) and missing the End continuity state.
+
+Fix: Director is back to a normal delivered-duration timeline. For continuation segments,
+Python now shifts every nonzero accepted timestamp by the 22-frame Guide duration and then
+replaces frame 0 with the Guide-authority anchor. Hidden Guide timing is no longer exposed
+to Request 1. Audio+video Guide conditioning from the prior commit remains enabled.
+
+Next action: rerun the same 48-second tavern test from Segment 1. Acceptance remains 1→2
+audio continuity and 3→4 / 4→5 visual seams.

@@ -175,6 +175,19 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
         self.assertIn("At 00:01.000, Griffin1 enters", anchored)
         self.assertIn("End continuity state: Griffin1 stands beside Amy.", anchored)
 
+    def test_continuation_timestamp_shift_hides_guide_math_from_director(self):
+        raw = (
+            "At 00:00.000, Amy stands beside the barrel.\n\n"
+            "At 00:01.000, Amy lifts the mug.\n\n"
+            "At 00:07.000, Amy sets it down.\n\n"
+            "End continuity state: Amy stands beside the mug."
+        )
+        shifted = minimax._shift_continuation_timestamps_for_guide(raw)
+        self.assertIn("At 00:00.000, Amy stands", shifted)
+        self.assertIn("At 00:01.917, Amy lifts", shifted)
+        self.assertIn("At 00:07.917, Amy sets", shifted)
+        self.assertIn("End continuity state: Amy stands beside the mug.", shifted)
+
     def test_append_guide_render_budget_preserves_eight_second_delivery(self):
         self.assertEqual(minimax.h3_frame_count_for_duration(8.0), 192)
         self.assertEqual(minimax.h3_guide_render_frame_count(8.0), 226)

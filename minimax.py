@@ -1069,7 +1069,7 @@ WRITE THE SCENE
 - Short dialogue is allowed when it naturally supports CURRENT BEAT.
 {camera_choreography_rules}
 - Keep all timed action inside the {segment_seconds}-second clip.
-- The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor. PREVIOUS SHOT END is semantic physical state and may include subjects that are off camera; never infer that every listed subject must be visible at frame 0. When a continuation guide is supplied, the guide—not PREVIOUS SHOT END—owns the visible frame-0 composition. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. For continuation segments, obey the CONTINUATION AIRLOCK timing in CAMERA CHOREOGRAPHY before starting CURRENT BEAT; otherwise start CURRENT BEAT at the next timestamp. A subject introduced by CURRENT BEAT may enter or be revealed only after that handoff. For the opening segment, stage frame 0 normally.
+- The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor. PREVIOUS SHOT END is semantic physical state and may include subjects that are off camera; never infer that every listed subject must be visible at frame 0. When a continuation guide is supplied, the guide—not PREVIOUS SHOT END—owns the visible frame-0 composition. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. Start CURRENT BEAT at the next timestamp. A subject introduced by CURRENT BEAT may enter or be revealed only after that handoff. For the opening segment, stage frame 0 normally.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
 - After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Preserve only cut-relevant positions/containment, held props, door/barrier state, and unresolved active threats needed to start the next shot. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state or add a new event.
@@ -19289,16 +19289,11 @@ def build_director_camera_choreography_rules(segment_number, conditioning_mode=N
 
     if str(conditioning_mode or "").strip().lower() == "continuation":
         lines.append(
-            "- CONTINUATION AIRLOCK: the opening 22 frames (about 0.92 seconds) "
-            "are pinned from the previous rendered clip and removed before delivery. "
-            "The supplied opening guide is the visual authority for frame 0. At "
-            "00:00.000 use only a generic continuation anchor; do not enumerate or "
-            "reconstruct visible subjects, props, or camera composition from PREVIOUS "
-            "SHOT END. Through 00:00.917 keep the guide composition and ongoing motion "
-            "continuous; only small natural continuation motion may continue. Do not "
-            "start CURRENT BEAT, introduce a new subject, relocate an established "
-            "subject, or begin a new reframe before 00:01.000. Start CURRENT BEAT at "
-            "or after 00:01.000."
+            "- CONTINUATION: the supplied opening guide is the visual authority for "
+            "frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. "
+            "At 00:00.000 describe only the inherited continuation frame; do not "
+            "reconstruct every known subject into view. Begin CURRENT BEAT at the "
+            "next natural timestamp and keep camera motion continuous."
         )
 
     # Every third segment after Segment 1 deliberately changes composition
@@ -19345,15 +19340,14 @@ def build_director_rules(
     del total_length, subject_definitions, beats_enabled
     delivered_seconds = float(segment_length)
     continuation = str(conditioning_mode or "").strip().lower() == "continuation"
-    guide_seconds = APPEND_GUIDE_CONTEXT_SECONDS if continuation else 0.0
-    director_seconds = delivered_seconds + guide_seconds
+    director_seconds = delivered_seconds
     if is_final_story_segment is None:
         # Compatibility for direct callers that predate the explicit runtime
         # boolean. Production callers pass this value explicitly.
         is_final_story_segment = int(segment_number) == int(total_segments)
     rules = DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
         segment_seconds=f"{director_seconds:g}",
-        final_quarter_start=f"{guide_seconds + delivered_seconds * 0.75:g}",
+        final_quarter_start=f"{delivered_seconds * 0.75:g}",
         segment_min_beats=max(0, int(math.ceil(delivered_seconds / 2))),
         beat_number=int(segment_number),
         story_segment_ending_rules=build_story_segment_ending_rules(
@@ -19814,6 +19808,25 @@ def _anchor_continuation_frame_zero_to_guide(raw_scene):
         str(raw_scene or ""),
         count=1,
     )
+
+
+def _shift_continuation_timestamps_for_guide(raw_scene, offset_seconds=APPEND_GUIDE_CONTEXT_SECONDS):
+    """Shift nonzero Director timestamps onto H3's raw render timeline."""
+    offset_ms = int(round(float(offset_seconds) * 1000.0))
+
+    def replace(match):
+        minutes = int(match.group("minutes"))
+        seconds = int(match.group("seconds"))
+        fraction = (match.group("fraction") or "0").ljust(3, "0")[:3]
+        absolute_ms = ((minutes * 60) + seconds) * 1000 + int(fraction)
+        if absolute_ms == 0:
+            return match.group(0)
+        shifted_ms = absolute_ms + offset_ms
+        shifted_minutes, remainder = divmod(shifted_ms, 60_000)
+        shifted_seconds, shifted_fraction = divmod(remainder, 1000)
+        return f"At {shifted_minutes:02d}:{shifted_seconds:02d}.{shifted_fraction:03d},"
+
+    return _DIRECTOR_CANONICAL_TIMESTAMP_RE.sub(replace, str(raw_scene or ""))
 
 
 def _canonicalize_director_timestamps(value):
@@ -31437,12 +31450,11 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             flush=True,
         )
     conditioning_mode = bundle.get("conditioning_mode")
-    continuation_airlock = (
+    continuation_offset = (
         APPEND_GUIDE_CONTEXT_SECONDS
         if str(conditioning_mode or "").strip().lower() == "continuation"
         else 0.0
     )
-    duration += continuation_airlock
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
     # Keep typed state available for diagnostics, but do not inject Python-owned
@@ -31483,18 +31495,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         raw_scene = _canonicalize_director_timestamps(
             request1_result.get("raw_scene", "")
         ).strip()
-        if continuation_airlock and raw_scene:
-            raw_scene = _anchor_continuation_frame_zero_to_guide(raw_scene)
-
         if raw_scene and raw_scene != "N/A":
             request1_result["raw_scene"] = raw_scene
 
             structure_errors = _director_raw_scene_structure_errors(
                 raw_scene,
                 duration,
-                minimum_second_timestamp=(
-                    continuation_airlock if continuation_airlock else None
-                ),
             )
             if structure_errors:
                 if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
@@ -31705,6 +31711,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         raise BeatGenerationError(
             "Director Request 1 returned no usable scene result."
         )
+
+    if continuation_offset:
+        raw_scene = _shift_continuation_timestamps_for_guide(
+            raw_scene,
+            continuation_offset,
+        )
+        raw_scene = _anchor_continuation_frame_zero_to_guide(raw_scene)
+        request1_result["raw_scene"] = raw_scene
 
     try:
         resolved_raw_scene = resolve_director_raw_scene_pronouns(

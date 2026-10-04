@@ -1874,3 +1874,26 @@ Postmortem found two separate causes:
 The 22-frame Guide length is unchanged for this test. Do not widen it yet; first determine
 whether removing the text/Guide conflict plus carrying audio resolves the remaining seams.
 Active branch: h3-add-guidance-test.
+
+
+## 2026-10-03 update — hide native-Guide timing from Director
+
+The first rerun after the Guide-authority change exposed a local-LLM regression before
+Segment 2 could render: Request 1 repeatedly malformed timestamps and sometimes omitted the
+required trailing End continuity state. The failure coincided with asking the 20B Director
+to reason about an 8.91667-second synthetic clip and a 0.92-second continuation airlock.
+
+Architecture is simplified again:
+- Director always writes and validates the ordinary delivered segment timeline (for the
+  current test, exactly 8 seconds).
+- The prompt no longer asks the LLM to reason about 22 hidden Guide frames or a 0.917s
+  airlock.
+- After Request 1 passes normal 8-second structure/coherence validation, Python shifts every
+  nonzero continuation timestamp by the exact Guide duration (22/24s, rounded to 917ms for
+  H3's millisecond prompt syntax).
+- Python then replaces only the 00:00.000 line with the generic Guide-authority anchor.
+- The ComfyUI render still allocates the longer raw duration and still removes the Guide
+  overlap before delivery, so delivered story timing remains aligned with the original
+  8-second Director plan.
+
+This keeps hidden render mechanics deterministic and outside the local model's job.
