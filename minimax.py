@@ -1076,7 +1076,7 @@ WRITE THE SCENE
 - Use natural physical staging. Harmless local route or prop details are allowed when needed to make the action readable.
 - Preserve spatial continuity literally. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
 - Prefer names when a pronoun could be ambiguous.
-- If CURRENT BEAT explicitly says someone says, asks, orders, tells, replies, or otherwise speaks intelligibly, write a brief direct spoken line using <d>...</d> rather than indirect narration. Do not add intelligible dialogue when CURRENT BEAT contains no speech act.
+- If CURRENT BEAT explicitly says someone says, asks, orders, tells, replies, or otherwise speaks intelligibly, write a brief direct spoken line in the form Speaker said <d>exact words</d> rather than indirect narration. Use said as the attribution verb in the audiovisual RAW. Do not add intelligible dialogue when CURRENT BEAT contains no speech act.
 {camera_choreography_rules}
 - Keep all timed action inside the {segment_seconds}-second clip.
 - The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor. PREVIOUS SHOT END is semantic physical state and may include subjects that are off camera; never infer that every listed subject must be visible at frame 0. When a continuation guide is supplied, the guide—not PREVIOUS SHOT END—owns the visible frame-0 composition. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. Start CURRENT BEAT at the next timestamp. A subject introduced by CURRENT BEAT may enter or be revealed only after that handoff. For the opening segment, stage frame 0 normally.
@@ -26018,14 +26018,13 @@ def repair_h3_subject_identity(prompt, subject_definitions, continuity_state=Non
             continue
         pattern = re.compile(
             rf"(?i)(?<!\w)(?P<name>{re.escape(name)})(?!\w)"
-            rf"(?P<space>\s+)(?P<verb>{speech_verbs})(?P<tail>\s+)(?=<d>)"
+            rf"(?:\s+\(S\d+\))?"
+            rf"\s+(?P<verb>{speech_verbs})"
+            rf"(?:\s+\(S\d+\))?\s+(?=<d>)"
         )
         repaired_name = identity["name"]
         text = pattern.sub(
-            lambda match: (
-                f"{repaired_name} ({speaker_id}) "
-                f"{match.group('verb')} "
-            ),
+            lambda _match: f"{repaired_name} ({speaker_id}) said ",
             text,
         )
 
