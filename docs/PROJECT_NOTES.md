@@ -2000,3 +2000,50 @@ caused by RAW staging/timing:
 
 A structured static-space catalog remains a future experiment, not current
 architecture.
+
+
+## Continuity authority model — target architecture
+
+The continuity system should use different evidence for different kinds of
+state instead of asking one representation to solve every continuity problem:
+
+- **Location not externally referenced:** generate one short character-free
+  3-second 360-orbit location video before Segment 1 and reuse it as the
+  persistent location reference. This video is the visual authority for the
+  location's appearance, geometry, layout, fixtures, entrances, furniture, and
+  other static spatial relationships. Text/JSON should not attempt to reproduce
+  its geometry when the visual reference already carries that information.
+- **Named character not externally referenced:** target a parallel
+  pre-generation path that creates a short (~1-second) neutral character clip
+  from the character's canonical physical description before the character's
+  first story appearance. Select a clean middle frame and register it as that
+  character's persistent reference image for first and later appearances. The
+  generated reference should primarily establish identity/body appearance
+  (face, hair, age, build, species, distinguishing physical traits), not
+  story-specific wardrobe, so later clothing changes do not fight the identity
+  reference. This remains a planned experiment until validated against H3.
+- **Immediate visual state:** native AddGuide continuation frames own the exact
+  state at ordinary segment seams: current composition, pose, visible clothing,
+  held objects, nearby subjects, and other details H3 can directly continue
+  from the preceding frames.
+- **Semantic state:** Python/LLM bookkeeping owns facts that cannot safely be
+  inferred from a visual reference alone: subject presence and identity,
+  current wardrobe, prop possession/provenance/transfers, intentional state
+  changes, and which architectural/interaction elements have actually been
+  established. A future compact static-space catalog may therefore be useful as
+  an *existence validator* (for example, rejecting "Amy grabs the broom from the
+  closet" when no closet has been established), rather than as a textual map of
+  coordinates already represented by the location-reference video.
+
+In short, the intended authority split is:
+
+- unreferenced location -> generated 3-second orbit -> persistent location ref
+- unreferenced named character -> generated ~1-second neutral clip -> middle-frame persistent character ref
+- immediate seam state -> AddGuide overlap frames
+- nonvisual/history-dependent facts -> semantic bookkeeping
+
+This division is intentional. Persistent visual references should establish
+what things look like; semantic bookkeeping should establish what exists, what
+changed, who owns or wears what, and whether a requested action is physically
+and causally legal. Avoid duplicating visual geometry in text/JSON unless a
+validator specifically needs an existence-level fact.
