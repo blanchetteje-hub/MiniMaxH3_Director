@@ -24953,6 +24953,7 @@ def request_combined_continuity(
     ending_scene="",
     assigned_state_effects=None,
     barrier_binding=None,
+    committed_prop_ledger=None,
 ):
     """Run the single combined continuity extraction/reduction call.
 
@@ -24965,6 +24966,8 @@ def request_combined_continuity(
     if llm_request is None:
         llm_request = ask_llm
     attempts = max(1, int(content_attempts))
+    committed_prop_ledger = normalize_prop_ledger(committed_prop_ledger)
+    prop_ledger = copy.deepcopy(committed_prop_ledger)
 
     final_frame_authority = (
         _extract_end_continuity_state(ending_scene)
@@ -24983,6 +24986,11 @@ def request_combined_continuity(
         )
     else:
         combined_user_content = str(h3_prompt or "").strip()
+    combined_user_content += (
+        "\n\nCOMMITTED PROP LEDGER — copy forward unchanged props unless this "
+        "segment explicitly changes them:\n"
+        + format_prop_ledger_for_prompt(committed_prop_ledger)
+    )
     additional_states = load_additional_states() or "N/A"
     combined_messages = [
         {
@@ -25034,6 +25042,11 @@ def request_combined_continuity(
                 "Continuity",
                 llm_request=llm_request,
                 strict_schema=True,
+            )
+            observed_props = reduced_state.pop("props", {})
+            prop_ledger = merge_prop_ledger(
+                committed_prop_ledger,
+                observed_props,
             )
             if str(subject_definitions or "").strip() or isinstance(
                 committed_state,
@@ -25111,11 +25124,13 @@ def request_combined_continuity(
         committed_state=committed_state,
     )
     _print_continuity_phase_result(1, "COMBINED CONTINUITY", reduced_state)
+    console_log("[Props] persistent ledger: " + format_prop_ledger_for_prompt(prop_ledger))
 
     if defer_opening:
         return {
             "reduced_state": reduced_state,
             "opening_state": "",
+            "prop_ledger": prop_ledger,
         }
 
     opening_state = request_continuity_opening_state(
@@ -25129,6 +25144,7 @@ def request_combined_continuity(
     return {
         "reduced_state": reduced_state,
         "opening_state": opening_state,
+        "prop_ledger": prop_ledger,
     }
 
 
@@ -32105,6 +32121,127 @@ def build_director_raw_scene_coherence_messages(
     ]
 
 
+def normalize_prop_ledger(value):
+    """Return the canonical persistent movable-prop ledger."""
+    if not isinstance(value, dict):
+        return {}
+    cleaned = {}
+    for raw_id, raw_record in value.items():
+        if not isinstance(raw_record, dict):
+            continue
+        prop_id = str(raw_id or "").strip()
+        kind = str(raw_record.get("kind") or "").strip()
+        if not prop_id or not kind:
+            continue
+        status = str(raw_record.get("status") or "present").strip().casefold()
+        if status not in PROP_LEDGER_STATUSES:
+            status = "present"
+        record = {
+            "kind": kind,
+            "owner": str(raw_record.get("owner") or "N/A").strip() or "N/A",
+            "holder": str(raw_record.get("holder") or "N/A").strip() or "N/A",
+            "location": str(raw_record.get("location") or "N/A").strip() or "N/A",
+            "contents": str(raw_record.get("contents") or "N/A").strip() or "N/A",
+            "status": status,
+        }
+        cleaned[prop_id] = record
+    return cleaned
+
+
+def merge_prop_ledger(committed, observed):
+    """Copy persistent props forward, then apply the newest observed records."""
+    merged = copy.deepcopy(normalize_prop_ledger(committed))
+    merged.update(normalize_prop_ledger(observed))
+    return merged
+
+
+def format_prop_ledger_for_prompt(prop_ledger):
+    """Return compact deterministic JSON for Director prop context."""
+    return json.dumps(
+        normalize_prop_ledger(prop_ledger),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def build_director_prop_staging_messages(
+    current_beat,
+    prop_ledger,
+    *,
+    previous_shot_end="",
+):
+    """Build the pre-RAW micro-call that resolves missing ordinary prop availability."""
+    ledger_text = format_prop_ledger_for_prompt(prop_ledger)
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You do one narrow pre-staging task for a film scene. Determine whether "
+                "CURRENT BEAT assumes use of a movable/interactable prop whose usable "
+                "instance is not established by PROP LEDGER or PREVIOUS SHOT END. If all "
+                "required props are already available, or CURRENT BEAT itself explicitly "
+                "introduces/acquires the prop, return an empty staging string. Otherwise "
+                "return one short natural staging sentence that makes only the missing "
+                "prop available before the dependent action. Do not rewrite the Beat, add "
+                "dialogue, add characters, change the outcome, replace an established "
+                "prop, or invent architecture/storage that is not established. If no "
+                "storage/source is established, place the needed prop directly at a "
+                "natural interaction point instead. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "CURRENT BEAT\n"
+                f"{str(current_beat or '').strip()}\n\n"
+                "PREVIOUS SHOT END\n"
+                f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
+                "PROP LEDGER\n"
+                f"{ledger_text}\n\n"
+                "Return {\"staging\": \"\"} when no added staging is needed; otherwise "
+                "staging is one short sentence to incorporate before the dependent action."
+            ),
+        },
+    ]
+
+
+def request_director_prop_staging(
+    current_beat,
+    prop_ledger,
+    *,
+    previous_shot_end="",
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Return one proactive staging sentence only when the Beat may need a prop."""
+    beat_text = str(current_beat or "").strip()
+    if not beat_text or _PROP_STAGING_TRIGGER_RE.search(beat_text) is None:
+        return ""
+    result = llm_request(
+        build_director_prop_staging_messages(
+            beat_text,
+            prop_ledger,
+            previous_shot_end=previous_shot_end,
+        ),
+        response_format=DIRECTOR_PROP_STAGING_RESPONSE_FORMAT,
+        parse_json_response=False,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_prop_staging",
+        },
+        max_tokens=256,
+    )
+    if isinstance(result, str):
+        result = parse_llm_json_content(result, llm_request=llm_request)
+    if not isinstance(result, dict):
+        raise ValueError("Director prop staging returned invalid data.")
+    staging = " ".join(str(result.get("staging") or "").split()).strip()
+    if len(staging) > 360:
+        staging = staging[:360].rsplit(" ", 1)[0].rstrip(" ,;:")
+    return staging
+
+
 def build_director_raw_scene_timing_messages(raw_scene):
     """Build a narrow semantic check for whether RAW timing is visibly executable."""
     return [
@@ -32236,10 +32373,63 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     )
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
-    # Keep typed state available for diagnostics, but do not inject Python-owned
-    # final-state/item contracts into the creative Director prompt. Gold prompts
-    # use ordinary visual staging rather than a normalized state ontology.
+    current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
+    prop_ledger = normalize_prop_ledger(bundle.get("prop_ledger", {}))
+    prop_staging = ""
+    if current_beat_for_topology:
+        try:
+            prop_staging = request_director_prop_staging(
+                current_beat_for_topology,
+                prop_ledger,
+                previous_shot_end=(
+                    bundle.get("previous_final_frame", "")
+                    if segment_number > 1
+                    else ""
+                ),
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": (run_config or {}).get("source_sha256"),
+                    "segment": segment_number,
+                    "attempt": 1,
+                    "conditioning_mode": conditioning_mode,
+                },
+            )
+        except (
+            LLMConnectionError,
+            requests.RequestException,
+            OSError,
+            ValueError,
+            TypeError,
+        ) as error:
+            console_log(
+                f"WARNING: Segment {segment_number} prop pre-staging failed; "
+                f"continuing without it: {error}",
+                flush=True,
+            )
+
+    # Keep source-owned state concise, but give Request 1 the persistent movable
+    # prop ledger so off-camera props do not disappear or silently transform.
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
+    if request1_base_messages and (prop_ledger or prop_staging):
+        request1_base_messages[-1] = dict(request1_base_messages[-1])
+        prop_block = (
+            "\n\nPERSISTENT MOVABLE PROP STATE — authoritative physical state; "
+            "reuse these exact objects unless CURRENT BEAT explicitly changes them:\n"
+            + format_prop_ledger_for_prompt(prop_ledger)
+        )
+        if prop_staging:
+            prop_block += (
+                "\n\nPROP AVAILABILITY STAGING — incorporate this naturally before "
+                "the dependent Beat action:\n"
+                + prop_staging
+            )
+            console_log(
+                f"Segment {segment_number} proactive prop staging: {prop_staging}",
+                flush=True,
+            )
+        request1_base_messages[-1]["content"] = (
+            f"{request1_base_messages[-1].get('content', '')}{prop_block}"
+        )
     current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
     request1_topology_contracts = build_director_barrier_topology_contract(
         bundle.get("assigned_state_effects", []),
@@ -32774,6 +32964,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     payload = dict(bundle)
     payload["raw_scene"] = raw_scene
+    payload["prop_staging"] = prop_staging
     payload["request1_result"] = copy.deepcopy(request1_result)
     payload["h3_mode"] = mode
     payload["authoritative_opening_state"] = h3_opening_summary or (
