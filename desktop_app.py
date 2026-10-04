@@ -61,6 +61,7 @@ DEFAULT_SETTINGS = {
     "refresh": str(DEFAULT_REFRESH_INTERVAL),
     "vision_continuity": "0",
     "retention": False,
+    "disable_subject_removal": False,
     "repair": "",
     "model": "gpt",
     "temp": str(DEFAULT_STORY_TEMPERATURE),
@@ -329,6 +330,9 @@ class MiniMaxBridge:
                 settings.get("vision_continuity", 0), "Vision continuity"
             ),
             "retention": bool(settings.get("retention", False)),
+            "disable_subject_removal": bool(
+                settings.get("disable_subject_removal", False)
+            ),
             "resume": _positive_int(
                 settings.get("resume", 1), "Resume segment"
             ),
@@ -449,7 +453,8 @@ class MiniMaxBridge:
             effective.update(segment_length=1, total_segments=1, megapixels=0.5,
                              steps=6, trim_frames=2, refresh=DEFAULT_REFRESH_INTERVAL, vision_continuity=0,
                              model="gpt", resume=1, first_frame=False,
-                             retention=False, loras=[], temp=DEFAULT_STORY_TEMPERATURE)
+                             retention=False, disable_subject_removal=False,
+                             loras=[], temp=DEFAULT_STORY_TEMPERATURE)
         values = self._validate_settings(effective)
         command = [
             self.python_executable,
@@ -467,6 +472,8 @@ class MiniMaxBridge:
             "--refresh",
             str(values["refresh"]),
             *(("--retention",) if values["retention"] else ()),
+            *(("--disable-subject-removal",)
+              if values["disable_subject_removal"] else ()),
             "--vision-continuity",
             str(values["vision_continuity"]),
             "--model",
