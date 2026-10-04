@@ -1262,6 +1262,108 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("exactly 1 second", prompt)
         self.assertIn("Do not orbit", prompt)
 
+    def test_reference_binding_window_repacks_generated_pictures(self):
+        subjects = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "<Subject 2> is Goblin1 (S2).\n"
+            "<Subject 3> is Elf1 (S3)."
+        )
+        refs = {
+            "Goblin1": {
+                "name": "Goblin1", "picture_number": 2,
+                "image_name": "goblin.png", "image_path": "/tmp/goblin.png",
+                "signature": "g", "version": 1,
+                "description": "Goblin1 is a goblin.", "wardrobe": {},
+                "clothing_condition": "", "authority": "identity_and_clothing",
+            },
+            "Elf1": {
+                "name": "Elf1", "picture_number": 3,
+                "image_name": "elf.png", "image_path": "/tmp/elf.png",
+                "signature": "e", "version": 1,
+                "description": "Elf1 is an elf.", "wardrobe": {},
+                "clothing_condition": "", "authority": "identity_and_clothing",
+            },
+        }
+        state = {}
+        seg1_refs, _defs, state, snap1 = minimax.build_segment_reference_bindings(
+            segment_number=1, total_segments=4,
+            detailed_description="Goblin1 and Elf1 stand at the bar.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=1, binding_state=state,
+        )
+        self.assertEqual(seg1_refs["Goblin1"]["picture_number"], 2)
+        self.assertEqual(seg1_refs["Elf1"]["picture_number"], 3)
+        self.assertEqual(snap1["active_subject_ids"], [2, 3])
+
+        _seg2_refs, _defs, state, _snap2 = minimax.build_segment_reference_bindings(
+            segment_number=2, total_segments=4,
+            detailed_description="Elf1 sits quietly.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=1, binding_state=state,
+        )
+        seg3_refs, defs3, state, snap3 = minimax.build_segment_reference_bindings(
+            segment_number=3, total_segments=4,
+            detailed_description="Elf1 remains at the table.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=1, binding_state=state,
+        )
+        self.assertNotIn("Goblin1", seg3_refs)
+        self.assertEqual(seg3_refs["Elf1"]["picture_number"], 2)
+        self.assertEqual(snap3["removed_subject_ids"], [2])
+        self.assertIn("<Picture 2> defines Elf1", defs3)
+        self.assertNotIn("Goblin1", defs3)
+        self.assertTrue(state["subjects"]["Goblin1"]["eligible_for_removal"])
+        self.assertEqual(
+            state["subjects"]["Goblin1"]["removal_threshold_segment"], 3
+        )
+
+    def test_disable_subject_removal_keeps_seen_subjects_bound(self):
+        subjects = "<Subject 2> is Goblin1 (S2).\n<Subject 3> is Elf1 (S3)."
+        refs = {
+            name: {
+                "name": name, "picture_number": number,
+                "image_name": name.lower() + ".png",
+                "image_path": "/tmp/" + name.lower() + ".png",
+                "signature": name, "version": 1,
+                "description": name + " description", "wardrobe": {},
+                "clothing_condition": "", "authority": "identity_and_clothing",
+            }
+            for name, number in (("Goblin1", 1), ("Elf1", 2))
+        }
+        state = {}
+        _refs, _defs, state, _snap = minimax.build_segment_reference_bindings(
+            segment_number=1, total_segments=4,
+            detailed_description="Goblin1 and Elf1 are visible.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=0, binding_state=state,
+            disable_subject_removal=True,
+        )
+        seg4_refs, defs4, state, snap4 = minimax.build_segment_reference_bindings(
+            segment_number=4, total_segments=4,
+            detailed_description="Elf1 is visible.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=0, binding_state=state,
+            disable_subject_removal=True,
+        )
+        self.assertEqual(set(seg4_refs), {"Goblin1", "Elf1"})
+        self.assertEqual(snap4["removed_subject_ids"], [])
+        self.assertIn("Goblin1", defs4)
+        self.assertEqual(
+            state["subjects"]["Goblin1"]["binding_reason"],
+            "forced_persistent",
+        )
+
+    def test_retained_subject_definition_survives_without_current_action(self):
+        definitions = (
+            "<Subject 2> is Elf1 (S2).\n"
+            "<Picture 3> defines Elf1's identity, physical appearance, "
+            "species/distinguishing traits, and current clothing."
+        )
+        filtered, _ = minimax._filter_h3_subject_definitions(
+            definitions, set(), "Amy wipes the bar.", retained_subject_ids={2}
+        )
+        self.assertIn("<Subject 2> is Elf1", filtered)
+
 
 if __name__ == "__main__":
     unittest.main()
