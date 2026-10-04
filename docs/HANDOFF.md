@@ -6,7 +6,7 @@ Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This fi
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
-Active experimental branch: `location-state-text`
+Active experimental branch: `location-state-test`
 
 Runtime/bridge mailbox branch: `gpt-runtime`
 
@@ -123,3 +123,24 @@ that appear only because a later story action uses or introduces them. This keep
 location reference honest: a vague "medieval tavern" is mostly designed by H3, then the
 experiment tests whether that invented room persists off camera instead of pre-seeding
 future beat objects into the panorama.
+
+
+## 2026-10-03 fix — refresh loader ambiguity exposed by location reference
+
+Segment 6 clean refresh failed before queueing with
+`WorkflowConfigurationError: ... contains multiple nodes named 'Load Video'`.
+
+Root cause: refresh still used the legacy logical name `"Load Video"`. The exported
+refresh workflow's actual previous-segment loader is titled
+`Load Video (Path) 🎥🅥🅗🅢`, so node lookup previously succeeded only through the
+fallback that selected the sole `VHS_LoadVideoPath` node. The location-state experiment
+adds a second `VHS_LoadVideoPath` node for the persistent location clip, making that
+fallback ambiguous.
+
+Fix: `REFRESH_LOAD_VIDEO_NODE_NAME` now aliases the workflow's exact
+`LOAD_VIDEO_NODE_NAME` title. The persistent location loader keeps its separate
+`Location Reference Video` title. Added a regression proving the refresh prior-video
+loader remains uniquely resolvable after a location-reference loader is added.
+
+Next acceptance: rerun/resume through the next clean refresh and verify Segment 6 renders;
+then evaluate the location-reference experiment on background geometry/fixtures as planned.
