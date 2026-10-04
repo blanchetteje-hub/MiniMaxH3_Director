@@ -211,8 +211,8 @@ Current fixes:
   already-present offscreen Subject; "appears" alone is insufficient;
 - Director/validator preserve prop identity and acquisition provenance. A prop
   cannot silently become another prop, newly handled props need a stated source
-  and acquisition action unless already established, and source/destination
-  containers stay distinct during pours/transfers;
+  and acquisition action unless already established, and every transfer keeps
+  an explicit, distinct, traceable source and destination;
 - spatial travel validation is generalized: interaction with any different
   established position requires explicit actor movement there first. This is no
   longer a door/bar-specific rule.
@@ -244,11 +244,24 @@ Implemented on `location-state-test`:
   timed micro-beat instead of combining prerequisite + dependent action at one
   timestamp;
 - RAW Director has a dedicated `DIRECTOR_RAW_SCENE_LLM_SETTINGS` profile at
-  temperature `0.4` with high reasoning/random seed; other creative generation
+  temperature `0.2` with high reasoning/random seed; other creative generation
   remains at `0.8`;
-- focused regressions cover all three contracts.
+- focused regressions cover the setting, pacing, transfer, and sampling contracts.
 
-No deterministic action-duration validator was added. Keep that as the next step
-only if the prompt-level pacing rule still produces visibly compressed actions.
-The next tavern run should regenerate the setting/location reference so the
-relative-door wording fix is actually exercised.
+Follow-up after the next tavern run:
+- the room geometry remained stable, so the location-reference architecture is
+  accepted for this test;
+- prompt-only pacing was not enough: Segment 3 compressed doorway-to-back-table
+  travel into about 1.5 seconds and H3 hid the missing travel with a cut; Segment
+  4 similarly omitted the dragon's route from the doorway to the bar stool;
+- a new narrow temperature-0 timing-feasibility validator now checks only whether
+  consecutive physical transitions can visibly fit between their timestamps,
+  with no hardcoded minimum duration;
+- RAW transfer wording is now generic and requires an explicit, distinct source
+  and destination plus source provenance for what is transferred;
+- RAW invention is now explicitly economical: useful staging is still allowed,
+  but optional secondary reactions/consequences and extra object/substance motion
+  should not be added once the Beat action is already readable.
+
+Next acceptance: rerun the same tavern story/Beats and inspect Segment 3/4 travel,
+Segment 4 transfer behavior, and Segment 5 reaction/fluid choreography.
