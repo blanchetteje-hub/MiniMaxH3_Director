@@ -171,7 +171,7 @@ class GenerateBeatsDesktopTests(unittest.TestCase):
                 "--model",
                 "qwen",
                 "--temp",
-                "0.8",
+                "0.4",
             ],
         )
 
