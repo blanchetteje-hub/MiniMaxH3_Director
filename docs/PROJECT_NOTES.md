@@ -1926,3 +1926,35 @@ the same location clip into its existing reference-image batch. This avoids repl
 proven refresh architecture while keeping static environment evidence available.
 
 Characters/dynamic subject state are explicitly out of scope for this experiment.
+
+
+## Current continuity decisions — 2026-10-04
+
+These decisions supersede older refresh/location notes above where they conflict:
+
+- Persistent location memory is a single character-free 3-second 360-orbit
+  reference video rendered before Segment 1 and reused for the run. The latest
+  tavern acceptance showed near-complete consistency for geometry visible in
+  that reference.
+- Routine clean refresh is disabled in practice by the default
+  `DEFAULT_REFRESH_INTERVAL = 999`. An explicitly supplied numeric refresh
+  interval is authoritative; source-span chapter refreshes are only a legacy
+  fallback when no interval is supplied.
+- Native AddGuide continuation owns ordinary segment-to-segment visual
+  continuity. Its full 22-frame overlap is removed once during guided-append
+  postprocessing; stitching must not trim another two frames from guided clips.
+- Summary-to-story expansion should remain creative enough to stage the source,
+  but its physical prose must be literal and filmable. Attachment, movement,
+  action targets, containers, and destinations may not depend on figurative
+  wording. Default story temperature is 0.4.
+- Explicit speech in a Beat is explicit speech in RAW/H3. Indirect actions such
+  as "asks for a pint" or "orders a pint" must be rendered as short direct
+  `<d>...</d>` dialogue; once the speaker's dynamic Subject is registered,
+  Python supplies the stable speaker ID, e.g.
+  `Goblin1 (S3) said <d>Give me a pint.</d>`.
+- Post-RAW dynamic Subject resolution is a required pre-H3 identity stage, not a
+  best-effort decoration. A resolved foreground Subject must be registered in
+  the same segment in which it first appears or generation stops before render.
+- Continuous-take staging must preserve physical travel. A subject established
+  at one location cannot interact with a distant location without explicit
+  timed movement there.
