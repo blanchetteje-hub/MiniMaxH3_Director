@@ -65,6 +65,8 @@ def pipeline_llm_side_effect(
             return {"overall_soundscape": soundscape}
         if purpose == "director_h3_music":
             return {"non_diegetic_music": music}
+        if purpose == "director_prop_staging":
+            return {"staging": ""}
         if purpose == "director_raw_scene_pronoun_resolution":
             messages = args[0] if args else []
             user_text = str(messages[-1].get("content", "")) if messages else ""
