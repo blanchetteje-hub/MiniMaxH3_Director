@@ -31849,8 +31849,11 @@ def _director_subject_explicitly_leaves_final_frame(subject_name, final_action):
     escaped = re.escape(name)
     pattern = re.compile(
         rf"(?i)(?<![\w]){escaped}(?![\w])[^.!?;]{{0,120}}?"
-        r"(?:\b(?:leave(?:s|d|ing)?|left|exit(?:s|ed|ing)?|depart(?:s|ed|ing)?)\b|"
-        r"\b(?:walk|step|run|move|go|pass)(?:s|ed|ing)?\s+"
+        r"(?:\b(?:leave|leaves|left|leaving|exit|exits|exited|exiting|"
+        r"depart|departs|departed|departing)\b|"
+        r"\b(?:walk|walks|walked|walking|step|steps|stepped|stepping|"
+        r"run|runs|ran|running|move|moves|moved|moving|go|goes|went|going|"
+        r"pass|passes|passed|passing)\s+"
         r"(?:out(?:\s+of\s+(?:the\s+)?(?:room|scene|frame))?|"
         r"off(?:screen|-screen)?|away\s+out\s+of\s+frame)\b|"
         r"\b(?:is|becomes?)\s+(?:fully\s+)?(?:occluded|hidden)\b)"
