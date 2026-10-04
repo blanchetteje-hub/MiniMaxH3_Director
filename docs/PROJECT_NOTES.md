@@ -2260,3 +2260,18 @@ driven by the observed Amy wardrobe regression.
 This adds ComfyUI work only when a character reference is first created or its current
 wardrobe changes. It adds no LLM request.
 
+## 2026-10-04 update — unified visual-state media storage
+
+Persistent generated state media is consolidated under `VIDEO_OUTPUT/state`
+(normally `<ComfyUI output>/video/state/`):
+
+- `location_reference*.mp4`
+- `character_reference*.mp4`
+- `minimax_character_ref_*.png`
+
+The state-directory PNG is authoritative and its absolute path is stored in character
+reference metadata/checkpoints. ComfyUI's LoadImage restriction is handled by staging a
+copy into `COMFY_INPUT` when the workflow is built; the input copy is not the persistent
+state source. New renders no longer write to the former `video/location_state` or
+`video/character_state` prefixes.
+

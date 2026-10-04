@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest import mock
 
@@ -650,7 +651,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         with mock.patch.object(
             minimax,
             "render_character_reference_image",
-            return_value="amy_clothing.png",
+            return_value="/tmp/video/state/amy_clothing.png",
         ) as render:
             refs, changed = minimax.ensure_character_reference_images(
                 "Amy stands behind the bar.",
@@ -668,6 +669,10 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertEqual(changed, ["Amy"])
         self.assertEqual(refs["Amy"]["picture_number"], 2)
         self.assertEqual(refs["Amy"]["image_name"], "amy_clothing.png")
+        self.assertEqual(
+            refs["Amy"]["image_path"],
+            "/tmp/video/state/amy_clothing.png",
+        )
         self.assertIn(
             "Amy is currently wearing a red blouse",
             render.call_args.args[1],
@@ -696,7 +701,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         with mock.patch.object(
             minimax,
             "render_character_reference_image",
-            return_value="amy_v002.png",
+            return_value="/tmp/video/state/amy_v002.png",
         ):
             refs, changed = minimax.ensure_character_reference_images(
                 "Amy enters the room.",
@@ -725,21 +730,27 @@ class PostmortemRegressionTests(unittest.TestCase):
                 "class_type": "LoadImage",
                 "_meta": {"title": f"Reference Image {number}"},
             }
-        attached = minimax.attach_character_reference_images(
-            workflow,
-            "test workflow",
-            "initial",
-            {
-                "Dragon": {
-                    "name": "Dragon",
-                    "picture_number": 7,
-                    "image_name": "dragon.png",
-                    "signature": "x",
-                    "version": 1,
-                    "description": "Dragon is a dragon.",
-                }
-            },
-        )
+        with mock.patch.object(
+            minimax,
+            "stage_character_reference_image",
+            return_value="dragon.png",
+        ):
+            attached = minimax.attach_character_reference_images(
+                workflow,
+                "test workflow",
+                "initial",
+                {
+                    "Dragon": {
+                        "name": "Dragon",
+                        "picture_number": 7,
+                        "image_name": "dragon.png",
+                        "image_path": "/tmp/video/state/dragon.png",
+                        "signature": "x",
+                        "version": 1,
+                        "description": "Dragon is a dragon.",
+                    }
+                },
+            )
         self.assertIn(7, attached)
         generated_id = attached[7]
         self.assertEqual(
@@ -766,6 +777,44 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn(
             "<Picture 2> references only the clothing that Amy is currently wearing.",
             filtered,
+        )
+
+    def test_state_media_paths_live_under_output_video_state(self):
+        self.assertEqual(
+            minimax.STATE_MEDIA_OUTPUT,
+            os.path.join(minimax.VIDEO_OUTPUT, "state"),
+        )
+        workflow = minimax.prepare_character_reference_workflow(
+            "Amy is an adult woman wearing a red blouse.",
+            0.5,
+            steps=6,
+            picture_number=2,
+        )
+        _node_id, save = minimax.find_workflow_node(
+            workflow,
+            minimax.SAVE_VIDEO_NODE_NAME,
+            "test character reference workflow",
+            "SaveVideo",
+        )
+        self.assertTrue(
+            save["inputs"]["filename_prefix"].startswith(
+                "video/state/character_reference"
+            )
+        )
+        location = minimax.prepare_location_reference_workflow(
+            "A stone tavern.",
+            0.5,
+            steps=6,
+        )
+        _location_id, location_save = minimax.find_workflow_node(
+            location,
+            minimax.SAVE_VIDEO_NODE_NAME,
+            "test location reference workflow",
+            "SaveVideo",
+        )
+        self.assertEqual(
+            location_save["inputs"]["filename_prefix"],
+            "video/state/location_reference",
         )
 
     def test_character_reference_prompt_is_front_facing_one_second_not_orbit(self):

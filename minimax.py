@@ -170,6 +170,11 @@ VIDEO_OUTPUT = os.path.abspath(
     )
 )
 
+# Persistent visual-state media belongs together under output/video/state.
+# ComfyUI LoadImage still requires a staged copy in its input directory, but
+# the authoritative/checkpointed PNG and all reference videos live here.
+STATE_MEDIA_OUTPUT = os.path.join(VIDEO_OUTPUT, "state")
+
 CONTINUATION_FRAME_OUTPUT = os.path.join(VIDEO_OUTPUT, "continuation_frames")
 
 INITIAL_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_API.json")
@@ -29082,7 +29087,18 @@ def normalize_character_reference_images(value):
             picture_number = int(raw_record.get("picture_number"))
         except (TypeError, ValueError):
             continue
+        image_path = str(raw_record.get("image_path") or "").strip()
         image_name = str(raw_record.get("image_name") or "").strip()
+        if image_path:
+            image_path = os.path.abspath(os.path.expanduser(image_path))
+            if not image_name:
+                image_name = os.path.basename(image_path)
+        elif image_name:
+            # Backward compatibility for checkpoints produced before state
+            # media moved out of ComfyUI/input.
+            legacy_path = os.path.join(COMFY_INPUT, image_name)
+            if os.path.isfile(legacy_path):
+                image_path = os.path.abspath(legacy_path)
         signature = str(raw_record.get("signature") or "").strip()
         try:
             version = max(1, int(raw_record.get("version") or 1))
@@ -29094,6 +29110,7 @@ def normalize_character_reference_images(value):
             "name": name,
             "picture_number": picture_number,
             "image_name": image_name,
+            "image_path": image_path,
             "signature": signature,
             "version": version,
             "description": " ".join(
@@ -29233,6 +29250,34 @@ def append_character_reference_definitions(
     return "\n".join(part for part in parts if part)
 
 
+def stage_character_reference_image(reference_record):
+    """Stage one authoritative state PNG into ComfyUI/input for LoadImage."""
+    if not isinstance(reference_record, dict):
+        raise ValueError("Character reference metadata must be an object.")
+    image_path = str(reference_record.get("image_path") or "").strip()
+    image_name = str(reference_record.get("image_name") or "").strip()
+    if not image_path:
+        # Legacy checkpoints may still point directly at an input image.
+        legacy_path = os.path.join(COMFY_INPUT, image_name)
+        if os.path.isfile(legacy_path):
+            return image_name
+        raise FileNotFoundError(
+            f"Character reference state image is missing a persistent path: "
+            f"{image_name!r}"
+        )
+    image_path = os.path.abspath(os.path.expanduser(image_path))
+    if not os.path.isfile(image_path) or os.path.getsize(image_path) == 0:
+        raise FileNotFoundError(
+            f"Character reference state image is missing or empty: {image_path}"
+        )
+    os.makedirs(COMFY_INPUT, exist_ok=True)
+    staged_name = image_name or os.path.basename(image_path)
+    staged_path = os.path.join(COMFY_INPUT, staged_name)
+    if os.path.abspath(staged_path) != image_path:
+        shutil.copy2(image_path, staged_path)
+    return staged_name
+
+
 def _ensure_character_reference_load_image(
     workflow,
     workflow_label,
@@ -29299,11 +29344,12 @@ def attach_character_reference_images(
         )
         for record in ordered:
             picture_number = int(record["picture_number"])
+            staged_name = stage_character_reference_image(record)
             node_id, _node = _ensure_character_reference_load_image(
                 workflow,
                 workflow_label,
                 picture_number,
-                record["image_name"],
+                staged_name,
             )
             input_name = f"ref_images.ref_image_{picture_number - 1}"
             container, leaf_name = _reference_input_container(
@@ -29323,11 +29369,12 @@ def attach_character_reference_images(
         )
         for record in ordered:
             picture_number = int(record["picture_number"])
+            staged_name = stage_character_reference_image(record)
             node_id, _node = _ensure_character_reference_load_image(
                 workflow,
                 workflow_label,
                 picture_number,
-                record["image_name"],
+                staged_name,
             )
             batch["inputs"][f"image_{picture_number}"] = [node_id, 0]
             attached[picture_number] = node_id
@@ -29359,11 +29406,12 @@ def attach_character_reference_images(
         )
         for record in ordered:
             picture_number = int(record["picture_number"])
+            staged_name = stage_character_reference_image(record)
             node_id, _node = _ensure_character_reference_load_image(
                 workflow,
                 workflow_label,
                 picture_number,
-                record["image_name"],
+                staged_name,
             )
             input_name = f"ref_images.ref_image_{picture_number - 1}"
             container, leaf_name = _reference_input_container(
@@ -29437,7 +29485,7 @@ def prepare_character_reference_workflow(
         workflow,
         SAVE_VIDEO_NODE_NAME,
         "filename_prefix",
-        f"video/character_state/character_reference{suffix}",
+        f"video/state/character_reference{suffix}",
         label,
         "SaveVideo",
     )
@@ -29495,18 +29543,19 @@ def render_character_reference_image(
             extract_video_frame(
                 video_path,
                 frame_name,
-                input_directory=COMFY_INPUT,
+                input_directory=STATE_MEDIA_OUTPUT,
                 frame_index=frame_index,
                 temporary_prefix=f".character_ref_{int(picture_number):03d}_",
                 error_label=f"character reference for {character_name}",
             )
+            frame_path = os.path.join(STATE_MEDIA_OUTPUT, frame_name)
             console_log(
                 f"Character reference created: {character_name} -> "
                 f"<Picture {picture_number}> at {CHARACTER_REFERENCE_SAMPLE_SECONDS:g}s "
-                f"({frame_name})",
+                f"({frame_path})",
                 flush=True,
             )
-            return frame_name
+            return frame_path
         except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
             if retry_number == COMFY_RENDER_RETRIES:
                 raise ComfyUIExecutionError(
@@ -29569,7 +29618,7 @@ def ensure_character_reference_images(
             picture_number = int(base_reference_count) + len(references) + 1
             version = 1
 
-        image_name = render_character_reference_image(
+        image_path = render_character_reference_image(
             name,
             description,
             picture_number,
@@ -29581,7 +29630,8 @@ def ensure_character_reference_images(
         references[name] = {
             "name": name,
             "picture_number": picture_number,
-            "image_name": image_name,
+            "image_name": os.path.basename(image_path),
+            "image_path": os.path.abspath(image_path),
             "signature": signature,
             "version": version,
             "description": description,
@@ -29651,7 +29701,7 @@ def prepare_location_reference_workflow(
         workflow,
         SAVE_VIDEO_NODE_NAME,
         "filename_prefix",
-        "video/location_state/location_reference",
+        "video/state/location_reference",
         label,
         "SaveVideo",
     )

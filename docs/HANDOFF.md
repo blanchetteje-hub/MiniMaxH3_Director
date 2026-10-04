@@ -374,3 +374,21 @@ Next acceptance: rerun the tavern story. Amy should use Picture 1 for identity a
 generated Picture for her current clothing, so the post-Segment-1 renders should stop
 reverting to the outfit in the original identity reference.
 
+### 2026-10-04 — state media directory consolidation
+
+All generated visual-state media now uses one persistent directory:
+`<ComfyUI output>/video/state/`.
+
+- location-reference video prefix moved from `video/location_state/location_reference`
+  to `video/state/location_reference`;
+- character-reference 1-second videos moved from `video/character_state/` to
+  `video/state/`;
+- sampled character-reference PNGs are now written persistently to the same
+  `output/video/state/` directory instead of being authored in ComfyUI/input;
+- because ComfyUI `LoadImage` reads from its input directory, Python stages a copy of the
+  authoritative state PNG into ComfyUI/input only when preparing a workflow. The persisted
+  checkpoint path points to the state-directory original.
+
+The old `location_state` and `character_state` output prefixes are no longer used by new
+renders.
+
