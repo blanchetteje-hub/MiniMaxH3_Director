@@ -515,10 +515,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             validator_states[3]["characters"]["Amy"]["equipped_objects"],
             ["pistol"],
         )
-        self.assertEqual(
-            validator_states[3]["environment"]["barriers"]["basement_door"]["status"],
-            "locked",
-        )
+        self.assertNotIn("barriers", validator_states[3]["environment"])
 
         final_state = checkpoint["current_beat_state"]
         self.assertEqual(final_state["threats"]["threat_1"]["status"], "dead")
