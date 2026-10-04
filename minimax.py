@@ -17746,13 +17746,15 @@ def build_story_setting_description_messages(expanded_story, overall_location):
             "role": "system",
             "content": (
                 "Extract a concise static setting description for a video location "
-                "reference. Use only environment facts established by the expanded "
-                "story: architecture, terrain, room layout, fixed fixtures, entrances, "
-                "surfaces, persistent furniture, lighting sources, and other stable "
-                "spatial features. Exclude characters, creatures, character actions, "
-                "temporary held props, dialogue, and plot events. Do not invent details. "
-                "If the story gives only a broad setting, return only that broad setting "
-                "and let the video model design unspecified details. Return JSON only."
+                "reference. Use only facts the story actually presents as description "
+                "of the place itself: architecture, terrain, broad room layout, fixed "
+                "fixtures, entrances, surfaces, and persistent lighting sources. Exclude "
+                "characters, creatures, character actions, dialogue, plot events, held "
+                "props, and objects/furniture mentioned only because a later action "
+                "uses or introduces them. Do not promote every story prop into the "
+                "global setting. Do not invent details. If the story gives only a broad "
+                "setting, return only that broad setting and let the video model design "
+                "unspecified details. Return JSON only."
             ),
         },
         {
@@ -33103,6 +33105,14 @@ def _run_main(
                 f"Reusing location reference: {location_reference_video_path}",
                 flush=True,
             )
+        if location_reference_video_path:
+            generated_prompts_payload["config"]["location_reference_video"] = (
+                location_reference_video_path
+            )
+            generated_prompts_payload["config"]["setting_description"] = (
+                location_setting_description
+            )
+            save_generated_prompts_file(generated_prompts_payload)
     elif test_prompt_generation and location_setting_description:
         console_log(
             "Location-state test: prompt-generation mode skips the 2-second "

@@ -6,6 +6,15 @@ import minimax
 
 
 class LocationStateReferenceTests(unittest.TestCase):
+    def test_setting_extractor_does_not_promote_plot_props(self):
+        messages = minimax.build_story_setting_description_messages(
+            "Amy works in a medieval tavern. Later she pulls up a chair for a unicorn.",
+            "medieval tavern",
+        )
+        system = messages[0]["content"]
+        self.assertIn("objects/furniture mentioned only because a later action", system)
+        self.assertIn("Do not promote every story prop", system)
+
     def test_setting_description_parser_uses_fallback(self):
         self.assertEqual(
             minimax.parse_story_setting_description(

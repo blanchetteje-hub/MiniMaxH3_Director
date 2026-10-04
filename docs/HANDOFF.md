@@ -1116,3 +1116,9 @@ Implementation:
 Next acceptance should focus only on background geometry/fixtures when the camera reveals an
 area that was previously off-screen. Do not evaluate character persistence as part of this
 test.
+
+Refinement after diff review: the setting extractor now explicitly excludes furniture/props
+that appear only because a later story action uses or introduces them. This keeps the
+location reference honest: a vague "medieval tavern" is mostly designed by H3, then the
+experiment tests whether that invented room persists off camera instead of pre-seeding
+future beat objects into the panorama.
