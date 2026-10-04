@@ -25,6 +25,7 @@ def test_only_story_request_uses_dynamic_temperature():
     response.json.return_value = {
         'choices': [{'message': {'content': '{"ok": true}'}, 'finish_reason': 'stop'}]
     }
+    assert minimax.DIRECTOR_RAW_SCENE_LLM_SETTINGS['temperature'] == 0.2
     profiles = {
         'story_to_beats': minimax.STORY_TO_BEATS_LLM_SETTINGS,
         'character_canon': minimax.CREATIVE_GENERATION_LLM_SETTINGS,
