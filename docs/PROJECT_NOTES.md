@@ -2382,3 +2382,38 @@ This restores the intended 16GB contract: run all LLM work first, unload the LLM
 ComfyUI, and render the complete saved package without any LLM calls or mutable
 "current reference" assumptions.
 
+### 2026-10-04 — per-segment Subject/Picture bindings and sliding retention
+
+Dynamic Subject identity/reference assets are now separated from the Picture numbers exposed
+to any one H3 segment.
+
+- The persistent generated-reference registry remains keyed by Subject and keeps the actual
+  asset path, reference version, authority, and canonical creation slot. Removing a Subject
+  from a segment never deletes its Subject registry entry or reference media.
+- Every segment deterministically builds a frozen `reference_bindings` snapshot. Generated
+  references are densely assigned after the configured base Picture range, so a Subject can
+  legitimately be `<Picture 4>` in one segment and `<Picture 3>` later after another
+  generated Subject ages out.
+- The same segment-local character-reference map is used to generate H3 Subject/Picture text
+  and to wire ComfyUI, preventing prompt/workflow slot drift.
+- Configured/base Pictures belonging only to inactive Subjects are recorded as
+  `excluded_configured_picture_ids` and disconnected from that segment's workflow as well
+  as omitted from its H3 conditioning. Their files/registry identity remain available.
+- `generation_state.json` now contains a rich `reference_binding_state`: current bindings,
+  explicit/active/removed Subject IDs, configured Picture exclusions, removal policy, and
+  per-Subject first appearance, last explicit appearance, inactivity age, threshold,
+  binding reason, last bound segment, and full binding history.
+- Each completed segment also freezes its exact Subject definitions, segment-local character
+  references, and `reference_bindings`. `generated_prompts.txt` stores the same segment
+  snapshot plus Picture exclusions, so 16GB render-only replay uses exactly the mapping
+  chosen during the LLM phase.
+
+Default removal is deliberately conservative. After a Subject has explicitly appeared
+visually, it stays bound until it has gone `ceil(total_segments / 2)` segments without
+another explicit visual appearance. This protects passive/background continuity. Expiry is
+segment-local only; a later explicit re-entry immediately reuses the persistent identity
+asset and creates a new segment binding.
+
+`--disable-subject-removal` disables aging entirely. Once a Subject has appeared, it
+continues to remain bound in subsequent segments. The desktop UI exposes the same setting.
+
