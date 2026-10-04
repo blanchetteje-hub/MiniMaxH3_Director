@@ -161,6 +161,7 @@ Latest 48-second tavern run established a useful split:
 Fixes now on `location-state-test`:
 
 - CLI/default automatic refresh is `999`, matching desktop/web defaults;
+- legacy GUI settings are migrated once: an old saved default `refresh: 6` becomes `999` and old default story temperature `0.8` becomes `0.4`; later explicit user choices are preserved;
 - an explicit refresh interval is authoritative and no longer loses to
   source-span chapter-boundary refresh scheduling; `None` retains the legacy
   source-span fallback for programmatic callers;
