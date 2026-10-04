@@ -245,7 +245,7 @@ APPEND_GUIDE_CONTEXT_SECONDS = APPEND_GUIDE_CONTEXT_FRAMES / FRAME_RATE
 
 # One short static-environment reference is rendered before story Segment 1 and
 # reused for the complete run. It is never stitched into the story video.
-LOCATION_REFERENCE_DURATION_SECONDS = 2.0
+LOCATION_REFERENCE_DURATION_SECONDS = 3.0
 LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES = 4
 
 # Clean refresh is intentionally different: it keeps the proven short latent
@@ -7446,13 +7446,13 @@ def connect_named_connection(
 
 # Restore the complete append video-to-conditioning graph by node title.
 def build_location_reference_h3_prompt(setting_description):
-    """Build the character-free two-second persistent location reference prompt."""
+    """Build the character-free three-second persistent location reference prompt."""
     setting = " ".join(str(setting_description or "").split()).strip(" .")
     if not setting:
         raise ValueError("Location reference requires a setting description.")
     return (
         f"detailed_description: [Shot 1] The camera is positioned at a high, low-angle shot of the location. "
-        f"It is a static, fast, 2-second, full 360 orbital camera shot of the following setting: {setting}."
+        f"It is a static, fast, 3-second, full 360 orbital camera shot of the following setting: {setting}."
         "The space contains no people, characters, creatures, or story action. "
         "Maintain spatial relationships of major architecture, fixed fixtures, entrances, "
         "surfaces, persistent furniture, landmarks, and lighting sources that are "
@@ -29968,6 +29968,30 @@ def _append_unique_video_path(video_paths, video_path, lock=None):
     return normalized_path
 
 
+
+# Delete raw ComfyUI segment renders only after the final stitch succeeds.
+def cleanup_raw_segment_videos(video_directory=VIDEO_OUTPUT):
+    """Delete raw segment_* video files while preserving guided_segment_* outputs."""
+    directory = os.path.abspath(os.fspath(video_directory))
+    if not os.path.isdir(directory):
+        return []
+    deleted = []
+    for name in os.listdir(directory):
+        if not name.startswith("segment_"):
+            continue
+        if not name.lower().endswith((".mp4", ".mov", ".mkv", ".webm")):
+            continue
+        path = os.path.join(directory, name)
+        try:
+            if os.path.isfile(path) or os.path.islink(path):
+                os.remove(path)
+                deleted.append(path)
+        except OSError as error:
+            console_log(
+                f"Warning: could not delete raw segment video {path}: {error}"
+            )
+    return deleted
+
 # Stitch videos.
 def stitch_videos(
     video_paths,
@@ -30101,6 +30125,13 @@ def stitch_videos(
             pass
         except OSError as error:
             console_log(f"Warning: could not delete trimmed video {trimmed_path}: {error}")
+
+    deleted_raw_segments = cleanup_raw_segment_videos(VIDEO_OUTPUT)
+    if deleted_raw_segments:
+        console_log(
+            f"Successful-run cleanup: deleted {len(deleted_raw_segments)} raw "
+            "segment video(s); guided_segment videos were preserved."
+        )
 
     console_log(f"Stitching complete: {FINAL_VIDEO}")
 
