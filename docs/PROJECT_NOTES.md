@@ -2,6 +2,12 @@
 
 This file is the persistent source of truth for the current MiniMax H3 architecture and acceptance target. Historical iteration details belong in Git history, not here.
 
+## Repository / active branch
+
+Repository: `blanchetteje-hub/MiniMaxH3_Director`
+
+Active experimental branch: `location-state-test`
+
 ## Primary goal
 
 The goal is:
@@ -64,7 +70,7 @@ Current task profiles:
   character canon and ARC create/repair; temperature `0.8`, high reasoning,
   randomized seed.
 - `DIRECTOR_RAW_SCENE_LLM_SETTINGS`: Director RAW scene creation; temperature
-  `0.4`, high reasoning, randomized seed. RAW remains creative, but uses lower
+  `0.2`, high reasoning, randomized seed. RAW remains creative, but uses lower
   sampling than other creative-generation work to reduce gratuitous staging
   embellishment while preserving useful concrete invention.
 - `BEAT_WRITING_LLM_SETTINGS`: Beat CREATE/REPAIR; temperature `0`, high
@@ -1966,8 +1972,9 @@ These decisions supersede older refresh/location notes above where they conflict
 
 ## 2026-10-04 update — location wording, action pacing, RAW sampling
 
-The latest tavern acceptance exposed three separate concerns and the current
-change addresses the first two at prompt/profile level:
+The latest tavern acceptance confirmed that the persistent location-reference
+video is working well for room geometry, while several remaining failures were
+caused by RAW staging/timing:
 
 - Static setting extraction must not treat relative action wording as proof of
   separate architecture. Labels such as front/back/side door or left/right table
@@ -1978,10 +1985,18 @@ change addresses the first two at prompt/profile level:
   invents. Movement, acquisition, positioning, opening, or another prerequisite
   that must precede a dependent action gets its own earlier timed micro-beat
   instead of being compressed into the same timestamp.
-- Director RAW now uses its own task profile at temperature `0.4`; other
+- A separate temperature-0 timing-feasibility validator now checks consecutive
+  RAW timestamps and rejects only obvious compression that would force a hidden
+  cut, teleport, skipped prerequisite, or instantaneous relocation/manipulation.
+  It deliberately uses no fixed minimum interval.
+- Transfer physics are generic: every transfer must have an explicit, distinct,
+  traceable source and destination, and the transferred material/object must be
+  established at the source before reaching the destination.
+- RAW invention remains allowed, but optional secondary reactions, extra
+  consequences, and extra object/substance motion should not be added once the
+  required action is already readable.
+- Director RAW now uses its own task profile at temperature `0.2`; other
   open-ended creative generation remains at `0.8`.
 
-Do not add a timing validator yet. First test whether the lower-temperature RAW
-Director plus explicit prerequisite staging rule resolves compressed prop/action
-execution. A structured static-space catalog remains a future experiment, not
-current architecture.
+A structured static-space catalog remains a future experiment, not current
+architecture.
