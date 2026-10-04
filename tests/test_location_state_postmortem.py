@@ -78,6 +78,34 @@ class LocationStatePostmortemTests(unittest.TestCase):
         self.assertIn("write a brief direct spoken line using <d>...</d>", prompt)
         self.assertIn("Do not add intelligible dialogue", prompt)
 
+    def test_director_prompt_requires_subject_prop_and_position_provenance(self):
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE
+        self.assertIn("newly introduced foreground subject", prompt)
+        self.assertIn("physically entering through a stated route/boundary", prompt)
+        self.assertIn('Do not use "appears"', prompt)
+        self.assertIn("Preserve prop identity and provenance", prompt)
+        self.assertIn("must not silently become a different object", prompt)
+        self.assertIn("source container and destination container distinct", prompt)
+        self.assertIn("This applies to every established position", prompt)
+
+    def test_coherence_validator_checks_subject_prop_and_position_provenance(self):
+        messages = minimax.build_director_raw_scene_coherence_messages(
+            "A goblin arrives and Amy serves it.",
+            (
+                "At 00:00.000, Amy stands beside a barrel holding a bucket.\n"
+                "At 00:02.000, a goblin appears in a chair.\n"
+                "At 00:04.000, Amy holds a mug at the distant bar.\n"
+                "At 00:06.000, Amy pours from the mug into a glass."
+            ),
+            previous_shot_end="Amy stands beside the barrel holding a bucket.",
+        )
+        text = "\n".join(message["content"] for message in messages)
+        self.assertIn("first appearance needs visible provenance", text)
+        self.assertIn("'appears'", text)
+        self.assertIn("different established position", text)
+        self.assertIn("prop cannot silently become another prop", text)
+        self.assertIn("source and destination containers", text)
+
     def test_registered_subject_said_dialogue_gets_stable_speaker_id(self):
         definitions = (
             "<Subject 1> is Amy.\n"
