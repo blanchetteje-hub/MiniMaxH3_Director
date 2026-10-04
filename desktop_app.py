@@ -38,6 +38,7 @@ FRONTEND_INDEX = PROJECT_DIR / "frontend" / "dist" / "index.html"
 SETTINGS_FILE = PROJECT_DIR / "gui_settings.json"
 
 DEFAULT_SETTINGS = {
+    "settings_version": 2,
     "generation_mode": "new",
     "vram_mode": "32",
     "action": "generate",
@@ -236,6 +237,25 @@ class MiniMaxBridge:
                             pass
                     saved.pop("total_length", None)
                     saved.pop("generate_all", None)
+                    try:
+                        settings_version = int(saved.get("settings_version", 1))
+                    except (TypeError, ValueError):
+                        settings_version = 1
+                    if settings_version < 2:
+                        # Migrate only the historical defaults once. After the
+                        # version bump, an explicit user-selected 6 / 0.8 is kept.
+                        if str(saved.get("refresh", "")).strip() == "6":
+                            saved["refresh"] = str(DEFAULT_REFRESH_INTERVAL)
+                        if str(saved.get("temp", "")).strip() == "0.8":
+                            saved["temp"] = str(DEFAULT_STORY_TEMPERATURE)
+                        saved["settings_version"] = 2
+                        try:
+                            SETTINGS_FILE.write_text(
+                                json.dumps({**DEFAULT_SETTINGS, **saved}, indent=2),
+                                encoding="utf-8",
+                            )
+                        except OSError:
+                            pass
                     return {**DEFAULT_SETTINGS, **saved}
             except (OSError, ValueError):
                 pass
