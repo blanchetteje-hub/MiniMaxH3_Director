@@ -87,8 +87,8 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
         {rendering && <p className="muted-note">Clip count, duration, and workflow metadata come from the saved prompt package.</p>}
         {!rendering && <details className="advanced"><summary>Rendering & continuity</summary><div className="field-grid">
           {input('steps', 'Sampling steps', 'ComfyUI sampling steps. More steps may improve quality but take longer.', 'number', { min: '1' })}
-          {input('trim_frames', 'Trim frames', 'Frames removed from each clip after the first when stitching the final video.')}
-          {!rendering && input('refresh', 'Refresh interval', 'Compatibility fallback: regenerate from the preceding clip’s last frame every N segments.', 'number', { min: '1' })}
+          {input('trim_frames', 'Trim frames', 'Frames removed from non-guided continuation clips when stitching. Guided clips already remove their exact Guide overlap.')}
+          {!rendering && input('refresh', 'Refresh interval', 'Automatic clean-refresh cadence. Default 999 effectively disables routine refresh; an explicit value overrides source-span chapter refreshes.', 'number', { min: '1' })}
           {!rendering && !limited && input('vision_continuity', 'Vision continuity interval', 'Check rendered frames every N segments. 0 disables checks; requires both the LLM and ComfyUI.')}
         </div></details>}
         {!rendering && <details className="advanced"><summary>Prompt & story options</summary><div className="field-grid">
