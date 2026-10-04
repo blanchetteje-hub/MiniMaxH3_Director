@@ -97,6 +97,15 @@ class LocationStatePostmortemTests(unittest.TestCase):
             "",
         )
 
+        normalized_question = minimax.repair_h3_subject_identity(
+            "At 00:03.000, Goblin1 asks <d>Can I have a pint?</d>",
+            definitions,
+        )
+        self.assertIn(
+            "Goblin1 (S3) said <d>Can I have a pint?</d>",
+            normalized_question,
+        )
+
     def test_dynamic_subject_registers_in_its_first_visible_segment(self):
         definitions = "<Subject 1> is Amy."
         state = minimax.continuity_state_for_registry(definitions)
