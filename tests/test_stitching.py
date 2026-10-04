@@ -192,6 +192,25 @@ class StitchingTests(unittest.TestCase):
             for trimmed_path in trimmed_paths:
                 self.assertFalse(os.path.exists(trimmed_path))
 
+
+    def test_successful_stitch_deletes_raw_segments_but_preserves_guided_segments(self):
+        with tempfile.TemporaryDirectory() as directory:
+            raw_first = os.path.join(directory, "segment_0001_00001_.mp4")
+            raw_second = os.path.join(directory, "segment_0002_00001_.mp4")
+            guided_second = os.path.join(directory, "guided_segment_0002_00001_.mp4")
+            for path in (raw_first, raw_second, guided_second):
+                with open(path, "wb") as handle:
+                    handle.write(b"video")
+
+            with mock.patch.object(minimax, "VIDEO_OUTPUT", directory), mock.patch.object(
+                minimax, "FINAL_VIDEO", os.path.join(directory, "final.mp4")
+            ), mock.patch("minimax.subprocess.run"):
+                minimax.stitch_videos([raw_first, guided_second])
+
+            self.assertFalse(os.path.exists(raw_first))
+            self.assertFalse(os.path.exists(raw_second))
+            self.assertTrue(os.path.exists(guided_second))
+
     def test_failed_final_stitch_keeps_created_trimmed_videos(self):
         with tempfile.TemporaryDirectory() as directory:
             video_paths = [
