@@ -30145,12 +30145,6 @@ def prepare_refresh_workflow(
         removed_picture_ids,
         picture_slot_map,
     )
-    attach_character_reference_images(
-        workflow,
-        label,
-        "refresh",
-        character_reference_images,
-    )
 
     _, extend = find_workflow_node(
         workflow,
@@ -30176,6 +30170,16 @@ def prepare_refresh_workflow(
         )
     else:
         extend["inputs"].pop("ref_images", None)
+
+    # Generated character Pictures are appended only after the template
+    # references have been compacted. Their Picture numbers are already dense
+    # positional numbers, so a Picture 2 truly becomes the second IMAGE input.
+    attach_character_reference_images(
+        workflow,
+        label,
+        "refresh",
+        character_reference_images,
+    )
 
     if location_reference_video_path:
         attach_location_reference_frames_to_refresh(

@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 import minimax
 
@@ -633,6 +634,147 @@ class PostmortemRegressionTests(unittest.TestCase):
             prompt,
         )
         self.assertIn("reframe only through continuous camera movement", prompt)
+
+    def test_character_reference_numbering_uses_active_picture_count(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Amy"] = minimax.new_subject_continuity_record({
+            "subject_id": 1,
+            "name": "Amy",
+            "picture_ids": [1],
+            "picture_id": 1,
+            "canonical_description": "Amy is an adult woman wearing a blue dress.",
+        })
+        state["subjects"]["Amy"]["wardrobe"]["upper"] = "a red blouse"
+        definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+
+        with mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="amy_clothing.png",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Amy stands behind the bar.",
+                definitions,
+                state,
+                {},
+                1,
+                0.5,
+                6,
+                subject_descriptions={
+                    "Amy": "Amy is an adult woman wearing a blue dress."
+                },
+            )
+
+        self.assertEqual(changed, ["Amy"])
+        self.assertEqual(refs["Amy"]["picture_number"], 2)
+        self.assertEqual(refs["Amy"]["image_name"], "amy_clothing.png")
+        self.assertIn(
+            "Amy is currently wearing a red blouse",
+            render.call_args.args[1],
+        )
+
+    def test_character_reference_picture_number_stays_stable_on_outfit_change(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Amy"] = minimax.new_subject_continuity_record({
+            "subject_id": 1,
+            "name": "Amy",
+            "picture_ids": [1],
+            "picture_id": 1,
+            "canonical_description": "Amy is an adult woman.",
+        })
+        state["subjects"]["Amy"]["wardrobe"]["upper"] = "a green tunic"
+        existing = {
+            "Amy": {
+                "name": "Amy",
+                "picture_number": 2,
+                "image_name": "amy_v001.png",
+                "signature": "old",
+                "version": 1,
+                "description": "old",
+            }
+        }
+        with mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="amy_v002.png",
+        ):
+            refs, changed = minimax.ensure_character_reference_images(
+                "Amy enters the room.",
+                "<Subject 1> is Amy, referenced in <Picture 1>.",
+                state,
+                existing,
+                1,
+                0.5,
+                6,
+            )
+        self.assertEqual(changed, ["Amy"])
+        self.assertEqual(refs["Amy"]["picture_number"], 2)
+        self.assertEqual(refs["Amy"]["version"], 2)
+
+    def test_character_reference_can_create_loadimage_above_six(self):
+        workflow = {
+            "1": {
+                "inputs": {},
+                "class_type": "MiniMaxH3ReferenceToVideo",
+                "_meta": {"title": minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME},
+            }
+        }
+        for number in range(1, 7):
+            workflow[str(number + 1)] = {
+                "inputs": {"image": "0.png"},
+                "class_type": "LoadImage",
+                "_meta": {"title": f"Reference Image {number}"},
+            }
+        attached = minimax.attach_character_reference_images(
+            workflow,
+            "test workflow",
+            "initial",
+            {
+                "Dragon": {
+                    "name": "Dragon",
+                    "picture_number": 7,
+                    "image_name": "dragon.png",
+                    "signature": "x",
+                    "version": 1,
+                    "description": "Dragon is a dragon.",
+                }
+            },
+        )
+        self.assertIn(7, attached)
+        generated_id = attached[7]
+        self.assertEqual(
+            workflow[generated_id]["_meta"]["title"],
+            "Generated Reference Image 7",
+        )
+        conditioner = workflow["1"]["inputs"]
+        self.assertEqual(
+            conditioner["ref_images.ref_image_6"],
+            [generated_id, 0],
+        )
+
+    def test_clothing_only_picture_definition_is_kept_for_visible_subject(self):
+        definitions = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "<Picture 2> references only the clothing that Amy is currently wearing."
+        )
+        filtered, _description = minimax._filter_h3_subject_definitions(
+            definitions,
+            {1},
+            "Amy stands behind the bar.",
+        )
+        self.assertIn("<Subject 1> is Amy", filtered)
+        self.assertIn(
+            "<Picture 2> references only the clothing that Amy is currently wearing.",
+            filtered,
+        )
+
+    def test_character_reference_prompt_is_front_facing_one_second_not_orbit(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Amy is an adult woman wearing a red blouse."
+        )
+        self.assertIn("front-facing", prompt)
+        self.assertIn("exactly 1 second", prompt)
+        self.assertIn("Do not orbit", prompt)
 
 
 if __name__ == "__main__":
