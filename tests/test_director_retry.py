@@ -508,11 +508,16 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             {"valid": False, "issue": "The door closes before Will enters."},
             {"valid": True, "issue": ""},
         ])
+        timing = mock.Mock(return_value={"valid": True, "issue": ""})
         with (
             mock.patch("minimax.ask_llm", request),
             mock.patch(
                 "minimax.validate_director_raw_scene_coherence",
                 coherence,
+            ),
+            mock.patch(
+                "minimax.validate_director_raw_scene_timing",
+                timing,
             ),
             mock.patch("builtins.print"),
         ):
@@ -522,6 +527,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         semantic_calls = non_audio_llm_calls(request)
         self.assertEqual(len(semantic_calls), 2)
         self.assertEqual(coherence.call_count, 2)
+        self.assertEqual(timing.call_count, 1)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
         request_prompts = [
             call.args[0][-1]["content"]
