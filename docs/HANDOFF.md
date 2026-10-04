@@ -392,3 +392,22 @@ All generated visual-state media now uses one persistent directory:
 The old `location_state` and `character_state` output prefixes are no longer used by new
 renders.
 
+### 2026-10-04 — outfit-reference identity conditioning
+
+Production test showed that the generated clothing Picture could bleed its newly invented
+face/body back into Amy's appearance. The isolated 1-second clothing render now conditions
+on the target character's existing source Picture when available.
+
+- the target Subject's original `picture_id` is resolved to its configured LoadImage;
+- that source image is connected as the only Picture in the isolated outfit-reference
+  workflow, so it is locally `<Picture 1>`;
+- the outfit-reference prompt explicitly states that Picture 1 owns only identity/physical
+  appearance (face, hair, age, build, species, body), while current clothing text owns the
+  outfit and must not be copied from the identity Picture;
+- the resulting sampled Picture remains clothing-only authority in the final story prompt;
+- video-only/dynamic Subjects with no source Picture currently fall back to unconditioned
+  outfit-reference generation and log a warning.
+
+A possible future alternative—standalone reusable outfit assets that can be applied to
+multiple characters—is documented in `docs/FUTURE_NOTES.md`.
+

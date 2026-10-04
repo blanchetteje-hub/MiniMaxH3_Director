@@ -29218,6 +29218,10 @@ def build_character_reference_h3_prompt(character_description):
         "detailed_description: [Shot 1] A single character stands centered and "
         "front-facing in a neutral natural pose, with the complete current outfit "
         "clearly visible. Use one continuous static shot for exactly 1 second. "
+        "<Picture 1> references only the identity and physical appearance of this "
+        "person; preserve that same face, hair, age, build, species, and body. "
+        "Do not copy clothing from <Picture 1>; the clothing described in text is "
+        "authoritative for this reference render. "
         f"{description}. Keep the face, body, garments, footwear, and accessories "
         "clear and unobstructed. Use a plain unobtrusive background. Do not orbit, "
         "pan, zoom, cut, add another character, or invent story action.\n\n"
@@ -29424,6 +29428,43 @@ def attach_character_reference_images(
     raise ValueError(f"Unknown workflow kind: {workflow_kind!r}")
 
 
+def subject_identity_reference_image(subject_record):
+    """Return the configured source Picture image for one character identity."""
+    if not isinstance(subject_record, dict):
+        return ""
+    picture_id = subject_record.get("picture_id")
+    try:
+        picture_id = int(picture_id)
+    except (TypeError, ValueError):
+        return ""
+    if picture_id <= 0 or picture_id > len(REFERENCE_IMAGE_NODE_NAMES):
+        return ""
+
+    workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    label = f"identity source workflow '{INITIAL_WORKFLOW_FILE}'"
+    node_name = REFERENCE_IMAGE_NODE_NAMES[picture_id - 1]
+    _node_id, image_node = find_workflow_node(
+        workflow,
+        node_name,
+        label,
+        "LoadImage",
+    )
+    image_name = str(image_node.get("inputs", {}).get("image") or "").strip()
+    if not image_name or _is_reference_placeholder(image_name):
+        return ""
+    image_path, decode_error = _validate_comfy_input_image(
+        image_name,
+        COMFY_INPUT,
+    )
+    if decode_error is not None:
+        raise FileNotFoundError(
+            f"Identity reference <Picture {picture_id}> for "
+            f"{subject_record.get('name')!r} is invalid ({decode_error}): "
+            f"{image_path}"
+        )
+    return image_name
+
+
 def prepare_character_reference_workflow(
     character_description,
     megapixels,
@@ -29431,6 +29472,7 @@ def prepare_character_reference_workflow(
     loras=None,
     noise_seed=None,
     picture_number=None,
+    identity_image_name="",
 ):
     """Prepare the isolated one-second character/clothing reference render."""
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
@@ -29453,6 +29495,17 @@ def prepare_character_reference_workflow(
     inputs.pop("ref_images", None)
     inputs.pop("ref_videos", None)
     inputs.pop("ref_video_audios", None)
+
+    identity_image_name = str(identity_image_name or "").strip()
+    if identity_image_name:
+        identity_node_id, identity_node = find_workflow_node(
+            workflow,
+            REFERENCE_IMAGE_NODE_NAMES[0],
+            label,
+            "LoadImage",
+        )
+        identity_node.setdefault("inputs", {})["image"] = identity_image_name
+        inputs["ref_images.ref_image_0"] = [identity_node_id, 0]
 
     set_duration_input(workflow, label, CHARACTER_REFERENCE_DURATION_SECONDS)
     set_node_input(
@@ -29507,6 +29560,7 @@ def render_character_reference_image(
     steps,
     *,
     loras=None,
+    identity_image_name="",
 ):
     """Render one second, then sample exactly the 0.5-second clothing frame."""
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
@@ -29520,6 +29574,7 @@ def render_character_reference_image(
             steps=steps,
             loras=loras,
             picture_number=picture_number,
+            identity_image_name=identity_image_name,
         )
         try:
             prompt_id = queue_workflow(workflow)
@@ -29618,6 +29673,14 @@ def ensure_character_reference_images(
             picture_number = int(base_reference_count) + len(references) + 1
             version = 1
 
+        identity_image_name = subject_identity_reference_image(record)
+        if not identity_image_name:
+            console_log(
+                f"WARNING: no source identity Picture is available for {name!r}; "
+                "the generated clothing reference will be rendered without "
+                "identity-image conditioning.",
+                flush=True,
+            )
         image_path = render_character_reference_image(
             name,
             description,
@@ -29626,6 +29689,7 @@ def ensure_character_reference_images(
             requested_megapixels,
             steps,
             loras=loras,
+            identity_image_name=identity_image_name,
         )
         references[name] = {
             "name": name,

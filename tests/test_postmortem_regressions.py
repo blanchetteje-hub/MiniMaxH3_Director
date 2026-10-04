@@ -650,6 +650,10 @@ class PostmortemRegressionTests(unittest.TestCase):
 
         with mock.patch.object(
             minimax,
+            "subject_identity_reference_image",
+            return_value="amy_identity.png",
+        ), mock.patch.object(
+            minimax,
             "render_character_reference_image",
             return_value="/tmp/video/state/amy_clothing.png",
         ) as render:
@@ -677,6 +681,10 @@ class PostmortemRegressionTests(unittest.TestCase):
             "Amy is currently wearing a red blouse",
             render.call_args.args[1],
         )
+        self.assertEqual(
+            render.call_args.kwargs["identity_image_name"],
+            "amy_identity.png",
+        )
 
     def test_character_reference_picture_number_stays_stable_on_outfit_change(self):
         state = minimax.new_continuity_state()
@@ -699,6 +707,10 @@ class PostmortemRegressionTests(unittest.TestCase):
             }
         }
         with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="amy_identity.png",
+        ), mock.patch.object(
             minimax,
             "render_character_reference_image",
             return_value="/tmp/video/state/amy_v002.png",
@@ -815,6 +827,49 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertEqual(
             location_save["inputs"]["filename_prefix"],
             "video/state/location_reference",
+        )
+
+    def test_character_reference_workflow_conditions_on_identity_picture(self):
+        workflow = minimax.prepare_character_reference_workflow(
+            "Amy is an adult woman currently wearing a red blouse.",
+            0.5,
+            steps=6,
+            picture_number=2,
+            identity_image_name="amy_identity.png",
+        )
+        _conditioning_id, conditioning = minimax.find_workflow_node(
+            workflow,
+            minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+            "test character reference workflow",
+            "MiniMaxH3ReferenceToVideo",
+        )
+        identity_id, identity = minimax.find_workflow_node(
+            workflow,
+            minimax.REFERENCE_IMAGE_NODE_NAMES[0],
+            "test character reference workflow",
+            "LoadImage",
+        )
+        self.assertEqual(identity["inputs"]["image"], "amy_identity.png")
+        self.assertEqual(
+            conditioning["inputs"]["ref_images.ref_image_0"],
+            [identity_id, 0],
+        )
+        for key in conditioning["inputs"]:
+            if key.startswith("ref_images.ref_image_"):
+                self.assertEqual(key, "ref_images.ref_image_0")
+
+    def test_character_reference_prompt_separates_identity_from_clothing(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Amy is an adult woman currently wearing a red blouse."
+        )
+        self.assertIn(
+            "<Picture 1> references only the identity and physical appearance",
+            prompt,
+        )
+        self.assertIn("Do not copy clothing from <Picture 1>", prompt)
+        self.assertIn(
+            "clothing described in text is authoritative",
+            prompt,
         )
 
     def test_character_reference_prompt_is_front_facing_one_second_not_orbit(self):

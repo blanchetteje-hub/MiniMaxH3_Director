@@ -183,3 +183,36 @@ Important constraints:
 - Prefer this as an optimization/conditioning layer rather than another semantic planning stage.
 
 Status: back-pocket experiment only; not part of current production architecture.
+
+## Reusable standalone outfit-reference experiment
+
+Potential future implementation: generate/reference **outfits by themselves**, without a
+person wearing them, so one visual clothing asset can be applied to multiple different
+characters.
+
+Possible direction:
+- render or otherwise establish a clean isolated visual reference for the outfit itself;
+- treat that reference as clothing-only authority, never identity/body authority;
+- combine it with each target character's own identity Picture when producing the
+  character-specific outfit reference or final H3 conditioning;
+- allow the same outfit asset to be reused by Amy, another human, or another compatible
+  character without regenerating the garment design from scratch;
+- keep fit/body adaptation character-specific so one shared outfit asset does not force the
+  same body shape or proportions onto every wearer.
+
+Potential advantages:
+- fewer duplicated outfit-generation renders;
+- stronger consistency for uniforms, costumes, armor, team clothing, or recurring wardrobe
+  shared across multiple characters;
+- cleaner separation of identity authority from wardrobe authority.
+
+Risks to test:
+- whether H3 can reliably transfer an outfit-only reference onto a person without inventing
+  mannequin/body traits;
+- whether different body types/species cause fit or geometry artifacts;
+- whether identity and outfit references compete when both are supplied.
+
+Status: back-pocket experiment only. Current production architecture still generates a
+character-specific 1-second clothing reference, now conditioned by that character's
+identity Picture.
+

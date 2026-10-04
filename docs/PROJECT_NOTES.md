@@ -2275,3 +2275,21 @@ copy into `COMFY_INPUT` when the workflow is built; the input copy is not the pe
 state source. New renders no longer write to the former `video/location_state` or
 `video/character_state` prefixes.
 
+## 2026-10-04 update — identity-conditioned clothing-reference generation
+
+The first generated clothing-reference test exposed cross-authority bleed: because the
+1-second outfit clip was rendered from text alone, it could invent a different face/body,
+and that invented appearance then influenced later story renders.
+
+Current fix:
+- use the Subject's original source Picture as the sole image reference while rendering the
+  1-second clothing clip;
+- inside that isolated render, source Picture 1 is identity-only authority and text is
+  clothing authority;
+- final story use remains unchanged: the sampled generated Picture is described as
+  clothing-only authority, so it should not redefine the character's identity;
+- dynamic/video-only Subjects without an original Picture remain a fallback case.
+
+This preserves the intended authority split:
+original Picture -> identity/body; generated current-clothing Picture -> wardrobe.
+
