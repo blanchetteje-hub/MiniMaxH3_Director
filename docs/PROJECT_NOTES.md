@@ -89,7 +89,7 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **Spatial travel is generalized:** interacting with something at another established position requires actual subject movement there first.
 - [x] **Final continuity state must match the final timed action**, not an earlier convenient state.
 - [x] **Barrier/containment and irreversible-state bookkeeping** has deterministic/narrow semantic support from earlier acceptance work.
-- [x] **Persistent movable-prop ledger architecture is implemented.** The existing combined-continuity call now also maintains stable IDs and state for distinct reusable/interactable props (for example mugs, glasses, baskets, tools, weapons, keys, and containers), including kind, owner, holder, location, contents, and present/lost/destroyed status. Unchanged props copy forward even when offscreen, so this adds no new always-on LLM stage.
+- [x] **Persistent movable-prop ledger architecture is implemented.** The existing combined-continuity call now also maintains stable IDs and state for distinct reusable/interactable props (for example mugs, glasses, baskets, tools, weapons, keys, and containers), including kind, owner, holder, location, contents, and present/lost/destroyed status. Unchanged props copy forward even when offscreen, so this adds no new always-on LLM stage. Existing source-authorized item effects (held/equipped/stored/dropped/lost) deterministically override prompt-derived ledger state rather than creating a competing inventory authority.
 - [x] **Missing-prop handling is proactive rather than generate/reject/regenerate.** Before RAW, only prop-interaction Beats trigger a tiny temperature-0 micro-call. If a required usable prop is not established, it returns one minimal natural staging instruction for Request 1; otherwise it returns nothing. Existing validators remain backstops rather than the normal repair loop.
 - [ ] **Production-verify movable-prop persistence/pre-staging.** The latest tavern run still had appearing/disappearing glasses and basket before this ledger was added. The next run should verify stable mug/glass/basket identity, possession/location, and container contents across segment boundaries.
 - [ ] **End-to-end bookkeeping stress test.** Use a story that stores, drops, retrieves, transfers, equips, loses, and later reuses props while characters leave/re-enter rooms.
@@ -2169,7 +2169,9 @@ cycle:
 2. Distinct reusable/interactable props receive stable IDs such as `mug_1` and carry
    `kind`, `owner`, `holder`, `location`, `contents`, and `status`
    (`present`, `lost`, or `destroyed`). Unchanged props copy forward even when
-   offscreen.
+   offscreen. Existing source-owned `set_item_state` effects remain higher authority:
+   held/equipped/stored/dropped/lost state is deterministically overlaid onto the ledger.
+   A source-owned destroyed object also marks a uniquely matching tracked prop destroyed.
 3. Architecture, fixed fixtures, furniture, clothing, and ambient clutter are excluded
    from this ledger. Static architectural existence remains a separate future bookkeeping
    concern.
