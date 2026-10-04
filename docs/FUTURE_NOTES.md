@@ -128,3 +128,28 @@ Potential direction:
 Keep this deterministic and structural where possible. The purpose is not to build a full 3D scene graph; it is to prevent impossible navigation and identity reuse of doors/rooms across segments.
 
 Status: deferred. Current production work should not be blocked on this.
+
+
+## RefMod reference-conditioning experiment
+
+Potential future implementation: evaluate **RefMod / MiniMax H3 reference conditioning** as an optimization and continuity tool. Do not integrate it into the current pipeline until controlled tests show a meaningful advantage over the existing reference-image/video workflow.
+
+Two promising uses:
+
+- **Compressed previous-segment video reference:** encode/compress the prior segment into reusable RefMod conditioning to see whether we can retain most of the current continuation/visual-continuity benefit while reducing the substantial VRAM and generation-time cost of passing the full previous video as a reference.
+- **Persistent location reference:** create reusable RefMod conditioning for important environments/locations (potentially from multiple views or a short environment/panorama video) so recurring locations retain stronger visual identity and geometry across segments.
+
+Suggested validation:
+1. Same prompt/seed/segment with no continuation reference.
+2. Current full previous-segment video reference.
+3. Equivalent RefMod-conditioned previous-segment reference.
+4. Compare character/wardrobe consistency, props, location geometry, transition quality, generation time, and peak VRAM.
+5. Separately test persistent location RefMods against the existing location/reference-image approach.
+
+Important constraints:
+- Treat RefMod as **visual conditioning**, not authoritative continuity state. Python/canonical state remains the source of truth for subjects, props, locations, and transitions.
+- Compression may discard details, so do not assume it can replace full video references for precise identity or short-term continuity.
+- Do not replace existing character reference images unless direct A/B testing shows RefMod is superior.
+- Prefer this as an optimization/conditioning layer rather than another semantic planning stage.
+
+Status: back-pocket experiment only; not part of current production architecture.
