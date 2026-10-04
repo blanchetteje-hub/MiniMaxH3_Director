@@ -846,11 +846,9 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIsInstance(width, int)
         self.assertIsInstance(height, int)
         self.assertLess(width, height)
-        self.assertAlmostEqual(
-            width / height,
-            minimax.CHARACTER_REFERENCE_ASPECT_WIDTH
-            / minimax.CHARACTER_REFERENCE_ASPECT_HEIGHT,
-            delta=0.04,
+        self.assertEqual(
+            width * minimax.CHARACTER_REFERENCE_ASPECT_HEIGHT,
+            height * minimax.CHARACTER_REFERENCE_ASPECT_WIDTH,
         )
 
         location = minimax.prepare_location_reference_workflow(
