@@ -1074,7 +1074,9 @@ WRITE THE SCENE
 - Show CURRENT BEAT clearly with concrete visible/audible action.
 - Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the End continuity state.
 - Use natural physical staging. Harmless local route or prop details are allowed when needed to make the action readable.
-- Preserve spatial continuity literally. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
+- Preserve spatial continuity literally. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut. This applies to every established position, not only doors or room changes.
+- Give every newly introduced foreground subject visible provenance. If the subject was not visible at frame 0, show it physically entering through a stated route/boundary, or explicitly move the camera to reveal that it was already present offscreen. Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
+- Preserve prop identity and provenance. A held or manipulated object must not silently become a different object. When a subject acquires a new prop, explicitly state where it comes from and the pickup/reach/take action before it is used, unless it is already established in the opening frame. When pouring or transferring between containers, keep the source container and destination container distinct and explicitly named through the transfer.
 - Prefer names when a pronoun could be ambiguous.
 - If CURRENT BEAT explicitly says someone says, asks, orders, tells, replies, or otherwise speaks intelligibly, write a brief direct spoken line in the form Speaker said <d>exact words</d> rather than indirect narration. Use said as the attribution verb in the audiovisual RAW. Do not add intelligible dialogue when CURRENT BEAT contains no speech act.
 {camera_choreography_rules}
@@ -28934,7 +28936,7 @@ def prepare_location_reference_workflow(
     loras=None,
     noise_seed=None,
 ):
-    """Prepare a character-free two-second static-environment reference render."""
+    """Prepare a character-free three-second static-environment reference render."""
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     label = f"location reference workflow '{INITIAL_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=False)
@@ -28995,6 +28997,54 @@ def prepare_location_reference_workflow(
     return workflow
 
 
+def strip_video_audio(video_path):
+    """Atomically remove every audio stream without re-encoding video."""
+    source_path = _validate_location_reference_path(video_path)
+    directory = os.path.dirname(source_path)
+    suffix = os.path.splitext(source_path)[1] or ".mp4"
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=".silent_location_reference_",
+        suffix=suffix,
+        dir=directory,
+    )
+    os.close(descriptor)
+    try:
+        command = [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            source_path,
+            "-map",
+            "0:v:0",
+            "-c:v",
+            "copy",
+            "-an",
+            temporary_path,
+        ]
+        try:
+            subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as error:
+            detail = getattr(error, "stderr", "") or str(error)
+            raise RuntimeError(
+                f"Failed to strip audio from location reference {source_path}: "
+                f"{str(detail).strip()}"
+            ) from error
+        _validate_location_reference_path(temporary_path)
+        os.replace(temporary_path, source_path)
+        return source_path
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+
 def render_location_reference_video(
     setting_description,
     requested_megapixels,
@@ -29030,11 +29080,12 @@ def render_location_reference_video(
             result = wait_for_completion(prompt_id)
             path = get_video_path(result, workflow)
             path = _validate_location_reference_path(path)
+            path = strip_video_audio(path)
             width, height = get_video_resolution(path)
             console_log(
                 f"Location reference created: {path}\n"
                 f"Resolution: {width} x {height}; "
-                f"duration={LOCATION_REFERENCE_DURATION_SECONDS:g}s",
+                f"duration={LOCATION_REFERENCE_DURATION_SECONDS:g}s; audio=removed",
                 flush=True,
             )
             return path
@@ -31857,15 +31908,23 @@ def build_director_raw_scene_coherence_messages(
                 "from it without an omitted move, teleport, unexplained prop/state change, "
                 "or hidden location transition. Do NOT require a participant introduced "
                 "by CURRENT BEAT to already exist in PREVIOUS SHOT END. A genuinely new "
-                "participant may enter or be revealed after the inherited frame-0 anchor; "
-                "do not reject the scene solely because that participant was absent from "
-                "the previous shot. Ordinary continuous camera motion may reveal another "
-                "part of the same established space, but an already-established subject "
-                "must not jump to a new location without stated movement. If the opening "
-                "state places an actor at a door and a later timed action has that actor "
-                "serve, touch, pour, or manipulate something at a distant bar/table/counter, "
-                "the timed scene must explicitly move the actor there first; merely "
-                "reaching across does not establish that movement. The trailing "
+                "participant may enter or be revealed after the inherited frame-0 anchor, but "
+                "that first appearance needs visible provenance: either explicit physical "
+                "entry through a stated route/boundary, or explicit continuous camera "
+                "movement that reveals the participant was already present offscreen. "
+                "Words such as 'appears', 'suddenly appears', or 'pops into view' alone "
+                "do not establish entry or reveal. Ordinary continuous camera motion may "
+                "reveal another part of the same established space, but an already-established "
+                "subject must not jump to a new location without stated movement. Whenever "
+                "an actor interacts with an object or target at a different established "
+                "position, the timed scene must explicitly move the actor there first; "
+                "merely reaching, moving a held prop toward it, or changing framing does "
+                "not establish actor travel. Preserve object identity and provenance across "
+                "timestamps: a held/manipulated prop cannot silently become another prop, "
+                "and a newly handled prop must be explicitly acquired from a stated source "
+                "unless it was already established in the opening frame. For transfers or "
+                "pouring between containers, require the source and destination containers "
+                "to remain distinct and traceable through the action. The trailing "
                 "End continuity state is part "
                 "of this check and MUST describe the state produced by the final timed "
                 "action. Any foreground participant visibly present in the final timed "
@@ -31892,9 +31951,11 @@ def build_director_raw_scene_coherence_messages(
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
                 "First compare PREVIOUS SHOT END with the inherited 00:00.000 anchor and reject "
-                "any omitted transition for already-established subjects/state. Do not "
-                "reject a new CURRENT BEAT participant merely because it enters after "
-                "frame 0. Then read the timed actions literally "
+                "any omitted transition for already-established subjects/state. For each "
+                "new CURRENT BEAT participant, require a shown physical entry or an explicit "
+                "camera reveal rather than unexplained appearance. Track actor positions and "
+                "prop identities literally across every timestamp, including pickups and "
+                "container-to-container transfers. Then read the timed actions literally "
                 "in order and explicitly compare the final timed action/result with "
                 "End continuity state.\n"
                 "If coherent: {\"valid\": true, \"issue\": \"\"}\n"
