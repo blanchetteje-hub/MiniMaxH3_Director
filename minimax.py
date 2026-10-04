@@ -327,14 +327,14 @@ PROP_LEDGER_STATUSES = frozenset({
 
 _PROP_STAGING_TRIGGER_RE = re.compile(
     r"(?i)\b(?:pour(?:s|ed|ing)?|drink(?:s|ing)?|sip(?:s|ped|ping)?|"
-    r"hold(?:s|ing)?|carry(?:ies|ing|ied)?|grab(?:s|bed|bing)?|"
+    r"hold(?:s|ing)?|carr(?:y|ies|ied|ying)|grab(?:s|bed|bing)?|"
     r"take(?:s|n|ing)?|pick(?:s|ed|ing)?\s+up|set(?:s|ting)?\s+down|"
-    r"place(?:s|d|ing)?|put(?:s|ting)?|hand(?:s|ed|ing)?|give(?:s|n|ing)?|"
-    r"pass(?:es|ed|ing)?|receive(?:s|d|ing)?|retriev(?:e|es|ed|ing)|"
-    r"wipe(?:s|d|ing)?|fill(?:s|ed|ing)?|"
-    r"empty(?:ies|ied|ing)?|drop(?:s|ped|ping)?|throw(?:s|n|ing)?|"
-    r"load(?:s|ed|ing)?|fire(?:s|d|ing)?|aim(?:s|ed|ing)?|swing(?:s|ing)?|"
-    r"insert(?:s|ed|ing)?|remove(?:s|d|ing)?|store(?:s|d|ing)?|"
+    r"plac(?:e|es|ed|ing)|put(?:s|ting)?|hand(?:s|ed|ing)?|giv(?:e|es|en|ing)|"
+    r"pass(?:es|ed|ing)?|receiv(?:e|es|ed|ing)|retriev(?:e|es|ed|ing)|"
+    r"wip(?:e|es|ed|ing)|fill(?:s|ed|ing)?|"
+    r"empt(?:y|ies|ied|ying)|drop(?:s|ped|ping)?|throw(?:s|n|ing)?|"
+    r"load(?:s|ed|ing)?|fir(?:e|es|ed|ing)|aim(?:s|ed|ing)?|swing(?:s|ing)?|"
+    r"insert(?:s|ed|ing)?|remov(?:e|es|ed|ing)|stor(?:e|es|ed|ing)|"
     r"stash(?:es|ed|ing)?|equip(?:s|ped|ping)?)\b"
 )
 
@@ -25047,6 +25047,10 @@ def request_combined_continuity(
                 committed_prop_ledger,
                 observed_props,
             )
+            prop_ledger = apply_authoritative_prop_state_effects(
+                prop_ledger,
+                assigned_state_effects,
+            )
             if str(subject_definitions or "").strip() or isinstance(
                 committed_state,
                 dict,
@@ -25121,6 +25125,10 @@ def request_combined_continuity(
         assigned_state_effects,
         barrier_binding=barrier_binding,
         committed_state=committed_state,
+    )
+    prop_ledger = apply_authoritative_prop_state_effects(
+        prop_ledger,
+        assigned_state_effects,
     )
     _print_continuity_phase_result(1, "COMBINED CONTINUITY", reduced_state)
     console_log("[Props] persistent ledger: " + format_prop_ledger_for_prompt(prop_ledger))
@@ -32152,6 +32160,108 @@ def merge_prop_ledger(committed, observed):
     merged = copy.deepcopy(normalize_prop_ledger(committed))
     merged.update(normalize_prop_ledger(observed))
     return merged
+
+
+def _prop_id_slug(value):
+    slug = re.sub(r"[^a-z0-9]+", "_", str(value or "").casefold()).strip("_")
+    return slug or "prop"
+
+
+def _find_or_create_authoritative_prop(ledger, kind, owner=""):
+    """Resolve one typed source item to a stable prop-ledger record."""
+    normalized_kind = " ".join(str(kind or "").split()).strip()
+    owner_text = " ".join(str(owner or "").split()).strip()
+    kind_key = normalized_kind.casefold()
+    owner_key = owner_text.casefold()
+    matches = [
+        prop_id
+        for prop_id, record in ledger.items()
+        if str(record.get("kind") or "").casefold() == kind_key
+    ]
+    owner_matches = [
+        prop_id
+        for prop_id in matches
+        if str(ledger[prop_id].get("owner") or "").casefold() == owner_key
+    ]
+    if len(owner_matches) == 1:
+        return owner_matches[0]
+    if len(matches) == 1:
+        return matches[0]
+
+    base = _prop_id_slug(normalized_kind)
+    index = 1
+    prop_id = f"{base}_{index}"
+    while prop_id in ledger:
+        index += 1
+        prop_id = f"{base}_{index}"
+    ledger[prop_id] = {
+        "kind": normalized_kind,
+        "owner": owner_text or "N/A",
+        "holder": "N/A",
+        "location": "N/A",
+        "contents": "N/A",
+        "status": "present",
+    }
+    return prop_id
+
+
+def apply_authoritative_prop_state_effects(prop_ledger, effects):
+    """Overlay source-owned item/object effects onto prompt-derived prop state."""
+    ledger = copy.deepcopy(normalize_prop_ledger(prop_ledger))
+    try:
+        normalized_effects = _validate_state_effects(list(effects or []))
+    except (TypeError, ValueError):
+        return ledger
+
+    for effect in normalized_effects:
+        op = effect.get("op")
+        if op == "set_item_state":
+            kind = effect["entity"]
+            owner = effect["owner"]
+            prop_id = _find_or_create_authoritative_prop(ledger, kind, owner)
+            record = ledger[prop_id]
+            record["kind"] = kind
+            record["owner"] = owner
+            value = effect["value"]
+            if value == "held":
+                record["holder"] = owner
+                record["location"] = "N/A"
+                record["status"] = "present"
+            elif value == "equipped":
+                record["holder"] = "N/A"
+                if record.get("location") in {"", "N/A"}:
+                    record["location"] = f"equipped on {owner}"
+                record["status"] = "present"
+            elif value == "stored":
+                record["holder"] = "N/A"
+                if record.get("location") in {"", "N/A"}:
+                    record["location"] = f"stored by {owner}"
+                record["status"] = "present"
+            elif value == "dropped":
+                record["holder"] = "N/A"
+                if record.get("location") in {"", "N/A"}:
+                    record["location"] = f"dropped near {owner}"
+                record["status"] = "present"
+            elif value == "lost":
+                record["holder"] = "N/A"
+                record["location"] = "N/A"
+                record["status"] = "lost"
+        elif op == "set_object_state" and effect.get("value") == "destroyed":
+            kind_key = str(effect.get("entity") or "").casefold()
+            matches = [
+                prop_id
+                for prop_id, record in ledger.items()
+                if (
+                    prop_id.casefold() == kind_key
+                    or str(record.get("kind") or "").casefold() == kind_key
+                )
+            ]
+            if len(matches) == 1:
+                record = ledger[matches[0]]
+                record["holder"] = "N/A"
+                record["location"] = "N/A"
+                record["status"] = "destroyed"
+    return ledger
 
 
 def format_prop_ledger_for_prompt(prop_ledger):
