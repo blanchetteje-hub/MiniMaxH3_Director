@@ -374,6 +374,8 @@ BEAT_VALIDATION_STATE_VERSION = 3
 # Model/formatter choice must never change sampling, reasoning, prompt transport,
 # or validator behavior.
 BENCHMARK_SEED = 42
+DEFAULT_STORY_TEMPERATURE = 0.4
+DEFAULT_REFRESH_INTERVAL = 999
 REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
 
 CREATIVE_GENERATION_LLM_SETTINGS = {
@@ -407,7 +409,7 @@ BEAT_WRITING_LLM_SETTINGS = {
 }
 
 STORY_EXPANSION_LLM_SETTINGS = {
-    "temperature": 0.8,
+    "temperature": DEFAULT_STORY_TEMPERATURE,
     "top_p": 0.95,
     "top_k": 0,
     "min_p": 0.05,
@@ -1072,8 +1074,9 @@ WRITE THE SCENE
 - Show CURRENT BEAT clearly with concrete visible/audible action.
 - Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the End continuity state.
 - Use natural physical staging. Harmless local route or prop details are allowed when needed to make the action readable.
+- Preserve spatial continuity literally. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
 - Prefer names when a pronoun could be ambiguous.
-- Short dialogue is allowed when it naturally supports CURRENT BEAT.
+- If CURRENT BEAT explicitly says someone says, asks, orders, tells, replies, or otherwise speaks intelligibly, write a brief direct spoken line using <d>...</d> rather than indirect narration. Do not add intelligible dialogue when CURRENT BEAT contains no speech act.
 {camera_choreography_rules}
 - Keep all timed action inside the {segment_seconds}-second clip.
 - The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor. PREVIOUS SHOT END is semantic physical state and may include subjects that are off camera; never infer that every listed subject must be visible at frame 0. When a continuation guide is supplied, the guide—not PREVIOUS SHOT END—owns the visible frame-0 composition. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. Start CURRENT BEAT at the next timestamp. A subject introduced by CURRENT BEAT may enter or be revealed only after that handoff. For the opening segment, stage frame 0 normally.
@@ -1103,9 +1106,9 @@ Rules:
 - Preserve every visible action and its order, every timestamp, and every
   camera movement explicitly supplied by RAW SCENE. Make the segment's action
   the main content of detailed_description.
-- Preserve dialogue verbatim. Put spoken dialogue in the existing form `(S1)
-  <d>[English] exact words</d>` with the established stable speaker ID when
-  applicable. Do not put spoken dialogue outside <d>, invent dialogue, or put
+- Preserve dialogue verbatim. Put spoken dialogue in the form `(S1) said
+  <d>exact words</d>` with the established stable speaker ID when applicable.
+  Do not put spoken dialogue outside <d>, invent dialogue, or put
   speaker IDs on ordinary visual prose when names are used.
 - Use AUTHORITATIVE OPENING STATE only to establish the minimum facts needed
   for the image at frame 0. Do not copy unrelated continuity facts, repeat the
@@ -1697,7 +1700,7 @@ def get_formatter(model):
 
 
 # Select the formatter used by the existing generation pipeline.
-def configure_story_temperature(value=0.8):
+def configure_story_temperature(value=DEFAULT_STORY_TEMPERATURE):
     """Set temperature only for the initial summary-to-story writing stage."""
     value = float(value)
     if not math.isfinite(value) or value < 0:
@@ -2080,8 +2083,11 @@ def parse_args(arguments=None):
         help="resolution target (default: 0.5)",
     )
     parser.add_argument(
-        "--temp", type=float, default=0.8, metavar="N",
-        help="temperature for the initial story-writing LLM call only (default: 0.8)",
+        "--temp", type=float, default=DEFAULT_STORY_TEMPERATURE, metavar="N",
+        help=(
+            "temperature for the initial story-writing LLM call only "
+            f"(default: {DEFAULT_STORY_TEMPERATURE:g})"
+        ),
     )
     parser.add_argument(
         "--no-music", action="store_true",
@@ -2123,11 +2129,12 @@ def parse_args(arguments=None):
     parser.add_argument(
         "--refresh",
         type=int,
-        default=6,
+        default=DEFAULT_REFRESH_INTERVAL,
         metavar="SEGMENTS",
         help=(
             "regenerate from the preceding segment's last frame on every "
-            "SEGMENTS-th segment (default: 6)"
+            "SEGMENTS-th segment "
+            f"(default: {DEFAULT_REFRESH_INTERVAL})"
         ),
     )
     parser.add_argument(
@@ -2581,19 +2588,19 @@ def source_span_refresh_segments(macro_arc):
 def is_refresh_segment(segment_number, refresh_interval=None, macro_arc=None):
     """Return whether this non-opening segment uses the refresh workflow.
 
-    Source-span chapter openings are authoritative when present. The legacy
-    numeric refresh interval remains only for runs without source-span chapters.
+    An explicitly supplied numeric interval is authoritative. Source-span chapter
+    openings remain only as the compatibility fallback when no interval is supplied.
     """
     segment_number = int(segment_number)
     if segment_number <= 1:
         return False
+    if refresh_interval is not None:
+        return bool(
+            refresh_interval
+            and segment_number % int(refresh_interval) == 0
+        )
     chapter_refreshes = source_span_refresh_segments(macro_arc)
-    if chapter_refreshes:
-        return segment_number in chapter_refreshes
-    return bool(
-        refresh_interval
-        and segment_number % int(refresh_interval) == 0
-    )
+    return segment_number in chapter_refreshes
 
 
 # Return whether the rendered-frame visual continuity gate should run.
@@ -9089,6 +9096,7 @@ def ask_llm(
     response_history_purposes = beat_history_purposes | {
         "director_raw_scene",
         "director_h3_formatter",
+        "director_raw_scene_subject_resolution",
         "continuity_combined_reduced_state",
         "continuity_phase_2_h3_opening",
     }
@@ -17519,7 +17527,7 @@ def strip_story_beat_timestamps(text):
 
 
 def build_story_expansion_messages(summary, duration_seconds, total_segments=None):
-    """Build the novelist pass that expands story.txt into continuous prose."""
+    """Build the film-ready prose pass that expands story.txt into continuous prose."""
     duration_seconds = float(duration_seconds)
     beat_support_rule = (
         f"Write enough concrete sequential action to support {int(total_segments)} distinct film beats."
@@ -17535,9 +17543,9 @@ def build_story_expansion_messages(summary, duration_seconds, total_segments=Non
         {
             "role": "system",
             "content": (
-                "You are a novelist. Write a short story based on the following "
-                "summary. Take the genre of the summary into account when "
-                "deciding what to focus on for the majority of the story."
+                "Write a short, film-ready story from the supplied summary. "
+                "Use concrete, literal, physically unambiguous prose while preserving "
+                "the summary's genre and tone."
             ),
         },
         {
@@ -17551,7 +17559,9 @@ Preserve every explicit event and outcome in the summary in the same order.
 Every explicit event in the summary must happen visibly in the story. Do not
 compress, imply, or skip an explicit transition. If a character moves from one
 location to another, write the movement clearly enough that the character's
-location is unambiguous.
+location is unambiguous. Describe physical actions literally: make attachment,
+movement, action targets, containers, and destinations explicit. Avoid poetic or
+figurative wording when it could change how an action or object is visualized.
 {beat_support_rule}
 You may add connective staging and concrete detail, but do not add a new major
 plot event, outcome, or named character.
@@ -21599,7 +21609,7 @@ def _repair_named_dialogue_speaker_ids(description, subject_definitions):
             speakers.append((name, speaker))
 
     speech_re = re.compile(
-        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"(?i)\b(?:says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|"
         r"calls?(?:\s+out)?|cries|screams?|murmurs?|mutters?|growls?)\b"
     )
     blocks = list(re.finditer(r"<d>.*?</d>", text, re.I | re.S))
@@ -22332,7 +22342,7 @@ def extract_dialogue_subject_declarations(detailed_description):
         r"(?:<Subject\s+(?P<subject>\d+)>\s+)?"
         r"(?P<name>[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*){0,4})\s+"
         r"\((?P<speaker>S\d+)\)\s+"
-        r"(?:says in an off-screen voiceover|says?|asks?|answers?|replies|"
+        r"(?:says in an off-screen voiceover|says?|said|asks?|answers?|replies|"
         r"shouts?|whispers?|yells?|tells?|exclaims?|narrates?|yelps?|cries|"
         r"calls?(?:\s+out)?|murmurs?|mutters?|growls?|screams?)"
         r"[^<>.!?]{0,120}:?\s*$",
@@ -25997,7 +26007,7 @@ def repair_h3_subject_identity(prompt, subject_definitions, continuity_state=Non
     # attributed dialogue but Request 1/2 omitted the token. This runs after
     # dynamic Subject registration, so Python never guesses an S-number.
     speech_verbs = (
-        r"says?|asks?|answers?|replies|shouts?|whispers?|yells?|tells?|"
+        r"says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|tells?|"
         r"exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|mutters?|"
         r"growls?|screams?"
     )
@@ -26590,7 +26600,7 @@ def _h3_visual_identity_text(detailed_description):
         blank(match.start(), match.end())
 
     speech_pattern = re.compile(
-        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"(?i)\b(?:says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|"
         r"tells?|exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|"
         r"mutters?|growls?|screams?)\b"
     )
@@ -27062,7 +27072,7 @@ def _h3_contains_spoken_dialogue(detailed_description):
 
     quote_pattern = r"(?:\"[^\"\r\n]+\"|'[^'\r\n]+'|“[^”\r\n]+”|‘[^’\r\n]+’)"
     speech_pattern = (
-        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"(?i)\b(?:says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|"
         r"tells?|exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|"
         r"mutters?|growls?|screams?)\b"
     )
@@ -27085,6 +27095,28 @@ def format_h3_spoken_dialogue_constraint(detailed_description):
     if _h3_contains_spoken_dialogue(detailed_description):
         return ""
     return "No intelligible spoken dialogue is heard in this segment."
+
+
+_DIRECTOR_REQUIRED_SPEECH_RE = re.compile(
+    r"(?i)\b(?:says?|said|asks?|asked|orders?|ordered|tells?|told|"
+    r"repl(?:y|ies|ied)|answers?|answered|shouts?|shouted|whispers?|whispered|"
+    r"yells?|yelled|calls?\s+out|called\s+out|cries?|cried|murmurs?|murmured|"
+    r"mutters?|muttered|growls?|growled|screams?|screamed)\b"
+)
+
+
+def director_required_dialogue_issue(current_beat, raw_scene):
+    """Require direct tagged dialogue when the assigned Beat explicitly contains speech."""
+    beat = str(current_beat or "")
+    if not _DIRECTOR_REQUIRED_SPEECH_RE.search(beat):
+        return ""
+    if _DIALOGUE_BLOCK_PATTERN.search(str(raw_scene or "")):
+        return ""
+    return (
+        "CURRENT BEAT explicitly requires intelligible speech, but RAW SCENE "
+        "contains no <d>...</d> dialogue. Render the speech directly, for example "
+        "Speaker said <d>Give me a pint.</d>, while preserving the Beat's meaning."
+    )
 
 
 # Open a continuation description as the canonical ``[Shot 1]`` form.
@@ -31830,7 +31862,11 @@ def build_director_raw_scene_coherence_messages(
                 "do not reject the scene solely because that participant was absent from "
                 "the previous shot. Ordinary continuous camera motion may reveal another "
                 "part of the same established space, but an already-established subject "
-                "must not jump to a new location without stated movement. The trailing "
+                "must not jump to a new location without stated movement. If the opening "
+                "state places an actor at a door and a later timed action has that actor "
+                "serve, touch, pour, or manipulate something at a distant bar/table/counter, "
+                "the timed scene must explicitly move the actor there first; merely "
+                "reaching across does not establish that movement. The trailing "
                 "End continuity state is part "
                 "of this check and MUST describe the state produced by the final timed "
                 "action. Any foreground participant visibly present in the final timed "
@@ -32008,6 +32044,34 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 continue
 
             current_beat_text = str(bundle.get("current_beat_text") or "").strip()
+            dialogue_issue = director_required_dialogue_issue(
+                current_beat_text,
+                raw_scene,
+            )
+            if dialogue_issue:
+                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    raise BeatGenerationError(
+                        f"Director Request 1 never rendered required direct dialogue "
+                        f"for Segment {segment_number}: {dialogue_issue}"
+                    )
+                console_log(
+                    f"Director Request 1 dialogue contract failed "
+                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                    f"retrying: {dialogue_issue}",
+                    flush=True,
+                )
+                request1_messages = copy.deepcopy(request1_base_messages)
+                if request1_messages:
+                    request1_messages[-1] = dict(request1_messages[-1])
+                    request1_messages[-1]["content"] = (
+                        f"{request1_messages[-1].get('content', '')}\n\n"
+                        "RETRY: CURRENT BEAT requires intelligible speech. Replace "
+                        "indirect narration such as asks/orders/says with one brief "
+                        "direct line in the form Speaker said <d>exact words</d>. "
+                        "Preserve the Beat's meaning and do not invent extra information."
+                    )
+                continue
+
             if current_beat_text:
                 try:
                     coherence = validate_director_raw_scene_coherence(
@@ -32649,7 +32713,9 @@ def _run_main(
             "arc/beat generation is disabled.",
             flush=True,
         )
-    configure_story_temperature(getattr(args, "temp", 0.8))
+    configure_story_temperature(
+        getattr(args, "temp", DEFAULT_STORY_TEMPERATURE)
+    )
     configure_formatter(getattr(args, "model", "gpt"))
     global_loras = normalize_lora_list(getattr(args, "lora", ()))
     lora_directory = getattr(args, "lora_dir", LORA_DIRECTORY)
@@ -33631,28 +33697,41 @@ def _run_main(
         raw_subject_names = []
         accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
         resolved_raw_scene = accepted_raw_scene
-        try:
-            resolved_raw_scene, raw_subject_names = resolve_director_raw_scene_subjects(
-                accepted_raw_scene,
-                subject_definitions=subject_definitions,
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": run_config["source_sha256"],
-                    "segment": segment,
-                },
-                segment_seconds=segment_bundle["current_duration"],
-            )
-        except (
-            LLMConnectionError,
-            requests.RequestException,
-            OSError,
-            ValueError,
-            TypeError,
-        ) as error:
-            console_log(
-                f"WARNING: RAW Subject resolution failed for Segment {segment}; "
-                f"using accepted RAW unchanged: {error}",
-                flush=True,
+        subject_resolution_error = None
+        subject_resolution_succeeded = False
+        for subject_attempt in range(1, 3):
+            try:
+                resolved_raw_scene, raw_subject_names = resolve_director_raw_scene_subjects(
+                    accepted_raw_scene,
+                    subject_definitions=subject_definitions,
+                    history_metadata={
+                        "run_id": run_id,
+                        "source_sha256": run_config["source_sha256"],
+                        "segment": segment,
+                        "attempt": subject_attempt,
+                    },
+                    segment_seconds=segment_bundle["current_duration"],
+                )
+                subject_resolution_succeeded = True
+                break
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+            ) as error:
+                subject_resolution_error = error
+                if subject_attempt < 2:
+                    console_log(
+                        f"RAW Subject resolution failed for Segment {segment} "
+                        f"(attempt {subject_attempt}/2); retrying: {error}",
+                        flush=True,
+                    )
+        if not subject_resolution_succeeded:
+            raise BeatGenerationError(
+                f"RAW Subject resolution failed for Segment {segment} after "
+                f"2 attempts: {subject_resolution_error}"
             )
         payload["raw_scene"] = resolved_raw_scene
         llm_result["detailed_description"] = inject_persistent_state_into_description(
@@ -33710,6 +33789,20 @@ def _run_main(
         newly_registered_names = list(dict.fromkeys(
             dialogue_subject_names + hinted_subject_names
         ))
+        missing_resolved_subjects = [
+            name
+            for name in raw_subject_names
+            if _find_existing_subject_name(
+                continuity_state.get("subjects", {}),
+                name,
+            ) is None
+        ]
+        if missing_resolved_subjects:
+            raise BeatGenerationError(
+                f"Segment {segment} resolved dynamic Subject(s) that were not "
+                "registered before H3 assembly: "
+                + ", ".join(missing_resolved_subjects)
+            )
         if newly_registered_names:
             previous_dynamic_definitions = list(additional_subject_definitions)
             additional_subject_definitions, new_subject_lines = (
