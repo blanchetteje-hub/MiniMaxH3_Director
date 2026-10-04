@@ -927,7 +927,7 @@ frame alignment and stitching trims can affect the final encoded duration.
 | `--temp N` | Temperature for the initial story-writing LLM call only; defaults to `0.4`. Must be finite and zero or greater. Available as **Story temperature** under New → Prompt & story options. |
 | `--no-music` | Skip the music LLM request and set `non_diegetic_music` to `N/A`; soundscape generation still runs. |
 | `--steps STEPS` | BasicScheduler sampling steps for all workflows; defaults to `6`. |
-| `--trim-frames FRAMES` | Trim this many leading frames from every segment after the first when stitching; defaults to `2`, and `0` disables the trim. |
+| `--trim-frames FRAMES` | Trim this many leading frames from non-guided continuation clips when stitching; guided clips already remove the exact native Guide overlap. Defaults to `2`. |
 | `--refresh SEGMENTS` | Automatic clean-refresh cadence. An explicit value overrides source-span chapter refreshes; defaults to `999` so routine auto-refresh is effectively disabled. |
 | `--retention` | Add retention analysis to non-initial H3 prompts; disabled by default. |
 | `--test-prompt-generation` | Generate and print all prompts without submitting anything to ComfyUI or rendering video; disabled by default. |
