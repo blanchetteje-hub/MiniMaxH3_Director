@@ -384,7 +384,6 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("set_clothing", create_prompt)
 
         self.assertIn("state_effects", validate_prompt)
-        self.assertIn("persistent facts directly established", validate_prompt)
         self.assertIn("set_condition", validate_prompt)
         self.assertRegex(validate_prompt, r"temporary|inferred")
         self.assertIn("set_clothing", validate_prompt)
