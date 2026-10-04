@@ -467,3 +467,29 @@ must preserve the established lantern placement and Elf1's table. Do not chase t
 overall quality degradation yet: this analyzed run predates the 13:19 character-reference
 and clothing-reference persistence fixes.
 
+### 2026-10-04 — 16GB split-mode reference assets fixed
+
+The 16GB path was audited after noticing that versioned/torn-clothing references cannot be
+created during the LLM-only phase. The issue was real: prompt-only mode skipped ComfyUI,
+therefore it also skipped location-reference and dynamic character/clothing-reference
+creation, while render-only mode assumed those files already existed.
+
+Current behavior:
+
+- `generated_prompts.txt` now contains ordered `reference_jobs` in addition to segment
+  prompts;
+- location and character reference jobs freeze all generation inputs needed by ComfyUI;
+- character outputs are immutable/versioned PNGs, with a run token in prompt-only mode;
+- a later dynamic-character clothing state references the prior generated Picture as its
+  identity dependency instead of overwriting it;
+- each segment retains the exact reference-version metadata that was current when its H3
+  prompt was finalized;
+- the render-only phase generates all saved references first in dependency order, then
+  renders the saved segments in order;
+- prompt-only H3 text receives the same persistent-location authority clause as normal mode.
+
+Acceptance target: run the desktop 16GB flow end-to-end with at least one dynamic character
+and one explicit clothing-condition change, inspect `generated_prompts.txt` before starting
+ComfyUI, then verify v001 and v002 both remain under `output/video/state` and the appropriate
+segment uses each version.
+

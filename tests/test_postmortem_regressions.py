@@ -838,6 +838,69 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertEqual(refs["Traveler1"]["authority"], "identity_and_clothing")
 
+    def test_prompt_only_reference_planner_versions_without_rendering(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Traveler1"] = minimax.new_subject_continuity_record({
+            "subject_id": 2,
+            "name": "Traveler1",
+            "canonical_description": "Traveler1 is a traveler.",
+        })
+        jobs = []
+
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="",
+        ), mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+        ) as render:
+            refs, changed = minimax.plan_character_reference_images(
+                "Traveler1 enters the room.",
+                "<Subject 2> is Traveler1 (S2). Traveler1 is a traveler.",
+                state,
+                {},
+                1,
+                0.5,
+                6,
+                segment_number=1,
+                reference_jobs=jobs,
+                file_token="testrun",
+            )
+            refs, changed2 = minimax.plan_character_reference_images(
+                "Traveler1 keeps walking.",
+                "<Subject 2> is Traveler1 (S2). Traveler1 is a traveler.",
+                state,
+                refs,
+                1,
+                0.5,
+                6,
+                segment_number=2,
+                reference_jobs=jobs,
+                file_token="testrun",
+                prior_detailed_description="Traveler1's coat is torn.",
+            )
+
+        render.assert_not_called()
+        self.assertEqual(changed, ["Traveler1"])
+        self.assertEqual(changed2, ["Traveler1"])
+        self.assertEqual(len(jobs), 2)
+        self.assertEqual(jobs[0]["version"], 1)
+        self.assertEqual(jobs[1]["version"], 2)
+        self.assertNotEqual(
+            jobs[0]["output_reference"]["image_name"],
+            jobs[1]["output_reference"]["image_name"],
+        )
+        self.assertEqual(
+            jobs[1]["identity_source"]["kind"],
+            "generated_reference",
+        )
+        self.assertEqual(
+            jobs[1]["identity_source"]["reference"]["version"],
+            1,
+        )
+        self.assertEqual(refs["Traveler1"]["version"], 2)
+
     def test_character_reference_picture_number_stays_stable_on_outfit_change(self):
         state = minimax.new_continuity_state()
         state["subjects"]["Amy"] = minimax.new_subject_continuity_record({

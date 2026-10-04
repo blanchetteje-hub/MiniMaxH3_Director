@@ -29808,6 +29808,27 @@ def _character_reference_filename_token(name):
     return token[:48] or "character"
 
 
+def character_reference_frame_name(
+    character_name,
+    picture_number,
+    version,
+    *,
+    file_token="",
+):
+    """Return the immutable state-PNG filename for one reference version."""
+    token = re.sub(
+        r"[^A-Za-z0-9_-]+",
+        "_",
+        str(file_token or "").strip(),
+    ).strip("_")
+    token_part = f"{token}_" if token else ""
+    return (
+        f"minimax_character_ref_{token_part}{int(picture_number):03d}_"
+        f"{_character_reference_filename_token(character_name)}_"
+        f"v{int(version):03d}.png"
+    )
+
+
 def render_character_reference_image(
     character_name,
     character_description,
@@ -29818,8 +29839,10 @@ def render_character_reference_image(
     *,
     loras=None,
     identity_image_name="",
+    noise_seed=None,
+    file_token="",
 ):
-    """Render one second, then sample exactly the 0.5-second clothing frame."""
+    """Render one second, then sample exactly the 0.5-second reference frame."""
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
         current_megapixels = max(
             0.01,
@@ -29832,6 +29855,7 @@ def render_character_reference_image(
             loras=loras,
             picture_number=picture_number,
             identity_image_name=identity_image_name,
+            noise_seed=noise_seed,
         )
         try:
             prompt_id = queue_workflow(workflow)
@@ -29847,10 +29871,11 @@ def render_character_reference_image(
                 frame_count - 1,
                 int(round(CHARACTER_REFERENCE_SAMPLE_SECONDS * FRAME_RATE)),
             )
-            frame_name = (
-                f"minimax_character_ref_{int(picture_number):03d}_"
-                f"{_character_reference_filename_token(character_name)}_"
-                f"v{int(version):03d}.png"
+            frame_name = character_reference_frame_name(
+                character_name,
+                picture_number,
+                version,
+                file_token=file_token,
             )
             extract_video_frame(
                 video_path,
@@ -30003,6 +30028,149 @@ def ensure_character_reference_images(
     return references, changed
 
 
+def plan_character_reference_images(
+    detailed_description,
+    subject_definitions,
+    continuity_state,
+    character_references,
+    base_reference_count,
+    requested_megapixels,
+    steps,
+    *,
+    segment_number,
+    reference_jobs,
+    file_token="",
+    subject_descriptions=None,
+    loras=None,
+    prior_detailed_description="",
+):
+    """Plan immutable character-reference renders without contacting ComfyUI."""
+    references = normalize_character_reference_images(character_references)
+    jobs = reference_jobs if isinstance(reference_jobs, list) else []
+    state = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(continuity_state),
+    )
+    visual_text = _h3_visual_identity_text(detailed_description)
+    changed = []
+    for name, record in state.get("subjects", {}).items():
+        if not isinstance(record, dict):
+            continue
+        if re.search(
+            rf"(?i)(?<!\w){re.escape(str(name).strip())}(?!\w)",
+            visual_text,
+        ) is None:
+            continue
+
+        existing = references.get(name)
+        source_identity_image_name = subject_identity_reference_image(record)
+        if existing and not existing.get("authority"):
+            existing["authority"] = (
+                "clothing_only"
+                if source_identity_image_name
+                else "identity_and_clothing"
+            )
+        if existing and not _wardrobe_reference_change_authorized(
+            prior_detailed_description,
+            name,
+        ):
+            continue
+
+        description, intended_wardrobe, clothing_condition = (
+            build_character_reference_target_description(
+                name,
+                record,
+                existing_reference=existing,
+                prior_change_description=prior_detailed_description,
+                subject_descriptions=subject_descriptions,
+                current_description=detailed_description,
+            )
+        )
+        if not description:
+            continue
+        signature = hashlib.sha256(
+            description.casefold().encode("utf-8")
+        ).hexdigest()
+        if existing and existing.get("signature") == signature:
+            continue
+
+        if existing:
+            picture_number = int(existing["picture_number"])
+            version = int(existing.get("version") or 1) + 1
+        else:
+            picture_number = int(base_reference_count) + len(references) + 1
+            version = 1
+
+        authority = (
+            str(existing.get("authority") or "").strip()
+            if existing
+            else (
+                "clothing_only"
+                if source_identity_image_name
+                else "identity_and_clothing"
+            )
+        )
+        if source_identity_image_name:
+            identity_source = {
+                "kind": "configured_picture",
+                "image_name": source_identity_image_name,
+            }
+        elif existing and authority == "identity_and_clothing":
+            identity_source = {
+                "kind": "generated_reference",
+                "reference": copy.deepcopy(existing),
+            }
+        else:
+            identity_source = {"kind": "none"}
+
+        frame_name = character_reference_frame_name(
+            name,
+            picture_number,
+            version,
+            file_token=file_token,
+        )
+        frame_path = os.path.abspath(
+            os.path.join(STATE_MEDIA_OUTPUT, frame_name)
+        )
+        planned = {
+            "name": name,
+            "picture_number": picture_number,
+            "image_name": frame_name,
+            "image_path": frame_path,
+            "signature": signature,
+            "version": version,
+            "description": description,
+            "wardrobe": copy.deepcopy(intended_wardrobe),
+            "clothing_condition": clothing_condition,
+            "authority": authority,
+        }
+        jobs.append({
+            "job_id": (
+                f"character:{_character_reference_filename_token(name)}:"
+                f"picture-{picture_number}:v{version:03d}"
+            ),
+            "kind": "character_reference",
+            "before_segment": int(segment_number),
+            "character_name": name,
+            "character_description": description,
+            "picture_number": picture_number,
+            "version": version,
+            "megapixels": float(requested_megapixels),
+            "steps": int(steps),
+            "loras": [
+                list(item)
+                for item in normalize_lora_list(loras)
+            ],
+            "noise_seed": generate_random_seed(),
+            "file_token": str(file_token or ""),
+            "identity_source": identity_source,
+            "output_reference": copy.deepcopy(planned),
+        })
+        references[name] = planned
+        changed.append(name)
+    return references, changed
+
+
 # Render one segment, retrying only recoverable ComfyUI failures.
 def prepare_location_reference_workflow(
     setting_description,
@@ -30126,6 +30294,7 @@ def render_location_reference_video(
     steps,
     *,
     loras=None,
+    noise_seed=None,
 ):
     """Render the one persistent location-memory video for the run."""
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
@@ -30145,6 +30314,7 @@ def render_location_reference_video(
             current_megapixels,
             steps=steps,
             loras=loras,
+            noise_seed=noise_seed,
         )
         try:
             prompt_id = queue_workflow(workflow)
@@ -34211,8 +34381,26 @@ def load_generated_prompts_file(path=GENERATED_PROMPTS_FILE):
         raise ValueError("generated_prompts.txt has an unsupported format.")
     config = payload.get("config")
     prompts = payload.get("prompts")
+    reference_jobs = payload.get("reference_jobs", [])
     if not isinstance(config, dict) or not isinstance(prompts, list) or not prompts:
         raise ValueError("generated_prompts.txt is missing config or prompts.")
+    if not isinstance(reference_jobs, list):
+        raise ValueError("generated_prompts.txt reference_jobs must be a list.")
+    for job in reference_jobs:
+        if (
+            not isinstance(job, dict)
+            or job.get("kind") not in {
+                "location_reference",
+                "character_reference",
+            }
+            or not isinstance(job.get("job_id"), str)
+            or not job["job_id"].strip()
+            or not isinstance(job.get("before_segment"), int)
+            or job["before_segment"] < 1
+        ):
+            raise ValueError(
+                "generated_prompts.txt contains an invalid reference job."
+            )
     for expected_segment, record in enumerate(prompts, start=1):
         if (
             not isinstance(record, dict)
@@ -34225,6 +34413,85 @@ def load_generated_prompts_file(path=GENERATED_PROMPTS_FILE):
                 f"record at segment {expected_segment}."
             )
     return payload
+
+
+def _saved_reference_job_identity_image(identity_source):
+    """Resolve one saved character-reference dependency at ComfyUI render time."""
+    source = identity_source if isinstance(identity_source, dict) else {}
+    kind = str(source.get("kind") or "none").strip()
+    if kind == "none":
+        return ""
+    if kind == "configured_picture":
+        image_name = str(source.get("image_name") or "").strip()
+        if not image_name:
+            raise ValueError(
+                "Saved configured-picture identity source has no image_name."
+            )
+        return image_name
+    if kind == "generated_reference":
+        reference = source.get("reference")
+        if not isinstance(reference, dict):
+            raise ValueError(
+                "Saved generated-reference identity source has no reference metadata."
+            )
+        return stage_character_reference_image(reference)
+    raise ValueError(f"Unknown saved identity source kind: {kind!r}")
+
+
+def render_saved_reference_jobs(reference_jobs):
+    """Execute immutable saved reference jobs in package order."""
+    location_reference_video_path = ""
+    completed = set()
+    for job in reference_jobs or []:
+        job_id = str(job.get("job_id") or "").strip()
+        if not job_id or job_id in completed:
+            raise ValueError(
+                f"Duplicate or empty saved reference job id: {job_id!r}."
+            )
+        kind = str(job.get("kind") or "").strip()
+        if kind == "location_reference":
+            location_reference_video_path = render_location_reference_video(
+                job["setting_description"],
+                float(job["megapixels"]),
+                int(job["steps"]),
+                loras=normalize_lora_list(job.get("loras", [])),
+                noise_seed=int(job["noise_seed"]),
+            )
+        elif kind == "character_reference":
+            output_reference = job.get("output_reference")
+            if not isinstance(output_reference, dict):
+                raise ValueError(
+                    f"Saved character reference job {job_id!r} has no output_reference."
+                )
+            identity_image_name = _saved_reference_job_identity_image(
+                job.get("identity_source")
+            )
+            actual_path = render_character_reference_image(
+                job["character_name"],
+                job["character_description"],
+                int(job["picture_number"]),
+                int(job["version"]),
+                float(job["megapixels"]),
+                int(job["steps"]),
+                loras=normalize_lora_list(job.get("loras", [])),
+                identity_image_name=identity_image_name,
+                noise_seed=int(job["noise_seed"]),
+                file_token=str(job.get("file_token") or ""),
+            )
+            expected_path = os.path.abspath(
+                str(output_reference.get("image_path") or "")
+            )
+            if expected_path and os.path.abspath(actual_path) != expected_path:
+                raise RuntimeError(
+                    f"Saved character reference job {job_id!r} produced "
+                    f"{actual_path!r}; expected {expected_path!r}."
+                )
+        else:
+            raise ValueError(
+                f"Unknown saved reference job kind: {kind!r}."
+            )
+        completed.add(job_id)
+    return location_reference_video_path
 
 
 def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
@@ -34257,11 +34524,21 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
     refresh_interval = config.get("refresh_interval")
     macro_arc = payload.get("macro_arc")
     total_segments = len(prompts)
+    reference_jobs = payload.get("reference_jobs", [])
     location_reference_video_path = str(
         config.get("location_reference_video") or ""
     ).strip()
 
     validate_runtime_environment()
+    if reference_jobs:
+        console_log(
+            f"Rendering {len(reference_jobs)} saved reference job(s) before "
+            "story segments.",
+            flush=True,
+        )
+        planned_location_path = render_saved_reference_jobs(reference_jobs)
+        if planned_location_path:
+            location_reference_video_path = planned_location_path
     generated_video_paths = []
     previous_video_path = None
     console_log(
@@ -34666,12 +34943,14 @@ def _run_main(
             "trim_frames": trim_frames,
             "refresh_interval": refresh_interval,
             "total_segments": total_segments,
+            "reference_file_token": run_id.replace("-", "")[:12],
             "reference_image_overrides": {
                 str(number): path
                 for number, path in REFERENCE_IMAGE_OVERRIDES.items()
             },
         },
         "macro_arc": copy.deepcopy(macro_arc),
+        "reference_jobs": [],
         "prompts": saved_prompt_prefix,
     }
     save_generated_prompts_file(generated_prompts_payload)
@@ -34886,6 +35165,11 @@ def _run_main(
         or ""
     ).strip()
 
+    if location_setting_description:
+        generated_prompts_payload["config"]["setting_description"] = (
+            location_setting_description
+        )
+
     if not test_prompt_generation and location_setting_description:
         if (
             not location_reference_video_path
@@ -34933,9 +35217,23 @@ def _run_main(
             )
             save_generated_prompts_file(generated_prompts_payload)
     elif test_prompt_generation and location_setting_description:
+        generated_prompts_payload["reference_jobs"].append({
+            "job_id": "location:primary",
+            "kind": "location_reference",
+            "before_segment": 1,
+            "setting_description": location_setting_description,
+            "megapixels": float(megapixels),
+            "steps": int(args.steps),
+            "loras": [
+                list(item)
+                for item in normalize_lora_list(global_loras)
+            ],
+            "noise_seed": generate_random_seed(),
+        })
+        save_generated_prompts_file(generated_prompts_payload)
         console_log(
-            "Location-state test: prompt-generation mode skips the 2-second "
-            "location reference render.",
+            "Prompt-only mode planned the persistent location reference for "
+            "the later ComfyUI pass.",
             flush=True,
         )
 
@@ -35606,7 +35904,27 @@ def _run_main(
                 prior_clothing_reference_description = get_detailed_description(
                     prior_result
                 )
-        if not test_prompt_generation:
+        if test_prompt_generation:
+            character_reference_images, changed_character_references = (
+                plan_character_reference_images(
+                    detailed_description,
+                    subject_definitions,
+                    continuity_state,
+                    character_reference_images,
+                    base_reference_image_count,
+                    megapixels,
+                    args.steps,
+                    segment_number=segment,
+                    reference_jobs=generated_prompts_payload["reference_jobs"],
+                    file_token=generated_prompts_payload["config"].get(
+                        "reference_file_token", ""
+                    ),
+                    subject_descriptions=canonical_subject_descriptions,
+                    loras=global_loras,
+                    prior_detailed_description=prior_clothing_reference_description,
+                )
+            )
+        else:
             character_reference_images, changed_character_references = (
                 ensure_character_reference_images(
                     detailed_description,
@@ -35621,16 +35939,20 @@ def _run_main(
                     prior_detailed_description=prior_clothing_reference_description,
                 )
             )
-            if changed_character_references:
-                generation_state["character_reference_images"] = copy.deepcopy(
-                    character_reference_images
+        if changed_character_references:
+            generation_state["character_reference_images"] = copy.deepcopy(
+                character_reference_images
+            )
+            checkpoint_generation_state()
+            console_log(
+                (
+                    "Planned character reference(s): "
+                    if test_prompt_generation
+                    else "Updated character reference(s): "
                 )
-                checkpoint_generation_state()
-                console_log(
-                    "Updated character reference(s): "
-                    + ", ".join(changed_character_references),
-                    flush=True,
-                )
+                + ", ".join(changed_character_references),
+                flush=True,
+            )
         h3_subject_definitions = append_character_reference_definitions(
             subject_definitions,
             character_reference_images,
@@ -35667,7 +35989,10 @@ def _run_main(
                 else ""
             ),
         )
-        if location_reference_video_path and location_setting_description:
+        if (
+            location_setting_description
+            and (location_reference_video_path or test_prompt_generation)
+        ):
             h3_prompt = inject_location_reference_into_h3_prompt(
                 h3_prompt,
                 location_setting_description,

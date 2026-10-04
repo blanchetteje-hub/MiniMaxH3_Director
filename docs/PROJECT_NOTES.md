@@ -2351,3 +2351,34 @@ through Segment 5, and lantern/Elf/table geometry in Segment 6. The broader per-
 quality-degradation question remains intentionally back-pocketed because this run predates
 the exact 13:19 person-reference and no-spurious-regeneration fixes.
 
+### 2026-10-04 — 16GB prompt-package reference planning
+
+A review of the one-GPU / 16GB path found that the split workflow had become
+incomplete after dynamic character and location references were added. Prompt-only
+generation skipped ComfyUI entirely, but dynamic reference creation and location-reference
+creation still happened only inside the live-render path. As a result, a saved
+`generated_prompts.txt` could describe story segments without containing enough information
+to recreate the reference assets those segments expected.
+
+The package is now a self-contained render plan:
+
+- `reference_jobs` records every ComfyUI-only reference generation step required by the
+  saved prompts;
+- the persistent location reference is planned during the LLM phase with its setting,
+  LoRAs, steps, megapixels, and frozen noise seed;
+- each dynamic/source-backed character reference is planned with its exact description,
+  Picture slot, immutable version, output PNG path, LoRAs, frozen noise seed, and identity
+  dependency;
+- later clothing/condition versions never replace the previous PNG. A dynamic Subject's
+  v002 job explicitly depends on/stages its v001 generated identity Picture;
+- every segment stores its own exact `character_reference_images` snapshot, so Segment N
+  cannot accidentally pick up a later clothing version planned for Segment N+K;
+- prompt-only H3 assembly now includes the location-reference authority clause even though
+  the location video does not exist yet;
+- render-only mode executes all saved reference jobs in package order before rendering the
+  saved story segments, then uses the per-segment frozen reference snapshots.
+
+This restores the intended 16GB contract: run all LLM work first, unload the LLM, start
+ComfyUI, and render the complete saved package without any LLM calls or mutable
+"current reference" assumptions.
+
