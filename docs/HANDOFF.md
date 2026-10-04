@@ -220,3 +220,35 @@ Current fixes:
 These are prompt + low-temperature semantic-validator contracts, not
 tavern-specific deterministic rewrites. The ffmpeg audio removal is the only
 deterministic media transformation in this change.
+
+
+### 2026-10-04 — setting-label and RAW pacing follow-up
+
+Latest tavern acceptance was substantially improved but exposed two prompt-level
+issues plus one renderer/location conflict:
+
+- Segment 3 compressed prop acquisition and use into one late timestamp, making
+  the cup visually appear in Amy's hand even though RAW named a shelf origin.
+- Segment 4 invented a lid and immediately sealed the cup, again compressing an
+  invented prerequisite/action chain.
+- The persistent setting text called the only visible entrance a `back door`,
+  while the location-reference video established a single door; this may have
+  encouraged H3 to reinterpret the doorway geometry when the dragon entered.
+
+Implemented on `location-state-test`:
+
+- setting extraction no longer treats relative action labels
+  (front/back/side, left/right) as proof of distinct static architecture; a
+  single established instance is described generically;
+- RAW Director now explicitly gives physical prerequisites their own earlier
+  timed micro-beat instead of combining prerequisite + dependent action at one
+  timestamp;
+- RAW Director has a dedicated `DIRECTOR_RAW_SCENE_LLM_SETTINGS` profile at
+  temperature `0.4` with high reasoning/random seed; other creative generation
+  remains at `0.8`;
+- focused regressions cover all three contracts.
+
+No deterministic action-duration validator was added. Keep that as the next step
+only if the prompt-level pacing rule still produces visibly compressed actions.
+The next tavern run should regenerate the setting/location reference so the
+relative-door wording fix is actually exercised.
