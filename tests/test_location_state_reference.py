@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import minimax
 
@@ -30,6 +31,52 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertIn("no people, characters, creatures, or story action", prompt)
         self.assertIn("3-second, full 360 orbital camera shot", prompt)
         self.assertEqual(minimax.LOCATION_REFERENCE_DURATION_SECONDS, 3.0)
+
+    def test_strip_video_audio_uses_video_stream_copy_and_no_audio(self):
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as handle:
+            source = handle.name
+            handle.write(b"source")
+        try:
+            def fake_run(command, **kwargs):
+                output = command[-1]
+                with open(output, "wb") as handle:
+                    handle.write(b"silent-video")
+                return mock.Mock(returncode=0, stderr="")
+
+            with mock.patch("minimax.subprocess.run", side_effect=fake_run) as run:
+                result = minimax.strip_video_audio(source)
+
+            self.assertEqual(result, source)
+            command = run.call_args.args[0]
+            self.assertIn("-an", command)
+            self.assertIn("-c:v", command)
+            self.assertEqual(command[command.index("-c:v") + 1], "copy")
+            self.assertEqual(command[command.index("-map") + 1], "0:v:0")
+            with open(source, "rb") as handle:
+                self.assertEqual(handle.read(), b"silent-video")
+        finally:
+            if os.path.exists(source):
+                os.remove(source)
+
+    def test_location_reference_render_strips_audio_before_return(self):
+        workflow = {"dummy": {}}
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as handle:
+            handle.write(b"video")
+            handle.flush()
+            with mock.patch("minimax.prepare_location_reference_workflow", return_value=workflow), \
+                 mock.patch("minimax.queue_workflow", return_value="prompt-id"), \
+                 mock.patch("minimax.wait_for_completion", return_value={}), \
+                 mock.patch("minimax.get_video_path", return_value=handle.name), \
+                 mock.patch("minimax.strip_video_audio", return_value=handle.name) as strip, \
+                 mock.patch("minimax.get_video_resolution", return_value=(1280, 720)):
+                returned = minimax.render_location_reference_video(
+                    "medieval tavern",
+                    0.3,
+                    6,
+                )
+
+        self.assertEqual(returned, handle.name)
+        strip.assert_called_once_with(handle.name)
 
     def test_h3_prompt_marks_video_one_as_static_location_only(self):
         prompt = minimax.inject_location_reference_into_h3_prompt(
