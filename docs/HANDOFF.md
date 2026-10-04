@@ -281,6 +281,9 @@ Implemented on `location-state-test`:
   is no additional always-on LLM request;
 - ledger records track kind, owner, holder, location, contents, and
   present/lost/destroyed status and copy unchanged props forward while offscreen;
+- source-authorized typed item state remains higher authority: held/equipped/stored/
+  dropped/lost effects deterministically update the matching ledger record, so the new
+  movable-prop ledger does not compete with existing canonical inventory truth;
 - Request 1 receives the ledger as authoritative movable-prop state;
 - strong prop-interaction Beats may trigger one tiny pre-RAW temperature-0 staging call;
   it returns either nothing or one minimal staging sentence when a required prop is not
