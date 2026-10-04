@@ -520,3 +520,36 @@ configured/generated Picture is disconnected, another generated Subject can pack
 vacated dynamic slot, and later re-entry restores the original identity asset even if the
 H3 Picture number differs from its earlier segment.
 
+
+### 2026-10-04 — 8/6 acceptance follow-up: transfer semantics, compressed travel, retained background Subjects
+
+The next 8-second / 6-segment tavern render exposed three upstream issues despite strong
+location continuity:
+
+- Segment 2 RAW was accepted with the impossible phrase that ale was poured "from" a
+  barrel lid. The Director and coherence validator now explicitly distinguish a fixed
+  container from its lid/cap/handle/rim/latch; contents must come from the actual container
+  or an established dispensing opening/tap.
+- Segment 4 again allowed Amy to interact with a shelf/bar-area prop without explicit travel
+  from her prior table position. Coherence validation now treats distinct named
+  fixture/interaction areas from STATIC SETTING AUTHORITY as established positions and
+  requires explicit movement between them.
+- The final closing Beat compressed unlatching, crossing the doorway, closing, and locking
+  into one timestamp. Timing validation now explicitly rejects sequential dependency chains
+  hidden inside a single timestamp when they cannot execute visibly as one continuous take.
+- Sliding Subject retention now derives explicit visual evidence from the complete accepted
+  RAW scene, including its End continuity state, instead of only the stripped timed
+  description. A patron that the accepted final frame says remains present therefore refreshes
+  its retention age rather than being dropped merely because it performs no new Beat action.
+
+The uploaded acceptance artifacts predate the new per-segment `reference_bindings` package:
+they contain generated character-reference records but no frozen binding snapshots. The next
+run must be made from current `location-state-test` and should show `reference_bindings` plus
+`excluded_picture_ids` in each generated prompt record before reference-slot behavior is
+judged.
+
+Next acceptance: rerun the same tavern case from current branch head. Verify Segment 2 uses
+the barrel/container as the ale source; Segment 4 visibly moves Amy to the shelf/bar and the
+Dragon reference is both generated and bound; the closing sequence visibly traverses the
+door before exterior framing; and background Goblin/Elf identity references remain bound
+when the RAW End state keeps them present.
