@@ -271,12 +271,14 @@ class DesktopBridgeTests(unittest.TestCase):
         settings = dict(
             BASE_SETTINGS,
             retention=True,
+            disable_subject_removal=True,
             lora_dir="/tmp/custom-loras",
         )
 
         command = self.make_bridge().build_command(settings)
 
         self.assertIn("--retention", command)
+        self.assertIn("--disable-subject-removal", command)
         self.assertEqual(
             command[command.index("--lora_dir") + 1],
             "/tmp/custom-loras",
