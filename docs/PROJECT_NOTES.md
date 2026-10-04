@@ -43,7 +43,7 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **Soundscape and music are separate jobs.** Soundscape is extraction-only; music is the narrow creative audio stage.
 - [x] **Good camera movement.** Continuous choreography, natural pan/truck/tilt/pedestal/arc/tracking/reframing, and the periodic reframe rule have produced excellent camera work across roughly the last six production videos.
 - [x] **Continuous-take default / no gratuitous cuts** is copied into the actual H3 prompt.
-- [ ] **Verify new RAW timing-feasibility validator in production.** It is implemented at temperature 0 with no hardcoded minimum interval; next runs must prove it prevents H3 from hiding impossible travel/manipulation with cuts.
+- [x] **RAW timing-feasibility validator accepted in production.** The next tavern run eliminated the prior impossible doorway/table/bar spatial jumps and H3 no longer needed to hide compressed travel with cuts. The validator remains qualitative (temperature 0, no hardcoded minimum interval).
 - [ ] **Verify RAW temperature 0.2 + economical-staging rule.** Confirm reduced unnecessary reactions/fluid/object embellishment without making staging too sterile.
 
 ### Immediate segment-to-segment continuity
@@ -89,6 +89,9 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **Spatial travel is generalized:** interacting with something at another established position requires actual subject movement there first.
 - [x] **Final continuity state must match the final timed action**, not an earlier convenient state.
 - [x] **Barrier/containment and irreversible-state bookkeeping** has deterministic/narrow semantic support from earlier acceptance work.
+- [x] **Persistent movable-prop ledger architecture is implemented.** The existing combined-continuity call now also maintains stable IDs and state for distinct reusable/interactable props (for example mugs, glasses, baskets, tools, weapons, keys, and containers), including kind, owner, holder, location, contents, and present/lost/destroyed status. Unchanged props copy forward even when offscreen, so this adds no new always-on LLM stage.
+- [x] **Missing-prop handling is proactive rather than generate/reject/regenerate.** Before RAW, only prop-interaction Beats trigger a tiny temperature-0 micro-call. If a required usable prop is not established, it returns one minimal natural staging instruction for Request 1; otherwise it returns nothing. Existing validators remain backstops rather than the normal repair loop.
+- [ ] **Production-verify movable-prop persistence/pre-staging.** The latest tavern run still had appearing/disappearing glasses and basket before this ledger was added. The next run should verify stable mug/glass/basket identity, possession/location, and container contents across segment boundaries.
 - [ ] **End-to-end bookkeeping stress test.** Use a story that stores, drops, retrieves, transfers, equips, loses, and later reuses props while characters leave/re-enter rooms.
 
 ### Refresh / long-run quality / runtime robustness
@@ -2149,3 +2152,41 @@ what things look like; semantic bookkeeping should establish what exists, what
 changed, who owns or wears what, and whether a requested action is physically
 and causally legal. Avoid duplicating visual geometry in text/JSON unless a
 validator specifically needs an existence-level fact.
+
+
+## 2026-10-04 update — persistent movable-prop ledger and proactive staging
+
+The latest tavern run closed the remaining obvious spatial/travel failure: the prior
+doorway/table/bar jumps were gone. The remaining visible continuity failures were ordinary
+movable props—especially glasses and the basket—appearing or disappearing across actions
+and segment boundaries.
+
+The prop solution deliberately avoids another generate -> validate -> reject -> regenerate
+cycle:
+
+1. The existing combined-continuity call, which already runs while H3 renders, now also
+   maintains a separate persistent movable-prop ledger. This adds no new always-on LLM call.
+2. Distinct reusable/interactable props receive stable IDs such as `mug_1` and carry
+   `kind`, `owner`, `holder`, `location`, `contents`, and `status`
+   (`present`, `lost`, or `destroyed`). Unchanged props copy forward even when
+   offscreen.
+3. Architecture, fixed fixtures, furniture, clothing, and ambient clutter are excluded
+   from this ledger. Static architectural existence remains a separate future bookkeeping
+   concern.
+4. Before Director RAW, Python cheaply screens for strong prop-interaction verbs. Only
+   those Beats may run a tiny deterministic-analysis micro-call. The call compares CURRENT
+   BEAT, PREVIOUS SHOT END, and the prop ledger. If the Beat assumes a missing usable prop,
+   it returns one short natural staging sentence to make that prop available before the
+   dependent action. If the prop is already available—or the Beat itself acquires it—the
+   result is empty.
+5. The micro-call may not rewrite the Beat, change its outcome, add dialogue/characters,
+   replace an established prop, or invent unsupported architecture/storage. When no
+   established storage source exists, it may place the needed prop directly at a natural
+   interaction point.
+6. Request 1 receives the persistent prop ledger plus any one-line availability staging
+   before generating RAW. The existing physical/coherence validator remains a backstop,
+   not the primary prop-repair mechanism.
+
+Next acceptance should focus on mug/glass/basket persistence and transfer/container state.
+Do not reopen the location-reference or spatial-timing architecture unless that run shows
+a regression.
