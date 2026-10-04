@@ -207,7 +207,7 @@ class StitchingTests(unittest.TestCase):
             ), mock.patch("minimax.subprocess.run"):
                 minimax.stitch_videos([raw_first, guided_second])
 
-            self.assertFalse(os.path.exists(raw_first))
+            self.assertTrue(os.path.exists(raw_first))
             self.assertFalse(os.path.exists(raw_second))
             self.assertTrue(os.path.exists(guided_second))
 
