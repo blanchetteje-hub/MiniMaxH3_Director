@@ -265,3 +265,32 @@ Follow-up after the next tavern run:
 
 Next acceptance: rerun the same tavern story/Beats and inspect Segment 3/4 travel,
 Segment 4 transfer behavior, and Segment 5 reaction/fluid choreography.
+
+
+### 2026-10-04 — spatial acceptance; movable-prop bookkeeping is next
+
+The newest tavern render no longer showed the prior spatial/teleportation failures. Treat
+the location-reference + travel/timing architecture as provisionally accepted. The visible
+remaining failures were ordinary props: glasses and the basket could still appear or
+disappear.
+
+Implemented on `location-state-test`:
+
+- generation state now carries a separate persistent movable-prop ledger with stable IDs;
+- the existing combined-continuity call maintains that ledger while H3 renders, so there
+  is no additional always-on LLM request;
+- ledger records track kind, owner, holder, location, contents, and
+  present/lost/destroyed status and copy unchanged props forward while offscreen;
+- Request 1 receives the ledger as authoritative movable-prop state;
+- strong prop-interaction Beats may trigger one tiny pre-RAW temperature-0 staging call;
+  it returns either nothing or one minimal staging sentence when a required prop is not
+  currently available;
+- this is proactive repair before RAW generation, not a validator-driven
+  generate/reject/regenerate loop;
+- checkpoint/resume state and Director prefetch fingerprints include the prop ledger;
+- focused regressions cover copy-forward/update, schema acceptance, conditional staging,
+  test-mock routing, and resume slicing.
+
+Next acceptance: reuse the tavern story/Beats and inspect mug/glass/basket identity,
+location/possession, transfer contents, and whether the pre-RAW staging call fires only when
+needed. No spatial/location changes should be made unless that regression reappears.
