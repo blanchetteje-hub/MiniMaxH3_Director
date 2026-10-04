@@ -306,6 +306,43 @@ class PostmortemRegressionTests(unittest.TestCase):
             candidate,
         )
 
+    def test_source_owned_item_state_overrides_prop_ledger(self):
+        ledger = {
+            "flashlight_1": {
+                "kind": "flashlight",
+                "owner": "Amy",
+                "holder": "N/A",
+                "location": "on the kitchen table",
+                "contents": "N/A",
+                "status": "present",
+            }
+        }
+        held = minimax.apply_authoritative_prop_state_effects(
+            ledger,
+            [{
+                "op": "set_item_state",
+                "entity": "flashlight",
+                "owner": "Amy",
+                "value": "held",
+            }],
+        )
+        self.assertEqual(held["flashlight_1"]["holder"], "Amy")
+        self.assertEqual(held["flashlight_1"]["location"], "N/A")
+        self.assertEqual(held["flashlight_1"]["status"], "present")
+
+        lost = minimax.apply_authoritative_prop_state_effects(
+            held,
+            [{
+                "op": "set_item_state",
+                "entity": "flashlight",
+                "owner": "Amy",
+                "value": "lost",
+            }],
+        )
+        self.assertEqual(lost["flashlight_1"]["holder"], "N/A")
+        self.assertEqual(lost["flashlight_1"]["location"], "N/A")
+        self.assertEqual(lost["flashlight_1"]["status"], "lost")
+
     def test_prop_staging_micro_prompt_adds_only_missing_availability(self):
         calls = []
 
