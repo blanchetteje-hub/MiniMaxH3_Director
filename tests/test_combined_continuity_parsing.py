@@ -203,6 +203,7 @@ class CombinedContinuityParserTests(unittest.TestCase):
     def test_python_owned_identity_metadata_is_stripped_without_retry(self):
         definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
         committed = minimax.continuity_state_for_registry(definitions)
+        committed["subjects"]["Mark"]["held_props"] = ["flashlight"]
         request = Mock(return_value={
             "version": 5,
             "environment": {"location": "room", "persistent_state": "N/A"},
@@ -244,7 +245,7 @@ class CombinedContinuityParserTests(unittest.TestCase):
         self.assertEqual(mark["picture_ids"], [1])
         self.assertEqual(mark["speaker_id"], "(S1)")
         self.assertEqual(mark["position"], "beside the window")
-        self.assertEqual(mark["held_props"], [])
+        self.assertEqual(mark["held_props"], ["flashlight"])
 
     def test_llm_held_prop_claim_without_python_authority_is_rejected(self):
         definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
