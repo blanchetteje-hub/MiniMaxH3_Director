@@ -16,6 +16,108 @@ The goal is:
 
 The pipeline is disposable. Any intermediate representation, LLM call, validator, state object, or Python layer exists only if it improves that path.
 
+## Project progress checklist
+
+This checklist is the compact current-status view. Historical sections below explain why each decision exists. A checked item means the architecture has been implemented and has enough production evidence to treat it as provisionally complete. Unchecked items are active verification targets or remaining work.
+
+### Story / planning / local-LLM pipeline
+
+- [x] **story.txt remains the sole narrative authority.**
+- [x] **Summary -> expanded story** path is established, with filmable/literal prose and a deliberately small prompt.
+- [x] **Expanded story -> Beats** is established; SUMMARY is a final guide and Beats preserve required source ordering/content.
+- [x] **Beat validation/repair** handles finite endpoints, beneficiary delivery, explicit participant/object enumerations, and source-faithful completion without inventing unnecessary terminal outcomes.
+- [x] **20B-class local runtime is the production target.** GPT-5.6 Sol is development/evaluation only.
+- [x] **Task-specific LLM sampling/reasoning profiles** are separated by job rather than loaded model.
+- [x] **Prompt generation and ComfyUI rendering can be separated** for a one-GPU workflow.
+- [x] **Bridge/mailbox workflow retired.** Local runs + uploaded artifacts are the active acceptance/debugging path.
+
+### Director / H3 prompt quality
+
+- [x] **Two-stage Director path:** Request 1 owns creative RAW staging; downstream H3 handling is lossless/translation-oriented.
+- [x] **RAW starts at 00:00.000** and continuation frame zero is a Guide-authority anchor rather than a semantic restage.
+- [x] **RAW physical/order coherence** rejects teleportation, omitted prerequisite movement, impossible barrier order, stale end state, unexplained prop changes, and similar causal failures.
+- [x] **Post-RAW pronoun cleanup** changes only unambiguous person pronouns.
+- [x] **Post-RAW dynamic Subject resolution** owns functional naming of newly staged unnamed foreground characters/creatures.
+- [x] **Final H3 action preservation** keeps accepted RAW action authoritative instead of allowing formatter drift.
+- [x] **Direct speech handling** uses stable H3 dialogue syntax with Subject speaker IDs.
+- [x] **Soundscape and music are separate jobs.** Soundscape is extraction-only; music is the narrow creative audio stage.
+- [x] **Good camera movement.** Continuous choreography, natural pan/truck/tilt/pedestal/arc/tracking/reframing, and the periodic reframe rule have produced excellent camera work across roughly the last six production videos.
+- [x] **Continuous-take default / no gratuitous cuts** is copied into the actual H3 prompt.
+- [ ] **Verify new RAW timing-feasibility validator in production.** It is implemented at temperature 0 with no hardcoded minimum interval; next runs must prove it prevents H3 from hiding impossible travel/manipulation with cuts.
+- [ ] **Verify RAW temperature 0.2 + economical-staging rule.** Confirm reduced unnecessary reactions/fluid/object embellishment without making staging too sterile.
+
+### Immediate segment-to-segment continuity
+
+- [x] **Native 22-frame MiniMax H3 AddGuide continuation** is the normal seam mechanism.
+- [x] **Guide carries aligned video + audio context** while PREVIOUS SHOT END no longer dictates visible frame-zero composition.
+- [x] **All literal 22 overlap frames are removed after guided render** and guided clips do not receive another two-frame seam trim.
+- [x] **Current wardrobe/pose/held-state can come from immediate visual continuation** rather than being reset by a Picture reference.
+- [ ] **Occasional ~0.25-second continuation replay at segment start.** This has appeared more than once even after literal Guide-overlap trimming. Determine whether it is generated temporal echo inside H3 rather than a retained-frame trim error.
+
+### Location / environment continuity
+
+- [x] **Story-level overall + starting-location extraction** exists and Segment 1 gets authoritative starting-location context.
+- [x] **Persistent location memory:** generate one character-free 3-second 360-orbit location clip before Segment 1 and reuse it throughout the run.
+- [x] **Location-reference audio is deterministically removed with ffmpeg** before conditioning reuse.
+- [x] **Location-reference authority is limited to static environment/spatial layout**, not characters or current camera composition.
+- [x] **Location continuity accepted.** Recent tavern runs preserved covered room geometry with unexpectedly high accuracy across changing viewpoints.
+- [x] **Setting extraction avoids over-promoting action-only props** and treats relative labels such as front/back/side as uncertain unless distinct architecture is established.
+- [ ] **Compact static-space existence bookkeeping.** Add only enough text/JSON state to answer whether a closet, shelf, doorway, storage point, or other interaction location has been established. Do not duplicate the orbit video's geometry.
+- [ ] **Multi-room / returning-location stress test.** Verify authority when the story moves between several spaces and later returns.
+
+### Subject identity / character consistency
+
+- [x] **Canonical named characters promote deterministically into the Subject registry** when they appear in accepted RAW.
+- [x] **Dynamic functional Subject names are stable** and preserve role/species semantics without same-type alias drift.
+- [x] **Named dynamic Subjects carry canonical prose** such as age/gender/clothing where available.
+- [x] **Full Python Subject continuity state is text-renderable on re-entry:** position, pose/action, wardrobe, topology, physical condition, held/attached props, injuries/substances, spatial relationships, persistent effects, and terminal absence.
+- [ ] **Exact visual consistency for dynamically created named characters.** Preferred next experiment: before first story appearance, generate a short (~1-second) neutral character clip from canonical physical identity, take a clean middle frame, and register it as the persistent character reference image.
+- [ ] **Keep generated character identity references wardrobe-neutral.** Identity refs should establish face/hair/age/build/species/distinguishing traits while semantic wardrobe state remains free to change later.
+- [ ] **DINO recovery path remains fallback only.** Revisit DINO extraction/cropping if deliberate pre-generated character references fail or cannot cover a use case.
+
+### Clothing / wardrobe continuity
+
+- [x] **Picture references no longer own current clothing.** They establish persistent identity/body appearance; current wardrobe comes from continuity state / immediate Guide context.
+- [x] **Current wardrobe is stored in Python-owned Subject state and can be rendered back into re-entry Subject prose.**
+- [ ] **Intentional wardrobe-change persistence.** Stress test Outfit A -> explicit change to Outfit B -> character leaves for multiple segments -> character returns while permanent identity reference still depicts A. The return must stay in B.
+- [ ] **Wardrobe-change bookkeeping/validation.** Ensure changes occur only when source/Beat authorizes them and stale canonical/reference clothing cannot roll them backward.
+
+### Props / physical bookkeeping
+
+- [x] **Prop identity and acquisition provenance** are enforced: manipulated props cannot silently become another object and newly acquired props need a visible/stated source.
+- [x] **Generic transfer physics:** every transfer requires an explicit, distinct, traceable source and destination, with the transferred object/material established at the source first.
+- [x] **Spatial travel is generalized:** interacting with something at another established position requires actual subject movement there first.
+- [x] **Final continuity state must match the final timed action**, not an earlier convenient state.
+- [x] **Barrier/containment and irreversible-state bookkeeping** has deterministic/narrow semantic support from earlier acceptance work.
+- [ ] **End-to-end bookkeeping stress test.** Use a story that stores, drops, retrieves, transfers, equips, loses, and later reuses props while characters leave/re-enter rooms.
+
+### Refresh / long-run quality / runtime robustness
+
+- [x] **Clean-refresh loader ambiguity fixed** after location reference added a second video loader.
+- [x] **Routine auto-refresh is intentionally dormant by default (999).** The legacy refresh path remains available, but Guide + location-reference behavior is preferred unless long-run degradation gives evidence to re-enable periodic refresh.
+- [x] **Missing required workflow nodes fail loudly/fatally** instead of being retried as transient generation failures.
+- [x] **Reference-video experiments were narrowed back from full-clip/56-frame history to native Guide continuation** after runtime/VRAM and composition tradeoffs were measured.
+- [ ] **Longer-run degradation test.** Run substantially more than six segments before declaring periodic refresh unnecessary for general use.
+
+### Back-pocket experiments — not active work
+
+- [ ] **RefMod:** potential future experiment for persistent-reference efficiency / reduced VRAM-time cost; do not integrate while current reference architecture is working.
+- [ ] **Full spatial JSON/scene graph:** intentionally avoided unless existence-level bookkeeping proves insufficient.
+- [ ] **DINO-based character harvesting:** fallback if deliberate generated character-reference creation is not reliable.
+
+### Final completion / release acceptance
+
+The project is close to feature-complete when the remaining bookkeeping/identity tests pass. Before calling the pipeline done, run at least one deliberately hostile acceptance story covering:
+
+- [ ] multiple rooms with later returns;
+- [ ] dynamically generated named characters that leave and re-enter;
+- [ ] at least one intentional clothing change across an absence;
+- [ ] prop storage/retrieval/transfer/loss across multiple segments;
+- [ ] enough segments to expose cumulative continuation quality drift;
+- [ ] a genre/staging pattern materially different from the current tavern and zombie examples (for example high fantasy with nonhuman characters).
+
+If those pass without exposing a new architectural gap, remaining work should be packaging, documentation, usability, and performance rather than another core continuity subsystem.
+
 ## Rule 0: story.txt is the one narrative source of truth
 
 `story.txt` is authoritative for the story.
