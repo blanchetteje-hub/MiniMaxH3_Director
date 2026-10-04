@@ -310,6 +310,35 @@ CONTINUITY_ENVIRONMENT_FIELDS = (
     "persistent_state",
 )
 
+PROP_LEDGER_FIELDS = (
+    "kind",
+    "owner",
+    "holder",
+    "location",
+    "contents",
+    "status",
+)
+
+PROP_LEDGER_STATUSES = frozenset({
+    "present",
+    "lost",
+    "destroyed",
+})
+
+_PROP_STAGING_TRIGGER_RE = re.compile(
+    r"(?i)\b(?:pour(?:s|ed|ing)?|drink(?:s|ing)?|sip(?:s|ped|ping)?|"
+    r"hold(?:s|ing)?|carry(?:ies|ing|ied)?|grab(?:s|bed|bing)?|"
+    r"take(?:s|n|ing)?|pick(?:s|ed|ing)?\s+up|set(?:s|ting)?\s+down|"
+    r"place(?:s|d|ing)?|put(?:s|ting)?|hand(?:s|ed|ing)?|give(?:s|n|ing)?|"
+    r"pass(?:es|ed|ing)?|receive(?:s|d|ing)?|retriev(?:e|es|ed|ing)|"
+    r"use(?:s|d|ing)?|wipe(?:s|d|ing)?|fill(?:s|ed|ing)?|"
+    r"empty(?:ies|ied|ing)?|drop(?:s|ped|ping)?|throw(?:s|n|ing)?|"
+    r"open(?:s|ed|ing)?|close(?:s|d|ing)?|load(?:s|ed|ing)?|"
+    r"fire(?:s|d|ing)?|aim(?:s|ed|ing)?|swing(?:s|ing)?|"
+    r"insert(?:s|ed|ing)?|remove(?:s|d|ing)?|store(?:s|d|ing)?|"
+    r"stash(?:es|ed|ing)?|equip(?:s|ped|ping)?)\b"
+)
+
 CURRENT_SUBJECT_SCALAR_FIELDS = (
     "position",
     "pose_action",
@@ -516,6 +545,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "continuity_phase_2_h3_opening",
     "director_h3_soundscape",
     "director_h3_formatter",
+    "director_prop_staging",
     "director_raw_scene_coherence",
     "director_raw_scene_timing",
     "director_raw_scene_pronoun_resolution",
@@ -763,6 +793,22 @@ DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
                 },
             },
             "required": ["raw_scene", "subject_names"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+DIRECTOR_PROP_STAGING_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_prop_staging",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "staging": {"type": "string"},
+            },
+            "required": ["staging"],
             "additionalProperties": False,
         },
     },
@@ -1295,7 +1341,7 @@ _LOCATION_TRANSITION_RE = re.compile(
 COMBINED_CONTINUITY_SYSTEM = (
     "Extract continuity that is true at the FINAL FRAME. Return one JSON object.\n\n"
     "TOP-LEVEL KEYS ONLY: version, environment, camera, ongoing_action, "
-    "ongoing_audio, subjects.\n"
+    "ongoing_audio, subjects, props.\n"
     "environment KEYS ONLY: location, persistent_state.\n"
     "Subjects MUST be keyed by an already-registered Subject name. Do not create "
     "Subjects. Do not output identity metadata, IDs, Picture references, speaker "
@@ -1304,7 +1350,18 @@ COMBINED_CONTINUITY_SYSTEM = (
     "Each Subject may contain ONLY: position, pose_action, wardrobe, topology, "
     "body_state, physical_condition, attached_objects, injuries, substances, "
     "spatial_relationships, persistent_effects, held_props.\n"
-    "wardrobe KEYS ONLY: upper, lower, footwear, other.\n\n"
+    "wardrobe KEYS ONLY: upper, lower, footwear, other.\n"
+    "props is a persistent ledger of distinct MOVABLE/INTERACTABLE objects whose "
+    "identity or state can matter later (mugs, glasses, baskets, tools, weapons, "
+    "keys, containers, carried objects). Do not list architecture, doors, fixed "
+    "fixtures, furniture, ambient clutter, or clothing. Preserve every existing "
+    "prop ID from COMMITTED PROP LEDGER exactly. Copy forward unchanged props even "
+    "when offscreen. Create a new stable ID such as mug_1 only when this segment "
+    "establishes a new distinct prop. Each prop may contain ONLY kind, owner, holder, "
+    "location, contents, status. All six values are strings. Use N/A when unknown. "
+    "status is present, lost, or destroyed. holder names the Subject physically "
+    "holding it; location names where it is when not held. contents tracks meaningful "
+    "container contents such as beer or empty.\n\n"
     "Use FINAL FRAME AUTHORITY for current position, pose/action, held props, "
     "spatial relationships, ongoing action, and ongoing audio. FULL SEGMENT "
     "CONTEXT is supporting evidence only for persistent facts that remain true "
@@ -1328,6 +1385,12 @@ COMBINED_CONTINUITY_SYSTEM = (
     "      \"physical_condition\": \"N/A\", \"attached_objects\": [],\n"
     "      \"injuries\": [], \"substances\": [], \"spatial_relationships\": [],\n"
     "      \"persistent_effects\": [], \"held_props\": []\n"
+    "    }\n"
+    "  },\n"
+    "  \"props\": {\n"
+    "    \"<stable prop id>\": {\n"
+    "      \"kind\": \"N/A\", \"owner\": \"N/A\", \"holder\": \"N/A\",\n"
+    "      \"location\": \"N/A\", \"contents\": \"N/A\", \"status\": \"present\"\n"
     "    }\n"
     "  }\n"
     "}\n\n"
@@ -6548,6 +6611,7 @@ def new_generation_state(run_config):
         "visual_raw_end_state": {},
         "visual_end_state": {},
         "visual_end_frame_paths": [],
+        "prop_ledger": {},
         "subject_registry_state": new_continuity_state(),
         # This is the append-only identity contract for the run. Subject
         # continuity facts may change, but this lock may only gain a brand-new
@@ -6592,6 +6656,7 @@ def load_generation_state(path=GENERATION_STATE_FILE):
         raise RuntimeError("Generation checkpoint must contain a JSON object.")
     _canonicalize_generation_state_continuity(state)
     _canonicalize_generation_state_subjects(state)
+    _canonicalize_generation_state_props(state)
     # Validate the internal append-only identity chain even when callers only
     # load the checkpoint. Resume adds the subjects.txt comparison separately.
     validate_subject_identity_state(state)
@@ -6655,6 +6720,7 @@ def wait_for_resume_checkpoint(
 def save_generation_state(state, path=GENERATION_STATE_FILE):
     _canonicalize_generation_state_continuity(state)
     _canonicalize_generation_state_subjects(state)
+    _canonicalize_generation_state_props(state)
     validate_subject_identity_state(state)
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
@@ -6674,6 +6740,22 @@ def save_generation_state(state, path=GENERATION_STATE_FILE):
     finally:
         if os.path.exists(temporary_path):
             os.remove(temporary_path)
+
+
+# Canonicalize persistent movable-prop bookkeeping in checkpoints.
+def _canonicalize_generation_state_props(state):
+    """Normalize the run-level and per-segment prop ledger."""
+    if not isinstance(state, dict):
+        return state
+    state["prop_ledger"] = normalize_prop_ledger(state.get("prop_ledger", {}))
+    records = state.get("segments")
+    if isinstance(records, list):
+        for record in records:
+            if isinstance(record, dict):
+                record["prop_ledger"] = normalize_prop_ledger(
+                    record.get("prop_ledger", {})
+                )
+    return state
 
 
 # Migrate the legacy opening-state field to the summary field.
@@ -7181,12 +7263,16 @@ def restore_generation_state(
         state["continuity_summary_pending"] = bool(
             last_record.get("continuity_summary_pending", False)
         )
+        state["prop_ledger"] = normalize_prop_ledger(
+            last_record.get("prop_ledger", {})
+        )
     else:
         state["continuity_prompt_state"] = {}
         state["continuity_state"] = {}
         state["continuity_summary"] = ""
         state["subject_registry_state"] = new_continuity_state()
         state["continuity_summary_pending"] = False
+        state["prop_ledger"] = {}
     state.pop("additional_subject_definitions", None)
     restored_dynamic_subject_definitions = derive_additional_subject_definitions(
         base_subject_definitions,
@@ -7203,6 +7289,7 @@ def restore_generation_state(
             state.get("continuity_prompt_state", state.get("continuity_state", {}))
         ),
         "continuity_state": copy.deepcopy(state.get("continuity_state", {})),
+        "prop_ledger": copy.deepcopy(state.get("prop_ledger", {})),
         "subject_registry_state": migrate_continuity_state(
             state.get("subject_registry_state")
         ),
@@ -7232,6 +7319,7 @@ def record_completed_segment(
     completed_beat_ids,
     continuity_summary="",
     continuity_state=None,
+    prop_ledger=None,
     continuity_summary_pending=False,
     additional_subject_definitions=None,
     subject_registry_state=None,
@@ -7241,6 +7329,9 @@ def record_completed_segment(
         continuity_state = state.get("continuity_state", {})
     if not continuity_summary:
         continuity_summary = state.get("continuity_summary", "")
+    if prop_ledger is None:
+        prop_ledger = state.get("prop_ledger", {})
+    prop_ledger = normalize_prop_ledger(prop_ledger)
     if subject_registry_state is None:
         subject_registry_state = state.get(
             "subject_registry_state",
@@ -7278,6 +7369,7 @@ def record_completed_segment(
         "completed_beat_ids": sorted(completed_beat_ids),
         "continuity_summary": continuity_summary,
         "continuity_state": copy.deepcopy(continuity_state),
+        "prop_ledger": copy.deepcopy(prop_ledger),
         "subject_registry_state": migrate_continuity_state(subject_registry_state),
         "subject_identity_snapshot": subject_identity_snapshot(
             subject_registry_state
@@ -7294,6 +7386,7 @@ def record_completed_segment(
     }
     state["continuity_summary"] = continuity_summary
     state["continuity_state"] = copy.deepcopy(continuity_state)
+    state["prop_ledger"] = copy.deepcopy(prop_ledger)
     state["subject_registry_state"] = migrate_continuity_state(
         subject_registry_state
     )
@@ -24231,7 +24324,7 @@ def _strip_combined_continuity_identity_metadata(candidate):
 def _validate_combined_continuity_schema(candidate):
     """Validate the structural schema emitted by combined continuity Phase 1."""
     errors = []
-    top_level = set(CONTINUITY_TOP_LEVEL_FIELDS)
+    top_level = set(CONTINUITY_TOP_LEVEL_FIELDS) | {"props"}
     subject_fields = set(
         (
             *CURRENT_SUBJECT_SCALAR_FIELDS,
@@ -24319,6 +24412,23 @@ def _validate_combined_continuity_schema(candidate):
                 validate_subject(f"subjects[{index}]", record)
         else:
             errors.append("subjects (must be an object or array)")
+
+    props = candidate.get("props")
+    if props is not None:
+        if not isinstance(props, dict):
+            errors.append("props (must be an object)")
+        else:
+            for prop_id, record in props.items():
+                path = f"props.{prop_id}"
+                if not isinstance(record, dict):
+                    errors.append(f"{path} (must be an object)")
+                    continue
+                for key in record:
+                    if key not in PROP_LEDGER_FIELDS:
+                        errors.append(f"{path}.{key}")
+                for key in PROP_LEDGER_FIELDS:
+                    if key in record and not isinstance(record[key], str):
+                        errors.append(f"{path}.{key} (must be a string)")
 
     if errors:
         unique_errors = list(dict.fromkeys(errors))
