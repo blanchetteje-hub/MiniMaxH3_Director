@@ -45,7 +45,6 @@ from gpt_formatter import (
     extract_inline_dialogue_subjects,
     normalize_summary_subject_references,
     remove_non_speaking_speaker_ids,
-    validate_h3_dialogue_format,
 )
 from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
@@ -2057,29 +2056,6 @@ def h3_frame_count_for_duration(duration):
 
     base_frames = max(5, round(float(duration) * FRAME_RATE))
     return base_frames + (5 - (base_frames % 17)) % 17
-
-
-# Return how many leading frames to skip to keep only the final context tail.
-def h3_context_tail_skip_frames(duration, context_frames=REFRESH_CONTEXT_FRAMES):
-    """Return the leading-frame skip required for a final context tail."""
-
-    return max(
-        0,
-        h3_frame_count_for_duration(duration) - int(context_frames),
-    )
-
-
-# Return the frame window used by H3 reference-video conditioning.
-def h3_reference_video_window(
-    duration,
-    context_frames=REFERENCE_VIDEO_CONTEXT_FRAMES,
-):
-    """Use the most recent bounded reference-video tail."""
-
-    total_frames = h3_frame_count_for_duration(duration)
-    frame_load_cap = min(total_frames, max(5, int(context_frames)))
-    skip_first_frames = max(0, total_frames - frame_load_cap)
-    return skip_first_frames, frame_load_cap
 
 
 def _align_h3_frame_count(frame_count):
@@ -4369,7 +4345,6 @@ def parse_subject_registry(subject_definitions):
         if line.strip() and not line.strip().startswith("#")
     ]
     for line in raw_lines:
-        video_origin = False
         match = re.match(
             r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+"
             r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*?)"
@@ -4398,12 +4373,6 @@ def parse_subject_registry(subject_definitions):
                 for value in re.findall(r"(?i)<Picture\s+(\d+)>", line)
             ]
             picture_ids = list(dict.fromkeys(picture_ids))
-            video_origin = bool(re.search(
-                r"(?i)(?:\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
-                r"in\s+generated\s+video\s+segment\s+\d+)|"
-                r"\bcontinued\s+from\s+<Video\s+1>)",
-                line,
-            ))
             speaker_id = (
                 f"S{speaker}"
                 if (speaker := next(iter(re.findall(r"(?i)\(S(\d+)\)", line)), None))
@@ -6053,10 +6022,6 @@ def derive_additional_subject_definitions(
         speaker_id = _subject_speaker_token(
             record.get("speaker_id") or f"S{subject_id}"
         )
-        try:
-            origin_segment = int(record.get("origin_segment"))
-        except (TypeError, ValueError):
-            origin_segment = 1
         definition = (
             f"<Subject {subject_id}> is {name}{gender_clause} ({speaker_id}), "
             "continued from <Video 1>."
@@ -9196,10 +9161,6 @@ def ask_llm(
     thinking_budget_tokens = llm_settings["thinking_budget_tokens"]
     reasoning_budget_message = llm_settings["reasoning_budget_message"]
     enable_thinking = llm_settings["enable_thinking"]
-    thinking = None
-    chat_template = None
-    jinja = None
-
     beat_history_purposes = {
         "macro_arc_create",
         "macro_arc_validate",
@@ -13743,7 +13704,6 @@ def build_beat_arc_plan_messages(
     beat_instructions="",
 ):
     """Build the compact ARC creation prompt for a small local model."""
-    subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
     canonical_character_facts = (
         _canonical_character_facts_from_subject_information(subject_information)
         or "N/A"
@@ -19761,7 +19721,6 @@ def build_director_rules(
     """
     del total_length, subject_definitions, beats_enabled
     delivered_seconds = float(segment_length)
-    continuation = str(conditioning_mode or "").strip().lower() == "continuation"
     director_seconds = delivered_seconds
     if is_final_story_segment is None:
         # Compatibility for direct callers that predate the explicit runtime
@@ -20572,7 +20531,6 @@ def _director_placed_object_keys(previous):
     text = str(previous or "")
     for match in _DIRECTOR_OBJECT_PLACEMENT_RE.finditer(text):
         phrase = match.group("object").strip()
-        phrase_folded = phrase.casefold()
         if re.search(r"(?i)\b(?:it|them)\b", phrase):
             # Resolve only explicit same-action pronouns to nouns named before
             # the placement verb; never scoop up destination/context nouns after it.
@@ -22012,7 +21970,6 @@ def request_five_bullet_summary(
     if llm_request is None:
         llm_request = ask_llm
     base_messages = build_summary_messages(recent_results)
-    last_summary = None
     for attempt in range(1, max(1, int(content_attempts)) + 1):
         messages = [dict(message) for message in base_messages]
         if attempt > 1:
@@ -22035,7 +21992,6 @@ def request_five_bullet_summary(
             summary,
             subject_definitions,
         )
-        last_summary = summary
         normalized = normalize_previous_state(summary)
         if normalized is not None:
             return normalized
@@ -25743,7 +25699,6 @@ def build_hard_cut_subject_continuity(
     llm_request=None,
 ):
     subjects = parse_defined_subjects(subject_definitions)
-    registry = parse_subject_registry(subject_definitions)
     if not subjects:
         return ""
 
@@ -26156,10 +26111,6 @@ def repair_h3_subject_identity(prompt, subject_definitions, continuity_state=Non
         return text
 
     names = _h3_identity_names(identities)
-    names_by_id = {
-        subject_id: identity["name"]
-        for subject_id, identity in identities.items()
-    }
     speaker_to_id = {
         identity["speaker_id"].casefold(): subject_id
         for subject_id, identity in identities.items()
@@ -28083,7 +28034,7 @@ def extract_final_frame(video_path, output_path):
     ]
     try:
         try:
-            result = subprocess.run(
+            subprocess.run(
                 command,
                 capture_output=True,
                 text=True,
@@ -33642,7 +33593,6 @@ def _run_main(
             continuity_state
         )
         generation_state["continuity_state"] = {}
-        continuity_summary_pending = False
         # Bind the first segment to the current subjects.txt definitions before
         # any Director or H3 work begins. Later segments are checked against
         # this append-only identity contract.
@@ -33714,7 +33664,6 @@ def _run_main(
                 continuity_state
             )
             generation_state["continuity_state"] = {}
-            continuity_summary_pending = False
             validate_subject_identity_state(
                 generation_state,
                 base_subject_definitions,
@@ -33743,7 +33692,6 @@ def _run_main(
                 subject_definitions,
                 restored["subject_registry_state"],
             )
-            continuity_summary_pending = restored["continuity_summary_pending"]
             generation_state.pop("additional_subject_definitions", None)
 
     prop_ledger = normalize_prop_ledger(
@@ -34511,12 +34459,6 @@ def _run_main(
 
         # detailed_description is copied directly from canonical cleaned RAW,
         # so action preservation is deterministic by construction.
-        h3_action_validation = {
-            "valid": True,
-            "issues": [],
-            "observations": [],
-        }
-
         generated_prompts_payload["prompts"].append({
             "segment": int(segment),
             "duration": float(segment_bundle["current_duration"]),
