@@ -7451,18 +7451,16 @@ def build_location_reference_h3_prompt(setting_description):
     if not setting:
         raise ValueError("Location reference requires a setting description.")
     return (
-        "detailed_description: [Shot 1] Static environment reference only. "
-        f"A wide panoramic establishing view of {setting}. "
+        f"detailed_description: [Shot 1] The camera is positioned at a high, low-angle shot of the location. "
+        f"It is a static, fast, 2-second, full 360 orbital camera shot of the following setting: {setting}."
         "The space contains no people, characters, creatures, or story action. "
-        "Use one continuous slow lateral camera pan that clearly establishes the "
-        "spatial relationships of major architecture, fixed fixtures, entrances, "
+        "Maintain spatial relationships of major architecture, fixed fixtures, entrances, "
         "surfaces, persistent furniture, landmarks, and lighting sources that are "
         "actually present. Keep the view broad and readable; do not cut, zoom into "
         "an object, or invent a plot event. Unspecified environmental details may be "
         "designed coherently by the video model and should remain internally consistent.\n\n"
-        "overall_soundscape: N/A\n\n"
-        "non_diegetic_music: N/A\n\n"
-        "No intelligible spoken dialogue is heard in this segment."
+        "overall_soundscape: N/A\n"
+        "non_diegetic_music: N/A\n"
     )
 
 
