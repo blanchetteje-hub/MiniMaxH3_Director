@@ -254,6 +254,99 @@ class PostmortemRegressionTests(unittest.TestCase):
             prompt,
         )
 
+    def test_prop_ledger_copies_forward_and_updates_only_observed_props(self):
+        committed = {
+            "mug_1": {
+                "kind": "mug",
+                "owner": "Goblin1",
+                "holder": "N/A",
+                "location": "on the table in front of Goblin1",
+                "contents": "empty",
+                "status": "present",
+            },
+            "basket_1": {
+                "kind": "basket",
+                "owner": "Amy",
+                "holder": "Amy",
+                "location": "N/A",
+                "contents": "N/A",
+                "status": "present",
+            },
+        }
+        observed = {
+            "mug_1": {
+                "kind": "mug",
+                "owner": "Goblin1",
+                "holder": "Goblin1",
+                "location": "N/A",
+                "contents": "beer",
+                "status": "present",
+            },
+        }
+        merged = minimax.merge_prop_ledger(committed, observed)
+        self.assertEqual(merged["mug_1"]["holder"], "Goblin1")
+        self.assertEqual(merged["mug_1"]["contents"], "beer")
+        self.assertEqual(merged["basket_1"], committed["basket_1"])
+
+    def test_combined_continuity_schema_accepts_persistent_prop_ledger(self):
+        candidate = {
+            "props": {
+                "glass_1": {
+                    "kind": "glass",
+                    "owner": "Dragon1",
+                    "holder": "N/A",
+                    "location": "on the bar",
+                    "contents": "empty",
+                    "status": "present",
+                }
+            }
+        }
+        self.assertIs(
+            minimax._validate_combined_continuity_schema(candidate),
+            candidate,
+        )
+
+    def test_prop_staging_micro_prompt_adds_only_missing_availability(self):
+        calls = []
+
+        def fake_llm(messages, **kwargs):
+            calls.append((messages, kwargs))
+            return {
+                "staging": (
+                    "A clean mug is already on the table in front of Goblin1."
+                )
+            }
+
+        staging = minimax.request_director_prop_staging(
+            "Amy pours beer into Goblin1's mug.",
+            {},
+            previous_shot_end="Goblin1 sits at the table.",
+            llm_request=fake_llm,
+        )
+        self.assertEqual(
+            staging,
+            "A clean mug is already on the table in front of Goblin1.",
+        )
+        self.assertEqual(
+            calls[0][1]["history_metadata"]["purpose"],
+            "director_prop_staging",
+        )
+        prompt = "\n".join(message["content"] for message in calls[0][0])
+        self.assertIn("PROP LEDGER", prompt)
+        self.assertIn("Do not rewrite the Beat", prompt)
+        self.assertIn("do not invent architecture/storage", prompt)
+
+    def test_prop_staging_skips_non_prop_beat_without_llm_call(self):
+        def fail_if_called(*_args, **_kwargs):
+            raise AssertionError("prop staging LLM should not run")
+
+        staging = minimax.request_director_prop_staging(
+            "Amy smiles at Goblin1 across the room.",
+            {},
+            llm_request=fail_if_called,
+        )
+        self.assertEqual(staging, "")
+
     def test_dynamic_subject_definition_survives_plain_name_in_malformed_prose(self):
         definitions = (
             "<Subject 1> is Amy, referenced in <Picture 1>.\n"
