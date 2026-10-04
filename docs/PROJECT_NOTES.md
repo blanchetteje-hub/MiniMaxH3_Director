@@ -61,8 +61,12 @@ Current task profiles:
 - `STORY_EXPANSION_LLM_SETTINGS`: continuous prose expansion from the source
   summary; temperature `0.4`, high reasoning, randomized seed.
 - `CREATIVE_GENERATION_LLM_SETTINGS`: open-ended creative staging such as
-  character canon, ARC create/repair, and Director RAW scene creation;
-  temperature `0.8`, high reasoning, randomized seed.
+  character canon and ARC create/repair; temperature `0.8`, high reasoning,
+  randomized seed.
+- `DIRECTOR_RAW_SCENE_LLM_SETTINGS`: Director RAW scene creation; temperature
+  `0.4`, high reasoning, randomized seed. RAW remains creative, but uses lower
+  sampling than other creative-generation work to reduce gratuitous staging
+  embellishment while preserving useful concrete invention.
 - `BEAT_WRITING_LLM_SETTINGS`: Beat CREATE/REPAIR; temperature `0`, high
   reasoning, seed `42`.
 - `STORY_TO_BEATS_LLM_SETTINGS`: derive Beats from an expanded story;
@@ -1958,3 +1962,26 @@ These decisions supersede older refresh/location notes above where they conflict
 - Continuous-take staging must preserve physical travel. A subject established
   at one location cannot interact with a distant location without explicit
   timed movement there.
+
+
+## 2026-10-04 update — location wording, action pacing, RAW sampling
+
+The latest tavern acceptance exposed three separate concerns and the current
+change addresses the first two at prompt/profile level:
+
+- Static setting extraction must not treat relative action wording as proof of
+  separate architecture. Labels such as front/back/side door or left/right table
+  are preserved only when the story establishes multiple distinct instances or
+  the relative identity is itself a persistent architectural fact. With one
+  established instance, use a generic static description such as `entrance door`.
+- Director RAW must budget visible time for every physical prerequisite it
+  invents. Movement, acquisition, positioning, opening, or another prerequisite
+  that must precede a dependent action gets its own earlier timed micro-beat
+  instead of being compressed into the same timestamp.
+- Director RAW now uses its own task profile at temperature `0.4`; other
+  open-ended creative generation remains at `0.8`.
+
+Do not add a timing validator yet. First test whether the lower-temperature RAW
+Director plus explicit prerequisite staging rule resolves compressed prop/action
+execution. A structured static-space catalog remains a future experiment, not
+current architecture.
