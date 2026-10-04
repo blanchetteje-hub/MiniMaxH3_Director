@@ -259,7 +259,7 @@ CHARACTER_REFERENCE_DURATION_SECONDS = 1.0
 CHARACTER_REFERENCE_SAMPLE_SECONDS = 0.5
 CHARACTER_REFERENCE_ASPECT_WIDTH = 13
 CHARACTER_REFERENCE_ASPECT_HEIGHT = 19
-CHARACTER_REFERENCE_RESOLUTION_MULTIPLE = 64
+CHARACTER_REFERENCE_RATIO_SCALE_MULTIPLE = 16
 
 # Clean refresh is intentionally different: it keeps the proven short latent
 # context window so the refresh boundary can reset accumulated generation drift.
@@ -29611,22 +29611,26 @@ def character_reference_resolution(
     *,
     aspect_width=CHARACTER_REFERENCE_ASPECT_WIDTH,
     aspect_height=CHARACTER_REFERENCE_ASPECT_HEIGHT,
-    multiple=CHARACTER_REFERENCE_RESOLUTION_MULTIPLE,
+    scale_multiple=CHARACTER_REFERENCE_RATIO_SCALE_MULTIPLE,
 ):
-    """Return a portrait resolution for isolated person/outfit references."""
+    """Return an exact-ratio portrait resolution for person/outfit references."""
     megapixels = float(megapixels)
     if not math.isfinite(megapixels) or megapixels <= 0:
         raise ValueError("Character-reference megapixels must be positive and finite.")
     aspect_width = int(aspect_width)
     aspect_height = int(aspect_height)
-    multiple = int(multiple)
-    if aspect_width <= 0 or aspect_height <= 0 or multiple <= 0:
-        raise ValueError("Character-reference aspect terms and multiple must be positive.")
+    scale_multiple = int(scale_multiple)
+    if aspect_width <= 0 or aspect_height <= 0 or scale_multiple <= 0:
+        raise ValueError(
+            "Character-reference aspect terms and scale multiple must be positive."
+        )
     total_pixels = megapixels * 1024 * 1024
-    scale = math.sqrt(total_pixels / (aspect_width * aspect_height))
-    width = max(multiple, round(aspect_width * scale / multiple) * multiple)
-    height = max(multiple, round(aspect_height * scale / multiple) * multiple)
-    return int(width), int(height)
+    ideal_scale = math.sqrt(total_pixels / (aspect_width * aspect_height))
+    scale = max(
+        scale_multiple,
+        round(ideal_scale / scale_multiple) * scale_multiple,
+    )
+    return int(aspect_width * scale), int(aspect_height * scale)
 
 
 def prepare_character_reference_workflow(
