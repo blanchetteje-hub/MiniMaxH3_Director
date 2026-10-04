@@ -723,10 +723,149 @@ class PostmortemRegressionTests(unittest.TestCase):
                 1,
                 0.5,
                 6,
+                prior_detailed_description="Amy changes into a green tunic.",
             )
         self.assertEqual(changed, ["Amy"])
         self.assertEqual(refs["Amy"]["picture_number"], 2)
         self.assertEqual(refs["Amy"]["version"], 2)
+
+    def test_visual_wardrobe_drift_does_not_regenerate_clothing_picture(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Amy"] = minimax.new_subject_continuity_record({
+            "subject_id": 1,
+            "name": "Amy",
+            "picture_ids": [1],
+            "picture_id": 1,
+            "canonical_description": "Amy is an adult woman.",
+        })
+        state["subjects"]["Amy"]["wardrobe"]["upper"] = "a denim corset"
+        state["subjects"]["Amy"]["wardrobe"]["lower"] = "dark jeans"
+        existing = {
+            "Amy": {
+                "name": "Amy",
+                "picture_number": 2,
+                "image_name": "amy_v001.png",
+                "image_path": "/tmp/video/state/amy_v001.png",
+                "signature": "stable",
+                "version": 1,
+                "description": (
+                    "Amy is an adult woman. Amy is currently wearing "
+                    "a medieval barmaid dress."
+                ),
+                "wardrobe": {"upper": "a medieval barmaid dress"},
+                "clothing_condition": "",
+            }
+        }
+        with mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Amy serves a drink.",
+                "<Subject 1> is Amy, referenced in <Picture 1>.",
+                state,
+                existing,
+                1,
+                0.5,
+                6,
+                prior_detailed_description="Amy served a drink at the bar.",
+            )
+        self.assertEqual(changed, [])
+        self.assertEqual(refs["Amy"]["version"], 1)
+        render.assert_not_called()
+
+    def test_explicit_clothing_damage_regenerates_from_intended_outfit(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Amy"] = minimax.new_subject_continuity_record({
+            "subject_id": 1,
+            "name": "Amy",
+            "picture_ids": [1],
+            "picture_id": 1,
+            "canonical_description": "Amy is an adult woman.",
+        })
+        state["subjects"]["Amy"]["wardrobe"]["upper"] = "a denim corset"
+        existing = {
+            "Amy": {
+                "name": "Amy",
+                "picture_number": 2,
+                "image_name": "amy_v001.png",
+                "image_path": "/tmp/video/state/amy_v001.png",
+                "signature": "old",
+                "version": 1,
+                "description": (
+                    "Amy is an adult woman. Amy is currently wearing "
+                    "a medieval barmaid dress."
+                ),
+                "wardrobe": {"upper": "a medieval barmaid dress"},
+                "clothing_condition": "",
+            }
+        }
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="amy_identity.png",
+        ), mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="/tmp/video/state/amy_v002.png",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Amy keeps moving.",
+                "<Subject 1> is Amy, referenced in <Picture 1>.",
+                state,
+                existing,
+                1,
+                0.5,
+                6,
+                prior_detailed_description=(
+                    "Amy's medieval barmaid dress is torn and stained."
+                ),
+            )
+        self.assertEqual(changed, ["Amy"])
+        self.assertEqual(refs["Amy"]["version"], 2)
+        target = render.call_args.args[1]
+        self.assertIn("medieval barmaid dress", target)
+        self.assertIn("torn and stained", target)
+        self.assertNotIn("denim corset", target)
+
+    def test_character_reference_uses_13_by_19_portrait_resolution(self):
+        workflow = minimax.prepare_character_reference_workflow(
+            "Amy is an adult woman wearing a medieval barmaid dress.",
+            0.5,
+            steps=6,
+            picture_number=2,
+        )
+        _conditioning_id, conditioning = minimax.find_workflow_node(
+            workflow,
+            minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+            "test character reference workflow",
+            "MiniMaxH3ReferenceToVideo",
+        )
+        width = conditioning["inputs"]["width"]
+        height = conditioning["inputs"]["height"]
+        self.assertIsInstance(width, int)
+        self.assertIsInstance(height, int)
+        self.assertLess(width, height)
+        self.assertAlmostEqual(
+            width / height,
+            minimax.CHARACTER_REFERENCE_ASPECT_WIDTH
+            / minimax.CHARACTER_REFERENCE_ASPECT_HEIGHT,
+            delta=0.04,
+        )
+
+        location = minimax.prepare_location_reference_workflow(
+            "A medieval tavern.",
+            0.5,
+            steps=6,
+        )
+        _location_id, location_conditioning = minimax.find_workflow_node(
+            location,
+            minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+            "test location reference workflow",
+            "MiniMaxH3ReferenceToVideo",
+        )
+        self.assertIsInstance(location_conditioning["inputs"]["width"], list)
+        self.assertIsInstance(location_conditioning["inputs"]["height"], list)
 
     def test_character_reference_can_create_loadimage_above_six(self):
         workflow = {
