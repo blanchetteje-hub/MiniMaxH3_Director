@@ -62,6 +62,7 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **Location-reference authority is limited to static environment/spatial layout**, not characters or current camera composition.
 - [x] **Location continuity accepted.** Recent tavern runs preserved covered room geometry with unexpectedly high accuracy across changing viewpoints.
 - [x] **Setting extraction avoids over-promoting action-only props** and treats relative labels such as front/back/side as uncertain unless distinct architecture is established.
+- [ ] **Production-verify Director static-setting authority.** Request 1 and RAW coherence now receive the compact extracted static setting and must preserve explicitly described fixed fixtures/lighting placement without forcing off-camera elements into frame.
 - [ ] **Compact static-space existence bookkeeping.** Add only enough text/JSON state to answer whether a closet, shelf, doorway, storage point, or other interaction location has been established. Do not duplicate the orbit video's geometry.
 - [ ] **Multi-room / returning-location stress test.** Verify authority when the story moves between several spaces and later returns.
 
@@ -71,13 +72,13 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **Dynamic functional Subject names are stable** and preserve role/species semantics without same-type alias drift.
 - [x] **Named dynamic Subjects carry canonical prose** such as age/gender/clothing where available.
 - [x] **Full Python Subject continuity state is text-renderable on re-entry:** position, pose/action, wardrobe, topology, physical condition, held/attached props, injuries/substances, spatial relationships, persistent effects, and terminal absence.
-- [ ] **Exact visual consistency for dynamically created named characters.** Preferred next experiment: before first story appearance, generate a short (~1-second) neutral character clip from canonical physical identity, take a clean middle frame, and register it as the persistent character reference image.
-- [ ] **Keep generated character identity references wardrobe-neutral.** Identity refs should establish face/hair/age/build/species/distinguishing traits while semantic wardrobe state remains free to change later.
+- [ ] **Production-verify generated identity Pictures for dynamic Subjects.** Before first H3 story appearance, a no-source dynamic Subject now gets a 1-second portrait reference whose sampled frame owns identity + current appearance. Later intentional wardrobe/condition changes reuse the prior generated Picture as identity conditioning. Verify first appearance and re-entry stay on that identity.
+- [ ] **Verify dynamic identity survives wardrobe changes.** A dynamic Subject's generated Picture may depict current clothing, but versioned wardrobe updates must preserve the same face/head, build, species, and distinguishing traits while allowing semantic clothing to change.
 - [ ] **DINO recovery path remains fallback only.** Revisit DINO extraction/cropping if deliberate pre-generated character references fail or cannot cover a use case.
 
 ### Clothing / wardrobe continuity
 
-- [x] **Picture references no longer own current clothing.** They establish persistent identity/body appearance; current wardrobe comes from continuity state / immediate Guide context.
+- [x] **Source identity Pictures no longer own current clothing.** Source-backed Subjects use their original Picture for persistent identity/body appearance plus a separate generated current-clothing Picture. Dynamic Subjects with no source Picture use a generated identity + current-appearance Picture that is versioned from its prior identity when wardrobe changes.
 - [x] **Current wardrobe is stored in Python-owned Subject state and can be rendered back into re-entry Subject prose.**
 - [ ] **Intentional wardrobe-change persistence.** Stress test Outfit A -> explicit change to Outfit B -> character leaves for multiple segments -> character returns while permanent identity reference still depicts A. The return must stay in B.
 - [ ] **Wardrobe-change bookkeeping/validation.** Ensure changes occur only when source/Beat authorizes them and stale canonical/reference clothing cannot roll them backward.
@@ -94,7 +95,7 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **Basic movable-prop persistence accepted in production.** The latest tavern rerun eliminated the prior appearing/disappearing glasses/basket behavior, and liquid/container behavior was acceptable overall. The remaining demonstrated prop defect was semantic ownership: Segment 3 reused Goblin1's tracked mug as serving inventory for Elf1.
 - [x] **Owned/held props are not shared inventory.** The pre-RAW prop-staging micro-call and Director now treat another subject's owned/held prop as unavailable unless CURRENT BEAT explicitly authorizes that use/taking/transfer; missing serving props should be staged as distinct ordinary instances instead of hijacking a tracked patron prop.
 - [x] **Deterministic final-participant carry-forward.** After dynamic Subject resolution, Python now compares the final timed micro-action with the End continuity state. A named Subject still present in the final action but omitted by End state is copied into that state from the exact final-action evidence, without another LLM call. Explicit exits/leaving/occlusion are not carried.
-- [ ] **Production-verify ownership + final-subject carry-forward.** Rerun the tavern case and verify Goblin1 remains semantically located after Segment 2, does not wander into Elf1's seat in Segment 3, and Goblin1's mug is not repurposed to serve Elf1.
+- [ ] **Production-verify ownership + final-subject/final-prop carry-forward.** Rerun the tavern case and verify Goblin1 remains semantically located after Segment 2, does not wander into Elf1's seat in Segment 3, and Goblin1's mug is not repurposed to serve Elf1. Also verify Dragon1's handed crystal cup survives Segment 4 End state/ledger and remains the drink source in Segment 5.
 - [ ] **End-to-end bookkeeping stress test.** Use a story that stores, drops, retrieves, transfers, equips, loses, and later reuses props while characters leave/re-enter rooms.
 
 ### Refresh / long-run quality / runtime robustness
@@ -1617,7 +1618,7 @@ as blocking acceptance gates.
   - NEXT BEAT is only the boundary.
 - Request 1 no longer receives Python-generated final-state contracts, barrier
   contracts, or HELD/EQUIPPED/STORED item instructions.
-- Request 1 structured output is now creation-only: \`{"raw_scene":"..."}\`.
+- Request 1 structured output is now creation-only: `{"raw_scene":"..."}`.
   Model-owned completion booleans were removed from the production schema.
 - Existing deterministic Director checks are retained as diagnostics only.
   Hand conflicts, item-state contradictions, missing subjects, topology/crossing,
@@ -2322,7 +2323,7 @@ continuity regression:
   relocate a fixed fixture such as a hanging lantern onto a tabletop and then conflict
   with the persistent location reference injected only at final H3 assembly.
 
-Current implementation on \`location-state-test\`:
+Current implementation on `location-state-test`:
 
 - a source-backed Subject keeps its generated current-clothing Picture as clothing-only
   authority;
@@ -2333,7 +2334,7 @@ Current implementation on \`location-state-test\`:
   replacement render on its prior generated identity Picture rather than inventing a new
   identity;
 - an unconditioned first character-reference render no longer refers to a nonexistent
-  \`<Picture 1>\`;
+  `<Picture 1>`;
 - RAW rules and coherence validation now preserve CURRENT BEAT transfer roles/results,
   reject source-less material motion or substitute spill/drool behavior for an assigned
   drink/transfer, and require a materially changed/transferred final prop to survive into

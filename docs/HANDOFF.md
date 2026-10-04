@@ -430,11 +430,11 @@ Two production fixes are now active on `location-state-test`:
 
 Newest production evidence separated four visible symptoms into three upstream causes:
 
-1. Segment 2's extra plate was actually RAW's invented \`small wooden tray\`; the apparent
+1. Segment 2's extra plate was actually RAW's invented `small wooden tray`; the apparent
    extra cup is consistent with H3 compensating for RAW telling Amy to tilt a barrel as if
    it were a handheld pouring vessel.
 2. Segment 4's generated Dragon1 state Picture existed before the render, but final H3
-   labeled it clothing-only while the Subject definition said only \`Dragon1 is a dragon\`.
+   labeled it clothing-only while the Subject definition said only `Dragon1 is a dragon`.
    H3 therefore had no Picture-owned dragon identity on first appearance. RAW also
    explicitly misdirected the brew onto Dragon1's scales instead of filling the cup.
 3. Segment 5 used source-less liquid on Dragon1's tongue because the prior End continuity
@@ -450,7 +450,7 @@ Implemented:
 - later outfit changes for dynamic Subjects reuse the previous generated Picture as identity
   conditioning;
 - first unconditioned dynamic-reference generation no longer mentions nonexistent
-  \`<Picture 1>\`;
+  `<Picture 1>`;
 - RAW generation/validation preserves the Beat's transfer destination/recipient/container,
   binds drinks/material to a real established source, and rejects final End states that drop
   a just-transferred/materially changed prop;
