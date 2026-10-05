@@ -686,3 +686,30 @@ The consolidated dynamic Subject bootstrap now receives the complete
 Acceptance target remains the tavern run: Goblin1/Elf1 clothing should now reflect the
 expanded story's visual world while Dragon1 should stay unclothed unless the story/RAW
 establishes clothing.
+
+
+### 2026-10-05 — cumulative Director Request 1 retry blockers
+
+Observed Segment 3 repeatedly bounced between independent blockers: final timestamp too
+early, prop-transfer incoherence, then missing 00:00.000 staging. The retry path was resetting
+to the clean base prompt after every failure and passing only the latest issue, so a later
+retry could reintroduce a defect already corrected on an earlier attempt.
+
+Fix on `location-state-test`:
+
+- Request 1 now keeps a short unique list of every blocking failure observed during the
+  current segment attempt loop.
+- Every retry is still rebuilt from the clean base prompt, but appends one compact
+  `RETRY REQUIREMENTS` block containing ALL blockers seen so far.
+- Structure retries now include the exact structure error returned by Python instead of only
+  a generic "begin at 00:00.000" reminder.
+- Physical/spatial, prop/state, timing, dialogue, and empty-scene blockers all use the same
+  cumulative mechanism.
+- This does not add an LLM stage or preserve/re-feed the rejected RAW; it only prevents the
+  model from forgetting already-discovered constraints while keeping retry prompts small.
+- Regression coverage reproduces a structure failure followed by a prop/state failure and
+  verifies the third Request 1 prompt contains both requirements.
+
+Acceptance target: rerun the failed tavern Segment 3. Once a retry learns that the final
+micro-beat must be >= 6s and frame zero must be 00:00.000, those constraints should remain
+present while it also repairs the mug transfer instead of oscillating between validators.
