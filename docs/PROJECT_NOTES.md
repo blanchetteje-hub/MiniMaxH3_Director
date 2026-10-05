@@ -2502,3 +2502,27 @@ still use their existing semantic validation/retry behavior.
 - `visual_style` is persisted in run config/generation state and generated-prompt package metadata. Resume and repair inherit the saved style when no explicit CLI override is supplied.
 - `normalize_command_line` preserves the value following `--visual-style` as one argument, including embedded commas. The desktop bridge already launches `minimax.py` with an argv list and now emits `["--visual-style", value]`, so Windows/Linux quoting differences do not leak into the app.
 - The desktop Generation settings UI exposes a Visual style text field; no additional text file is required.
+
+### 2026-10-05 — defined-Subject wardrobe authority now comes from expanded story
+
+Pre-defined Subjects now get canonical wardrobe in a dedicated pass after
+`expanded_story.txt` is available. Python iterates `subjects.txt` and makes one
+small deterministic LLM request per Subject rather than asking one call to classify
+multiple characters.
+
+The extractor's key phrase is **appropriate attire**. It preserves explicit outfit
+detail from the expanded story and fills only missing normal pieces according to the
+Subject's species/body, period, setting, culture, and occupation. It must not dress
+dragons/animals/other naturally unclothed beings merely to satisfy a clothing schema;
+those return `N/A` unless explicitly clothed. Conversely, an unstated modern human
+outfit can be completed with ordinary modern attire such as a T-shirt and blue jeans.
+
+The resulting natural-language outfit replaces `character_canon.json -> clothing`
+for that defined Subject and feeds canonical Subject prose plus structured wardrobe
+state used by character-reference generation. The original broad character-canon call
+is now prohibited from inventing missing clothing; it only copies explicit source
+clothing provisionally until this expanded-story extractor runs.
+
+This is intentionally separate from dynamic Subject wardrobe bootstrap. Dynamic
+Subjects still receive their one-time outfit from the existing post-RAW resolver.
+

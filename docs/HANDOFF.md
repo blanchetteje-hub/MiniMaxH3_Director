@@ -732,3 +732,37 @@ unchanged.
 - The historical `Live-action, cinematic` formatter prefix is stripped if it still appears, then the configured style is inserted once.
 - The style is saved in generation-state/run config and `generated_prompts.txt` metadata. Resume/repair reuse the saved style unless `--visual-style` explicitly overrides it.
 - The desktop UI exposes Visual style and passes it to `minimax.py` as one subprocess argv element, so spaces require no platform-specific quoting inside the app.
+
+### 2026-10-05 — per-defined-Subject canonical appropriate attire
+
+The Amy reference test exposed a wardrobe-authority loss: the expanded story said
+`rough-spun tunic and leather apron`, but the earlier broad character-canon pass
+collapsed that to `tunic and apron`, producing an incomplete clothing reference.
+
+Current fix on `location-state-test`:
+
+- after `expanded_story.txt` exists, every pre-defined Subject from `subjects.txt`
+  gets its own independent `story_subject_wardrobe_extract` LLM request;
+- the call is deterministic/low-budget (temperature 0, low reasoning, 128 thinking
+  budget through the normal analysis profile; output capped at 128 tokens);
+- each call receives the full expanded story but reasons about exactly one Subject;
+- the prompt explicitly asks for the Subject's **appropriate attire**: preserve all
+  explicit material/texture/color/wear/layer details, then fill only missing normal
+  outfit pieces so a normally clothed Subject has a complete coherent outfit;
+- "appropriate attire" is species/body/setting aware. Dragons, animals, and other
+  beings that appropriately do not wear clothes return `N/A` unless the story
+  explicitly clothes them; a normally clothed modern person may receive ordinary
+  attire such as a T-shirt and blue jeans when the story is silent;
+- the earlier broad character-canon pass no longer invents clothing when source
+  clothing is absent; it returns `N/A` and leaves final wardrobe ownership to this
+  expanded-story per-Subject extractor;
+- each extracted outfit overwrites that Subject's `character_canon.json`
+  `clothing` value and is therefore the canonical defined-Subject outfit used by
+  Director/H3/reference generation;
+- canonical attire is seeded into structured wardrobe state before fallback story
+  parsing, and `apron` is now recognized as an `other` wardrobe component;
+- explicit no-clothing values do not generate a bogus `wearing ...` sentence.
+
+Dynamic/video-created Subjects keep the existing one-source post-RAW wardrobe bootstrap;
+this new extractor applies only to pre-defined Subjects.
+

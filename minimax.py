@@ -572,6 +572,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "source_unit_state_effects",
     "story_location_extract",
     "story_setting_extract",
+    "story_subject_wardrobe_extract",
     "subject_continuity",
     "visual_end_state",
 })
@@ -1286,7 +1287,7 @@ _WARDROBE_COMPONENT_PATTERNS = {
     ),
     "other": re.compile(
         r"(?i)\b(?:dress|gown|robe|jumpsuit|coveralls|overalls|hat|cap|"
-        r"scarf|tie|belt|gloves?|necklace|bracelet|watch|glasses|"
+        r"scarf|tie|belt|apron|gloves?|necklace|bracelet|watch|glasses|"
         r"accessor(?:y|ies))\b"
     ),
 }
@@ -6244,11 +6245,13 @@ def build_character_canon_messages(canonical_data, story, subject_definitions=""
                 "CANONICAL DATA is optional additional character information. "
                 "When it is empty, establish character facts from STORY and SUBJECTS. "
                 "Use STORY and SUBJECTS to identify the named characters and copy "
-                "any explicit values for those fields. If a configured value is "
-                "missing, invent one reasonable value once. Return name, age, "
-                "clothing, and gender for every named character. Clothing means "
-                "baseline clothing. Do not invent characters. Put only additional "
-                "explicitly stated character facts in other_facts; never replace "
+                "any explicit values for those fields. If age or gender is missing, "
+                "invent one reasonable value once. For clothing, copy explicit source "
+                "clothing when present; otherwise return N/A. Do not invent clothing "
+                "in this call: the later per-Subject expanded-story appropriate attire "
+                "extractor owns final canonical wardrobe. Return name, age, clothing, "
+                "and gender for every named character. Do not invent characters. Put "
+                "only additionally stated character facts in other_facts; never replace "
                 "an explicit fact.\n\n"
                 "CANONICAL DATA\n" + str(canonical_data).strip()
                 + "\n\nSTORY\n" + str(story or "").strip()
@@ -6437,6 +6440,195 @@ def load_or_generate_character_canon(
     return save_character_canon(
         canon,
         expected_hash,
+        path=path,
+    )
+
+
+def build_story_subject_wardrobe_messages(
+    expanded_story,
+    subject_name,
+    subject_definition="",
+    canonical_record=None,
+):
+    """Build one small wardrobe extraction request for one defined Subject."""
+    non_clothing = {}
+    if isinstance(canonical_record, dict):
+        non_clothing = {
+            key: value
+            for key, value in canonical_record.items()
+            if key not in {"name", "clothing"}
+        }
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Determine one defined subject's canonical appropriate attire from "
+                "the expanded story. Preserve every explicit clothing detail for "
+                "this subject, including material, texture, color, wear, layers, "
+                "and role-specific garments. Then fill only missing normal outfit "
+                "pieces with simple appropriate attire for the subject's species, "
+                "body, setting, period, culture, and occupation so the visual "
+                "reference shows a complete coherent outfit. Appropriate attire "
+                "does not mean every subject wears clothes: dragons, animals, and "
+                "other beings that appropriately do not wear clothing must return "
+                "N/A unless the story explicitly gives them clothing. For normally "
+                "clothed people whose outfit is unstated, choose ordinary appropriate "
+                "attire for the setting (for example, a T-shirt and blue jeans in a "
+                "modern casual setting). Do not change identity, anatomy, story "
+                "events, or explicit clothing facts. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"SUBJECT\n{str(subject_name or '').strip()}\n\n"
+                f"DEFINED SUBJECT\n{str(subject_definition or '').strip() or 'N/A'}\n\n"
+                "KNOWN NON-CLOTHING FACTS\n"
+                + (
+                    json.dumps(non_clothing, ensure_ascii=False, separators=(",", ":"))
+                    if non_clothing else "N/A"
+                )
+                + "\n\nEXPANDED STORY\n"
+                + str(expanded_story or "").strip()
+                + "\n\nReturn exactly clothing."
+            ),
+        },
+    ]
+
+
+def build_story_subject_wardrobe_response_format():
+    """Return the strict one-field wardrobe extractor schema."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_subject_wardrobe_extract",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "clothing": {"type": "string", "minLength": 1},
+                },
+                "required": ["clothing"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_story_subject_wardrobe_result(raw_result, llm_request=None):
+    """Normalize one subject's extracted canonical attire."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(
+            candidate,
+            llm_request=llm_request,
+            repair_on_failure=False,
+        )
+    if not isinstance(candidate, dict) or set(candidate) != {"clothing"}:
+        raise ValueError(
+            "Subject wardrobe extraction must contain only clothing."
+        )
+    clothing = " ".join(str(candidate.get("clothing") or "").split()).strip(" ,.;")
+    if not clothing:
+        raise ValueError("Subject wardrobe extraction returned empty clothing.")
+    if clothing.casefold() in {
+        "none", "no clothes", "no clothing", "unclothed",
+        "naturally unclothed", "not applicable", "n/a", "na",
+    }:
+        return "N/A"
+    return clothing
+
+
+def canonicalize_defined_subject_wardrobes(
+    character_canon,
+    expanded_story,
+    subject_definitions,
+    *,
+    canonical_data="",
+    path=CHARACTER_CANON_FILE,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Extract one canonical outfit per pre-defined Subject using separate calls."""
+    if llm_request is None:
+        llm_request = ask_llm
+    expanded_story = str(expanded_story or "").strip()
+    if not expanded_story:
+        return character_canon
+    if not isinstance(character_canon, dict):
+        raise ValueError("Character canon is required for wardrobe extraction.")
+
+    registry = parse_subject_registry(subject_definitions)
+    if not registry:
+        return character_canon
+
+    canon = copy.deepcopy(character_canon)
+    records = [
+        record
+        for record in canon.get("characters", [])
+        if isinstance(record, dict)
+    ]
+    by_name = {
+        " ".join(str(record.get("name") or "").split()).strip().casefold(): record
+        for record in records
+        if str(record.get("name") or "").strip()
+    }
+    definition_lines = {
+        int(match.group("subject")): line.strip()
+        for line in str(subject_definitions or "").splitlines()
+        if (
+            match := re.match(
+                r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+",
+                line,
+            )
+        )
+    }
+
+    for subject_id, subject in sorted(registry.items()):
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        record = by_name.get(name.casefold())
+        if record is None:
+            raise ValueError(
+                f"Defined Subject {name!r} has no canonical character record."
+            )
+        raw = llm_request(
+            build_story_subject_wardrobe_messages(
+                expanded_story,
+                name,
+                definition_lines.get(subject_id, ""),
+                record,
+            ),
+            response_format=build_story_subject_wardrobe_response_format(),
+            max_tokens=128,
+            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "purpose": "story_subject_wardrobe_extract",
+                "subject": name,
+                "subject_id": int(subject_id),
+            },
+        )
+        clothing = parse_story_subject_wardrobe_result(
+            raw,
+            llm_request=llm_request,
+        )
+        record["clothing"] = clothing
+        console_log(
+            f"Canonical appropriate attire for {name}: {clothing}",
+            flush=True,
+        )
+
+    canon["fields"] = list(dict.fromkeys([
+        *(canon.get("fields") or []),
+        "clothing",
+    ]))
+    return save_character_canon(
+        canon,
+        _character_canon_source_hash(
+            canonical_data,
+            expanded_story,
+            subject_definitions,
+        ),
         path=path,
     )
 
@@ -22744,7 +22936,10 @@ def _canonical_clothing_items(value):
             raw_items.extend(_canonical_clothing_items(item))
     else:
         text = " ".join(str(value or "").split()).strip(" ,.;")
-        if text and text.casefold() not in {"n/a", "unknown", "unspecified", "none"}:
+        if text and text.casefold() not in {
+            "n/a", "unknown", "unspecified", "none", "no clothing",
+            "unclothed", "naturally unclothed", "not applicable",
+        }:
             raw_items.append(text)
 
     deduped = []
@@ -23386,6 +23581,65 @@ def seed_story_wardrobe(subject_definitions, story, state=None):
             ) is None:
                 wardrobe[field] = value
     return seeded
+
+
+def seed_character_canon_wardrobe(
+    subject_definitions,
+    character_canon,
+    state=None,
+):
+    """Fill unknown wardrobe slots from canonical defined-Subject attire."""
+    seeded = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(state) if isinstance(state, dict) else state,
+    )
+    if not isinstance(character_canon, dict):
+        return seeded
+
+    records = {
+        " ".join(str(record.get("name") or "").split()).strip().casefold(): record
+        for record in character_canon.get("characters", [])
+        if isinstance(record, dict) and str(record.get("name") or "").strip()
+    }
+    for name, subject_state in seeded.get("subjects", {}).items():
+        if not isinstance(subject_state, dict):
+            continue
+        record = records.get(str(name).casefold())
+        if not isinstance(record, dict):
+            continue
+        clothing = " ".join(str(record.get("clothing") or "").split()).strip()
+        if not _canonical_clothing_items(clothing):
+            continue
+        wardrobe = subject_state.setdefault("wardrobe", {})
+        grouped = {}
+        for field, value in _split_wardrobe_components(clothing):
+            grouped.setdefault(field, []).append(value)
+        for field, values in grouped.items():
+            if _known_replacement_value(
+                wardrobe.get(field),
+                f"wardrobe.{field}",
+            ) is None:
+                wardrobe[field] = _join_wardrobe_components(values)
+    return seeded
+
+
+def seed_canonical_opening_wardrobe(
+    subject_definitions,
+    story,
+    character_canon,
+    state=None,
+):
+    """Seed canonical attire first, then fill remaining explicit story slots."""
+    seeded = seed_character_canon_wardrobe(
+        subject_definitions,
+        character_canon,
+        state,
+    )
+    return seed_story_wardrobe(
+        subject_definitions,
+        story,
+        seeded,
+    )
 
 
 # Find wardrobe slots whose absence is explicitly established.
@@ -35707,14 +35961,42 @@ def _run_main(
             f"One-beat-per-segment requires exactly {total_segments} beats for "
             f"{total_segments} segments, but beats.txt contains {len(beats)} beats."
         )
-    if generate_beats_only:
-        console_log("Story arc and beats generated successfully.", flush=True)
-        return
-
     expanded_story_context = load_text_file(
         EXPANDED_STORY_FILE,
         required=False,
     )
+    if expanded_story_context:
+        character_canon = canonicalize_defined_subject_wardrobes(
+            character_canon,
+            expanded_story_context,
+            base_subject_definitions,
+            canonical_data=canonical_data,
+            history_metadata={"run_id": run_id},
+        )
+        subject_information = format_beat_generation_subjects(
+            subject_definitions
+        )
+        canonical_character_facts = format_character_canon_for_beats(
+            character_canon
+        )
+        if canonical_character_facts:
+            subject_information = (
+                subject_information + "\n" + canonical_character_facts
+            ).strip()
+        canonical_subject_names, canonical_subject_genders = (
+            canonical_character_subject_hints(character_canon)
+        )
+        canonical_subject_descriptions = (
+            canonical_character_subject_descriptions(character_canon)
+        )
+
+    if generate_beats_only:
+        console_log(
+            "Story arc, beats, and defined-Subject canonical attire generated successfully.",
+            flush=True,
+        )
+        return
+
     story_location_metadata = {}
     if resume_segment == 1:
         if expanded_story_context:
@@ -35902,9 +36184,10 @@ def _run_main(
             subject_definitions,
             new_continuity_state(),
         )
-        continuity_state = seed_story_wardrobe(
+        continuity_state = seed_canonical_opening_wardrobe(
             subject_definitions,
-            story,
+            expanded_story_context or story,
+            character_canon,
             continuity_state,
         )
         generation_state["subject_registry_state"] = migrate_continuity_state(
@@ -35973,9 +36256,10 @@ def _run_main(
                 subject_definitions,
                 new_continuity_state(),
             )
-            continuity_state = seed_story_wardrobe(
+            continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 continuity_state,
             )
             generation_state["subject_registry_state"] = migrate_continuity_state(
@@ -37263,9 +37547,10 @@ def _run_main(
             # The source story is the only authority for the opening outfit;
             # restore it when the combined continuity response omitted the
             # still-unknown slots. Rendered observations below may override it.
-            prompt_reduced_continuity_state = seed_story_wardrobe(
+            prompt_reduced_continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 prompt_reduced_continuity_state,
             )
             if vision_required:
@@ -37306,9 +37591,10 @@ def _run_main(
             prompt_reduced_continuity_state = clear_unrendered_wardrobes(
                 prompt_reduced_continuity_state
             )
-            prompt_reduced_continuity_state = seed_story_wardrobe(
+            prompt_reduced_continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 prompt_reduced_continuity_state,
             )
             prompt_only_opening_summary = request_continuity_opening_state(
@@ -37364,9 +37650,10 @@ def _run_main(
                 subject_definitions,
                 clear_unrendered_wardrobes(continuity_state),
             )
-            continuity_state = seed_story_wardrobe(
+            continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 continuity_state,
             )
         if appended_subject_lines:
@@ -37437,9 +37724,10 @@ def _run_main(
             reduced_continuity_state = clear_unrendered_wardrobes(
                 prompt_reduced_continuity_state
             )
-            reduced_continuity_state = seed_story_wardrobe(
+            reduced_continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 reduced_continuity_state,
             )
             continuity_state = continuity_state_for_registry(
@@ -37698,9 +37986,10 @@ def _run_main(
             reduced_continuity_state = clear_unrendered_wardrobes(
                 prompt_reduced_continuity_state
             )
-            reduced_continuity_state = seed_story_wardrobe(
+            reduced_continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 reduced_continuity_state,
             )
             console_log(

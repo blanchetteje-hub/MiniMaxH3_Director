@@ -763,6 +763,128 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertIn("reframe only through continuous camera movement", prompt)
 
+    def test_defined_subject_wardrobe_extractor_uses_one_call_per_subject(self):
+        calls = []
+        responses = iter([
+            {
+                "clothing": (
+                    "rough-spun tunic, brown work trousers, worn leather boots, "
+                    "and worn leather apron"
+                )
+            },
+            {"clothing": "N/A"},
+        ])
+
+        def fake_llm(messages, **kwargs):
+            calls.append((messages, kwargs))
+            return next(responses)
+
+        canon = {
+            "fields": ["age", "clothing", "gender"],
+            "characters": [
+                {
+                    "name": "Amy",
+                    "age": "35",
+                    "clothing": "tunic and apron",
+                    "gender": "female",
+                },
+                {
+                    "name": "Drake",
+                    "age": "adult",
+                    "clothing": "N/A",
+                    "gender": "unknown",
+                },
+            ],
+        }
+        subjects = (
+            "<Subject 1> is Amy, a medieval barkeep.\n"
+            "<Subject 2> is Drake, a dragon."
+        )
+        expanded = (
+            "Amy wears a rough-spun tunic and leather apron while tending the "
+            "medieval tavern. Drake is a dragon resting beside the hearth."
+        )
+
+        with mock.patch(
+            "minimax.save_character_canon",
+            side_effect=lambda value, *_args, **_kwargs: value,
+        ):
+            result = minimax.canonicalize_defined_subject_wardrobes(
+                canon,
+                expanded,
+                subjects,
+                llm_request=fake_llm,
+            )
+
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(
+            [call[1]["history_metadata"]["subject"] for call in calls],
+            ["Amy", "Drake"],
+        )
+        for messages, kwargs in calls:
+            prompt = "\n".join(message["content"] for message in messages)
+            self.assertIn("appropriate attire", prompt)
+            self.assertIn("EXPANDED STORY", prompt)
+            self.assertIn(expanded, prompt)
+            self.assertEqual(
+                kwargs["history_metadata"]["purpose"],
+                "story_subject_wardrobe_extract",
+            )
+            self.assertEqual(kwargs["max_tokens"], 128)
+
+        self.assertEqual(
+            result["characters"][0]["clothing"],
+            (
+                "rough-spun tunic, brown work trousers, worn leather boots, "
+                "and worn leather apron"
+            ),
+        )
+        self.assertEqual(result["characters"][1]["clothing"], "N/A")
+
+    def test_appropriate_attire_prompt_keeps_non_clothed_species_unclothed(self):
+        messages = minimax.build_story_subject_wardrobe_messages(
+            "A dragon rests beside a modern family.",
+            "Dragon1",
+            "<Subject 2> is Dragon1, a dragon.",
+            {"name": "Dragon1", "age": "adult", "gender": "unknown"},
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("Appropriate attire", prompt)
+        self.assertIn("dragons, animals", prompt)
+        self.assertIn("T-shirt and blue jeans", prompt)
+        self.assertIn("must return N/A", prompt)
+
+    def test_canonical_defined_subject_attire_seeds_complete_wardrobe(self):
+        subjects = "<Subject 1> is Amy, a medieval barkeep."
+        canon = {
+            "characters": [{
+                "name": "Amy",
+                "clothing": (
+                    "rough-spun tunic, brown work trousers, worn leather boots, "
+                    "and worn leather apron"
+                ),
+            }]
+        }
+        state = minimax.seed_character_canon_wardrobe(
+            subjects,
+            canon,
+            minimax.new_continuity_state(),
+        )
+        wardrobe = state["subjects"]["Amy"]["wardrobe"]
+        self.assertIn("rough-spun tunic", wardrobe["upper"])
+        self.assertIn("brown work trousers", wardrobe["lower"])
+        self.assertIn("worn leather boots", wardrobe["footwear"])
+        self.assertIn("worn leather apron", wardrobe["other"])
+
+    def test_no_clothing_canon_does_not_emit_wearing_clause(self):
+        sentence = minimax.format_canonical_character_sentence({
+            "name": "Drake",
+            "age": "adult",
+            "gender": "unknown",
+            "clothing": "N/A",
+        })
+        self.assertNotIn("wearing", sentence)
+
     def test_final_h3_prompt_injects_configured_visual_style_after_shot_one(self):
         prompt = minimax.build_h3_prompt(
             {
