@@ -1836,7 +1836,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertEqual(merged["Goblin1"]["position"], "beside counter")
         self.assertEqual(merged["Goblin1"]["held_props"], ["mug_1"])
         self.assertEqual(merged["Elf1"]["position"], "back table")
-        self.assertEqual(merged["Elf1"]["last_observed_segment"], 3)
+        self.assertEqual(merged["Elf1"]["last_updated_segment"], 3)
 
     def test_h3_carries_stationary_continuing_subject_not_in_action(self):
         state = {
