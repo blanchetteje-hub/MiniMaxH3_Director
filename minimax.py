@@ -27656,7 +27656,7 @@ def inject_h3_visual_style(description, visual_style=DEFAULT_VISUAL_STYLE):
         rf"^{re.escape(style)}\s*[,.;:]?\s*",
         re.IGNORECASE,
     )
-    body = style_prefix.sub("", body, count=1).strip(" ,.;:")
+    body = style_prefix.sub("", body, count=1).lstrip(" ,.;:")
     if body:
         return f"[Shot 1] {style}, {body}"
     return f"[Shot 1] {style}"
