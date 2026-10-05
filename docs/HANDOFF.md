@@ -590,3 +590,41 @@ Current behavior:
 - Picture-definition lines no longer receive duplicated opening-guide state language.
 
 Focused tests passed for generated-Picture preservation and non-duplication of guide authority.
+
+
+### 2026-10-05 — dynamic reference identity descriptions + species-neutral reference portraits
+
+The latest tavern acceptance confirmed that generated character Pictures now reach H3
+correctly, but exposed an upstream identity-flattening bug for newly resolved dynamic
+Subjects. RAW retained useful explicit appearance facts (for example a female silver-haired
+elf and a humanoid dragon with obsidian scales/wings/amber eyes), while Python registered
+only the functional fallback `Elf1 is an elf.` / `Dragon1 is a dragon.`. The first
+generated identity Picture therefore had too little authority and could contradict the Beat.
+
+Current fix on `location-state-test`:
+
+- the existing post-RAW Subject-resolution call now also returns one concise
+  `subject_descriptions` entry for each newly named dynamic Subject;
+- those descriptions may use only explicit visual identity facts already present in RAW
+  (species/type, sex/gender wording, age, hair, skin/scales/fur, build, anatomy/body, and
+  distinguishing features), excluding action, pose, location, props, camera, mood, and
+  invented details;
+- Python persists that description as the dynamic Subject's canonical description during
+  registration instead of falling back to species-only text;
+- canonical source-character descriptions still override resolver descriptions for planned
+  named characters;
+- the resolver API remains backward compatible for older tests/callers, while production
+  requests the new description map;
+- the isolated one-second character-reference prompt is now species-neutral: it asks for a
+  single subject's complete physical appearance and species/anatomy traits, and only shows
+  clothing/accessories when explicitly described. It no longer assumes every Subject is a
+  clothed humanoid.
+
+Focused tests cover returned dynamic identity descriptions and the species-neutral
+character-reference prompt contract.
+
+Next acceptance: rerun the same tavern case and inspect the generated PNGs before judging
+the final video. Elf1 should preserve the explicit female/silver-haired identity and
+Dragon1 should preserve the humanoid-dragon/obsidian-scale/wing/amber-eye identity. After
+that, investigate the two remaining spatial failures separately rather than changing the
+reference architecture.
