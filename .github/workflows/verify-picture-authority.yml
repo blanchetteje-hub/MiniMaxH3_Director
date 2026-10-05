@@ -1,0 +1,20 @@
+name: Verify Picture authority fix
+
+on:
+  push:
+    branches:
+      - location-state-test
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: location-state-test
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Syntax check
+        run: python -m py_compile minimax.py tests/test_subject_identity_continuity.py
+      - name: Run focused tests
+        run: python -m unittest tests.test_subject_identity_continuity.SubjectIdentityContinuityTests.test_continuation_adds_video_origin_to_visible_subject_definitions tests.test_subject_identity_continuity.SubjectIdentityContinuityTests.test_generated_picture_tag_survives_blank_template_slot_conditioning tests.test_subject_identity_continuity.SubjectIdentityContinuityTests.test_picture_authority_line_does_not_get_opening_guide_pose_suffix
