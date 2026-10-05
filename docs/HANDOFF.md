@@ -766,3 +766,58 @@ Current fix on `location-state-test`:
 Dynamic/video-created Subjects keep the existing one-source post-RAW wardrobe bootstrap;
 this new extractor applies only to pre-defined Subjects.
 
+### 2026-10-05 — latest tavern postmortem: Elf promotion, support routes, prop render identity, audio specificity
+
+The 18:16 tavern run showed that the accepted location/Guide architecture remained stable, but
+five upstream/render-boundary gaps were still visible:
+
+- Segment 3's Subject resolver correctly returned both `Goblin1` and `Elf1`, including an
+  Elf identity description and wardrobe, but its rewritten RAW still said generic `the elf`.
+  Python required the literal functional name to appear in RAW and silently filtered `Elf1`,
+  so no Elf generated reference was created.
+- Segment 1 RAW contained an unsupported support transition (Amy was established on the floor,
+  then "steps down from the counter"), and Segment 6 again chose gratuitous tabletop traversal.
+- Segment 3's final timed action left Amy at the back table while End continuity state incorrectly
+  relocated her near the counter; Segment 4 therefore began with bad semantic position authority.
+- H3 visually duplicated/merged distinct drink containers even though the prop ledger itself was
+  correct (Goblin mug duplication; Segment 4 glass/cup merging/substitution).
+- Segment 2 soundscape reduced the Goblin entry to a generic `footstep`, leaving H3 room to
+  exaggerate it into heavy/repeated footsteps.
+- Dragon1's generated identity Picture was finally used, but the unclothed nonhuman reference
+  acquired inappropriate human sex anatomy. This is not a defined-Subject attire-extractor issue:
+  Dragon1 is dynamic and is intentionally allowed to remain unclothed.
+
+Implemented on `location-state-test`:
+
+- dynamic Subject resolution now explicitly requires every returned `subject_names` label to be
+  applied in returned RAW; Python also deterministically canonicalizes unambiguous generic
+  role/species nouns in timed RAW using the resolved functional name before promotion. A resolved
+  name that still cannot be found now raises instead of silently disappearing;
+- Director creation and the physical validator now preserve body support/elevation literally:
+  no stepping down/off/over or climbing onto counters/tables/bars/etc. without an established or
+  Beat-required reason, and ordinary floor routes are preferred;
+- the physical validator now explicitly rejects End continuity state that relocates a Subject away
+  from its final timed position without a later timed move;
+- every final H3 prompt now carries one compact render-boundary prop rule: established handheld/
+  movable props remain one distinct physical object and may not duplicate, merge, or substitute;
+- soundscape extraction now preserves source/count/duration/intensity when RAW establishes them and
+  specifically avoids turning one step into generic/plural or exaggerated footsteps;
+- generated nonhuman identity references keep external anatomy species-appropriate and do not
+  invent human sex-specific anatomy unless explicitly established; no clothing is added merely to
+  cover anatomy.
+
+Focused regressions were added for the exact Elf metadata-with-generic-RAW failure, unsupported
+support transitions/stale End position, final H3 prop identity contract, sound source/count
+specificity, and unclothed nonhuman reference anatomy.
+
+Commits:
+- `8dc31b5efe8fc3f0e4375edfe3cd598b17fa5f7b` — implementation
+- `43227243a157e2679695e0c80f7c7095e087c70f` — focused regressions
+
+Next acceptance: rerun the same tavern case from current `location-state-test`. Before judging
+video, confirm Segment 3 logs register `Elf1` and create/bind its generated Picture. Then inspect:
+Segment 1 stays on an ordinary floor-side wiping route; Segment 2 keeps one Goblin mug and does not
+invent heavy/repeated footsteps; Segment 4 starts Amy from the back-table state and keeps the
+existing chalice/new Dragon cup distinct; Segment 6 uses a visible ordinary floor route rather than
+a tabletop shortcut or teleport.
+
