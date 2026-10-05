@@ -809,8 +809,27 @@ DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
                     "type": "object",
                     "additionalProperties": {"type": "string"},
                 },
+                "subject_wardrobes": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "upper": {"type": "string"},
+                            "lower": {"type": "string"},
+                            "footwear": {"type": "string"},
+                            "other": {"type": "string"},
+                        },
+                        "required": ["upper", "lower", "footwear", "other"],
+                        "additionalProperties": False,
+                    },
+                },
             },
-            "required": ["raw_scene", "subject_names", "subject_descriptions"],
+            "required": [
+                "raw_scene",
+                "subject_names",
+                "subject_descriptions",
+                "subject_wardrobes",
+            ],
             "additionalProperties": False,
         },
     },
@@ -22679,6 +22698,7 @@ def register_named_subject_hints(
     origin_segment=None,
     subject_genders=None,
     subject_descriptions=None,
+    subject_wardrobes=None,
 ):
     """Register planned named characters only when they visibly appear now."""
     state = continuity_state_for_registry(
@@ -22727,6 +22747,16 @@ def register_named_subject_hints(
             "origin_segment": origin_segment,
             "canonical_description": canonical_description,
         })
+        initial_wardrobe = (
+            subject_wardrobes.get(name, {})
+            if isinstance(subject_wardrobes, dict)
+            else {}
+        )
+        if isinstance(initial_wardrobe, dict):
+            state["subjects"][name]["wardrobe"] = {
+                field: str(initial_wardrobe.get(field) or "N/A").strip() or "N/A"
+                for field in _WARDROBE_FIELDS
+            }
         added_names.append(name)
     return state, added_names
 
@@ -29741,9 +29771,10 @@ def build_character_reference_h3_prompt(
         "appearance clearly visible. Use one continuous static shot for exactly 1 second. "
         + identity_clause
         + f"{description}. Keep the face/head, body/anatomy, species traits, and "
-        "distinguishing features clear and unobstructed. Show garments, footwear, and "
-        "accessories only when explicitly described; do not invent clothing for an "
-        "unclothed or nonhuman subject. Use a plain unobtrusive background. Do not orbit, "
+        "distinguishing features clear and unobstructed. Clothing in the supplied "
+        "description is authoritative. Do not add, remove, substitute, or redesign "
+        "garments, footwear, or accessories. If no clothing is described, do not invent "
+        "clothing. Use a plain unobtrusive background. Do not orbit, "
         "pan, zoom, cut, add another character, or invent story action.\n\n"
         "overall_soundscape: N/A\n"
         "non_diegetic_music: N/A\n"
@@ -33303,11 +33334,18 @@ def build_director_raw_subject_resolution_messages(
                 "Use the next unused suffix only for a genuinely new identity. Do not label "
                 "interchangeable background crowds/groups. For each newly named Subject, "
                 "also return subject_descriptions with one short stable visual identity "
-                "sentence using only explicit appearance facts already present in RAW "
-                "(species/type, sex/gender wording, age, hair, skin/scales/fur, build, "
-                "body/anatomy, and distinguishing features). Exclude actions, pose, "
-                "location, props, camera, mood, and invented details. If RAW gives only "
-                "the role/species, use only that. Return JSON only."
+                "sentence using only explicit non-clothing appearance facts already present "
+                "in RAW (species/type, sex/gender wording, age, hair, skin/scales/fur, build, "
+                "body/anatomy, and distinguishing features). Never put clothing in "
+                "subject_descriptions. Also return subject_wardrobes for each newly named "
+                "Subject using exactly upper, lower, footwear, and other. Preserve clothing "
+                "explicitly stated in RAW. If RAW does not state clothing and the Subject is "
+                "a human or normally clothed humanoid, choose one simple setting-appropriate "
+                "outfit now; this becomes canonical and must not be re-invented later. For "
+                "animals or creatures that normally do not wear clothing, use N/A for all "
+                "four wardrobe fields unless RAW explicitly gives clothing. Explicit nudity, "
+                "barefoot state, or garment absence wins over invention. Exclude action, pose, "
+                "location, held props, camera, and mood. Return JSON only."
             ),
         },
         {
@@ -33318,9 +33356,10 @@ def build_director_raw_subject_resolution_messages(
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
                 "Return raw_scene plus subject_names containing only the functional "
-                "Subject names used in the returned RAW scene, and subject_descriptions "
-                "mapping each newly named Subject to its concise explicit visual identity "
-                "sentence."
+                "Subject names used in the returned RAW scene, subject_descriptions mapping "
+                "each newly named Subject to its concise non-clothing visual identity "
+                "sentence, and subject_wardrobes mapping each newly named Subject to its "
+                "canonical upper/lower/footwear/other wardrobe."
             ),
         },
     ]
@@ -33483,10 +33522,13 @@ def resolve_director_raw_scene_subjects(
     history_metadata=None,
     segment_seconds=None,
     return_subject_descriptions=False,
+    return_subject_bootstrap=False,
 ):
     """Name distinct unnamed foreground animate actors after RAW is finalized."""
     original = _canonicalize_director_timestamps(raw_scene).strip()
     if not original:
+        if return_subject_bootstrap:
+            return original, [], {}, {}
         if return_subject_descriptions:
             return original, [], {}
         return original, []
@@ -33514,15 +33556,24 @@ def resolve_director_raw_scene_subjects(
     allowed_result_keys = (
         {"raw_scene", "subject_names"},
         {"raw_scene", "subject_names", "subject_descriptions"},
+        {
+            "raw_scene",
+            "subject_names",
+            "subject_descriptions",
+            "subject_wardrobes",
+        },
     )
     if not isinstance(result, dict) or set(result) not in allowed_result_keys:
         raise ValueError(
             "RAW Subject resolver must return raw_scene and subject_names, with "
-            "optional subject_descriptions."
+            "optional subject_descriptions and subject_wardrobes."
         )
     raw_subject_descriptions = result.get("subject_descriptions", {})
     if not isinstance(raw_subject_descriptions, dict):
         raise ValueError("RAW Subject resolver subject_descriptions must be an object.")
+    raw_subject_wardrobes = result.get("subject_wardrobes", {})
+    if not isinstance(raw_subject_wardrobes, dict):
+        raise ValueError("RAW Subject resolver subject_wardrobes must be an object.")
 
     resolved_timed = _canonicalize_director_timestamps(
         result.get("raw_scene", "")
@@ -33588,6 +33639,9 @@ def resolve_director_raw_scene_subjects(
         if proposed_name in raw_subject_descriptions:
             description = raw_subject_descriptions.pop(proposed_name)
             raw_subject_descriptions.setdefault(canonical_name, description)
+        if proposed_name in raw_subject_wardrobes:
+            wardrobe = raw_subject_wardrobes.pop(proposed_name)
+            raw_subject_wardrobes.setdefault(canonical_name, wardrobe)
 
     resolved_end_state = _canonicalize_end_continuity_functional_subjects(
         end_state_original,
@@ -33607,6 +33661,7 @@ def resolve_director_raw_scene_subjects(
 
     names = []
     descriptions = {}
+    wardrobes = {}
     seen = set()
     known_keys = {name.casefold() for name in protected_names}
     for raw_name in resolved_subject_names:
@@ -33642,12 +33697,24 @@ def resolve_director_raw_scene_subjects(
         ).strip()
         if description:
             descriptions[name] = description
+        raw_wardrobe = (
+            raw_subject_wardrobes.get(raw_name)
+            or raw_subject_wardrobes.get(name)
+            or {}
+        )
+        if isinstance(raw_wardrobe, dict):
+            wardrobes[name] = {
+                field: str(raw_wardrobe.get(field) or "N/A").strip() or "N/A"
+                for field in _WARDROBE_FIELDS
+            }
 
     console_log(
         "Checking RAW Subjects segment: "
         + (", ".join(names) if names else "no dynamic Subjects"),
         flush=True,
     )
+    if return_subject_bootstrap:
+        return resolved, names, descriptions, wardrobes
     if return_subject_descriptions:
         return resolved, names, descriptions
     return resolved, names
@@ -36340,6 +36407,7 @@ def _run_main(
         llm_result = dict(payload["llm_result"])
         raw_subject_names = []
         raw_subject_descriptions = {}
+        raw_subject_wardrobes = {}
         accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
         resolved_raw_scene = accepted_raw_scene
         subject_resolution_error = None
@@ -36350,10 +36418,11 @@ def _run_main(
                     resolved_raw_scene,
                     raw_subject_names,
                     raw_subject_descriptions,
+                    raw_subject_wardrobes,
                 ) = resolve_director_raw_scene_subjects(
                     accepted_raw_scene,
                     subject_definitions=subject_definitions,
-                    return_subject_descriptions=True,
+                    return_subject_bootstrap=True,
                     history_metadata={
                         "run_id": run_id,
                         "source_sha256": run_config["source_sha256"],
@@ -36452,6 +36521,7 @@ def _run_main(
             origin_segment=segment,
             subject_genders=registration_subject_genders,
             subject_descriptions=registration_subject_descriptions,
+            subject_wardrobes=raw_subject_wardrobes,
         )
         newly_registered_names = list(dict.fromkeys(
             dialogue_subject_names + hinted_subject_names
