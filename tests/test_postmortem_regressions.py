@@ -268,7 +268,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("first clearly compressed transition", prompt)
         self.assertIn("name its two timestamps", prompt)
 
-    def test_director_rules_require_frame_zero_microbeat(self):
+    def test_director_rules_delegate_simple_structure_to_python(self):
         rules = minimax.build_director_rules(
             total_length=48,
             segment_length=8,
@@ -277,14 +277,12 @@ class PostmortemRegressionTests(unittest.TestCase):
             segment_number=3,
             conditioning_mode="continuation",
         )
-        self.assertIn(
-            "first timed micro-beat MUST be at 00:00.000",
-            rules,
-        )
-        self.assertIn("00:00.000 is an inherited-frame anchor", rules)
-        self.assertIn("guide—not PREVIOUS SHOT END—owns the visible frame-0 composition", rules)
+        self.assertIn("Python owns the exact 00:00.000 frame-zero anchor", rules)
+        self.assertIn("Python normalizes timestamp coverage into the final quarter", rules)
+        self.assertIn("Python normalizes that marker to exactly one trailing instance", rules)
         self.assertIn("supplied opening guide is the visual authority", rules)
-        self.assertIn("Begin CURRENT BEAT at the next natural timestamp", rules)
+        self.assertNotIn("place the final meaningful timed action at or after", rules)
+        self.assertNotIn('add exactly one short "End continuity state:"', rules)
         self.assertIn("one 8-second video segment", rules)
         self.assertNotIn("8.916", rules)
 
@@ -299,6 +297,64 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertTrue(errors)
         self.assertIn("00:00.000", errors[0])
+
+    def test_python_normalizes_frame_zero_final_quarter_and_missing_end_marker(self):
+        normalized = minimax._normalize_director_raw_scene_structure(
+            (
+                "At 00:01.500, Elf starts walking from the doorway.\n"
+                "At 00:03.000, Elf reaches the back table.\n"
+                "At 00:05.600, Elf lifts the crystal chalice."
+            ),
+            segment_seconds=8,
+        )
+        self.assertTrue(
+            normalized.startswith(
+                "At 00:00.000, The shot begins from the established opening state."
+            )
+        )
+        self.assertIn(
+            "At 00:01.500, Elf starts walking from the doorway.",
+            normalized,
+        )
+        self.assertIn(
+            "At 00:03.000, Elf reaches the back table.",
+            normalized,
+        )
+        self.assertIn(
+            "At 00:06.000, Elf lifts the crystal chalice.",
+            normalized,
+        )
+        self.assertEqual(normalized.count("End continuity state:"), 1)
+        self.assertTrue(
+            normalized.endswith(
+                "End continuity state: Elf lifts the crystal chalice."
+            )
+        )
+        self.assertEqual(
+            minimax._director_raw_scene_structure_errors(
+                normalized,
+                segment_seconds=8,
+            ),
+            [],
+        )
+
+    def test_python_collapses_duplicate_end_state_markers(self):
+        normalized = minimax._normalize_director_raw_scene_structure(
+            (
+                "At 00:00.000, Amy begins pouring.\n"
+                "At 00:06.500, Amy sets the mug down.\n"
+                "End continuity state: stale duplicate state.\n"
+                "End continuity state: Amy stands beside the mug."
+            ),
+            segment_seconds=8,
+        )
+        self.assertEqual(normalized.count("End continuity state:"), 1)
+        self.assertNotIn("stale duplicate state", normalized)
+        self.assertTrue(
+            normalized.endswith(
+                "End continuity state: Amy stands beside the mug."
+            )
+        )
 
     def test_frame_zero_state_anchor_is_allowed(self):
         errors = minimax._director_raw_scene_structure_errors(

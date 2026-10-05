@@ -2472,3 +2472,24 @@ Fix:
 
 Focused regression tests verify that a generated Picture survives blank template-slot
 conditioning and that Picture authority lines remain separate from opening-guide continuity.
+
+### 2026-10-05 — deterministic Director RAW structure normalization
+
+Three Request-1 formatting/timing failures are now Python-owned before semantic
+validation:
+
+- if RAW has no frame-zero micro-beat, Python inserts the canonical
+  `00:00.000` opening-state anchor;
+- if the final authored timestamp lands before 75% of the segment, Python moves
+  only that final timestamp to the 75% boundary, leaving earlier intervals
+  untouched so the semantic timing-feasibility validator still sees compressed
+  travel/action exactly as authored;
+- Python guarantees exactly one trailing `End continuity state:` marker,
+  collapsing duplicates and deriving a missing marker's state text from the
+  final timed action.
+
+The Director prompt no longer asks the local LLM to satisfy those exact
+structural constraints. The existing structure validator remains as a backstop.
+Physical/spatial timing feasibility and prop/state legality are unchanged and
+still use their existing semantic validation/retry behavior.
+

@@ -713,3 +713,15 @@ Fix on `location-state-test`:
 Acceptance target: rerun the failed tavern Segment 3. Once a retry learns that the final
 micro-beat must be >= 6s and frame zero must be 00:00.000, those constraints should remain
 present while it also repairs the mug transfer instead of oscillating between validators.
+
+### 2026-10-05 — Python now owns three Director RAW structure repairs
+
+Request 1 is normalized before semantic validators run. Python now inserts a
+missing `00:00.000` anchor, moves only a too-early final timestamp to the 75%
+segment boundary, and guarantees exactly one trailing
+`End continuity state:` marker. These cases no longer need Director
+regeneration. Earlier timestamps are deliberately unchanged, so compressed
+travel (for example doorway -> back table in 1.5s) still reaches the existing
+timing-feasibility LLM unchanged. Prop/state semantic retries are also
+unchanged.
+

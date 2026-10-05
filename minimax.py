@@ -1172,7 +1172,7 @@ JOB
 
 WRITE THE SCENE
 - Show CURRENT BEAT clearly with concrete visible/audible action.
-- Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the End continuity state.
+- Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the final continuity state.
 - Add only details needed to physically connect or clearly show CURRENT BEAT.
 - Preserve spatial continuity. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
 - Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
@@ -1180,11 +1180,11 @@ WRITE THE SCENE
 
 CAMERA CHOREOGRAPHY
 {camera_choreography_rules}
-- CONTINUATION: the supplied opening guide is the visual authority for frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. At 00:00.000 describe only the inherited continuation frame; do not reconstruct every known subject into view. Begin CURRENT BEAT at the next natural timestamp and keep camera motion continuous.
+- CONTINUATION: the supplied opening guide is the visual authority for frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. Describe only the inherited continuation frame before CURRENT BEAT; do not reconstruct every known subject into view. Python owns the exact 00:00.000 frame-zero anchor.
 - Keep all timed action inside the {segment_seconds}-second clip.
-- Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
-- Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
-- After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state.
+- Spread CURRENT BEAT naturally across the clip with at least {segment_min_beats} timed micro-beats. Python normalizes timestamp coverage into the final quarter when needed.
+- Use timestamp lines in the form "At 00:ss.mmm,". Python normalizes timestamp syntax, frame-zero anchoring, and final-quarter coverage.
+- After the timed action, include one short final-state sentence describing the actual last visible frame after the final timed action. Prefer the label "End continuity state:"; Python normalizes that marker to exactly one trailing instance. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state.
 
 {story_segment_ending_rules}
 
@@ -20098,6 +20098,145 @@ def _director_unassigned_release_from_storage_errors(raw_scene, assigned_source)
     return []
 
 
+def _director_raw_scene_last_timed_action(raw_scene):
+    """Return the final timed action text without its timestamp."""
+    text = str(raw_scene or "")
+    matches = list(_DIRECTOR_TIMESTAMP_RE.finditer(text))
+    if not matches:
+        return ""
+    match = matches[-1]
+    line_end = text.find("\n", match.end())
+    if line_end < 0:
+        line_end = len(text)
+    action = text[match.end():line_end].strip(" \t,-–—")
+    return action.strip()
+
+
+def _normalize_director_end_continuity_marker(raw_scene):
+    """Guarantee one trailing End continuity state marker without an LLM retry."""
+    text = str(raw_scene or "").strip()
+    if not text:
+        return text
+
+    markers = list(
+        re.finditer(
+            r"(?i)\bEnd\s+continuity\s+state\s*:\s*",
+            text,
+        )
+    )
+    ending_state = ""
+    if markers:
+        first_marker = markers[0]
+        last_marker = markers[-1]
+        timed_scene = text[:first_marker.start()].rstrip()
+        ending_state = text[last_marker.end():].strip()
+        # The Director contract asks for one short final-state sentence. If the
+        # model duplicated the marker, keep only the final marker's payload.
+        if "\n" in ending_state:
+            ending_state = ending_state.splitlines()[0].strip()
+    else:
+        timed_scene = text
+
+    if not ending_state:
+        ending_state = _director_raw_scene_last_timed_action(timed_scene)
+    if not ending_state:
+        ending_state = "The final visible frame matches the last described scene state."
+
+    return (
+        timed_scene.rstrip()
+        + "\nEnd continuity state: "
+        + ending_state.strip()
+    ).strip()
+
+
+def _format_director_timestamp_ms(absolute_ms):
+    """Return one canonical Director timestamp token for absolute milliseconds."""
+    absolute_ms = max(0, int(round(absolute_ms)))
+    minutes, remainder = divmod(absolute_ms, 60_000)
+    seconds, milliseconds = divmod(remainder, 1000)
+    return f"At {minutes:02d}:{seconds:02d}.{milliseconds:03d},"
+
+
+def _normalize_director_frame_zero(raw_scene):
+    """Insert Python-owned frame-zero staging when Request 1 starts later."""
+    text = str(raw_scene or "").strip()
+    marker = re.search(
+        r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
+        text,
+    )
+    if marker is None:
+        return text
+    timed_scene = text[:marker.start()].rstrip()
+    ending = text[marker.start():].lstrip()
+    timestamps = _director_timestamps(timed_scene)
+    if not timestamps or timestamps[0] == (0, 0):
+        return text
+
+    anchor = (
+        "At 00:00.000, The shot begins from the established opening state."
+    )
+    return f"{anchor}\n{timed_scene}\n{ending}".strip()
+
+
+def _normalize_director_final_quarter_timing(raw_scene, segment_seconds=None):
+    """Move only the final timestamp into the final quarter when needed."""
+    text = str(raw_scene or "").strip()
+    try:
+        duration = float(segment_seconds) if segment_seconds is not None else None
+    except (TypeError, ValueError):
+        duration = None
+    if duration is None or not math.isfinite(duration) or duration <= 0:
+        return text
+
+    marker = re.search(
+        r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
+        text,
+    )
+    if marker is None:
+        return text
+    timed_scene = text[:marker.start()].rstrip()
+    ending = text[marker.start():].lstrip()
+    matches = list(_DIRECTOR_CANONICAL_TIMESTAMP_RE.finditer(timed_scene))
+    timestamps = _director_timestamps(timed_scene)
+    if not matches or not timestamps:
+        return text
+
+    last_seconds, last_milliseconds = timestamps[-1]
+    last_ms = last_seconds * 1000 + last_milliseconds
+    target_ms = int(round(duration * 0.75 * 1000.0))
+    if last_ms >= target_ms:
+        return text
+
+    if last_ms <= 0:
+        hold = (
+            _format_director_timestamp_ms(target_ms)
+            + " The camera holds on the final visible result of the completed action."
+        )
+        return f"{timed_scene}\n{hold}\n{ending}".strip()
+
+    last_match = matches[-1]
+    retimed = (
+        timed_scene[:last_match.start()]
+        + _format_director_timestamp_ms(target_ms)
+        + timed_scene[last_match.end():]
+    )
+    return f"{retimed.rstrip()}\n{ending}".strip()
+
+
+def _normalize_director_raw_scene_structure(raw_scene, segment_seconds=None):
+    """Repair deterministic RAW structure before semantic validation."""
+    text = _canonicalize_director_timestamps(raw_scene).strip()
+    if not text or text == "N/A":
+        return text
+    text = _normalize_director_end_continuity_marker(text)
+    text = _normalize_director_frame_zero(text)
+    text = _normalize_director_final_quarter_timing(
+        text,
+        segment_seconds=segment_seconds,
+    )
+    return text
+
+
 def _director_raw_scene_structure_errors(
     raw_scene,
     segment_seconds=None,
@@ -34390,8 +34529,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             history_metadata=request1_metadata,
         )
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
-        raw_scene = _canonicalize_director_timestamps(
-            request1_result.get("raw_scene", "")
+        raw_scene = _normalize_director_raw_scene_structure(
+            request1_result.get("raw_scene", ""),
+            segment_seconds=duration,
         ).strip()
         if raw_scene and raw_scene != "N/A":
             request1_result["raw_scene"] = raw_scene

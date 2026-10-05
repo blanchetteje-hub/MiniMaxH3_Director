@@ -660,7 +660,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             for prompt in request_prompts
         ))
 
-    def test_request_one_accumulates_retry_blockers_across_validators(self):
+    def test_python_structure_normalization_leaves_only_semantic_retry_blockers(self):
         bundle = segment_bundle()
         bundle["current_beat_text"] = "Amy completes the exchange with Will."
         early = {
@@ -674,17 +674,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "activity_tools_settled": True,
             "beat_complete": True,
         }
-        prop_bad = director_response(
-            "At 00:00.000, Amy begins the exchange.\n"
-            "At 00:04.500, Will receives the mug."
-        )
         good = director_response(
             "At 00:00.000, Amy begins the exchange.\n"
             "At 00:04.500, Amy visibly transfers the mug to Will."
         )
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             early,
-            prop_bad,
             good,
         ]))
         physical = mock.Mock(return_value={"valid": True, "issue": ""})
@@ -709,11 +704,14 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
 
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 3)
-        third_prompt = semantic_calls[2].args[0][-1]["content"]
-        self.assertIn("RETRY REQUIREMENTS", third_prompt)
-        self.assertIn("final timed micro-beat must land in the final quarter", third_prompt)
-        self.assertIn("mug_1 is still listed as held by Amy", third_prompt)
+        self.assertEqual(len(semantic_calls), 2)
+        second_prompt = semantic_calls[1].args[0][-1]["content"]
+        self.assertIn("RETRY REQUIREMENTS", second_prompt)
+        self.assertNotIn(
+            "final timed micro-beat must land in the final quarter",
+            second_prompt,
+        )
+        self.assertIn("mug_1 is still listed as held by Amy", second_prompt)
         self.assertIn("visibly transfers the mug", payload["raw_scene"])
 
     def test_request_one_completion_self_report_is_non_blocking(self):
@@ -741,7 +739,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(len(non_audio_llm_calls(request)), 2)
         self.assertIn("Mark completes the action.", payload["raw_scene"])
 
-    def test_request_one_retries_missing_end_state_marker(self):
+    def test_request_one_python_normalizes_missing_end_state_marker_without_retry(self):
         malformed = {
             "raw_scene": (
                 "At 00:00.000, Mark reaches for the latch.\n"
@@ -754,14 +752,18 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         }
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             malformed,
-            director_response("Mark closes the hatch."),
         ]))
         with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 2)
-        self.assertIn("End continuity state:", payload["raw_scene"])
+        self.assertEqual(len(non_audio_llm_calls(request)), 1)
+        self.assertEqual(payload["raw_scene"].count("End continuity state:"), 1)
+        self.assertTrue(
+            payload["raw_scene"].endswith(
+                "End continuity state: Mark closes the hatch."
+            )
+        )
 
     def test_request_one_does_not_repair_semantic_omission_during_baseline(self):
         bundle = segment_bundle()
