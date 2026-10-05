@@ -475,8 +475,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 segment_seconds=6.0,
             )
 
-    def test_raw_scene_coherence_prompt_allows_staging_but_checks_order(self):
-        messages = minimax.build_director_raw_scene_coherence_messages(
+    def test_raw_scene_physical_prompt_is_narrow_and_checks_order(self):
+        messages = minimax.build_director_raw_scene_physical_messages(
             "Amy pushes Will into the closet and closes the door.",
             (
                 "At 00:02.000, Amy closes the closet door.\n"
@@ -484,9 +484,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             ),
         )
         text = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("SUBJECT MOVEMENT AND PHYSICAL ACTION ORDER", text)
+        self.assertIn("doors, barriers, seats, supports", text)
         self.assertIn("Harmless invented staging is allowed", text)
-        self.assertIn("closing a barrier before someone passes through it", text)
-        self.assertIn("Read the timed actions literally in order", text)
+        self.assertIn("Do not judge prop sources", text)
 
 
     def test_request_one_retries_physically_incoherent_raw_scene(self):
@@ -506,16 +507,21 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             bad,
             good,
         ]))
-        coherence = mock.Mock(side_effect=[
+        physical = mock.Mock(side_effect=[
             {"valid": False, "issue": "The door closes before Will enters."},
             {"valid": True, "issue": ""},
         ])
+        prop_state = mock.Mock(return_value={"valid": True, "issue": ""})
         timing = mock.Mock(return_value={"valid": True, "issue": ""})
         with (
             mock.patch("minimax.ask_llm", request),
             mock.patch(
-                "minimax.validate_director_raw_scene_coherence",
-                coherence,
+                "minimax.validate_director_raw_scene_physical",
+                physical,
+            ),
+            mock.patch(
+                "minimax.validate_director_raw_scene_prop_state",
+                prop_state,
             ),
             mock.patch(
                 "minimax.validate_director_raw_scene_timing",
@@ -528,7 +534,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
         semantic_calls = non_audio_llm_calls(request)
         self.assertEqual(len(semantic_calls), 2)
-        self.assertEqual(coherence.call_count, 2)
+        self.assertEqual(physical.call_count, 2)
+        self.assertEqual(prop_state.call_count, 1)
         self.assertEqual(timing.call_count, 1)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
         request_prompts = [
@@ -538,8 +545,56 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             and isinstance(call.args[0][-1], dict)
         ]
         self.assertTrue(any(
-            "Fix this physical/action-order problem" in prompt
+            "Fix this physical/spatial problem" in prompt
             and "door closes before Will enters" in prompt
+            for prompt in request_prompts
+        ))
+
+    def test_request_one_retries_prop_state_failure_separately(self):
+        bundle = segment_bundle()
+        bundle["current_beat_text"] = (
+            "Amy pours brew into a cup and hands the cup to Will."
+        )
+        bad = director_response(
+            "At 00:01.000, Amy pours brew onto the table.\n"
+            "At 00:04.500, Amy hands the empty cup to Will."
+        )
+        good = director_response(
+            "At 00:01.000, Amy pours brew into the cup.\n"
+            "At 00:04.500, Amy hands the filled cup to Will."
+        )
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([bad, good]))
+        physical = mock.Mock(return_value={"valid": True, "issue": ""})
+        prop_state = mock.Mock(side_effect=[
+            {"valid": False, "issue": "The brew is redirected onto the table."},
+            {"valid": True, "issue": ""},
+        ])
+        timing = mock.Mock(return_value={"valid": True, "issue": ""})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", prop_state),
+            mock.patch("minimax.validate_director_raw_scene_timing", timing),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-id", {"source_sha256": "source-hash"}
+            )
+        semantic_calls = non_audio_llm_calls(request)
+        self.assertEqual(len(semantic_calls), 2)
+        self.assertEqual(physical.call_count, 2)
+        self.assertEqual(prop_state.call_count, 2)
+        self.assertEqual(timing.call_count, 1)
+        self.assertIn("filled cup", payload["raw_scene"])
+        request_prompts = [
+            call.args[0][-1]["content"]
+            for call in semantic_calls
+            if call.args and isinstance(call.args[0], list) and call.args[0]
+            and isinstance(call.args[0][-1], dict)
+        ]
+        self.assertTrue(any(
+            "Fix this prop/state problem" in prompt
+            and "redirected onto the table" in prompt
             for prompt in request_prompts
         ))
 
