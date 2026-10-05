@@ -28,6 +28,18 @@ def visual_subject(name, clothing, visible=True):
 
 
 class SubjectIdentityContinuityTests(unittest.TestCase):
+    def test_character_reference_prompt_is_species_neutral(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Dragon1 is a humanoid dragon with obsidian scales, wings, and amber eyes.",
+            has_identity_reference=False,
+        )
+
+        self.assertIn("A single subject is centered", prompt)
+        self.assertIn("complete current physical appearance", prompt)
+        self.assertIn("body/anatomy, species traits", prompt)
+        self.assertIn("do not invent clothing for an unclothed or nonhuman subject", prompt)
+        self.assertNotIn("complete current outfit", prompt)
+
     def test_registry_assigns_stable_werewolf_subject_id_and_picture_metadata(self):
         registry = minimax.parse_subject_registry(SUBJECTS)
 
