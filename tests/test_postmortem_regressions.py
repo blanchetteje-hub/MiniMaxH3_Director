@@ -418,6 +418,49 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertEqual(merged["mug_1"]["contents"], "beer")
         self.assertEqual(merged["basket_1"], committed["basket_1"])
 
+    def test_prop_ledger_kind_collision_preserves_identity_and_allocates_new_id(self):
+        committed = {
+            "mug_1": {
+                "kind": "mug",
+                "owner": "Goblin1",
+                "holder": "Goblin1",
+                "location": "N/A",
+                "contents": "ale",
+                "status": "present",
+            }
+        }
+        observed = {
+            "mug_1": {
+                "kind": "cloth",
+                "owner": "Amy",
+                "holder": "Amy",
+                "location": "N/A",
+                "contents": "dampened ale-soaked cloth",
+                "status": "present",
+            }
+        }
+        merged = minimax.merge_prop_ledger(committed, observed)
+        self.assertEqual(merged["mug_1"]["kind"], "mug")
+        self.assertEqual(merged["mug_1"]["holder"], "Goblin1")
+        cloth_ids = [
+            prop_id
+            for prop_id, record in merged.items()
+            if record["kind"] == "cloth"
+        ]
+        self.assertEqual(len(cloth_ids), 1)
+        self.assertNotEqual(cloth_ids[0], "mug_1")
+        self.assertEqual(merged[cloth_ids[0]]["holder"], "Amy")
+
+    def test_combined_continuity_prop_prompt_is_delta_only(self):
+        prompt = minimax.COMBINED_CONTINUITY_SYSTEM
+        self.assertIn(
+            "props contains only NEW props or CHANGES to existing",
+            prompt,
+        )
+        self.assertIn("Omit unchanged props; Python copies them forward", prompt)
+        self.assertIn("Existing prop IDs are immutable", prompt)
+        self.assertNotIn("Copy forward unchanged props even when offscreen", prompt)
+
     def test_combined_continuity_schema_accepts_persistent_prop_ledger(self):
         candidate = {
             "props": {
