@@ -1,0 +1,19 @@
+name: Test RAW validator split
+
+on:
+  push:
+    branches:
+      - location-state-test
+
+jobs:
+  test:
+    if: ${{ !contains(github.event.head_commit.message, '[validator-tests]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: location-state-test
+      - name: Syntax check
+        run: python -m py_compile minimax.py tests/test_director_retry.py tests/test_postmortem_regressions.py
+      - name: Run focused tests
+        run: python -m unittest tests.test_director_retry tests.test_postmortem_regressions
