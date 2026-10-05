@@ -33199,6 +33199,7 @@ def resolve_director_raw_scene_pronouns(
     llm_request=ask_llm,
     history_metadata=None,
     segment_seconds=None,
+    return_subject_descriptions=False,
 ):
     """Resolve clear person pronouns in timed RAW; preserve end state exactly."""
     original = _canonicalize_director_timestamps(raw_scene).strip()
@@ -33508,12 +33509,14 @@ def resolve_director_raw_scene_subjects(
     )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
-    if not isinstance(result, dict) or set(result) != {
-        "raw_scene", "subject_names", "subject_descriptions"
-    }:
+    allowed_result_keys = (
+        {"raw_scene", "subject_names"},
+        {"raw_scene", "subject_names", "subject_descriptions"},
+    )
+    if not isinstance(result, dict) or set(result) not in allowed_result_keys:
         raise ValueError(
-            "RAW Subject resolver must return only raw_scene, subject_names, "
-            "and subject_descriptions."
+            "RAW Subject resolver must return raw_scene and subject_names, with "
+            "optional subject_descriptions."
         )
     raw_subject_descriptions = result.get("subject_descriptions", {})
     if not isinstance(raw_subject_descriptions, dict):
@@ -33643,7 +33646,9 @@ def resolve_director_raw_scene_subjects(
         + (", ".join(names) if names else "no dynamic Subjects"),
         flush=True,
     )
-    return resolved, names, descriptions
+    if return_subject_descriptions:
+        return resolved, names, descriptions
+    return resolved, names
 
 
 def build_director_raw_scene_physical_messages(
@@ -36346,6 +36351,7 @@ def _run_main(
                 ) = resolve_director_raw_scene_subjects(
                     accepted_raw_scene,
                     subject_definitions=subject_definitions,
+                    return_subject_descriptions=True,
                     history_metadata={
                         "run_id": run_id,
                         "source_sha256": run_config["source_sha256"],
