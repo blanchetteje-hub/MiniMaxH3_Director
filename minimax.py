@@ -1177,6 +1177,7 @@ WRITE THE SCENE
 - Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the final continuity state.
 - Add only details needed to physically connect or clearly show CURRENT BEAT.
 - Preserve spatial continuity. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
+- Preserve body support/elevation literally. Do not put a subject onto, over, across, or down from a counter, table, bar, shelf, stool, or other support unless the prior state establishes that route/position or CURRENT BEAT requires it. Prefer ordinary floor routes over gratuitous climbing.
 - Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
 - Preserve prop identity.
 
@@ -21540,7 +21541,10 @@ def build_h3_soundscape_messages(raw_scene):
                 "microphone could hear. Include sounds explicitly stated by RAW and "
                 "sounds necessarily produced by an audible depicted event such as a "
                 "slam, crash, gunshot, spoken line, explicitly described footsteps, "
-                "laughter, groans, or other stated audio. Each listed item must itself "
+                "laughter, groans, or other stated audio. Preserve the stated source, "
+                "count, duration, and intensity when RAW makes them clear; do not turn one "
+                "step into generic/plural footsteps or amplify an ordinary cue into a heavy "
+                "or prolonged sound. Each listed item must itself "
                 "name an audible event or audible ambience, not a silent action. Do "
                 "not turn motion verbs into sounds: sliding a hand, swinging an arm or "
                 "blade, lifting, reaching, turning, emerging, surging, or rising steam "
@@ -27867,6 +27871,33 @@ _H3_CONTINUOUS_TAKE_SENTENCE = (
 )
 
 
+_H3_PROP_IDENTITY_SENTENCE = (
+    "Preserve each established handheld or movable prop as one distinct physical object; "
+    "interactions must not duplicate, merge, or substitute containers or other props."
+)
+
+
+def ensure_h3_prop_identity_instruction(description):
+    """Carry persistent movable-prop identity into the actual H3 render prompt."""
+    text = str(description or "").strip()
+    if not text:
+        return _H3_PROP_IDENTITY_SENTENCE
+    if "must not duplicate, merge, or substitute" in text:
+        return text
+    timestamp = _DIRECTOR_CANONICAL_TIMESTAMP_RE.search(text)
+    if timestamp is None:
+        return text.rstrip() + " " + _H3_PROP_IDENTITY_SENTENCE
+    prefix = text[:timestamp.start()].rstrip()
+    suffix = text[timestamp.start():].lstrip()
+    return (
+        prefix
+        + (" " if prefix else "")
+        + _H3_PROP_IDENTITY_SENTENCE
+        + "\n\n"
+        + suffix
+    ).strip()
+
+
 def ensure_h3_continuous_take_instruction(description):
     """Carry the Director one-take contract into the actual H3 prompt."""
     text = str(description or "").strip()
@@ -28190,6 +28221,7 @@ def build_h3_prompt(
                 if part
             )
     integrated = ensure_h3_continuous_take_instruction(integrated)
+    integrated = ensure_h3_prop_identity_instruction(integrated)
     integrated = inject_h3_visual_style(integrated, visual_style)
     canonical_prompt_text = ""
     if segment_number is not None and int(segment_number) == 1:
@@ -30244,7 +30276,9 @@ def build_character_reference_h3_prompt(
         "appearance clearly visible. Use one continuous static shot for exactly 1 second. "
         + identity_clause
         + f"{description}. Keep the face/head, body/anatomy, species traits, and "
-        "distinguishing features clear and unobstructed. Clothing in the supplied "
+        "distinguishing features clear and unobstructed. For a nonhuman creature, keep "
+        "external anatomy species-appropriate and do not invent human sex-specific anatomy "
+        "unless the description explicitly establishes it. Clothing in the supplied "
         "description is authoritative. Do not add, remove, substitute, or redesign "
         "garments, footwear, or accessories. If no clothing is described, do not invent "
         "clothing. Use a plain unobtrusive background. Do not orbit, "
@@ -33815,7 +33849,9 @@ def build_director_raw_subject_resolution_messages(
                 "location, sound, camera instruction, dialogue, and punctuation meaning "
                 "unchanged. Keep already-named Subjects unchanged. For each distinct "
                 "unnamed foreground animate participant who acts or is acted on, replace "
-                "its references with one stable functional name made from its most specific "
+                "EVERY reference to that participant in returned raw_scene with one stable "
+                "functional name; every name listed in subject_names must literally appear "
+                "in returned raw_scene. Make the functional name from its most specific "
                 "explicit role/species plus an integer. If RAW says dragon, use Dragon1; "
                 "if RAW says griffin, use Griffin1. Use CreatureN only when the type is "
                 "truly unknown. Capitalization alone does not make a role/species noun an "
@@ -34142,6 +34178,14 @@ def resolve_director_raw_scene_subjects(
             wardrobe = raw_subject_wardrobes.pop(proposed_name)
             raw_subject_wardrobes.setdefault(canonical_name, wardrobe)
 
+    # The resolver can return correct Subject metadata while leaving generic
+    # role/species nouns in RAW. Canonicalize unambiguous references here so
+    # resolved Subjects cannot disappear before reference generation.
+    resolved_timed = _canonicalize_end_continuity_functional_subjects(
+        resolved_timed,
+        subject_definitions,
+        resolved_subject_names,
+    )
     resolved_end_state = _canonicalize_end_continuity_functional_subjects(
         end_state_original,
         subject_definitions,
@@ -34186,7 +34230,10 @@ def resolve_director_raw_scene_subjects(
             _h3_visual_identity_text(resolved_timed),
             re.I,
         ) is None:
-            continue
+            raise ValueError(
+                f"RAW Subject resolver returned {name!r} in subject_names but did "
+                "not apply that functional name to returned raw_scene."
+            )
         seen.add(key)
         names.append(name)
         description = " ".join(
@@ -34239,8 +34286,11 @@ def build_director_raw_scene_physical_messages(
                 "Check only: frame-0 reachability from PREVIOUS SHOT END; visible entry or "
                 "camera reveal for new participants; explicit travel between established "
                 "positions; possible order for doors, barriers, seats, supports, and body "
-                "movement; fixed architecture placement; and whether End continuity state "
-                "matches final subject positions and barrier states. Harmless invented "
+                "movement; body support/elevation (a subject cannot step down/off/over a "
+                "surface they were never established on, and gratuitous climbing is invalid "
+                "when an ordinary floor route suffices); fixed architecture placement; and "
+                "whether End continuity state preserves each subject's final timed position "
+                "without relocating them off-timeline, plus barrier states. Harmless invented "
                 "staging is allowed. Do not judge prop sources, contents, recipients, prose, "
                 "camera taste, or timing duration. Return exactly one JSON object with "
                 "boolean valid and string issue. Report only the first concrete problem."
