@@ -13,6 +13,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: location-state-test
+      - name: Install dependencies
+        run: pip install -r requirements.txt
       - name: Syntax check
         run: python -m py_compile minimax.py tests/test_director_retry.py tests/test_postmortem_regressions.py
       - name: Run focused tests
