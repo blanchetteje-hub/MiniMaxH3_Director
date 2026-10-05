@@ -1389,17 +1389,15 @@ COMBINED_CONTINUITY_SYSTEM = (
     "body_state, physical_condition, attached_objects, injuries, substances, "
     "spatial_relationships, persistent_effects, held_props.\n"
     "wardrobe KEYS ONLY: upper, lower, footwear, other.\n"
-    "props is a persistent ledger of distinct MOVABLE/INTERACTABLE objects whose "
-    "identity or state can matter later (mugs, glasses, baskets, tools, weapons, "
-    "keys, containers, carried objects). Do not list architecture, doors, fixed "
-    "fixtures, furniture, ambient clutter, or clothing. Preserve every existing "
-    "prop ID from COMMITTED PROP LEDGER exactly. Copy forward unchanged props even "
-    "when offscreen. Create a new stable ID such as mug_1 only when this segment "
-    "establishes a new distinct prop. Each prop may contain ONLY kind, owner, holder, "
-    "location, contents, status. All six values are strings. Use N/A when unknown. "
-    "status is present, lost, or destroyed. holder names the Subject physically "
-    "holding it; location names where it is when not held. contents tracks meaningful "
-    "container contents such as beer or empty.\n\n"
+    "props contains only NEW props or CHANGES to existing movable/interactable "
+    "props. Omit unchanged props; Python copies them forward. Existing prop IDs are "
+    "immutable: never change what an existing prop ID represents. If a new distinct "
+    "prop appears, give it a new unique ID. Do not list architecture, doors, fixed "
+    "fixtures, furniture, ambient clutter, or clothing. Each prop may contain ONLY "
+    "kind, owner, holder, location, contents, status. All six values are strings. "
+    "Use N/A when unknown. status is present, lost, or destroyed. holder names the "
+    "Subject physically holding it; location names where it is when not held. contents "
+    "tracks meaningful container contents such as beer or empty.\n\n"
     "Use FINAL FRAME AUTHORITY for current position, pose/action, held props, "
     "spatial relationships, ongoing action, and ongoing audio. FULL SEGMENT "
     "CONTEXT is supporting evidence only for persistent facts that remain true "
@@ -34445,9 +34443,43 @@ def normalize_prop_ledger(value):
 
 
 def merge_prop_ledger(committed, observed):
-    """Copy persistent props forward, then apply the newest observed records."""
+    """Copy persistent props forward and apply only safe observed changes."""
     merged = copy.deepcopy(normalize_prop_ledger(committed))
-    merged.update(normalize_prop_ledger(observed))
+    observations = normalize_prop_ledger(observed)
+
+    for observed_id, observed_record in observations.items():
+        if observed_id not in merged:
+            merged[observed_id] = copy.deepcopy(observed_record)
+            continue
+
+        existing_record = merged[observed_id]
+        existing_kind = str(existing_record.get("kind") or "").strip()
+        observed_kind = str(observed_record.get("kind") or "").strip()
+
+        if existing_kind.casefold() == observed_kind.casefold():
+            updated = copy.deepcopy(existing_record)
+            updated.update(copy.deepcopy(observed_record))
+            updated["kind"] = existing_kind
+            merged[observed_id] = updated
+            continue
+
+        # A prop ID is an identity lock. If the continuity observer reuses an
+        # existing ID for a different kind of object, preserve the original
+        # object and assign the observation a fresh unique ID instead.
+        base = _prop_id_slug(observed_kind)
+        index = 1
+        replacement_id = f"{base}_{index}"
+        while replacement_id in merged or replacement_id in observations:
+            index += 1
+            replacement_id = f"{base}_{index}"
+        merged[replacement_id] = copy.deepcopy(observed_record)
+        console_log(
+            f"WARNING: continuity tried to change {observed_id!r} from "
+            f"{existing_kind!r} to {observed_kind!r}; preserved the original "
+            f"identity and stored the new observation as {replacement_id!r}.",
+            flush=True,
+        )
+
     return merged
 
 
