@@ -17,9 +17,7 @@ class PostmortemRegressionTests(unittest.TestCase):
             ),
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("End continuity state", prompt)
-        self.assertIn("final timed position", prompt)
-        self.assertIn("without relocating them off-timeline", prompt)
+        self.assertIn("End continuity moves a subject after the final timed action", prompt)
 
     def test_subject_resolver_prefers_explicit_species_over_generic_creature(self):
         messages = minimax.build_director_raw_subject_resolution_messages(
@@ -171,10 +169,9 @@ class PostmortemRegressionTests(unittest.TestCase):
             ),
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("PROP, OBJECT, MATERIAL, AND RESULT CONTINUITY", prompt)
-        self.assertIn("transfers have a real source and destination", prompt)
-        self.assertIn("CURRENT BEAT's explicit object, recipient, surface, container, and result", prompt)
-        self.assertIn("Do not judge subject movement", prompt)
+        self.assertIn("A prop introduced by CURRENT BEAT may first appear in this scene", prompt)
+        self.assertIn("a transfer lacks a source or destination", prompt)
+        self.assertIn("Ignore subject movement", prompt)
 
     def test_director_prop_state_preserves_assigned_transfer_destination_and_final_prop(self):
         messages = minimax.build_director_raw_scene_prop_state_messages(
@@ -190,8 +187,8 @@ class PostmortemRegressionTests(unittest.TestCase):
             static_setting_description="Lanterns hang above each table.",
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("CURRENT BEAT's explicit object, recipient, surface, container, and result", prompt)
-        self.assertIn("End continuity state matches final prop holder", prompt)
+        self.assertIn("A prop introduced by CURRENT BEAT may first appear in this scene", prompt)
+        self.assertIn("End continuity contradicts the final prop state", prompt)
         self.assertIn("STATIC SETTING AUTHORITY", prompt)
         self.assertIn("Lanterns hang above each table.", prompt)
 
@@ -249,9 +246,9 @@ class PostmortemRegressionTests(unittest.TestCase):
                 "End continuity state: Amy holds the filled cup.",
             )
         )
-        self.assertIn("Do not judge prop sources", physical)
+        self.assertIn("Ignore prop identity", physical)
         self.assertNotIn("PROP LEDGER\n", physical)
-        self.assertIn("Do not judge subject movement", props)
+        self.assertIn("Ignore subject movement", props)
         self.assertIn("PROP LEDGER\n", props)
 
     def test_director_timing_validator_is_narrow_and_has_no_fixed_minimum(self):
@@ -269,7 +266,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("first clearly compressed transition", prompt)
         self.assertIn("name its two timestamps", prompt)
 
-    def test_director_rules_delegate_simple_structure_to_python(self):
+    def test_director_prompt_states_behavior_without_implementation_details(self):
         rules = minimax.build_director_rules(
             total_length=48,
             segment_length=8,
@@ -278,12 +275,11 @@ class PostmortemRegressionTests(unittest.TestCase):
             segment_number=3,
             conditioning_mode="continuation",
         )
-        self.assertIn("Python owns the exact 00:00.000 frame-zero anchor", rules)
-        self.assertIn("Python normalizes timestamp coverage into the final quarter", rules)
-        self.assertIn("Python normalizes that marker to exactly one trailing instance", rules)
+        self.assertNotIn("Python owns", rules)
+        self.assertNotIn("Python normalizes", rules)
         self.assertIn("supplied opening guide is the visual authority", rules)
-        self.assertNotIn("place the final meaningful timed action at or after", rules)
-        self.assertNotIn('add exactly one short "End continuity state:"', rules)
+        self.assertIn("final timed micro-beat in the final quarter", rules)
+        self.assertIn('include exactly one short "End continuity state:"', rules)
         self.assertIn("one 8-second video segment", rules)
         self.assertNotIn("8.916", rules)
 
@@ -381,8 +377,8 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("PREVIOUS SHOT END\nAmy stands at the oak counter.", prompt)
-        self.assertIn("frame-0 reachability from PREVIOUS SHOT END", prompt)
-        self.assertIn("visible entry or camera reveal for new participants", prompt)
+        self.assertIn("new participant", prompt)
+        self.assertIn("revealed by the camera", prompt)
 
     def test_prop_ledger_copies_forward_and_updates_only_observed_props(self):
         committed = {
@@ -457,9 +453,10 @@ class PostmortemRegressionTests(unittest.TestCase):
             "props contains only NEW props or CHANGES to existing",
             prompt,
         )
-        self.assertIn("Omit unchanged props; Python copies them forward", prompt)
+        self.assertIn("Omit unchanged props.", prompt)
+        self.assertNotIn("Python copies", prompt)
+        self.assertNotIn("Python owns Subject identity", prompt)
         self.assertIn("Existing prop IDs are immutable", prompt)
-        self.assertNotIn("Copy forward unchanged props even when offscreen", prompt)
 
     def test_combined_continuity_schema_accepts_persistent_prop_ledger(self):
         candidate = {
@@ -1719,10 +1716,9 @@ class PostmortemRegressionTests(unittest.TestCase):
             ),
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("step down/off/over a surface", prompt)
-        self.assertIn("ordinary floor route", prompt)
-        self.assertIn("final timed position", prompt)
-        self.assertIn("without relocating them off-timeline", prompt)
+        self.assertIn("changes support or elevation", prompt)
+        self.assertIn("different established location", prompt)
+        self.assertIn("End continuity moves a subject", prompt)
 
     def test_final_h3_prompt_carries_distinct_prop_identity_contract(self):
         prompt = minimax.build_h3_prompt(
@@ -1740,6 +1736,137 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertIn("one distinct physical object", prompt)
         self.assertIn("must not duplicate, merge, or substitute", prompt)
+
+    def test_physical_validator_rejects_appears_without_llm_call(self):
+        with mock.patch.object(minimax, "ask_llm") as llm:
+            result = minimax.validate_director_raw_scene_physical(
+                "A goblin enters the tavern.",
+                (
+                    "At 00:00.000, Amy stands at the counter.\n"
+                    "At 00:02.000, a goblin appears beside the stool.\n"
+                    "End continuity state: the goblin stands beside the stool."
+                ),
+            )
+        self.assertFalse(result["valid"])
+        self.assertIn("enter or be revealed", result["issue"])
+        llm.assert_not_called()
+
+    def test_prop_validator_allows_current_beat_to_introduce_prop(self):
+        messages = minimax.build_director_raw_scene_prop_state_messages(
+            "Goblin1 enters clutching a chipped mug.",
+            (
+                "At 00:00.000, Goblin1 enters clutching a chipped mug.\n"
+                "At 00:06.000, Goblin1 holds the chipped mug at the counter.\n"
+                "End continuity state: Goblin1 holds the chipped mug."
+            ),
+            prop_ledger={},
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn(
+            "A prop introduced by CURRENT BEAT may first appear in this scene",
+            prompt,
+        )
+
+    def test_subject_resolver_receives_current_beat_appearance_facts(self):
+        messages = minimax.build_director_raw_subject_resolution_messages(
+            "At 00:01.000, an elf enters.",
+            current_beat="A beautiful female elf enters with silver hair.",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("CURRENT BEAT\nA beautiful female elf", prompt)
+        self.assertIn("in RAW or CURRENT BEAT", prompt)
+
+    def test_combined_continuity_sanitizes_held_prop_id_objects(self):
+        candidate = {
+            "version": 5,
+            "environment": {"location": "N/A", "persistent_state": "N/A"},
+            "camera": "N/A",
+            "ongoing_action": "N/A",
+            "ongoing_audio": "N/A",
+            "subjects": {
+                "Elf1": {
+                    "position": "back table",
+                    "pose_action": "seated",
+                    "wardrobe": {
+                        "upper": "N/A", "lower": "N/A",
+                        "footwear": "N/A", "other": "N/A",
+                    },
+                    "topology": "N/A",
+                    "body_state": "N/A",
+                    "physical_condition": "N/A",
+                    "attached_objects": [],
+                    "injuries": [],
+                    "substances": [],
+                    "spatial_relationships": [],
+                    "persistent_effects": [],
+                    "held_props": [{"id": "chalice_1"}],
+                }
+            },
+            "props": {},
+        }
+        cleaned = minimax._sanitize_combined_continuity_list_variants(candidate)
+        self.assertEqual(cleaned["subjects"]["Elf1"]["held_props"], ["chalice_1"])
+        minimax._validate_combined_continuity_schema(cleaned)
+
+    def test_subject_state_ledger_keeps_offscreen_subjects(self):
+        committed = {
+            "Goblin1": {
+                "name": "Goblin1",
+                "subject_id": 2,
+                "position": "beside counter",
+                "held_props": ["mug_1"],
+            }
+        }
+        observed = {
+            "subjects": {
+                "Elf1": {
+                    "name": "Elf1",
+                    "subject_id": 3,
+                    "position": "back table",
+                    "held_props": ["chalice_1"],
+                }
+            }
+        }
+        merged = minimax.merge_subject_state_ledger(
+            committed,
+            observed,
+            segment_number=3,
+        )
+        self.assertEqual(merged["Goblin1"]["position"], "beside counter")
+        self.assertEqual(merged["Goblin1"]["held_props"], ["mug_1"])
+        self.assertEqual(merged["Elf1"]["position"], "back table")
+        self.assertEqual(merged["Elf1"]["last_observed_segment"], 3)
+
+    def test_h3_carries_stationary_continuing_subject_not_in_action(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Goblin1"] = minimax.new_subject_continuity_record({
+            "subject_id": 2,
+            "name": "Goblin1",
+        })
+        state["subjects"]["Goblin1"]["position"] = "beside the counter"
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000, Amy turns toward the doorway. "
+                    "At 00:04.000, Dragon1 enters."
+                ),
+                "overall_soundscape": "door creak",
+                "non_diegetic_music": "N/A",
+            },
+            (
+                "<Subject 1> is Amy.\n"
+                "<Subject 2> is Goblin1 (S2).\n"
+                "<Subject 4> is Dragon1 (S4)."
+            ),
+            segment_number=4,
+            conditioning_mode="continuation",
+            continuity_state=state,
+            retained_subject_ids={2},
+        )
+        self.assertIn(
+            "Continuing Subjects: Goblin1 remains beside the counter.",
+            prompt,
+        )
 
     def test_soundscape_prompt_preserves_source_count_and_intensity(self):
         messages = minimax.build_h3_soundscape_messages(
