@@ -129,7 +129,7 @@ s = replace_range(
     s,
     "def build_director_raw_scene_coherence_messages(",
     "def normalize_prop_ledger",
-    new_builders + "def normalize_prop_ledger",
+    new_builders,
 )
 
 new_validators = r'''def validate_director_raw_scene_physical(
@@ -238,7 +238,7 @@ s = replace_range(
     s,
     "def validate_director_raw_scene_coherence(",
     "# Run the two-stage Director",
-    new_validators + "\n\n# Run the two-stage Director",
+    new_validators + "\n\n",
 )
 
 s = s.replace(
