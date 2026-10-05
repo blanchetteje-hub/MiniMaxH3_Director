@@ -33313,6 +33313,7 @@ def resolve_director_raw_scene_pronouns(
 def build_director_raw_subject_resolution_messages(
     raw_scene,
     subject_definitions="",
+    story_context="",
 ):
     """Build the narrow post-RAW dynamic Subject identity pass."""
     return [
@@ -33342,7 +33343,10 @@ def build_director_raw_subject_resolution_messages(
                 "explicitly stated in RAW. If RAW does not state clothing and the Subject is "
                 "a human or normally clothed humanoid, choose one simple setting-appropriate "
                 "outfit now; this becomes canonical and must not be re-invented later. For "
-                "animals or creatures that normally do not wear clothing, use N/A for all "
+                "Use STORY CONTEXT only when RAW does not specify clothing, so the chosen "
+                "outfit matches the established setting, period, culture, and visual world. "
+                "Do not use STORY CONTEXT to change RAW actions or explicit appearance facts. "
+                "For animals or creatures that normally do not wear clothing, use N/A for all "
                 "four wardrobe fields unless RAW explicitly gives clothing. Use absent for "
                 "an explicitly absent garment/footwear slot; explicit nudity, barefoot state, "
                 "or garment absence wins over invention. Exclude action, pose, "
@@ -33352,6 +33356,8 @@ def build_director_raw_subject_resolution_messages(
         {
             "role": "user",
             "content": (
+                "STORY CONTEXT\n"
+                f"{str(story_context or '').strip() or 'N/A'}\n\n"
                 "KNOWN SUBJECTS\n"
                 f"{str(subject_definitions or '').strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
@@ -33524,6 +33530,7 @@ def resolve_director_raw_scene_subjects(
     segment_seconds=None,
     return_subject_descriptions=False,
     return_subject_bootstrap=False,
+    story_context="",
 ):
     """Name distinct unnamed foreground animate actors after RAW is finalized."""
     original = _canonicalize_director_timestamps(raw_scene).strip()
@@ -33544,6 +33551,7 @@ def resolve_director_raw_scene_subjects(
         build_director_raw_subject_resolution_messages(
             timed_original,
             subject_definitions=subject_definitions,
+            story_context=story_context,
         ),
         response_format=DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT,
         history_metadata={
@@ -35468,20 +35476,20 @@ def _run_main(
         console_log("Story arc and beats generated successfully.", flush=True)
         return
 
+    expanded_story_context = load_text_file(
+        EXPANDED_STORY_FILE,
+        required=False,
+    )
     story_location_metadata = {}
     if resume_segment == 1:
-        expanded_story_for_locations = load_text_file(
-            EXPANDED_STORY_FILE,
-            required=False,
-        )
-        if expanded_story_for_locations:
+        if expanded_story_context:
             story_location_metadata = extract_story_locations(
-                expanded_story_for_locations,
+                expanded_story_context,
                 history_metadata={"run_id": run_id},
             )
             story_location_metadata["setting_description"] = (
                 extract_story_setting_description(
-                    expanded_story_for_locations,
+                    expanded_story_context,
                     story_location_metadata["overall_location"],
                     history_metadata={"run_id": run_id},
                 )
@@ -36426,6 +36434,7 @@ def _run_main(
                     accepted_raw_scene,
                     subject_definitions=subject_definitions,
                     return_subject_bootstrap=True,
+                    story_context=expanded_story_context,
                     history_metadata={
                         "run_id": run_id,
                         "source_sha256": run_config["source_sha256"],
