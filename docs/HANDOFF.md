@@ -830,3 +830,14 @@ a tabletop shortcut or teleport.
 - Raised the per-defined-Subject wardrobe extractor output cap from 128 to 256 tokens after local GPT-OSS repeatedly truncated the JSON response at 128.
 - No LLM prompt wording changed in this hotfix.
 - Commit: `5f6668bba909898984b374c14cfae4ed6aef7f7e`.
+
+
+### 2026-10-05 — prop ledger identity lock + delta-only continuity props
+- Fixed deterministic prop-ledger corruption where the combined continuity observer could overwrite an existing prop ID with a different object kind (for example `mug_1` becoming a cloth).
+- `merge_prop_ledger()` now treats `prop_id -> kind` as immutable identity. Same-kind observations may update mutable state; a conflicting different-kind observation is assigned a fresh unique prop ID instead of rewriting the existing object.
+- Simplified the `COMBINED_CONTINUITY_SYSTEM` prop instructions so the LLM reports only NEW props or CHANGES. Unchanged props are omitted because Python copies the committed ledger forward.
+- Removed the redundant instruction telling the LLM to copy unchanged/offscreen props forward.
+- Kept the rest of the Combined Continuity wording unchanged because it still defines semantic final-frame facts the LLM must observe.
+- Added regressions for a `mug_1 -> cloth` collision and for delta-only prop prompt wording.
+- Commits: `79474334b75f3625d3b467f8da1ccd6e19c5b7e7`, `4c8f927c58c28bfbde65e4319cb467db5b63ed1f`.
+- Tests were added but not executed through this chat environment.
