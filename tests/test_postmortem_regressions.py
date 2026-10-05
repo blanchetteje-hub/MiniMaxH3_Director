@@ -18,7 +18,8 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("End continuity state", prompt)
-        self.assertIn("final subject positions and barrier states", prompt)
+        self.assertIn("final timed position", prompt)
+        self.assertIn("without relocating them off-timeline", prompt)
 
     def test_subject_resolver_prefers_explicit_species_over_generic_creature(self):
         messages = minimax.build_director_raw_subject_resolution_messages(
@@ -1617,6 +1618,103 @@ class PostmortemRegressionTests(unittest.TestCase):
             definitions, set(), "Amy wipes the bar.", retained_subject_ids={2}
         )
         self.assertIn("<Subject 2> is Elf1", filtered)
+
+
+    def test_subject_resolver_promotes_metadata_name_even_if_model_leaves_generic_noun(self):
+        raw = (
+            "At 00:00.000, Amy stands at the counter.\n"
+            "At 00:02.000, a beautiful female elf steps in.\n"
+            "At 00:04.000, the elf sits at the back table.\n"
+            "End continuity state: the elf remains seated at the back table."
+        )
+
+        def fake_llm(_messages, **_kwargs):
+            return {
+                "raw_scene": (
+                    "At 00:00.000, Amy stands at the counter.\n"
+                    "At 00:02.000, a beautiful female elf steps in.\n"
+                    "At 00:04.000, the elf sits at the back table."
+                ),
+                "subject_names": ["Elf1"],
+                "subject_descriptions": {
+                    "Elf1": "silver-haired female elf"
+                },
+                "subject_wardrobes": {
+                    "Elf1": {
+                        "upper": "forest-green tunic",
+                        "lower": "brown trousers",
+                        "footwear": "leather boots",
+                        "other": "N/A",
+                    }
+                },
+            }
+
+        resolved, names, descriptions, wardrobes = (
+            minimax.resolve_director_raw_scene_subjects(
+                raw,
+                "<Subject 1> is Amy.",
+                llm_request=fake_llm,
+                segment_seconds=5,
+                return_subject_bootstrap=True,
+            )
+        )
+        self.assertIn("Elf1 steps in", resolved)
+        self.assertIn("Elf1 sits at the back table", resolved)
+        self.assertIn("Elf1 remains seated", resolved)
+        self.assertEqual(names, ["Elf1"])
+        self.assertEqual(descriptions["Elf1"], "silver-haired female elf")
+        self.assertEqual(wardrobes["Elf1"]["upper"], "forest-green tunic")
+
+    def test_physical_prompt_rejects_unsupported_support_changes_and_stale_end_position(self):
+        messages = minimax.build_director_raw_scene_physical_messages(
+            "Amy wipes the table.",
+            (
+                "At 00:00.000, Amy stands on the floor beside the table.\n"
+                "At 00:02.000, Amy steps down from the counter.\n"
+                "At 00:04.000, Amy walks to the back table.\n"
+                "End continuity state: Amy stands at the counter."
+            ),
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("step down/off/over a surface", prompt)
+        self.assertIn("ordinary floor route", prompt)
+        self.assertIn("final timed position", prompt)
+        self.assertIn("without relocating them off-timeline", prompt)
+
+    def test_final_h3_prompt_carries_distinct_prop_identity_contract(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000, Goblin1 holds one chipped mug. "
+                    "At 00:04.000, Amy pours ale into the mug."
+                ),
+                "overall_soundscape": "ale pours",
+                "non_diegetic_music": "N/A",
+            },
+            "<Subject 2> is Goblin1 (S2).",
+            segment_number=2,
+            conditioning_mode="continuation",
+        )
+        self.assertIn("one distinct physical object", prompt)
+        self.assertIn("must not duplicate, merge, or substitute", prompt)
+
+    def test_soundscape_prompt_preserves_source_count_and_intensity(self):
+        messages = minimax.build_h3_soundscape_messages(
+            "At 00:02.000, Goblin1 takes one step through the doorway."
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("Preserve the stated source", prompt)
+        self.assertIn("count, duration, and intensity", prompt)
+        self.assertIn("do not turn one step into generic/plural footsteps", prompt)
+
+    def test_unclothed_nonhuman_reference_keeps_species_anatomy_not_human_sex_anatomy(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Dragon1 is a humanoid dragon with obsidian scales, wings, and amber eyes.",
+            has_identity_reference=False,
+        )
+        self.assertIn("external anatomy species-appropriate", prompt)
+        self.assertIn("do not invent human sex-specific anatomy", prompt)
+        self.assertIn("If no clothing is described, do not invent clothing", prompt)
 
 
 if __name__ == "__main__":
