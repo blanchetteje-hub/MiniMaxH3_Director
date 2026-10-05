@@ -33487,6 +33487,8 @@ def resolve_director_raw_scene_subjects(
     """Name distinct unnamed foreground animate actors after RAW is finalized."""
     original = _canonicalize_director_timestamps(raw_scene).strip()
     if not original:
+        if return_subject_descriptions:
+            return original, [], {}
         return original, []
 
     end_match = _DIRECTOR_END_CONTINUITY_RE.search(original)
