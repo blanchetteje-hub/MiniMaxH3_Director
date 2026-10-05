@@ -553,3 +553,21 @@ the barrel/container as the ale source; Segment 4 visibly moves Amy to the shelf
 Dragon reference is both generated and bound; the closing sequence visibly traverses the
 door before exterior framing; and background Goblin/Elf identity references remain bound
 when the RAW End state keeps them present.
+
+
+### 2026-10-05 — RAW validator split
+
+The former combined RAW coherence validator is now split for the local ~20B runtime:
+
+- `director_raw_scene_physical` checks subject movement/spatial continuity, entry/reveal,
+  travel between established positions, barriers/seats/supports, fixed architecture, and
+  final subject/barrier state.
+- `director_raw_scene_prop_state` checks prop identity/provenance, ledger holder/owner/contents,
+  source/destination transfers, CURRENT BEAT object/recipient/container/result fidelity,
+  material sources, and final prop state.
+- `director_raw_scene_timing` remains a third independent check.
+
+Request 1 now evaluates physical/spatial -> prop/state -> timing, with a category-specific
+retry message for each failure. Compatibility wrappers remain for old callers, but production
+runtime no longer asks one large coherence prompt to reason about every domain at once.
+The RAW Director prompt itself was intentionally left alone because it is being revised separately.
