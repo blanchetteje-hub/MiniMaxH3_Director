@@ -29767,7 +29767,7 @@ def build_character_reference_h3_prompt(
     )
     return (
         "detailed_description: [Shot 1] A single subject is centered and "
-        "front-facing in a neutral natural pose, with the complete current physical "
+        "front-facing in a neutral natural full-body pose, with the complete current physical "
         "appearance clearly visible. Use one continuous static shot for exactly 1 second. "
         + identity_clause
         + f"{description}. Keep the face/head, body/anatomy, species traits, and "
