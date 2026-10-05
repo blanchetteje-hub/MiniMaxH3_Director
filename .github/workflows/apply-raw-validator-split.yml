@@ -1,0 +1,33 @@
+name: Apply RAW validator split
+
+on:
+  push:
+    branches:
+      - location-state-test
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[validator-split]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: location-state-test
+      - name: Apply validator split
+        run: python tools/apply_raw_validator_split.py
+      - name: Syntax check
+        run: python -m py_compile minimax.py
+      - name: Commit generated patch
+        run: |
+          if git diff --quiet -- minimax.py; then
+            echo "No minimax.py changes produced"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add minimax.py
+          git commit -m "refactor: split RAW validator checks [validator-split]"
+          git push origin HEAD:location-state-test
