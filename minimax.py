@@ -33343,8 +33343,9 @@ def build_director_raw_subject_resolution_messages(
                 "a human or normally clothed humanoid, choose one simple setting-appropriate "
                 "outfit now; this becomes canonical and must not be re-invented later. For "
                 "animals or creatures that normally do not wear clothing, use N/A for all "
-                "four wardrobe fields unless RAW explicitly gives clothing. Explicit nudity, "
-                "barefoot state, or garment absence wins over invention. Exclude action, pose, "
+                "four wardrobe fields unless RAW explicitly gives clothing. Use absent for "
+                "an explicitly absent garment/footwear slot; explicit nudity, barefoot state, "
+                "or garment absence wins over invention. Exclude action, pose, "
                 "location, held props, camera, and mood. Return JSON only."
             ),
         },
@@ -33696,7 +33697,9 @@ def resolve_director_raw_scene_subjects(
                 or "").split()
         ).strip()
         if description:
-            descriptions[name] = description
+            # Clothing has exactly one canonical owner: subject_wardrobes.
+            # Do not allow a duplicate wearing-clause to survive in identity prose.
+            descriptions[name] = _strip_character_description_clothing(description)
         raw_wardrobe = (
             raw_subject_wardrobes.get(raw_name)
             or raw_subject_wardrobes.get(name)
