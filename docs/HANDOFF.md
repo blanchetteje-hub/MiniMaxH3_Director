@@ -628,3 +628,41 @@ the final video. Elf1 should preserve the explicit female/silver-haired identity
 Dragon1 should preserve the humanoid-dragon/obsidian-scale/wing/amber-eye identity. After
 that, investigate the two remaining spatial failures separately rather than changing the
 reference architecture.
+
+
+### 2026-10-05 — one-source dynamic wardrobe bootstrap
+
+The dynamic-reference identity fix is now consolidated with initial wardrobe assignment so
+clothing has one authoritative source before a new dynamic Subject's generated Picture is
+rendered.
+
+Current architecture on `location-state-test`:
+
+- the existing post-RAW Subject-resolution call now bootstraps both non-clothing identity
+  and initial wardrobe for each newly named foreground dynamic Subject;
+- `subject_descriptions` contains only stable non-clothing identity facts already present
+  in RAW (species/type, sex/gender wording, age, hair, skin/scales/fur, build, anatomy/body,
+  distinguishing features);
+- `subject_wardrobes` contains exactly `upper`, `lower`, `footwear`, and `other`;
+- explicit RAW clothing is preserved; when a human/normally clothed humanoid has no clothing
+  specified, the same LLM call assigns one simple setting-appropriate outfit exactly once;
+- animals/creatures that normally do not wear clothing receive N/A wardrobe fields unless
+  RAW explicitly provides clothing; explicit garment/footwear absence uses `absent` and
+  overrides invention;
+- Python stores that wardrobe directly in the new Subject continuity record before any
+  character-reference media is generated;
+- identity prose is deterministically stripped of any accidental wearing-clause so wardrobe
+  is not duplicated in two canonical fields;
+- the character-reference renderer is now a consumer only: it visualizes the persisted
+  identity + wardrobe and is explicitly forbidden from adding/removing/redesigning clothing;
+- later clothing changes continue through the existing persistent wardrobe continuity path;
+  there is no second first-appearance clothing decision downstream.
+
+Compatibility: older direct callers/tests of the Subject resolver may still request only
+names or names+descriptions; production requests the full bootstrap tuple.
+
+Acceptance target: rerun the tavern. Before video evaluation, inspect Elf1/Dragon1 generated
+state metadata and PNGs. Elf1 should have both the RAW-derived female/silver-haired identity
+and one persisted setting-appropriate outfit; Dragon1 should retain the RAW-derived dragon
+identity and should not acquire humanoid clothing unless RAW explicitly says so. The same
+persisted wardrobe must be what the story H3 prompt references.
