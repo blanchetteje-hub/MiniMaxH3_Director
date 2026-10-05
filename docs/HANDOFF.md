@@ -821,3 +821,12 @@ invent heavy/repeated footsteps; Segment 4 starts Amy from the back-table state 
 existing chalice/new Dragon cup distinct; Segment 6 uses a visible ordinary floor route rather than
 a tabletop shortcut or teleport.
 
+
+
+### 2026-10-05 — resolver restart-loop hotfix
+- Fixed a regression from the stricter dynamic Subject resolver enforcement.
+- If returned Subject metadata is valid but the resolver fails to rewrite its functional name into RAW, Python first retries the naming deterministically against the already-accepted Director RAW.
+- If no safe deterministic mapping exists, that resolver entry is warned/dropped instead of restarting the entire segment.
+- Raised the per-defined-Subject wardrobe extractor output cap from 128 to 256 tokens after local GPT-OSS repeatedly truncated the JSON response at 128.
+- No LLM prompt wording changed in this hotfix.
+- Commit: `5f6668bba909898984b374c14cfae4ed6aef7f7e`.
