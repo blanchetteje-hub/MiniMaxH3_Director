@@ -2450,3 +2450,25 @@ the barrel/container as the ale source; Segment 4 visibly moves Amy to the shelf
 Dragon reference is both generated and bound; the closing sequence visibly traverses the
 door before exterior framing; and background Goblin/Elf identity references remain bound
 when the RAW End state keeps them present.
+
+
+### 2026-10-05 — generated Picture authority preserved in continuation prompts
+
+A continuation-conditioning bug was replacing generated character Picture tags with
+"the supplied opening guide" before render. The append/refresh workflows prune blank
+configured reference slots before generated character references are attached, so those
+blank template slot numbers were incorrectly treated as removed Pictures even when a
+generated character reference was about to occupy that same segment-local Picture number.
+
+Fix:
+
+- segment-local generated character Picture numbers are now protected from configured-slot
+  exclusion/replacement and canonical Picture remapping at the H3 render boundary;
+- generated identity/clothing references therefore remain explicit `<Picture N>` references
+  in the actual H3 prompt;
+- the opening guide now anchors only a visible Subject's opening pose, position, and physical
+  state; it no longer claims wardrobe authority when a Picture reference owns clothing;
+- Picture-definition lines are no longer given duplicated opening-guide pose/state suffixes.
+
+Focused regression tests verify that a generated Picture survives blank template-slot
+conditioning and that Picture authority lines remain separate from opening-guide continuity.
