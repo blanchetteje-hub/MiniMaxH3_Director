@@ -841,3 +841,49 @@ a tabletop shortcut or teleport.
 - Added regressions for a `mug_1 -> cloth` collision and for delta-only prop prompt wording.
 - Commits: `79474334b75f3625d3b467f8da1ccd6e19c5b7e7`, `4c8f927c58c28bfbde65e4319cb467db5b63ed1f`.
 - Tests were added but not executed through this chat environment.
+
+
+### 2026-10-05 — tavern regression: simplify validators, retire prop staging, add persistent Subject ledger
+Latest rendered tavern run regressed despite character references working. Root causes were primarily upstream scene/continuity handling rather than missing Pictures:
+- Segment 2's first RAW used a camera reveal for the goblin, but the prop validator rejected the goblin's chipped mug because it was not already in the ledger even though CURRENT BEAT introduced it. Retry accumulation degraded this into literal `appears` wording.
+- Segment 3/4 showed the same over-validation pattern for newly introduced cups/chalices. Segment 3 also accepted impossible cross-room interaction and a malformed `held_props` shape caused a useful continuity response (including the chalice) to be discarded.
+- Elf1 lost the explicit female fact because the post-RAW Subject resolver was restricted to appearance facts present in RAW even though CURRENT BEAT said female.
+- Goblin1 remained referenced/registered but Segment 4's timed H3 action omitted him while Dragon1 entered the same visual area.
+
+Changes:
+- Retired the proactive `director_prop_staging` LLM path completely, including its dead schema/trigger/helpers/purpose entry.
+- Simplified `director_raw_scene_prop_state`: a prop explicitly introduced by CURRENT BEAT may first appear in the scene; existing ledger props remain identity/state constrained; source/destination and real source-container checks remain.
+- Simplified `director_raw_scene_physical` to only entry/reveal, travel between established positions, support/elevation changes, and final End-position consistency.
+- Added deterministic RAW rejection for `appears` / `suddenly appears` / `pops into view` introduction wording before the physical LLM validator.
+- Subject resolver now receives CURRENT BEAT and may use explicit non-clothing appearance facts from RAW or CURRENT BEAT. Explicit female/male wording in the resolved canonical description is deterministically copied into Subject registration.
+- Combined Continuity sanitizes harmless `held_props:[{"id":"..."}]` variants into string IDs before strict schema validation, preventing an unrelated list-shape error from discarding otherwise useful prop observations.
+- Removed implementation-language from modified prompts: no `Python owns...`, `Python copies...`, or prop-ledger copy-forward explanation. Combined Continuity user input now labels the database simply `COMMITTED PROP LEDGER:`.
+- Director Request 1 likewise states required timestamp/end-state behavior directly rather than explaining Python normalization.
+- Added deterministic final-H3 continuing-Subject state insertion for continuation clips. A known Subject with a concrete opening position that is absent from current timed action gets a concise line such as `Continuing Subjects: Goblin1 remains beside the counter.`
+- Added `subject_state_ledger`, a Python-owned durable all-Subjects database parallel to the prop ledger. It is seeded from configured `subjects.txt`, persists dynamic Subjects and last-known state across offscreen segments, is checkpointed run-level and per-segment, and is intentionally not yet used as a new semantic/render authority. `last_updated_segment` means ledger update, not rendered observation.
+- Future design note: the Subject ledger currently treats N/A/empty continuity values as unknown and therefore does not clear prior nonempty state from an empty observation. Before it becomes authoritative for every-world-state use, explicit clear/change semantics should be defined rather than inferring clears from absence.
+
+Prompt changes made in this batch:
+- `director_raw_scene_prop_state` now begins: `Validate only prop continuity in RAW. A prop introduced by CURRENT BEAT may first appear in this scene.`
+- `director_raw_scene_physical` now begins: `Validate only subject movement in RAW.` and enumerates only the four narrow rejection cases above.
+- `director_raw_scene_subject_resolution` receives a `CURRENT BEAT` block and the description rule now says appearance facts may come from `RAW or CURRENT BEAT`.
+- `COMBINED_CONTINUITY_SYSTEM`: `Omit unchanged props.`; removed architecture explanations about Python.
+- Director Request 1: direct behavior only for 00:00.000, final-quarter timing, and exactly one End continuity state.
+
+Implementation commits:
+- `90c96a26be5949910759356585b90da3e78276c6` — simplify validators/continuity and add Subject state ledger
+- `a28c323e2941a72390cd4c885aa648ce082227a6` — finish stationary Subject carry-forward and state seeding
+- `a102960ab54f06c6a45a06262c27a07dae3fb048` — remove retired prop-staging code and clarify Subject ledger timestamp
+Regression commits:
+- `347fe1efabf4b65e7319728fe2ea314fc693cdf7`
+- `cd3bb16e907264d6e4f50dba9e3b6b7dac96dd7b`
+- `6cc56dbc4fceece85030858b835a796d1935b0c8`
+
+Regressions cover CURRENT-BEAT prop introduction, deterministic pop-in rejection without an LLM call, CURRENT-BEAT gender/appearance input to Subject resolution, held-prop schema sanitization, offscreen Subject persistence, and deterministic stationary-Subject H3 carry-forward.
+Tests were updated but not executed through this chat/GitHub connector environment.
+
+Next local acceptance run:
+- Segment 2 should no longer burn retries merely because CURRENT BEAT introduces Goblin1's chipped mug, and accepted RAW must not contain pop-in `appears` wording.
+- Segment 3 Elf1 reference/registry should retain explicit female identity; Amy must visibly travel before interacting at the back table; mug/chalice identities should remain separate; a harmless held_props shape slip must not erase the chalice.
+- Segment 4 should retain Goblin1 through deterministic continuing-Subject text when he remains in the location, and pouring must have a real source container. Watch specifically for cup floating/duplication even with correct prompt state.
+- Inspect `generation_state.json.subject_state_ledger`: configured Subjects should exist from run start, dynamic Subjects should be added, and offscreen Subjects should retain last-known state.
