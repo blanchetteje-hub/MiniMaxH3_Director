@@ -6600,7 +6600,7 @@ def canonicalize_defined_subject_wardrobes(
                 record,
             ),
             response_format=build_story_subject_wardrobe_response_format(),
-            max_tokens=128,
+            max_tokens=256,
             context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
             history_metadata={
                 **dict(history_metadata or {}),
@@ -34186,6 +34186,36 @@ def resolve_director_raw_scene_subjects(
         subject_definitions,
         resolved_subject_names,
     )
+    # If the resolver returned useful Subject metadata but failed to rewrite
+    # the participant label in its raw_scene, recover from the already-accepted
+    # Director RAW instead of making the whole segment retry. This keeps the
+    # semantic scene untouched and applies only deterministic functional-name
+    # canonicalization.
+    fallback_timed = _canonicalize_end_continuity_functional_subjects(
+        timed_original,
+        subject_definitions,
+        resolved_subject_names,
+    )
+    missing_resolved_names = [
+        " ".join(str(name or "").split()).strip(" ,.;:-")
+        for name in resolved_subject_names
+        if str(name or "").strip()
+        and re.search(
+            rf"(?<![\w]){re.escape(' '.join(str(name or '').split()).strip(' ,.;:-'))}(?![\w])",
+            _h3_visual_identity_text(resolved_timed),
+            re.I,
+        ) is None
+    ]
+    if missing_resolved_names and all(
+        re.search(
+            rf"(?<![\w]){re.escape(name)}(?![\w])",
+            _h3_visual_identity_text(fallback_timed),
+            re.I,
+        ) is not None
+        for name in missing_resolved_names
+    ):
+        resolved_timed = fallback_timed
+
     resolved_end_state = _canonicalize_end_continuity_functional_subjects(
         end_state_original,
         subject_definitions,
@@ -34230,10 +34260,13 @@ def resolve_director_raw_scene_subjects(
             _h3_visual_identity_text(resolved_timed),
             re.I,
         ) is None:
-            raise ValueError(
-                f"RAW Subject resolver returned {name!r} in subject_names but did "
-                "not apply that functional name to returned raw_scene."
+            console_log(
+                f"WARNING: RAW Subject resolver returned {name!r} in subject_names "
+                "but no safe deterministic mapping exists in accepted RAW; ignoring "
+                "that resolver entry instead of restarting the segment.",
+                flush=True,
             )
+            continue
         seen.add(key)
         names.append(name)
         description = " ".join(
