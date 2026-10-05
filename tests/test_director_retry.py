@@ -286,7 +286,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "director_raw_scene_subject_resolution",
         )
 
-    def test_raw_subject_resolution_returns_explicit_identity_descriptions(self):
+    def test_raw_subject_resolution_bootstraps_identity_and_wardrobe_once(self):
         original = (
             "At 00:01.000, a beautiful female elf with long silver hair enters.\n"
             "At 00:05.000, the elf sits at the back table.\n"
@@ -302,14 +302,24 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "subject_descriptions": {
                 "Elf1": "Elf1 is a beautiful female elf with long silver hair."
             },
+            "subject_wardrobes": {
+                "Elf1": {
+                    "upper": "forest-green fitted tunic",
+                    "lower": "brown trousers",
+                    "footwear": "soft leather boots",
+                    "other": "N/A",
+                }
+            },
         })
 
-        result, names, descriptions = minimax.resolve_director_raw_scene_subjects(
-            original,
-            "<Subject 1> is Amy.",
-            llm_request=request,
-            segment_seconds=6.0,
-            return_subject_descriptions=True,
+        result, names, descriptions, wardrobes = (
+            minimax.resolve_director_raw_scene_subjects(
+                original,
+                "<Subject 1> is Amy.",
+                llm_request=request,
+                segment_seconds=6.0,
+                return_subject_bootstrap=True,
+            )
         )
 
         self.assertIn("Elf1 sits at the back table", result)
@@ -318,9 +328,19 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             descriptions,
             {"Elf1": "Elf1 is a beautiful female elf with long silver hair."},
         )
+        self.assertEqual(
+            wardrobes["Elf1"],
+            {
+                "upper": "forest-green fitted tunic",
+                "lower": "brown trousers",
+                "footwear": "soft leather boots",
+                "other": "N/A",
+            },
+        )
         prompt = request.call_args.args[0]
-        self.assertIn("explicit appearance facts already present in RAW", prompt[0]["content"])
-        self.assertIn("subject_descriptions", prompt[1]["content"])
+        self.assertIn("explicit non-clothing appearance facts", prompt[0]["content"])
+        self.assertIn("choose one simple setting-appropriate outfit now", prompt[0]["content"])
+        self.assertIn("subject_wardrobes", prompt[1]["content"])
 
     def test_raw_subject_resolution_preserves_existing_identifiers(self):
         original = (
