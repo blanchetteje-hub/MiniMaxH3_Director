@@ -1183,11 +1183,11 @@ WRITE THE SCENE
 
 CAMERA CHOREOGRAPHY
 {camera_choreography_rules}
-- CONTINUATION: the supplied opening guide is the visual authority for frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. Describe only the inherited continuation frame before CURRENT BEAT; do not reconstruct every known subject into view. Python owns the exact 00:00.000 frame-zero anchor.
+- CONTINUATION: the supplied opening guide is the visual authority for frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. Describe only the inherited continuation frame before CURRENT BEAT; do not reconstruct every known subject into view.
 - Keep all timed action inside the {segment_seconds}-second clip.
-- Spread CURRENT BEAT naturally across the clip with at least {segment_min_beats} timed micro-beats. Python normalizes timestamp coverage into the final quarter when needed.
-- Use timestamp lines in the form "At 00:ss.mmm,". Python normalizes timestamp syntax, frame-zero anchoring, and final-quarter coverage.
-- After the timed action, include one short final-state sentence describing the actual last visible frame after the final timed action. Prefer the label "End continuity state:"; Python normalizes that marker to exactly one trailing instance. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state.
+- Spread CURRENT BEAT naturally across the clip with at least {segment_min_beats} timed micro-beats, with the final timed micro-beat in the final quarter.
+- Use timestamp lines in the form "At 00:ss.mmm," and begin at 00:00.000.
+- After the timed action, include exactly one short "End continuity state:" sentence describing the actual last visible frame. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state.
 
 {story_segment_ending_rules}
 
@@ -1383,14 +1383,13 @@ COMBINED_CONTINUITY_SYSTEM = (
     "environment KEYS ONLY: location, persistent_state.\n"
     "Subjects MUST be keyed by an already-registered Subject name. Do not create "
     "Subjects. Do not output identity metadata, IDs, Picture references, speaker "
-    "IDs, gender, origin metadata, or structural-change metadata. Python owns "
-    "Subject identity.\n"
+    "IDs, gender, origin metadata, or structural-change metadata.\n"
     "Each Subject may contain ONLY: position, pose_action, wardrobe, topology, "
     "body_state, physical_condition, attached_objects, injuries, substances, "
     "spatial_relationships, persistent_effects, held_props.\n"
     "wardrobe KEYS ONLY: upper, lower, footwear, other.\n"
     "props contains only NEW props or CHANGES to existing movable/interactable "
-    "props. Omit unchanged props; Python copies them forward. Existing prop IDs are "
+    "props. Omit unchanged props. Existing prop IDs are "
     "immutable: never change what an existing prop ID represents. If a new distinct "
     "prop appears, give it a new unique ID. Do not list architecture, doors, fixed "
     "fixtures, furniture, ambient clutter, or clothing. Each prop may contain ONLY "
@@ -6842,6 +6841,7 @@ def new_generation_state(run_config):
         "visual_end_state": {},
         "visual_end_frame_paths": [],
         "prop_ledger": {},
+        "subject_state_ledger": {},
         "character_reference_images": {},
         "base_reference_image_count": None,
         "reference_binding_state": {
@@ -6906,6 +6906,7 @@ def load_generation_state(path=GENERATION_STATE_FILE):
     _canonicalize_generation_state_continuity(state)
     _canonicalize_generation_state_subjects(state)
     _canonicalize_generation_state_props(state)
+    _canonicalize_generation_state_subject_ledger(state)
     # Validate the internal append-only identity chain even when callers only
     # load the checkpoint. Resume adds the subjects.txt comparison separately.
     validate_subject_identity_state(state)
@@ -6970,6 +6971,7 @@ def save_generation_state(state, path=GENERATION_STATE_FILE):
     _canonicalize_generation_state_continuity(state)
     _canonicalize_generation_state_subjects(state)
     _canonicalize_generation_state_props(state)
+    _canonicalize_generation_state_subject_ledger(state)
     validate_subject_identity_state(state)
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
@@ -6992,6 +6994,23 @@ def save_generation_state(state, path=GENERATION_STATE_FILE):
 
 
 # Canonicalize persistent movable-prop bookkeeping in checkpoints.
+def _canonicalize_generation_state_subject_ledger(state):
+    """Normalize the run-level and per-segment all-Subjects state ledger."""
+    if not isinstance(state, dict):
+        return state
+    state["subject_state_ledger"] = normalize_subject_state_ledger(
+        state.get("subject_state_ledger", {})
+    )
+    records = state.get("segments")
+    if isinstance(records, list):
+        for record in records:
+            if isinstance(record, dict):
+                record["subject_state_ledger"] = normalize_subject_state_ledger(
+                    record.get("subject_state_ledger", {})
+                )
+    return state
+
+
 def _canonicalize_generation_state_props(state):
     """Normalize the run-level and per-segment prop ledger."""
     if not isinstance(state, dict):
@@ -7522,6 +7541,9 @@ def restore_generation_state(
         state["subject_registry_state"] = new_continuity_state()
         state["continuity_summary_pending"] = False
         state["prop_ledger"] = {}
+        state["subject_state_ledger"] = {}
+    if not isinstance(state.get("subject_state_ledger"), dict):
+        state["subject_state_ledger"] = {}
     state.pop("additional_subject_definitions", None)
     restored_dynamic_subject_definitions = derive_additional_subject_definitions(
         base_subject_definitions,
@@ -7539,6 +7561,7 @@ def restore_generation_state(
         ),
         "continuity_state": copy.deepcopy(state.get("continuity_state", {})),
         "prop_ledger": copy.deepcopy(state.get("prop_ledger", {})),
+        "subject_state_ledger": copy.deepcopy(state.get("subject_state_ledger", {})),
         "character_reference_images": normalize_character_reference_images(
             state.get("character_reference_images", {})
         ),
@@ -7576,6 +7599,7 @@ def record_completed_segment(
     continuity_summary="",
     continuity_state=None,
     prop_ledger=None,
+    subject_state_ledger=None,
     continuity_summary_pending=False,
     additional_subject_definitions=None,
     subject_registry_state=None,
@@ -7593,6 +7617,13 @@ def record_completed_segment(
             "subject_registry_state",
             new_continuity_state(),
         )
+    if subject_state_ledger is None:
+        subject_state_ledger = state.get("subject_state_ledger", {})
+    subject_state_ledger = merge_subject_state_ledger(
+        subject_state_ledger,
+        subject_registry_state,
+        segment_number=segment_number,
+    )
     del additional_subject_definitions
     validate_subject_identity_state(
         state,
@@ -7626,6 +7657,7 @@ def record_completed_segment(
         "continuity_summary": continuity_summary,
         "continuity_state": copy.deepcopy(continuity_state),
         "prop_ledger": copy.deepcopy(prop_ledger),
+        "subject_state_ledger": copy.deepcopy(subject_state_ledger),
         "subject_registry_state": migrate_continuity_state(subject_registry_state),
         "subject_identity_snapshot": subject_identity_snapshot(
             subject_registry_state
@@ -7643,6 +7675,7 @@ def record_completed_segment(
     state["continuity_summary"] = continuity_summary
     state["continuity_state"] = copy.deepcopy(continuity_state)
     state["prop_ledger"] = copy.deepcopy(prop_ledger)
+    state["subject_state_ledger"] = copy.deepcopy(subject_state_ledger)
     state["subject_registry_state"] = migrate_continuity_state(
         subject_registry_state
     )
@@ -24756,6 +24789,33 @@ def _strip_combined_continuity_identity_metadata(candidate):
     return stripped
 
 
+def _sanitize_combined_continuity_list_variants(candidate):
+    """Normalize harmless local-model list-item schema slips before validation."""
+    if not isinstance(candidate, dict):
+        return candidate
+    cleaned = copy.deepcopy(candidate)
+    subjects = cleaned.get("subjects")
+    records = list(subjects.values()) if isinstance(subjects, dict) else subjects
+    if isinstance(records, list):
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            held = record.get("held_props")
+            if isinstance(held, list):
+                normalized = []
+                for item in held:
+                    if isinstance(item, str):
+                        value = item.strip()
+                    elif isinstance(item, dict) and set(item) == {"id"}:
+                        value = str(item.get("id") or "").strip()
+                    else:
+                        value = ""
+                    if value:
+                        normalized.append(value)
+                record["held_props"] = normalized
+    return cleaned
+
+
 def _validate_combined_continuity_schema(candidate):
     """Validate the structural schema emitted by combined continuity Phase 1."""
     errors = []
@@ -25038,6 +25098,7 @@ def _parse_continuity_json_result(
         candidate.pop("characters", None)
     if strict_schema:
         candidate = _strip_combined_continuity_identity_metadata(candidate)
+        candidate = _sanitize_combined_continuity_list_variants(candidate)
         _validate_combined_continuity_schema(candidate)
     return sanitize_prompt_derived_continuity_state(candidate)
 
@@ -25422,8 +25483,7 @@ def request_combined_continuity(
     else:
         combined_user_content = str(h3_prompt or "").strip()
     combined_user_content += (
-        "\n\nCOMMITTED PROP LEDGER — copy forward unchanged props unless this "
-        "segment explicitly changes them:\n"
+        "\n\nCOMMITTED PROP LEDGER:\n"
         + format_prop_ledger_for_prompt(committed_prop_ledger)
     )
     additional_states = load_additional_states() or "N/A"
@@ -33836,6 +33896,7 @@ def build_director_raw_subject_resolution_messages(
     raw_scene,
     subject_definitions="",
     story_context="",
+    current_beat="",
 ):
     """Build the narrow post-RAW dynamic Subject identity pass."""
     return [
@@ -33860,7 +33921,7 @@ def build_director_raw_subject_resolution_messages(
                 "interchangeable background crowds/groups. For each newly named Subject, "
                 "also return subject_descriptions with one short stable visual identity "
                 "sentence using only explicit non-clothing appearance facts already present "
-                "in RAW (species/type, sex/gender wording, age, hair, skin/scales/fur, build, "
+                "in RAW or CURRENT BEAT (species/type, sex/gender wording, age, hair, skin/scales/fur, build, "
                 "body/anatomy, and distinguishing features). Never put clothing in "
                 "subject_descriptions. Also return subject_wardrobes for each newly named "
                 "Subject using exactly upper, lower, footwear, and other. Preserve clothing "
@@ -33880,6 +33941,8 @@ def build_director_raw_subject_resolution_messages(
         {
             "role": "user",
             "content": (
+                "CURRENT BEAT\n"
+                f"{str(current_beat or '').strip() or 'N/A'}\n\n"
                 "STORY CONTEXT\n"
                 f"{str(story_context or '').strip() or 'N/A'}\n\n"
                 "KNOWN SUBJECTS\n"
@@ -34055,6 +34118,7 @@ def resolve_director_raw_scene_subjects(
     return_subject_descriptions=False,
     return_subject_bootstrap=False,
     story_context="",
+    current_beat="",
 ):
     """Name distinct unnamed foreground animate actors after RAW is finalized."""
     original = _canonicalize_director_timestamps(raw_scene).strip()
@@ -34076,6 +34140,7 @@ def resolve_director_raw_scene_subjects(
             timed_original,
             subject_definitions=subject_definitions,
             story_context=story_context,
+            current_beat=current_beat,
         ),
         response_format=DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT,
         history_metadata={
@@ -34311,20 +34376,15 @@ def build_director_raw_scene_physical_messages(
         {
             "role": "system",
             "content": (
-                "Validate only SUBJECT MOVEMENT AND PHYSICAL ACTION ORDER in one timed "
-                "RAW SCENE. Ignore prop identity, contents, ownership, and transfer "
-                "semantics unless a support or barrier makes movement physically impossible. "
-                "Check only: frame-0 reachability from PREVIOUS SHOT END; visible entry or "
-                "camera reveal for new participants; explicit travel between established "
-                "positions; possible order for doors, barriers, seats, supports, and body "
-                "movement; body support/elevation (a subject cannot step down/off/over a "
-                "surface they were never established on, and gratuitous climbing is invalid "
-                "when an ordinary floor route suffices); fixed architecture placement; and "
-                "whether End continuity state preserves each subject's final timed position "
-                "without relocating them off-timeline, plus barrier states. Harmless invented "
-                "staging is allowed. Do not judge prop sources, contents, recipients, prose, "
-                "camera taste, or timing duration. Return exactly one JSON object with "
-                "boolean valid and string issue. Report only the first concrete problem."
+                "Validate only subject movement in RAW. Reject if: 1) a new participant "
+                "is not shown entering or revealed by the camera; 2) a subject interacts at "
+                "a different established location without visibly moving there first; 3) a "
+                "subject changes support or elevation without showing that movement; 4) End "
+                "continuity moves a subject after the final timed action. Ordinary furniture "
+                "required by CURRENT BEAT is allowed. Ignore prop identity, contents, "
+                "ownership, transfers, prose, camera taste, and timing. Return exactly one "
+                "JSON object with boolean valid and string issue. Report only the first "
+                "concrete problem."
             ),
         },
         {
@@ -34360,20 +34420,15 @@ def build_director_raw_scene_prop_state_messages(
         {
             "role": "system",
             "content": (
-                "Validate only PROP, OBJECT, MATERIAL, AND RESULT CONTINUITY in one timed "
-                "RAW SCENE. Ignore subject travel, entry staging, camera movement, and "
-                "timing duration. Track objects literally through the timestamps. Check "
-                "only: newly handled props are established or explicitly acquired; one "
-                "prop does not silently become another; PROP LEDGER holder/owner/contents "
-                "facts persist until changed; transfers have a real source and destination; "
-                "CURRENT BEAT's explicit object, recipient, surface, container, and result "
-                "are preserved; drinking/pouring/filling uses an actual source/container "
-                "rather than a lid, handle, rim, latch, or source-less liquid; and End "
-                "continuity state matches final prop holder, location, and meaningful "
-                "contents. Harmless invented staging is allowed when it does not violate "
-                "those facts. Do not judge subject movement, entry/reveal staging, camera "
-                "taste, prose style, or timing feasibility. Return exactly one JSON object "
-                "with boolean valid and string issue. Report only the first concrete problem."
+                "Validate only prop continuity in RAW. A prop introduced by CURRENT BEAT may "
+                "first appear in this scene. For props already in PROP LEDGER, preserve "
+                "identity, holder, location, and contents until a visible action changes "
+                "them. Reject if a prop changes identity or holder/location without a visible "
+                "action, a transfer lacks a source or destination, pouring/filling lacks a "
+                "real source container, or End continuity contradicts the final prop state. "
+                "Ignore subject movement, entry staging, camera movement, prose, and timing. "
+                "Return exactly one JSON object with boolean valid and string issue. Report "
+                "only the first concrete problem."
             ),
         },
         {
@@ -34482,6 +34537,93 @@ def merge_prop_ledger(committed, observed):
 
     return merged
 
+
+
+SUBJECT_STATE_LEDGER_FIELDS = (
+    "name", "id", "speaker_id", "subject_id", "gender", "origin_segment",
+    "canonical_description", "position", "pose_action", "wardrobe", "topology",
+    "body_state", "physical_condition", "attached_objects", "injuries",
+    "substances", "spatial_relationships", "persistent_effects", "held_props",
+    "last_observed_segment",
+)
+
+
+def normalize_subject_state_ledger(value):
+    """Return a durable all-Subjects state ledger keyed by stable Subject name."""
+    if not isinstance(value, dict):
+        return {}
+    cleaned = {}
+    for raw_name, raw_record in value.items():
+        if not isinstance(raw_record, dict):
+            continue
+        name = str(raw_record.get("name") or raw_name or "").strip()
+        if not name:
+            continue
+        record = {}
+        for field in SUBJECT_STATE_LEDGER_FIELDS:
+            if field in raw_record:
+                record[field] = copy.deepcopy(raw_record[field])
+        record["name"] = name
+        cleaned[name] = record
+    return cleaned
+
+
+def merge_subject_state_ledger(committed, observed_state, segment_number=None):
+    """Copy every known Subject forward and apply only concrete new observations."""
+    merged = normalize_subject_state_ledger(committed)
+    observed_subjects = (
+        observed_state.get("subjects", {})
+        if isinstance(observed_state, dict)
+        else {}
+    )
+    if isinstance(observed_subjects, list):
+        observed_subjects = {
+            str(record.get("name") or "").strip(): record
+            for record in observed_subjects
+            if isinstance(record, dict) and str(record.get("name") or "").strip()
+        }
+    if not isinstance(observed_subjects, dict):
+        return merged
+
+    for raw_name, raw_record in observed_subjects.items():
+        if not isinstance(raw_record, dict):
+            continue
+        name = str(raw_record.get("name") or raw_name or "").strip()
+        if not name:
+            continue
+        target = copy.deepcopy(merged.get(name, {"name": name}))
+        observed_any = False
+        for field, value in raw_record.items():
+            if field not in SUBJECT_STATE_LEDGER_FIELDS or field == "last_observed_segment":
+                continue
+            if field == "wardrobe" and isinstance(value, dict):
+                wardrobe = copy.deepcopy(target.get("wardrobe") or {})
+                for slot in _WARDROBE_FIELDS:
+                    slot_value = value.get(slot)
+                    if isinstance(slot_value, str) and slot_value.strip() and slot_value.strip().upper() != "N/A":
+                        wardrobe[slot] = slot_value.strip()
+                        observed_any = True
+                if wardrobe:
+                    target["wardrobe"] = wardrobe
+                continue
+            if isinstance(value, str):
+                stripped = value.strip()
+                if not stripped or stripped.upper() == "N/A":
+                    continue
+                target[field] = stripped
+                observed_any = True
+            elif isinstance(value, list):
+                if value:
+                    target[field] = copy.deepcopy(value)
+                    observed_any = True
+            elif value is not None:
+                target[field] = copy.deepcopy(value)
+                observed_any = True
+        target["name"] = name
+        if observed_any and segment_number is not None:
+            target["last_observed_segment"] = int(segment_number)
+        merged[name] = target
+    return merged
 
 def _prop_id_slug(value):
     slug = re.sub(r"[^a-z0-9]+", "_", str(value or "").casefold()).strip("_")
@@ -34756,6 +34898,11 @@ def validate_director_raw_scene_physical(
     """Return a narrow subject-movement/spatial verdict for one RAW scene."""
     if not str(current_beat or "").strip():
         return {"valid": True, "issue": ""}
+    if re.search(r"(?i)\b(?:suddenly\s+appears?|appears?|pops?\s+into\s+view)\b", str(raw_scene or "")):
+        return {
+            "valid": False,
+            "issue": "New participants must enter or be revealed by the camera; do not use pop-in/appears wording.",
+        }
     result = llm_request(
         build_director_raw_scene_physical_messages(
             current_beat,
@@ -34884,66 +35031,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
     prop_ledger = normalize_prop_ledger(bundle.get("prop_ledger", {}))
-    prop_staging = ""
-    if current_beat_for_topology:
-        try:
-            prop_staging = request_director_prop_staging(
-                current_beat_for_topology,
-                prop_ledger,
-                previous_shot_end=(
-                    bundle.get("previous_final_frame", "")
-                    if segment_number > 1
-                    else ""
-                ),
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": (run_config or {}).get("source_sha256"),
-                    "segment": segment_number,
-                    "attempt": 1,
-                    "conditioning_mode": conditioning_mode,
-                },
-            )
-        except (
-            LLMConnectionError,
-            requests.RequestException,
-            OSError,
-            ValueError,
-            TypeError,
-        ) as error:
-            console_log(
-                f"WARNING: Segment {segment_number} prop pre-staging failed; "
-                f"continuing without it: {error}",
-                flush=True,
-            )
 
-    # Prop state is already part of the consolidated Request 1 message. Insert
-    # optional availability staging immediately before its final output contract.
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
-    if request1_base_messages and prop_staging:
-        request1_base_messages[-1] = dict(request1_base_messages[-1])
-        message_content = str(
-            request1_base_messages[-1].get("content", "")
-        )
-        staging_block = (
-            "\n\nPROP AVAILABILITY STAGING — incorporate this naturally before "
-            "the dependent Beat action:\n"
-            + prop_staging
-        )
-        return_contract = "\n\nRETURN only JSON."
-        if return_contract in message_content:
-            message_content = message_content.replace(
-                return_contract,
-                staging_block + return_contract,
-                1,
-            )
-        else:
-            message_content += staging_block
-        request1_base_messages[-1]["content"] = message_content
-        console_log(
-            f"Segment {segment_number} proactive prop staging: {prop_staging}",
-            flush=True,
-        )
-    current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
     request1_topology_contracts = build_director_barrier_topology_contract(
         bundle.get("assigned_state_effects", []),
         bundle.get("subject_definitions", ""),
@@ -37079,6 +37168,7 @@ def _run_main(
                     subject_definitions=subject_definitions,
                     return_subject_bootstrap=True,
                     story_context=expanded_story_context,
+                    current_beat=segment_bundle.get("current_beat_text", ""),
                     history_metadata={
                         "run_id": run_id,
                         "source_sha256": run_config["source_sha256"],
@@ -37163,6 +37253,12 @@ def _run_main(
         formatter_subject_names = list(formatter_subject_genders)
         registration_subject_genders = dict(formatter_subject_genders)
         registration_subject_genders.update(canonical_subject_genders)
+        for subject_name, description in raw_subject_descriptions.items():
+            description_text = str(description or "")
+            if re.search(r"(?i)\b(?:female|woman|girl)\b", description_text):
+                registration_subject_genders[subject_name] = "female"
+            elif re.search(r"(?i)\b(?:male|man|boy)\b", description_text):
+                registration_subject_genders[subject_name] = "male"
         registration_subject_descriptions = dict(raw_subject_descriptions)
         registration_subject_descriptions.update(canonical_subject_descriptions)
         continuity_state, hinted_subject_names = register_named_subject_hints(
@@ -37216,6 +37312,11 @@ def _run_main(
             )
             generation_state["subject_registry_state"] = migrate_continuity_state(
                 continuity_state
+            )
+            generation_state["subject_state_ledger"] = merge_subject_state_ledger(
+                generation_state.get("subject_state_ledger", {}),
+                continuity_state,
+                segment_number=segment,
             )
             console_log("Registered new Subject definition(s) before H3 prompt:")
             for definition in new_subject_lines:
@@ -37813,6 +37914,11 @@ def _run_main(
         )
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
+        )
+        generation_state["subject_state_ledger"] = merge_subject_state_ledger(
+            generation_state.get("subject_state_ledger", {}),
+            continuity_state,
+            segment_number=segment,
         )
         generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
         generation_state["character_reference_images"] = copy.deepcopy(
