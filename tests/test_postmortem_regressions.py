@@ -6,8 +6,8 @@ import minimax
 
 
 class PostmortemRegressionTests(unittest.TestCase):
-    def test_director_coherence_requires_end_state_to_match_final_timed_action(self):
-        messages = minimax.build_director_raw_scene_coherence_messages(
+    def test_director_physical_requires_end_state_to_match_final_timed_action(self):
+        messages = minimax.build_director_raw_scene_physical_messages(
             "Amy steps into the courtyard.",
             (
                 "At 00:00.000, Amy stands at the counter.\n\n"
@@ -17,8 +17,8 @@ class PostmortemRegressionTests(unittest.TestCase):
             ),
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("MUST describe the state produced by the final timed action", prompt)
-        self.assertIn("explicitly compare", prompt)
+        self.assertIn("End continuity state", prompt)
+        self.assertIn("final subject positions and barrier states", prompt)
 
     def test_subject_resolver_prefers_explicit_species_over_generic_creature(self):
         messages = minimax.build_director_raw_subject_resolution_messages(
@@ -161,7 +161,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("what is transferred is at the source", rules)
         self.assertNotIn("pouring or transferring between containers", rules)
 
-        messages = minimax.build_director_raw_scene_coherence_messages(
+        messages = minimax.build_director_raw_scene_prop_state_messages(
             "Amy transfers the drink to the guest.",
             (
                 "At 00:00.000, Amy holds a cup.\n\n"
@@ -170,13 +170,13 @@ class PostmortemRegressionTests(unittest.TestCase):
             ),
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("For any transfer", prompt)
-        self.assertIn("explicit source and destination", prompt)
-        self.assertIn("transferred material or object", prompt)
-        self.assertNotIn("pouring between containers", prompt)
+        self.assertIn("PROP, OBJECT, MATERIAL, AND RESULT CONTINUITY", prompt)
+        self.assertIn("transfers have a real source and destination", prompt)
+        self.assertIn("CURRENT BEAT's explicit object, recipient, surface, container, and result", prompt)
+        self.assertIn("Do not judge subject movement", prompt)
 
-    def test_director_coherence_preserves_assigned_transfer_destination_and_final_prop(self):
-        messages = minimax.build_director_raw_scene_coherence_messages(
+    def test_director_prop_state_preserves_assigned_transfer_destination_and_final_prop(self):
+        messages = minimax.build_director_raw_scene_prop_state_messages(
             "Amy pours a special brew into a crystal cup and hands it to Dragon1.",
             (
                 "At 00:00.000, Amy stands by the shelf.\n\n"
@@ -189,9 +189,8 @@ class PostmortemRegressionTests(unittest.TestCase):
             static_setting_description="Lanterns hang above each table.",
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("transfer roles/results are semantic constraints", prompt)
-        self.assertIn("different target, body, surface, or container", prompt)
-        self.assertIn("movable prop acquired, transferred", prompt)
+        self.assertIn("CURRENT BEAT's explicit object, recipient, surface, container, and result", prompt)
+        self.assertIn("End continuity state matches final prop holder", prompt)
         self.assertIn("STATIC SETTING AUTHORITY", prompt)
         self.assertIn("Lanterns hang above each table.", prompt)
 
@@ -229,6 +228,30 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("Lanterns hang above each table.", prompt)
         self.assertIn("Do not relocate, duplicate, replace, or restyle", prompt)
         self.assertIn("Do not force off-camera fixtures into the frame", prompt)
+
+    def test_raw_validator_split_keeps_domains_separate(self):
+        physical = "\n".join(
+            message["content"]
+            for message in minimax.build_director_raw_scene_physical_messages(
+                "Amy walks to the counter and pours a drink.",
+                "At 00:00.000, Amy stands by the table.\n"
+                "At 00:06.500, Amy pours a drink at the counter.\n"
+                "End continuity state: Amy stands at the counter.",
+            )
+        )
+        props = "\n".join(
+            message["content"]
+            for message in minimax.build_director_raw_scene_prop_state_messages(
+                "Amy pours a drink into a cup.",
+                "At 00:00.000, Amy holds a cup.\n"
+                "At 00:06.500, Amy pours liquid into it.\n"
+                "End continuity state: Amy holds the filled cup.",
+            )
+        )
+        self.assertIn("Do not judge prop sources", physical)
+        self.assertNotIn("PROP LEDGER\n", physical)
+        self.assertIn("Do not judge subject movement", props)
+        self.assertIn("PROP LEDGER\n", props)
 
     def test_director_timing_validator_is_narrow_and_has_no_fixed_minimum(self):
         messages = minimax.build_director_raw_scene_timing_messages(
@@ -289,8 +312,8 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertEqual(errors, [])
 
-    def test_director_coherence_receives_previous_shot_end(self):
-        messages = minimax.build_director_raw_scene_coherence_messages(
+    def test_director_physical_receives_previous_shot_end(self):
+        messages = minimax.build_director_raw_scene_physical_messages(
             "Amy opens the tavern door.",
             (
                 "At 00:00.000, Amy opens the tavern door.\n\n"
@@ -301,15 +324,8 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("PREVIOUS SHOT END\nAmy stands at the oak counter.", prompt)
-        self.assertIn("inherited 00:00.000 frame must be reachable", prompt)
-        self.assertIn(
-            "Do NOT require a participant introduced by CURRENT BEAT",
-            prompt,
-        )
-        self.assertIn(
-            "do not reject a new CURRENT BEAT participant merely because it enters after",
-            prompt,
-        )
+        self.assertIn("frame-0 reachability from PREVIOUS SHOT END", prompt)
+        self.assertIn("visible entry or camera reveal for new participants", prompt)
 
     def test_prop_ledger_copies_forward_and_updates_only_observed_props(self):
         committed = {
