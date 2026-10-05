@@ -571,3 +571,22 @@ Request 1 now evaluates physical/spatial -> prop/state -> timing, with a categor
 retry message for each failure. Compatibility wrappers remain for old callers, but production
 runtime no longer asks one large coherence prompt to reason about every domain at once.
 The RAW Director prompt itself was intentionally left alone because it is being revised separately.
+
+
+### 2026-10-05 — continuation Picture authority fix
+
+Generated character references were being lost at the final H3 render boundary because
+blank configured Picture slots were pruned before generated refs were attached. Their slot
+numbers were then replaced in prompt text with "the supplied opening guide," even though a
+generated character Picture would occupy that same segment-local number.
+
+Current behavior:
+
+- generated segment-local Picture IDs are protected from configured-slot exclusion and
+  canonical remapping in append/refresh prompt conditioning;
+- explicit generated `<Picture N>` identity/clothing authority survives into the actual H3
+  prompt;
+- the opening guide anchors only frame-0 pose/position/physical state for visible Subjects;
+- Picture-definition lines no longer receive duplicated opening-guide state language.
+
+Focused tests passed for generated-Picture preservation and non-duplication of guide authority.
