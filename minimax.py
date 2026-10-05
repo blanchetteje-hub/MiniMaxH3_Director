@@ -6875,13 +6875,19 @@ def new_generation_state(run_config):
     }
     configured_subjects = run_config.get("subject_definitions")
     if configured_subjects is not None:
+        configured_snapshot = subject_identity_snapshot_for_definitions(
+            configured_subjects
+        )
         state["subject_identity_lock"] = {
-            "subjects": subject_identity_snapshot_for_definitions(
-                configured_subjects
-            ),
+            "subjects": configured_snapshot,
             "subjects_txt_sha256": hashlib.sha256(
                 str(configured_subjects or "").strip().encode("utf-8")
             ).hexdigest(),
+        }
+        state["subject_state_ledger"] = {
+            record["name"]: copy.deepcopy(record)
+            for record in configured_snapshot.values()
+            if isinstance(record, dict) and record.get("name")
         }
     return state
 
@@ -27980,6 +27986,53 @@ def ensure_h3_continuous_take_instruction(description):
     ).strip()
 
 
+def ensure_h3_continuing_subject_state(description, continuity_state):
+    """Keep stationary continuing Subjects from silently disappearing."""
+    text = str(description or "").strip()
+    if not text or not isinstance(continuity_state, dict):
+        return text
+    subjects = continuity_state.get("subjects", {})
+    if isinstance(subjects, list):
+        subjects = {
+            str(record.get("name") or "").strip(): record
+            for record in subjects
+            if isinstance(record, dict) and str(record.get("name") or "").strip()
+        }
+    if not isinstance(subjects, dict):
+        return text
+
+    carry = []
+    for raw_name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        name = str(record.get("name") or raw_name or "").strip()
+        position = str(record.get("position") or "").strip()
+        if (
+            not name
+            or not position
+            or position.upper() == "N/A"
+            or re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", text, re.I)
+        ):
+            continue
+        carry.append(f"{name} remains {position}")
+    if not carry:
+        return text
+
+    sentence = "Continuing Subjects: " + "; ".join(carry) + "."
+    timestamp = _DIRECTOR_CANONICAL_TIMESTAMP_RE.search(text)
+    if timestamp is None:
+        return text.rstrip() + " " + sentence
+    prefix = text[:timestamp.start()].rstrip()
+    suffix = text[timestamp.start():].lstrip()
+    return (
+        prefix
+        + (" " if prefix else "")
+        + sentence
+        + "\n\n"
+        + suffix
+    ).strip()
+
+
 # Normalize the run-level visual style into one concise phrase.
 def normalize_visual_style(value):
     style = " ".join(str(value or "").split()).strip(" ,.;:")
@@ -28278,6 +28331,11 @@ def build_h3_prompt(
                 )
                 if part
             )
+    if conditioning_mode == "continuation":
+        integrated = ensure_h3_continuing_subject_state(
+            integrated,
+            continuity_state,
+        )
     integrated = ensure_h3_continuous_take_instruction(integrated)
     integrated = ensure_h3_prop_identity_instruction(integrated)
     integrated = inject_h3_visual_style(integrated, visual_style)
@@ -33927,7 +33985,7 @@ def build_director_raw_subject_resolution_messages(
                 "Subject using exactly upper, lower, footwear, and other. Preserve clothing "
                 "explicitly stated in RAW. If RAW does not state clothing and the Subject is "
                 "a human or normally clothed humanoid, choose one simple setting-appropriate "
-                "outfit now; this becomes canonical and must not be re-invented later. For "
+                "outfit now; this becomes canonical and must not be re-invented later. "
                 "Use STORY CONTEXT only when RAW does not specify clothing, so the chosen "
                 "outfit matches the established setting, period, culture, and visual world. "
                 "Do not use STORY CONTEXT to change RAW actions or explicit appearance facts. "
@@ -34541,6 +34599,7 @@ def merge_prop_ledger(committed, observed):
 
 SUBJECT_STATE_LEDGER_FIELDS = (
     "name", "id", "speaker_id", "subject_id", "gender", "origin_segment",
+    "picture_ids", "picture_id", "persistent_structural_change",
     "canonical_description", "position", "pose_action", "wardrobe", "topology",
     "body_state", "physical_condition", "attached_objects", "injuries",
     "substances", "spatial_relationships", "persistent_effects", "held_props",
@@ -35608,7 +35667,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     payload = dict(bundle)
     payload["raw_scene"] = raw_scene
-    payload["prop_staging"] = prop_staging
     payload["request1_result"] = copy.deepcopy(request1_result)
     payload["h3_mode"] = mode
     payload["authoritative_opening_state"] = h3_opening_summary or (
