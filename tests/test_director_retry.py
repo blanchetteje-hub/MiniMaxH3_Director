@@ -660,6 +660,62 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             for prompt in request_prompts
         ))
 
+    def test_request_one_accumulates_retry_blockers_across_validators(self):
+        bundle = segment_bundle()
+        bundle["current_beat_text"] = "Amy completes the exchange with Will."
+        early = {
+            "raw_scene": (
+                "At 00:00.000, Amy begins the exchange.\n"
+                "At 00:03.000, Amy finishes the exchange.\n"
+                "End continuity state: Amy and Will remain together."
+            ),
+            "finite_activity_complete": True,
+            "named_beneficiaries_complete": True,
+            "activity_tools_settled": True,
+            "beat_complete": True,
+        }
+        prop_bad = director_response(
+            "At 00:00.000, Amy begins the exchange.\n"
+            "At 00:04.500, Will receives the mug."
+        )
+        good = director_response(
+            "At 00:00.000, Amy begins the exchange.\n"
+            "At 00:04.500, Amy visibly transfers the mug to Will."
+        )
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            early,
+            prop_bad,
+            good,
+        ]))
+        physical = mock.Mock(return_value={"valid": True, "issue": ""})
+        prop_state = mock.Mock(side_effect=[
+            {
+                "valid": False,
+                "issue": "mug_1 is still listed as held by Amy; show the transfer to Will.",
+            },
+            {"valid": True, "issue": ""},
+        ])
+        timing = mock.Mock(return_value={"valid": True, "issue": ""})
+
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", prop_state),
+            mock.patch("minimax.validate_director_raw_scene_timing", timing),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-id", {"source_sha256": "source-hash"}
+            )
+
+        semantic_calls = non_audio_llm_calls(request)
+        self.assertEqual(len(semantic_calls), 3)
+        third_prompt = semantic_calls[2].args[0][-1]["content"]
+        self.assertIn("RETRY REQUIREMENTS", third_prompt)
+        self.assertIn("final timed micro-beat must land in the final quarter", third_prompt)
+        self.assertIn("mug_1 is still listed as held by Amy", third_prompt)
+        self.assertIn("visibly transfers the mug", payload["raw_scene"])
+
     def test_request_one_completion_self_report_is_non_blocking(self):
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             director_response("Mark starts the action.", beat_complete=False),
