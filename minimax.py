@@ -559,6 +559,8 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "director_h3_formatter",
     "director_prop_staging",
     "director_raw_scene_coherence",
+    "director_raw_scene_physical",
+    "director_raw_scene_prop_state",
     "director_raw_scene_timing",
     "director_raw_scene_pronoun_resolution",
     "director_raw_scene_subject_resolution",
@@ -33555,7 +33557,52 @@ def resolve_director_raw_scene_subjects(
     return resolved, names
 
 
-def build_director_raw_scene_coherence_messages(
+def build_director_raw_scene_physical_messages(
+    current_beat,
+    raw_scene,
+    previous_shot_end="",
+    *,
+    static_setting_description="",
+):
+    """Check only subject movement, spatial continuity, and physical action order."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Validate only SUBJECT MOVEMENT AND PHYSICAL ACTION ORDER in one timed "
+                "RAW SCENE. Ignore prop identity, contents, ownership, and transfer "
+                "semantics unless a support or barrier makes movement physically impossible. "
+                "Check only: frame-0 reachability from PREVIOUS SHOT END; visible entry or "
+                "camera reveal for new participants; explicit travel between established "
+                "positions; possible order for doors, barriers, seats, supports, and body "
+                "movement; fixed architecture placement; and whether End continuity state "
+                "matches final subject positions and barrier states. Harmless invented "
+                "staging is allowed. Do not judge prop sources, contents, recipients, prose, "
+                "camera taste, or timing duration. Return exactly one JSON object with "
+                "boolean valid and string issue. Report only the first concrete problem."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "CURRENT BEAT\n"
+                f"{str(current_beat or '').strip()}\n\n"
+                "PREVIOUS SHOT END\n"
+                f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
+                "STATIC SETTING AUTHORITY\n"
+                f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
+                "RAW SCENE\n"
+                f"{str(raw_scene or '').strip()}\n\n"
+                "If physical/spatial continuity is valid: "
+                "{\"valid\": true, \"issue\": \"\"}\n"
+                "If invalid: {\"valid\": false, \"issue\": "
+                "\"short concrete physical/spatial explanation\"}"
+            ),
+        },
+    ]
+
+
+def build_director_raw_scene_prop_state_messages(
     current_beat,
     raw_scene,
     previous_shot_end="",
@@ -33563,83 +33610,25 @@ def build_director_raw_scene_coherence_messages(
     prop_ledger=None,
     static_setting_description="",
 ):
-    """Build a narrow semantic check for Request 1 physical/order coherence."""
+    """Check only prop identity, transfers, beat-role fidelity, and final prop state."""
     return [
         {
             "role": "system",
             "content": (
-                "Validate only whether one timed RAW SCENE is physically and causally "
-                "coherent in timestamp order while staging CURRENT BEAT. Harmless "
-                "invented staging is allowed. Reject only concrete impossibilities or "
-                "material action-order contradictions, such as closing a barrier before "
-                "someone passes through it, using an occupied hand without releasing "
-                "what it holds, moving or repositioning a chair/stool/seat while a "
-                "person or creature is still sitting or standing on it without stated "
-                "movement off that support, or showing a required result before its "
-                "prerequisite action. Do not infer that two differently worded references to an "
-                "unnamed person, creature, object, or body must be different entities; "
-                "require explicit evidence of distinct identities or counts before "
-                "calling that a contradiction. PREVIOUS SHOT END, when supplied, is the "
-                "physical frame-0 starting state. The inherited 00:00.000 frame must be reachable "
-                "from it without an omitted move, teleport, unexplained prop/state change, "
-                "or hidden location transition. Do NOT require a participant introduced "
-                "by CURRENT BEAT to already exist in PREVIOUS SHOT END. A genuinely new "
-                "participant may enter or be revealed after the inherited frame-0 anchor, but "
-                "that first appearance needs visible provenance: either explicit physical "
-                "entry through a stated route/boundary, or explicit continuous camera "
-                "movement that reveals the participant was already present offscreen. "
-                "Words such as 'appears', 'suddenly appears', or 'pops into view' alone "
-                "do not establish entry or reveal. Ordinary continuous camera motion may "
-                "reveal another part of the same established space, but an already-established "
-                "subject must not jump to a new location without stated movement. Whenever "
-                "an actor interacts with an object or target at a different established "
-                "position, the timed scene must explicitly move the actor there first; "
-                "merely reaching, moving a held prop toward it, or changing framing does "
-                "not establish actor travel. Treat distinct named fixture/interaction areas "
-                "from STATIC SETTING AUTHORITY (for example a table, counter, shelf, hearth, "
-                "barrel, doorway, or stool area) as distinct established positions when the "
-                "scene places the actor at one and later has that actor take/use something "
-                "at another; require an explicit move between them. Preserve object identity "
-                "and provenance across "
-                "timestamps: a held/manipulated prop cannot silently become another prop, "
-                "and a newly handled prop must be explicitly acquired from a stated source "
-                "unless it was already established in the opening frame. For any transfer, "
-                "require an explicit source and destination, keep them distinct and "
-                "traceable, and require the transferred material or object to be established "
-                "at the source before it reaches the destination. CURRENT BEAT's explicit "
-                "transfer roles/results are semantic constraints: if it specifies what moves, "
-                "where it goes, who receives it, or which container is filled/used, reject RAW "
-                "that redirects the transfer/result to a different target, body, surface, or "
-                "container. For drinking/sipping/pouring/filling, reject source-less liquid "
-                "or a substitute event such as drooling/spilling when the Beat requires a "
-                "drink/transfer; use the established source/container from PREVIOUS SHOT END "
-                "or PROP LEDGER when one exists. A lid, cap, handle, rim, latch, or other "
-                "component of a fixed container is not the material source/container merely "
-                "because it belongs to that container; reject wording that makes the contents "
-                "come from such a component instead of the actual container or an established "
-                "dispensing opening/tap. STATIC SETTING AUTHORITY, when supplied, "
-                "owns explicitly described fixed architecture, fixtures, persistent furniture, "
-                "entrances, surfaces, and lighting-source placement. Reject RAW that relocates, "
-                "duplicates, replaces, or restyles one of those fixed elements unless CURRENT "
-                "BEAT explicitly changes it. The trailing "
-                "End continuity state is part "
-                "of this check and MUST describe the state produced by the final timed "
-                "action. Any foreground participant visibly present in the final timed "
-                "action remains present at the final frame unless that final action "
-                "explicitly shows the participant leaving, becoming fully occluded, or "
-                "otherwise no longer visible; reject an End continuity state that simply "
-                "omits such a participant. Likewise, a movable prop acquired, transferred, "
-                "held, placed, filled, emptied, or otherwise materially changed in the final "
-                "timed action must remain represented in End continuity state with its final "
-                "holder/location/meaningful contents unless that final action explicitly "
-                "destroys, loses, or removes it from the scene. Reject an End continuity state that moves a "
-                "subject/object back to an earlier location, restores an earlier held "
-                "prop or pose, reverses "
-                "a barrier/door result, or otherwise contradicts the final timed frame. "
-                "Do not accept an End continuity state merely because it matches an "
-                "earlier frame. Do not judge style, prose quality, camera taste, or "
-                "incidental details. Return exactly one JSON object with boolean valid "
-                "and string issue."
+                "Validate only PROP, OBJECT, MATERIAL, AND RESULT CONTINUITY in one timed "
+                "RAW SCENE. Ignore subject travel, entry staging, camera movement, and "
+                "timing duration. Track objects literally through the timestamps. Check "
+                "only: newly handled props are established or explicitly acquired; one "
+                "prop does not silently become another; PROP LEDGER holder/owner/contents "
+                "facts persist until changed; transfers have a real source and destination; "
+                "CURRENT BEAT's explicit object, recipient, surface, container, and result "
+                "are preserved; drinking/pouring/filling uses an actual source/container "
+                "rather than a lid, handle, rim, latch, or source-less liquid; and End "
+                "continuity state matches final prop holder, location, and meaningful "
+                "contents. Harmless invented staging is allowed when it does not violate "
+                "those facts. Do not judge subject movement, entry/reveal staging, camera "
+                "taste, prose style, or timing feasibility. Return exactly one JSON object "
+                "with boolean valid and string issue. Report only the first concrete problem."
             ),
         },
         {
@@ -33655,20 +33644,30 @@ def build_director_raw_scene_coherence_messages(
                 f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
-                "First compare PREVIOUS SHOT END with the inherited 00:00.000 anchor and reject "
-                "any omitted transition for already-established subjects/state. For each "
-                "new CURRENT BEAT participant, require a shown physical entry or an explicit "
-                "camera reveal rather than unexplained appearance. Track actor positions and "
-                "prop identities literally across every timestamp, including pickups and "
-                "transfers. Then read the timed actions literally "
-                "in order and explicitly compare the final timed action/result with "
-                "End continuity state.\n"
-                "If coherent: {\"valid\": true, \"issue\": \"\"}\n"
-                "If incoherent: {\"valid\": false, \"issue\": "
-                "\"short concrete explanation\"}"
+                "If prop/result continuity is valid: "
+                "{\"valid\": true, \"issue\": \"\"}\n"
+                "If invalid: {\"valid\": false, \"issue\": "
+                "\"short concrete prop/state explanation\"}"
             ),
         },
     ]
+
+
+def build_director_raw_scene_coherence_messages(
+    current_beat,
+    raw_scene,
+    previous_shot_end="",
+    *,
+    prop_ledger=None,
+    static_setting_description="",
+):
+    """Compatibility alias for the old combined validator prompt."""
+    return build_director_raw_scene_physical_messages(
+        current_beat,
+        raw_scene,
+        previous_shot_end=previous_shot_end,
+        static_setting_description=static_setting_description,
+    )
 
 
 def normalize_prop_ledger(value):
@@ -33966,7 +33965,41 @@ def validate_director_raw_scene_timing(
     return parse_beat_validation_result(result)
 
 
-def validate_director_raw_scene_coherence(
+def validate_director_raw_scene_physical(
+    current_beat,
+    raw_scene,
+    *,
+    previous_shot_end="",
+    static_setting_description="",
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Return a narrow subject-movement/spatial verdict for one RAW scene."""
+    if not str(current_beat or "").strip():
+        return {"valid": True, "issue": ""}
+    result = llm_request(
+        build_director_raw_scene_physical_messages(
+            current_beat,
+            raw_scene,
+            previous_shot_end=previous_shot_end,
+            static_setting_description=static_setting_description,
+        ),
+        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+        parse_json_response=False,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_raw_scene_physical",
+        },
+        temperature=0,
+        top_p=1,
+        max_tokens=384,
+        seed=42,
+        repeat_penalty=1.15,
+    )
+    return parse_beat_validation_result(result)
+
+
+def validate_director_raw_scene_prop_state(
     current_beat,
     raw_scene,
     *,
@@ -33976,11 +34009,11 @@ def validate_director_raw_scene_coherence(
     llm_request=ask_llm,
     history_metadata=None,
 ):
-    """Return a narrow semantic physical/order verdict for one RAW scene."""
+    """Return a narrow prop/transfer/final-state verdict for one RAW scene."""
     if not str(current_beat or "").strip():
         return {"valid": True, "issue": ""}
     result = llm_request(
-        build_director_raw_scene_coherence_messages(
+        build_director_raw_scene_prop_state_messages(
             current_beat,
             raw_scene,
             previous_shot_end=previous_shot_end,
@@ -33991,15 +34024,47 @@ def validate_director_raw_scene_coherence(
         parse_json_response=False,
         history_metadata={
             **dict(history_metadata or {}),
-            "purpose": "director_raw_scene_coherence",
+            "purpose": "director_raw_scene_prop_state",
         },
         temperature=0,
         top_p=1,
-        max_tokens=512,
+        max_tokens=384,
         seed=42,
         repeat_penalty=1.15,
     )
     return parse_beat_validation_result(result)
+
+
+def validate_director_raw_scene_coherence(
+    current_beat,
+    raw_scene,
+    *,
+    previous_shot_end="",
+    prop_ledger=None,
+    static_setting_description="",
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Compatibility wrapper for callers that still request combined coherence."""
+    physical = validate_director_raw_scene_physical(
+        current_beat,
+        raw_scene,
+        previous_shot_end=previous_shot_end,
+        static_setting_description=static_setting_description,
+        llm_request=llm_request,
+        history_metadata=history_metadata,
+    )
+    if not physical["valid"]:
+        return physical
+    return validate_director_raw_scene_prop_state(
+        current_beat,
+        raw_scene,
+        previous_shot_end=previous_shot_end,
+        prop_ledger=prop_ledger,
+        static_setting_description=static_setting_description,
+        llm_request=llm_request,
+        history_metadata=history_metadata,
+    )
 
 
 # Run the two-stage Director micro-prompt pipeline for one segment.
@@ -34194,26 +34259,29 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 continue
 
             if current_beat_text:
+                validator_metadata = {
+                    "run_id": run_id,
+                    "source_sha256": (run_config or {}).get("source_sha256"),
+                    "segment": segment_number,
+                    "attempt": request1_attempt,
+                    "conditioning_mode": conditioning_mode,
+                }
+                previous_shot_end = (
+                    bundle.get("previous_final_frame", "")
+                    if segment_number > 1
+                    else ""
+                )
+                static_setting_description = bundle.get(
+                    "static_setting_description", ""
+                )
+
                 try:
-                    coherence = validate_director_raw_scene_coherence(
+                    physical = validate_director_raw_scene_physical(
                         current_beat_text,
                         raw_scene,
-                        previous_shot_end=(
-                            bundle.get("previous_final_frame", "")
-                            if segment_number > 1
-                            else ""
-                        ),
-                        prop_ledger=prop_ledger,
-                        static_setting_description=bundle.get(
-                            "static_setting_description", ""
-                        ),
-                        history_metadata={
-                            "run_id": run_id,
-                            "source_sha256": (run_config or {}).get("source_sha256"),
-                            "segment": segment_number,
-                            "attempt": request1_attempt,
-                            "conditioning_mode": conditioning_mode,
-                        },
+                        previous_shot_end=previous_shot_end,
+                        static_setting_description=static_setting_description,
+                        history_metadata=validator_metadata,
                     )
                 except (
                     LLMConnectionError,
@@ -34222,15 +34290,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     ValueError,
                     TypeError,
                 ) as error:
-                    coherence = {
+                    physical = {
                         "valid": False,
-                        "issue": f"RAW coherence validator failed: {error}",
+                        "issue": f"RAW physical validator failed: {error}",
                     }
 
-                if not coherence["valid"]:
-                    issue = (
-                        coherence["issue"]
-                        or "RAW SCENE has an impossible physical/action order."
+                if not physical["valid"]:
+                    issue = physical["issue"] or (
+                        "RAW SCENE has an impossible subject movement or action order."
                     )
                     if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
                         raise BeatGenerationError(
@@ -34238,7 +34305,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                             f"Segment {segment_number}: {issue}"
                         )
                     console_log(
-                        f"Director Request 1 physical/order coherence failed "
+                        f"Director Request 1 physical/spatial validation failed "
                         f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
                         f"retrying: {issue}",
                         flush=True,
@@ -34248,7 +34315,54 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         request1_messages[-1] = dict(request1_messages[-1])
                         request1_messages[-1]["content"] = (
                             f"{request1_messages[-1].get('content', '')}\n\n"
-                            f"RETRY: Fix this physical/action-order problem: {issue} "
+                            f"RETRY: Fix this physical/spatial problem: {issue} "
+                            "Keep CURRENT BEAT and its outcome unchanged. Do not begin "
+                            "NEXT BEAT."
+                        )
+                    continue
+
+                try:
+                    prop_state = validate_director_raw_scene_prop_state(
+                        current_beat_text,
+                        raw_scene,
+                        previous_shot_end=previous_shot_end,
+                        prop_ledger=prop_ledger,
+                        static_setting_description=static_setting_description,
+                        history_metadata=validator_metadata,
+                    )
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    prop_state = {
+                        "valid": False,
+                        "issue": f"RAW prop/state validator failed: {error}",
+                    }
+
+                if not prop_state["valid"]:
+                    issue = prop_state["issue"] or (
+                        "RAW SCENE has inconsistent prop, transfer, or final object state."
+                    )
+                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                        raise BeatGenerationError(
+                            f"Director Request 1 remained prop/state incoherent for "
+                            f"Segment {segment_number}: {issue}"
+                        )
+                    console_log(
+                        f"Director Request 1 prop/state validation failed "
+                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                        f"retrying: {issue}",
+                        flush=True,
+                    )
+                    request1_messages = copy.deepcopy(request1_base_messages)
+                    if request1_messages:
+                        request1_messages[-1] = dict(request1_messages[-1])
+                        request1_messages[-1]["content"] = (
+                            f"{request1_messages[-1].get('content', '')}\n\n"
+                            f"RETRY: Fix this prop/state problem: {issue} "
                             "Keep CURRENT BEAT and its outcome unchanged. Do not begin "
                             "NEXT BEAT."
                         )
