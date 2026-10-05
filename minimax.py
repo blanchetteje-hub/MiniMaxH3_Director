@@ -33199,7 +33199,6 @@ def resolve_director_raw_scene_pronouns(
     llm_request=ask_llm,
     history_metadata=None,
     segment_seconds=None,
-    return_subject_descriptions=False,
 ):
     """Resolve clear person pronouns in timed RAW; preserve end state exactly."""
     original = _canonicalize_director_timestamps(raw_scene).strip()
@@ -33483,6 +33482,7 @@ def resolve_director_raw_scene_subjects(
     llm_request=ask_llm,
     history_metadata=None,
     segment_seconds=None,
+    return_subject_descriptions=False,
 ):
     """Name distinct unnamed foreground animate actors after RAW is finalized."""
     original = _canonicalize_director_timestamps(raw_scene).strip()
