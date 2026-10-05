@@ -338,19 +338,6 @@ PROP_LEDGER_STATUSES = frozenset({
     "destroyed",
 })
 
-_PROP_STAGING_TRIGGER_RE = re.compile(
-    r"(?i)\b(?:pour(?:s|ed|ing)?|drink(?:s|ing)?|sip(?:s|ped|ping)?|"
-    r"hold(?:s|ing)?|carr(?:y|ies|ied|ying)|grab(?:s|bed|bing)?|"
-    r"take(?:s|n|ing)?|pick(?:s|ed|ing)?\s+up|set(?:s|ting)?\s+down|"
-    r"plac(?:e|es|ed|ing)|put(?:s|ting)?|hand(?:s|ed|ing)?|giv(?:e|es|en|ing)|"
-    r"pass(?:es|ed|ing)?|receiv(?:e|es|ed|ing)|retriev(?:e|es|ed|ing)|"
-    r"wip(?:e|es|ed|ing)|fill(?:s|ed|ing)?|"
-    r"empt(?:y|ies|ied|ying)|drop(?:s|ped|ping)?|throw(?:s|n|ing)?|"
-    r"load(?:s|ed|ing)?|fir(?:e|es|ed|ing)|aim(?:s|ed|ing)?|swing(?:s|ing)?|"
-    r"insert(?:s|ed|ing)?|remov(?:e|es|ed|ing)|stor(?:e|es|ed|ing)|"
-    r"stash(?:es|ed|ing)?|equip(?:s|ped|ping)?)\b"
-)
-
 CURRENT_SUBJECT_SCALAR_FIELDS = (
     "position",
     "pose_action",
@@ -558,7 +545,6 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "continuity_phase_2_h3_opening",
     "director_h3_soundscape",
     "director_h3_formatter",
-    "director_prop_staging",
     "director_raw_scene_coherence",
     "director_raw_scene_physical",
     "director_raw_scene_prop_state",
@@ -836,23 +822,6 @@ DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
         },
     },
 }
-
-DIRECTOR_PROP_STAGING_RESPONSE_FORMAT = {
-    "type": "json_schema",
-    "json_schema": {
-        "name": "director_prop_staging",
-        "strict": True,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "staging": {"type": "string"},
-            },
-            "required": ["staging"],
-            "additionalProperties": False,
-        },
-    },
-}
-
 
 H3_FORMATTER_REQUIRED_FIELDS = frozenset({
     "subject_genders",
@@ -34603,7 +34572,7 @@ SUBJECT_STATE_LEDGER_FIELDS = (
     "canonical_description", "position", "pose_action", "wardrobe", "topology",
     "body_state", "physical_condition", "attached_objects", "injuries",
     "substances", "spatial_relationships", "persistent_effects", "held_props",
-    "last_observed_segment",
+    "last_updated_segment",
 )
 
 
@@ -34653,7 +34622,7 @@ def merge_subject_state_ledger(committed, observed_state, segment_number=None):
         target = copy.deepcopy(merged.get(name, {"name": name}))
         observed_any = False
         for field, value in raw_record.items():
-            if field not in SUBJECT_STATE_LEDGER_FIELDS or field == "last_observed_segment":
+            if field not in SUBJECT_STATE_LEDGER_FIELDS or field == "last_updated_segment":
                 continue
             if field == "wardrobe" and isinstance(value, dict):
                 wardrobe = copy.deepcopy(target.get("wardrobe") or {})
@@ -34680,7 +34649,7 @@ def merge_subject_state_ledger(committed, observed_state, segment_number=None):
                 observed_any = True
         target["name"] = name
         if observed_any and segment_number is not None:
-            target["last_observed_segment"] = int(segment_number)
+            target["last_updated_segment"] = int(segment_number)
         merged[name] = target
     return merged
 
@@ -34794,87 +34763,6 @@ def format_prop_ledger_for_prompt(prop_ledger):
         sort_keys=True,
         separators=(",", ":"),
     )
-
-
-def build_director_prop_staging_messages(
-    current_beat,
-    prop_ledger,
-    *,
-    previous_shot_end="",
-):
-    """Build the pre-RAW micro-call that resolves missing ordinary prop availability."""
-    ledger_text = format_prop_ledger_for_prompt(prop_ledger)
-    return [
-        {
-            "role": "system",
-            "content": (
-                "You do one narrow pre-staging task for a film scene. Determine whether "
-                "CURRENT BEAT assumes use of a movable/interactable prop whose usable "
-                "instance is not established by PROP LEDGER or PREVIOUS SHOT END. A prop "
-                "owned by or held by another subject does NOT count as generic available "
-                "inventory for somebody else unless CURRENT BEAT explicitly authorizes "
-                "that reuse, taking, or transfer. If all required props are already "
-                "available to the subject who needs them, or CURRENT BEAT itself explicitly "
-                "introduces/acquires the prop, return an empty staging string. Otherwise "
-                "return one short natural staging sentence that makes only the missing "
-                "required prop or props available before the dependent action. Prefer a "
-                "distinct ordinary instance over repurposing another subject's owned prop. "
-                "Do not rewrite the Beat, add dialogue, add characters, change the outcome, "
-                "replace an established prop, or invent architecture/storage that is not "
-                "established. If no storage/source is established, place the needed prop "
-                "directly at a natural interaction point instead. Return JSON only."
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                "CURRENT BEAT\n"
-                f"{str(current_beat or '').strip()}\n\n"
-                "PREVIOUS SHOT END\n"
-                f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
-                "PROP LEDGER\n"
-                f"{ledger_text}\n\n"
-                "Return {\"staging\": \"\"} when no added staging is needed; otherwise "
-                "staging is one short sentence to incorporate before the dependent action."
-            ),
-        },
-    ]
-
-
-def request_director_prop_staging(
-    current_beat,
-    prop_ledger,
-    *,
-    previous_shot_end="",
-    llm_request=ask_llm,
-    history_metadata=None,
-):
-    """Return one proactive staging sentence only when the Beat may need a prop."""
-    beat_text = str(current_beat or "").strip()
-    if not beat_text or _PROP_STAGING_TRIGGER_RE.search(beat_text) is None:
-        return ""
-    result = llm_request(
-        build_director_prop_staging_messages(
-            beat_text,
-            prop_ledger,
-            previous_shot_end=previous_shot_end,
-        ),
-        response_format=DIRECTOR_PROP_STAGING_RESPONSE_FORMAT,
-        parse_json_response=False,
-        history_metadata={
-            **dict(history_metadata or {}),
-            "purpose": "director_prop_staging",
-        },
-        max_tokens=256,
-    )
-    if isinstance(result, str):
-        result = parse_llm_json_content(result, llm_request=llm_request)
-    if not isinstance(result, dict):
-        raise ValueError("Director prop staging returned invalid data.")
-    staging = " ".join(str(result.get("staging") or "").split()).strip()
-    if len(staging) > 360:
-        staging = staging[:360].rsplit(" ", 1)[0].rstrip(" ,;:")
-    return staging
 
 
 def build_director_raw_scene_timing_messages(raw_scene):
