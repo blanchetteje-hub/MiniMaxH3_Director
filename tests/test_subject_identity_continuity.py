@@ -37,8 +37,44 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         self.assertIn("A single subject is centered", prompt)
         self.assertIn("complete current physical appearance", prompt)
         self.assertIn("body/anatomy, species traits", prompt)
-        self.assertIn("do not invent clothing for an unclothed or nonhuman subject", prompt)
+        self.assertIn("Clothing in the supplied description is authoritative", prompt)
+        self.assertIn("If no clothing is described, do not invent clothing", prompt)
         self.assertNotIn("complete current outfit", prompt)
+
+    def test_dynamic_subject_registration_persists_bootstrap_wardrobe(self):
+        state, added = minimax.register_named_subject_hints(
+            minimax.new_continuity_state(),
+            "",
+            "At 00:01.000, Elf1 enters the tavern.",
+            ["Elf1"],
+            origin_segment=3,
+            subject_descriptions={
+                "Elf1": "Elf1 is a beautiful female elf with long silver hair."
+            },
+            subject_wardrobes={
+                "Elf1": {
+                    "upper": "forest-green fitted tunic",
+                    "lower": "brown trousers",
+                    "footwear": "soft leather boots",
+                    "other": "N/A",
+                }
+            },
+        )
+
+        self.assertEqual(added, ["Elf1"])
+        self.assertEqual(
+            state["subjects"]["Elf1"]["canonical_description"],
+            "Elf1 is a beautiful female elf with long silver hair.",
+        )
+        self.assertEqual(
+            state["subjects"]["Elf1"]["wardrobe"],
+            {
+                "upper": "forest-green fitted tunic",
+                "lower": "brown trousers",
+                "footwear": "soft leather boots",
+                "other": "N/A",
+            },
+        )
 
     def test_registry_assigns_stable_werewolf_subject_id_and_picture_metadata(self):
         registry = minimax.parse_subject_registry(SUBJECTS)
