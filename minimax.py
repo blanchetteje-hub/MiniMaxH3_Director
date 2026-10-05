@@ -1141,32 +1141,25 @@ _BEAT_ABBREVIATIONS = {
 DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the creative director for one {segment_seconds}-second video segment.
 
 JOB
-- ASSIGNED SOURCE is the story authority for what happens now.
-- CURRENT BEAT is the scene to stage in this clip.
+- CURRENT BEAT is the story authority for what happens now and the scene to stage in this clip.
 - PREVIOUS SHOT END is frame-0 context for continuation shots. Start there without replaying it; if it conflicts with CURRENT BEAT, CURRENT BEAT wins.
 - CANONICAL STARTING CHARACTER FACTS, when provided, are authoritative identity/appearance facts. Establish applicable visible facts for characters already present in CURRENT BEAT or ASSIGNED SOURCE; never introduce a character only to show a canonical fact.
-- NEXT BEAT is boundary context only. Do not begin it.
 
 WRITE THE SCENE
 - Show CURRENT BEAT clearly with concrete visible/audible action.
 - Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the End continuity state.
-- Use natural physical staging. Harmless local route or prop details are allowed when needed to make the action readable.
-- Keep invented staging economical. Add only details needed to physically connect or clearly show CURRENT BEAT. Do not add optional secondary reactions, extra consequences, or extra object/substance motion once the required action is already readable.
-- Preserve spatial continuity literally. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut. This applies to every established position, not only doors or room changes.
-- Give every newly introduced foreground subject visible provenance. If the subject was not visible at frame 0, show it physically entering through a stated route/boundary, or explicitly move the camera to reveal that it was already present offscreen. Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
-- Preserve prop identity and provenance. A held or manipulated object must not silently become a different object. When a subject acquires a new prop, explicitly state where it comes from and the pickup/reach/take action before it is used, unless it is already established in the opening frame. An established prop with an owner or holder belongs to that subject's physical state; do not treat it as shared inventory or repurpose it for another subject unless CURRENT BEAT explicitly authorizes that use or transfer. For any transfer, explicitly identify the source and destination, keep them distinct and traceable, and establish that what is transferred is at the source before it reaches the destination.
-- Preserve CURRENT BEAT's transfer roles and result literally. If CURRENT BEAT specifies what moves, where it goes, who receives it, or which container is filled/used, staging may clarify the physical mechanism but must not redirect that transfer or result to a different target, body, surface, or container.
-- For drinking, sipping, pouring, filling, or other material transfer, keep the material visibly bound to an established source/container until the transfer occurs. Do not invent source-less liquid, substitute drool/spillage for the assigned transfer, or treat a large/fixed source as a handheld vessel. A lid, cap, handle, rim, latch, or other component of a fixed container is not itself the source/container of the material inside it; name the actual container or an established dispensing opening/tap as the source. Prefer the simplest direct source-to-destination action; explicitly acquire any truly necessary intermediary before using it.
-- Do not invent an extra support, container, utensil, or other helper prop solely to settle a required prop after the Beat action. Prefer leaving the prop with its current holder or placing it on an already-established surface when that is physically natural.
-- Budget enough visible time for every physical step you introduce. When movement, acquisition, positioning, opening, or another prerequisite must happen before a dependent action, give that prerequisite its own earlier timed micro-beat instead of compressing both steps into one timestamp.
-- Prefer names when a pronoun could be ambiguous.
-- If CURRENT BEAT explicitly says someone says, asks, orders, tells, replies, or otherwise speaks intelligibly, write a brief direct spoken line in the form Speaker said <d>exact words</d> rather than indirect narration. Use said as the attribution verb in the audiovisual RAW. Do not add intelligible dialogue when CURRENT BEAT contains no speech act.
+- Add only details needed to physically connect or clearly show CURRENT BEAT.
+- Preserve spatial continuity. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
+- Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
+- Preserve prop identity.
+
+CAMERA CHOREOGRAPHY
 {camera_choreography_rules}
+- CONTINUATION: the supplied opening guide is the visual authority for frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. At 00:00.000 describe only the inherited continuation frame; do not reconstruct every known subject into view. Begin CURRENT BEAT at the next natural timestamp and keep camera motion continuous.
 - Keep all timed action inside the {segment_seconds}-second clip.
-- The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor. PREVIOUS SHOT END is semantic physical state and may include subjects that are off camera; never infer that every listed subject must be visible at frame 0. When a continuation guide is supplied, the guide—not PREVIOUS SHOT END—owns the visible frame-0 composition. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. Start CURRENT BEAT at the next timestamp. A subject introduced by CURRENT BEAT may enter or be revealed only after that handoff. For the opening segment, stage frame 0 normally.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
-- After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Preserve only cut-relevant positions/containment, held props, door/barrier state, and unresolved active threats needed to start the next shot. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state or add a new event.
+- After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state.
 
 {story_segment_ending_rules}
 
@@ -19700,59 +19693,21 @@ def build_story_segment_ending_rules(is_final_story_segment):
     )
 
 
-# Return the Director camera rule for one segment.
+# Return the Director camera choreography rules.
 def build_director_camera_choreography_rules(segment_number, conditioning_mode=None):
-    """Prefer continuous camera choreography over seam-exposing cuts."""
-    try:
-        segment_number = int(segment_number)
-    except (TypeError, ValueError):
-        segment_number = 1
-
+    """Return the shared camera rules used by every Director segment."""
+    del segment_number, conditioning_mode
     lines = [
-        "CAMERA CHOREOGRAPHY",
         "- Stage the entire segment as one continuous camera take. Do not use "
-        "cuts, cutaways, insert shots, reverse-angle cuts, reaction cuts, fades, "
-        "wipes, or shot changes unless CURRENT BEAT explicitly requires a "
-        "discontinuous time or location change that cannot be shown continuously.",
+        "cuts unless CURRENT BEAT explicitly requires a location change that "
+        "cannot be shown continuously.",
         "- When framing, angle, distance, height, or viewed subject must change, "
         "move the camera instead of cutting. Use natural English camera actions "
         "such as pushes in, pulls out, pans left/right, trucks left/right, tilts "
         "up/down, pedestals up/down, arcs around, or tracks with a moving subject. "
         "A static shot is valid when movement would not help.",
-        "- Camera movement must follow, reveal, or refocus important story action. "
-        "Do not add decorative movement, and keep the active subject/action readable "
-        "through the move.",
+        "- Camera movement must follow, reveal, or refocus important story action.",
     ]
-
-    if str(conditioning_mode or "").strip().lower() == "continuation":
-        lines.append(
-            "- CONTINUATION: the supplied opening guide is the visual authority for "
-            "frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. "
-            "At 00:00.000 describe only the inherited continuation frame; do not "
-            "reconstruct every known subject into view. Begin CURRENT BEAT at the "
-            "next natural timestamp and keep camera motion continuous."
-        )
-
-    # Every third segment after Segment 1 deliberately changes composition
-    # without adding an editorial cut: 4, 7, 10, ...
-    if segment_number > 1 and (segment_number - 1) % 3 == 0:
-        lines.append(
-            "- REFRAME THIS SEGMENT: Begin from the inherited opening composition. "
-            "After about 1 second, move continuously into a materially different "
-            "composition by changing angle, distance, height, framed subject, or "
-            "viewing side. Do not cut."
-        )
-    elif segment_number == 1:
-        lines.append(
-            "- Establish a useful opening composition. Use camera movement when it "
-            "helps follow or reveal CURRENT BEAT; do not force a decorative reframe."
-        )
-    else:
-        lines.append(
-            "- Begin from the established opening composition. Do not force a new "
-            "composition; use camera movement when it naturally follows or reveals "
-            "CURRENT BEAT."
-        )
     return "\n".join(lines)
 
 
@@ -25447,10 +25402,11 @@ def build_generation_messages(
     canonical_character_facts="",
     canonical_data="",
     static_setting_description="",
+    persistent_movable_prop_state=None,
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
-    del conditioning_mode
+    del conditioning_mode, dialogue_exclusions
 
     del story
     current_beat_text, next_beat_text = _phase_beats_text(
@@ -25464,38 +25420,29 @@ def build_generation_messages(
         else "N/A"
     ) or "N/A"
 
-    subject_text = str(subject_definitions or "").strip() or "N/A"
-    canonical_starting_block = ""
+    subject_text = str(subject_definitions or "").strip()
     starting_facts = str(canonical_character_facts or canonical_data or "").strip()
-    if int(current_segment) == 1 and starting_facts:
-        canonical_starting_block = (
-            "\n\nCANONICAL STARTING CHARACTER FACTS — ESTABLISH THESE "
-            "FOR CHARACTERS PRESENT IN THIS SEGMENT:\n"
-            + starting_facts
+    if (
+        int(current_segment) == 1
+        and starting_facts
+        and starting_facts not in subject_text
+    ):
+        subject_text = (
+            f"{subject_text}\n{starting_facts}"
+            if subject_text
+            else starting_facts
         )
-    dialogue_exclusion_text = format_dialogue_exclusion_instruction(
-        dialogue_exclusions
-    )
-    dialogue_block = (
-        f"\n\n{dialogue_exclusion_text}"
-        if dialogue_exclusion_text
-        else ""
-    )
+    subject_text = subject_text or "N/A"
     phrase_exclusion_text = format_phrase_exclusions_section(
         phrase_exclusions
     ).strip()
-    phrase_exclusion_block = (
-        f"\n\n{phrase_exclusion_text}"
-        if phrase_exclusion_text
-        else ""
-    )
     static_setting = " ".join(
         str(static_setting_description or "").split()
-    ).strip(" .")
-    static_setting_block = ""
+    ).strip()
+    sections = [f"SUBJECT DEFINITIONS:\n{subject_text}"]
     if static_setting:
-        static_setting_block = (
-            "\n\nSTATIC SETTING AUTHORITY — preserve these established static "
+        sections.append(
+            "STATIC SETTING AUTHORITY — preserve these established static "
             "environment facts:\n"
             + static_setting
             + "\nThese facts constrain static architecture, fixed fixtures, persistent "
@@ -25506,25 +25453,34 @@ def build_generation_messages(
             "the frame."
         )
 
-    assigned_source = director_assigned_source(current_phase, current_segment)
-    source_block = (
-        "ASSIGNED SOURCE — authoritative work for this segment:\n"
-        + assigned_source + "\n\n"
-        if assigned_source else ""
+    try:
+        previous_beat_id = int(current_segment) - 1
+    except (TypeError, ValueError):
+        previous_beat_id = 0
+    previous_beat_text = (
+        f"{previous_beat_id}. {str(beats[previous_beat_id - 1]).strip()}"
+        if beats and 1 <= previous_beat_id <= len(beats)
+        else "N/A"
     )
-    user_content = f"""SUBJECT DEFINITIONS:
-{subject_text}{canonical_starting_block}{static_setting_block}
-
-{source_block}CURRENT BEAT — EXECUTE ONLY THIS:
-{current_beat_text}
-
-NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:
-{next_beat_text}
-
-PREVIOUS SHOT END — START HERE, DO NOT REPLAY:
-{continuity_text}
-{phrase_exclusion_block}
-{dialogue_block}"""
+    sections.extend([
+        "PREVIOUS BEAT - BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n"
+        + previous_beat_text,
+        "CURRENT BEAT — EXECUTE ONLY THIS:\n" + current_beat_text,
+        "NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n"
+        + next_beat_text,
+        "PREVIOUS SHOT END — START HERE, DO NOT REPLAY:\n" + continuity_text,
+    ])
+    if phrase_exclusion_text:
+        sections.append(phrase_exclusion_text)
+    sections.append(
+        "PERSISTENT MOVABLE PROP STATE — authoritative physical state. "
+        "Owner/holder fields are exclusive continuity facts: do not treat another "
+        "subject's owned or held prop as shared inventory unless CURRENT BEAT "
+        "explicitly authorizes that use or transfer:\n"
+        + format_prop_ledger_for_prompt(persistent_movable_prop_state)
+    )
+    sections.append("RETURN only JSON.")
+    user_content = "\n\n".join(sections)
 
     messages = [
         {"role": "system", "content": director_rules},
@@ -31970,6 +31926,9 @@ def repair_existing_segment(
         dialogue_exclusions=dialogue_exclusions,
         current_phase=current_phase,
         phrase_exclusions=phrase_exclusions,
+        persistent_movable_prop_state=repair.get("state", {}).get(
+            "prop_ledger", {}
+        ),
     )
     director_bundle = {
         "segment": segment_number,
@@ -34113,31 +34072,32 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 flush=True,
             )
 
-    # Keep source-owned state concise, but give Request 1 the persistent movable
-    # prop ledger so off-camera props do not disappear or silently transform.
+    # Prop state is already part of the consolidated Request 1 message. Insert
+    # optional availability staging immediately before its final output contract.
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
-    if request1_base_messages and (prop_ledger or prop_staging):
+    if request1_base_messages and prop_staging:
         request1_base_messages[-1] = dict(request1_base_messages[-1])
-        prop_block = (
-            "\n\nPERSISTENT MOVABLE PROP STATE — authoritative physical state; "
-            "reuse these exact objects unless CURRENT BEAT explicitly changes them. "
-            "owner/holder fields are exclusive continuity facts: do not treat another "
-            "subject's owned or held prop as shared inventory unless CURRENT BEAT "
-            "explicitly authorizes that use or transfer:\n"
-            + format_prop_ledger_for_prompt(prop_ledger)
+        message_content = str(
+            request1_base_messages[-1].get("content", "")
         )
-        if prop_staging:
-            prop_block += (
-                "\n\nPROP AVAILABILITY STAGING — incorporate this naturally before "
-                "the dependent Beat action:\n"
-                + prop_staging
+        staging_block = (
+            "\n\nPROP AVAILABILITY STAGING — incorporate this naturally before "
+            "the dependent Beat action:\n"
+            + prop_staging
+        )
+        return_contract = "\n\nRETURN only JSON."
+        if return_contract in message_content:
+            message_content = message_content.replace(
+                return_contract,
+                staging_block + return_contract,
+                1,
             )
-            console_log(
-                f"Segment {segment_number} proactive prop staging: {prop_staging}",
-                flush=True,
-            )
-        request1_base_messages[-1]["content"] = (
-            f"{request1_base_messages[-1].get('content', '')}{prop_block}"
+        else:
+            message_content += staging_block
+        request1_base_messages[-1]["content"] = message_content
+        console_log(
+            f"Segment {segment_number} proactive prop staging: {prop_staging}",
+            flush=True,
         )
     current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
     request1_topology_contracts = build_director_barrier_topology_contract(
@@ -35970,6 +35930,7 @@ def _run_main(
             canonical_character_facts=canonical_character_facts,
             canonical_data=canonical_data,
             static_setting_description=location_setting_description,
+            persistent_movable_prop_state=prop_ledger_snapshot,
         )
         return {
             "segment": segment_number,
