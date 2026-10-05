@@ -805,8 +805,12 @@ DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
                     "type": "array",
                     "items": {"type": "string", "minLength": 1},
                 },
+                "subject_descriptions": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                },
             },
-            "required": ["raw_scene", "subject_names"],
+            "required": ["raw_scene", "subject_names", "subject_descriptions"],
             "additionalProperties": False,
         },
     },
@@ -29732,12 +29736,14 @@ def build_character_reference_h3_prompt(
         )
     )
     return (
-        "detailed_description: [Shot 1] A single character stands centered and "
-        "front-facing in a neutral natural pose, with the complete current outfit "
-        "clearly visible. Use one continuous static shot for exactly 1 second. "
+        "detailed_description: [Shot 1] A single subject is centered and "
+        "front-facing in a neutral natural pose, with the complete current physical "
+        "appearance clearly visible. Use one continuous static shot for exactly 1 second. "
         + identity_clause
-        + f"{description}. Keep the face/head, body, garments, footwear, and accessories "
-        "clear and unobstructed. Use a plain unobtrusive background. Do not orbit, "
+        + f"{description}. Keep the face/head, body/anatomy, species traits, and "
+        "distinguishing features clear and unobstructed. Show garments, footwear, and "
+        "accessories only when explicitly described; do not invent clothing for an "
+        "unclothed or nonhuman subject. Use a plain unobtrusive background. Do not orbit, "
         "pan, zoom, cut, add another character, or invent story action.\n\n"
         "overall_soundscape: N/A\n"
         "non_diegetic_music: N/A\n"
@@ -33295,7 +33301,13 @@ def build_director_raw_subject_resolution_messages(
                 "individual; when exactly one KNOWN SUBJECT has the same role/species stem, "
                 "reuse it unless RAW explicitly says another/new/second individual appears. "
                 "Use the next unused suffix only for a genuinely new identity. Do not label "
-                "interchangeable background crowds/groups. Return JSON only."
+                "interchangeable background crowds/groups. For each newly named Subject, "
+                "also return subject_descriptions with one short stable visual identity "
+                "sentence using only explicit appearance facts already present in RAW "
+                "(species/type, sex/gender wording, age, hair, skin/scales/fur, build, "
+                "body/anatomy, and distinguishing features). Exclude actions, pose, "
+                "location, props, camera, mood, and invented details. If RAW gives only "
+                "the role/species, use only that. Return JSON only."
             ),
         },
         {
@@ -33306,7 +33318,9 @@ def build_director_raw_subject_resolution_messages(
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
                 "Return raw_scene plus subject_names containing only the functional "
-                "Subject names used in the returned RAW scene."
+                "Subject names used in the returned RAW scene, and subject_descriptions "
+                "mapping each newly named Subject to its concise explicit visual identity "
+                "sentence."
             ),
         },
     ]
@@ -33494,10 +33508,16 @@ def resolve_director_raw_scene_subjects(
     )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
-    if not isinstance(result, dict) or set(result) != {"raw_scene", "subject_names"}:
+    if not isinstance(result, dict) or set(result) != {
+        "raw_scene", "subject_names", "subject_descriptions"
+    }:
         raise ValueError(
-            "RAW Subject resolver must return only raw_scene and subject_names."
+            "RAW Subject resolver must return only raw_scene, subject_names, "
+            "and subject_descriptions."
         )
+    raw_subject_descriptions = result.get("subject_descriptions", {})
+    if not isinstance(raw_subject_descriptions, dict):
+        raise ValueError("RAW Subject resolver subject_descriptions must be an object.")
 
     resolved_timed = _canonicalize_director_timestamps(
         result.get("raw_scene", "")
@@ -33560,6 +33580,9 @@ def resolve_director_raw_scene_subjects(
             flags=re.I,
         )
         resolved_subject_names[index] = canonical_name
+        if proposed_name in raw_subject_descriptions:
+            description = raw_subject_descriptions.pop(proposed_name)
+            raw_subject_descriptions.setdefault(canonical_name, description)
 
     resolved_end_state = _canonicalize_end_continuity_functional_subjects(
         end_state_original,
@@ -33578,6 +33601,7 @@ def resolve_director_raw_scene_subjects(
         )
 
     names = []
+    descriptions = {}
     seen = set()
     known_keys = {name.casefold() for name in protected_names}
     for raw_name in resolved_subject_names:
@@ -33606,13 +33630,20 @@ def resolve_director_raw_scene_subjects(
             continue
         seen.add(key)
         names.append(name)
+        description = " ".join(
+            str(raw_subject_descriptions.get(raw_name)
+                or raw_subject_descriptions.get(name)
+                or "").split()
+        ).strip()
+        if description:
+            descriptions[name] = description
 
     console_log(
         "Checking RAW Subjects segment: "
         + (", ".join(names) if names else "no dynamic Subjects"),
         flush=True,
     )
-    return resolved, names
+    return resolved, names, descriptions
 
 
 def build_director_raw_scene_physical_messages(
@@ -36301,13 +36332,18 @@ def _run_main(
         request2_result_for_fixture = copy.deepcopy(payload["llm_result"])
         llm_result = dict(payload["llm_result"])
         raw_subject_names = []
+        raw_subject_descriptions = {}
         accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
         resolved_raw_scene = accepted_raw_scene
         subject_resolution_error = None
         subject_resolution_succeeded = False
         for subject_attempt in range(1, 3):
             try:
-                resolved_raw_scene, raw_subject_names = resolve_director_raw_scene_subjects(
+                (
+                    resolved_raw_scene,
+                    raw_subject_names,
+                    raw_subject_descriptions,
+                ) = resolve_director_raw_scene_subjects(
                     accepted_raw_scene,
                     subject_definitions=subject_definitions,
                     history_metadata={
@@ -36394,6 +36430,8 @@ def _run_main(
         formatter_subject_names = list(formatter_subject_genders)
         registration_subject_genders = dict(formatter_subject_genders)
         registration_subject_genders.update(canonical_subject_genders)
+        registration_subject_descriptions = dict(raw_subject_descriptions)
+        registration_subject_descriptions.update(canonical_subject_descriptions)
         continuity_state, hinted_subject_names = register_named_subject_hints(
             continuity_state,
             subject_definitions,
@@ -36405,7 +36443,7 @@ def _run_main(
             )),
             origin_segment=segment,
             subject_genders=registration_subject_genders,
-            subject_descriptions=canonical_subject_descriptions,
+            subject_descriptions=registration_subject_descriptions,
         )
         newly_registered_names = list(dict.fromkeys(
             dialogue_subject_names + hinted_subject_names
