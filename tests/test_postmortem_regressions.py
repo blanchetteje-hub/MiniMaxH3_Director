@@ -1738,15 +1738,16 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("must not duplicate, merge, or substitute", prompt)
 
     def test_physical_validator_rejects_appears_without_llm_call(self):
-        with mock.patch.object(minimax, "ask_llm") as llm:
-            result = minimax.validate_director_raw_scene_physical(
-                "A goblin enters the tavern.",
-                (
-                    "At 00:00.000, Amy stands at the counter.\n"
-                    "At 00:02.000, a goblin appears beside the stool.\n"
-                    "End continuity state: the goblin stands beside the stool."
-                ),
-            )
+        llm = mock.Mock()
+        result = minimax.validate_director_raw_scene_physical(
+            "A goblin enters the tavern.",
+            (
+                "At 00:00.000, Amy stands at the counter.\n"
+                "At 00:02.000, a goblin appears beside the stool.\n"
+                "End continuity state: the goblin stands beside the stool."
+            ),
+            llm_request=llm,
+        )
         self.assertFalse(result["valid"])
         self.assertIn("enter or be revealed", result["issue"])
         llm.assert_not_called()
@@ -1838,30 +1839,17 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertEqual(merged["Elf1"]["last_observed_segment"], 3)
 
     def test_h3_carries_stationary_continuing_subject_not_in_action(self):
-        state = minimax.new_continuity_state()
-        state["subjects"]["Goblin1"] = minimax.new_subject_continuity_record({
-            "subject_id": 2,
-            "name": "Goblin1",
-        })
-        state["subjects"]["Goblin1"]["position"] = "beside the counter"
-        prompt = minimax.build_h3_prompt(
-            {
-                "detailed_description": (
-                    "[Shot 1] At 00:00.000, Amy turns toward the doorway. "
-                    "At 00:04.000, Dragon1 enters."
-                ),
-                "overall_soundscape": "door creak",
-                "non_diegetic_music": "N/A",
-            },
-            (
-                "<Subject 1> is Amy.\n"
-                "<Subject 2> is Goblin1 (S2).\n"
-                "<Subject 4> is Dragon1 (S4)."
-            ),
-            segment_number=4,
-            conditioning_mode="continuation",
-            continuity_state=state,
-            retained_subject_ids={2},
+        state = {
+            "subjects": {
+                "Goblin1": {
+                    "name": "Goblin1",
+                    "position": "beside the counter",
+                }
+            }
+        }
+        prompt = minimax.ensure_h3_continuing_subject_state(
+            "[Shot 1] At 00:00.000, Amy turns toward the doorway.",
+            state,
         )
         self.assertIn(
             "Continuing Subjects: Goblin1 remains beside the counter.",
