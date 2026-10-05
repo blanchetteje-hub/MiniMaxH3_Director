@@ -666,3 +666,23 @@ state metadata and PNGs. Elf1 should have both the RAW-derived female/silver-hai
 and one persisted setting-appropriate outfit; Dragon1 should retain the RAW-derived dragon
 identity and should not acquire humanoid clothing unless RAW explicitly says so. The same
 persisted wardrobe must be what the story H3 prompt references.
+
+
+### 2026-10-05 — expanded-story context for dynamic wardrobe bootstrap
+
+The consolidated dynamic Subject bootstrap now receives the complete
+`expanded_story.txt` as read-only wardrobe context.
+
+- The existing post-RAW Subject-resolution call gets a `STORY CONTEXT` block containing
+  the expanded story.
+- RAW remains authoritative for actions and explicit appearance/clothing.
+- STORY CONTEXT is used only when RAW leaves clothing unspecified, so the one-time
+  canonical wardrobe can match the established setting, period, culture, and visual world.
+- The expanded story is loaded once for the video run and reused both for existing
+  story-location extraction and dynamic Subject bootstrap, including resumed runs.
+- No extra LLM stage was added; this only enriches the existing identity+wardrobe bootstrap.
+- Focused regression coverage confirms the story context reaches that prompt.
+
+Acceptance target remains the tavern run: Goblin1/Elf1 clothing should now reflect the
+expanded story's visual world while Dragon1 should stay unclothed unless the story/RAW
+establishes clothing.
