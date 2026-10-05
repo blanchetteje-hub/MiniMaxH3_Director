@@ -319,6 +319,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 llm_request=request,
                 segment_seconds=6.0,
                 return_subject_bootstrap=True,
+                story_context=(
+                    "Amy serves fantasy patrons in a refined medieval tavern where "
+                    "humanoid guests wear practical period clothing."
+                ),
             )
         )
 
@@ -340,6 +344,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         prompt = request.call_args.args[0]
         self.assertIn("explicit non-clothing appearance facts", prompt[0]["content"])
         self.assertIn("choose one simple setting-appropriate outfit now", prompt[0]["content"])
+        self.assertIn("Use STORY CONTEXT only when RAW does not specify clothing", prompt[0]["content"])
+        self.assertIn("humanoid guests wear practical period clothing", prompt[1]["content"])
         self.assertIn("subject_wardrobes", prompt[1]["content"])
 
     def test_raw_subject_resolution_preserves_existing_identifiers(self):
