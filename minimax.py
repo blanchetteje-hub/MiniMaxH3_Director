@@ -34352,6 +34352,27 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     request1_result = None
     raw_scene = ""
+    request1_retry_requirements = []
+
+    def build_request1_retry_messages(requirement):
+        """Retry from the clean base while retaining every observed blocker."""
+        requirement = " ".join(str(requirement or "").split()).strip()
+        if requirement and requirement not in request1_retry_requirements:
+            request1_retry_requirements.append(requirement)
+        messages = copy.deepcopy(request1_base_messages)
+        if messages and request1_retry_requirements:
+            messages[-1] = dict(messages[-1])
+            requirements = "\n".join(
+                f"- {item}" for item in request1_retry_requirements
+            )
+            messages[-1]["content"] = (
+                f"{messages[-1].get('content', '')}\n\n"
+                "RETRY REQUIREMENTS — satisfy ALL of these while preserving CURRENT "
+                "BEAT and its outcome and without beginning NEXT BEAT:\n"
+                f"{requirements}"
+            )
+        return messages
+
     request1_messages = request1_base_messages
     for request1_attempt in range(1, DIRECTOR_RAW_SCENE_ATTEMPTS + 1):
         request1_metadata = {
@@ -34391,16 +34412,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     f"retrying: " + "; ".join(structure_errors),
                     flush=True,
                 )
-                request1_messages = copy.deepcopy(request1_base_messages)
-                if request1_messages:
-                    request1_messages[-1] = dict(request1_messages[-1])
-                    request1_messages[-1]["content"] = (
-                        f"{request1_messages[-1].get('content', '')}\n\n"
-                        "RETRY: Return the complete timed shot script beginning at "
-                        "00:00.000, with exactly one trailing End continuity state "
-                        "matching the final timed frame. Keep every timestamp inside "
-                        "the clip and do not begin NEXT BEAT."
-                    )
+                request1_messages = build_request1_retry_messages(
+                    "SHOT SCRIPT: " + "; ".join(structure_errors)
+                )
                 continue
 
             current_beat_text = str(bundle.get("current_beat_text") or "").strip()
@@ -34420,16 +34434,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     f"retrying: {dialogue_issue}",
                     flush=True,
                 )
-                request1_messages = copy.deepcopy(request1_base_messages)
-                if request1_messages:
-                    request1_messages[-1] = dict(request1_messages[-1])
-                    request1_messages[-1]["content"] = (
-                        f"{request1_messages[-1].get('content', '')}\n\n"
-                        "RETRY: CURRENT BEAT requires intelligible speech. Replace "
-                        "indirect narration such as asks/orders/says with one brief "
-                        "direct line in the form Speaker said <d>exact words</d>. "
-                        "Preserve the Beat's meaning and do not invent extra information."
-                    )
+                request1_messages = build_request1_retry_messages(
+                    "DIALOGUE: CURRENT BEAT requires intelligible speech. "
+                    + dialogue_issue
+                    + " Use one brief direct line in the form "
+                    "Speaker said <d>exact words</d>."
+                )
                 continue
 
             if current_beat_text:
@@ -34484,15 +34494,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         f"retrying: {issue}",
                         flush=True,
                     )
-                    request1_messages = copy.deepcopy(request1_base_messages)
-                    if request1_messages:
-                        request1_messages[-1] = dict(request1_messages[-1])
-                        request1_messages[-1]["content"] = (
-                            f"{request1_messages[-1].get('content', '')}\n\n"
-                            f"RETRY: Fix this physical/spatial problem: {issue} "
-                            "Keep CURRENT BEAT and its outcome unchanged. Do not begin "
-                            "NEXT BEAT."
-                        )
+                    request1_messages = build_request1_retry_messages(
+                        f"PHYSICAL/SPATIAL: {issue}"
+                    )
                     continue
 
                 try:
@@ -34531,15 +34535,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         f"retrying: {issue}",
                         flush=True,
                     )
-                    request1_messages = copy.deepcopy(request1_base_messages)
-                    if request1_messages:
-                        request1_messages[-1] = dict(request1_messages[-1])
-                        request1_messages[-1]["content"] = (
-                            f"{request1_messages[-1].get('content', '')}\n\n"
-                            f"RETRY: Fix this prop/state problem: {issue} "
-                            "Keep CURRENT BEAT and its outcome unchanged. Do not begin "
-                            "NEXT BEAT."
-                        )
+                    request1_messages = build_request1_retry_messages(
+                        f"PROP/STATE: {issue}"
+                    )
                     continue
 
                 try:
@@ -34581,17 +34579,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         f"retrying: {issue}",
                         flush=True,
                     )
-                    request1_messages = copy.deepcopy(request1_base_messages)
-                    if request1_messages:
-                        request1_messages[-1] = dict(request1_messages[-1])
-                        request1_messages[-1]["content"] = (
-                            f"{request1_messages[-1].get('content', '')}\n\n"
-                            f"RETRY: Fix this timing-feasibility problem: {issue} "
-                            "Give required travel and prerequisite actions enough visible "
-                            "time by simplifying optional staging and/or redistributing "
-                            "timestamps. Keep CURRENT BEAT and its outcome unchanged. "
-                            "Do not begin NEXT BEAT."
-                        )
+                    request1_messages = build_request1_retry_messages(
+                        "TIMING: "
+                        + issue
+                        + " Give required travel and prerequisite actions enough visible "
+                        "time by simplifying optional staging and/or redistributing timestamps."
+                    )
                     continue
 
             # Baseline-reset rule: old deterministic Director guards report
@@ -34708,14 +34701,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             "retrying the same segment.",
             flush=True,
         )
-        request1_messages = copy.deepcopy(request1_base_messages)
-        if request1_messages:
-            request1_messages[-1] = dict(request1_messages[-1])
-            request1_messages[-1]["content"] = (
-                f"{request1_messages[-1].get('content', '')}\n\n"
-                "RETRY: Return a non-empty timed RAW SCENE for CURRENT BEAT. "
-                "Do not begin NEXT BEAT."
-            )
+        request1_messages = build_request1_retry_messages(
+            "SHOT SCRIPT: Return a non-empty timed RAW SCENE for CURRENT BEAT."
+        )
 
     if request1_result is None or not raw_scene:
         raise BeatGenerationError(
