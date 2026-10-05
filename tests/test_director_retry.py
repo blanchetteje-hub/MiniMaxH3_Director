@@ -286,6 +286,42 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "director_raw_scene_subject_resolution",
         )
 
+    def test_raw_subject_resolution_returns_explicit_identity_descriptions(self):
+        original = (
+            "At 00:01.000, a beautiful female elf with long silver hair enters.\n"
+            "At 00:05.000, the elf sits at the back table.\n"
+            "End continuity state: the elf remains seated."
+        )
+        resolved_timed = (
+            "At 00:01.000, Elf1, a beautiful female elf with long silver hair, enters.\n"
+            "At 00:05.000, Elf1 sits at the back table."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": resolved_timed,
+            "subject_names": ["Elf1"],
+            "subject_descriptions": {
+                "Elf1": "Elf1 is a beautiful female elf with long silver hair."
+            },
+        })
+
+        result, names, descriptions = minimax.resolve_director_raw_scene_subjects(
+            original,
+            "<Subject 1> is Amy.",
+            llm_request=request,
+            segment_seconds=6.0,
+            return_subject_descriptions=True,
+        )
+
+        self.assertIn("Elf1 sits at the back table", result)
+        self.assertEqual(names, ["Elf1"])
+        self.assertEqual(
+            descriptions,
+            {"Elf1": "Elf1 is a beautiful female elf with long silver hair."},
+        )
+        prompt = request.call_args.args[0]
+        self.assertIn("explicit appearance facts already present in RAW", prompt[0]["content"])
+        self.assertIn("subject_descriptions", prompt[1]["content"])
+
     def test_raw_subject_resolution_preserves_existing_identifiers(self):
         original = (
             "At 00:01.000, Will and Amber watch Zombie2 enter.\n"
