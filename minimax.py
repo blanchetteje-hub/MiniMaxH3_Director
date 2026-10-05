@@ -416,7 +416,7 @@ BEAT_VALIDATION_STATE_VERSION = 3
 # or validator behavior.
 BENCHMARK_SEED = 42
 DEFAULT_STORY_TEMPERATURE = 0.4
-DEFAULT_VISUAL_STYLE = "Live-Action cinematic"
+DEFAULT_VISUAL_STYLE = "Live-action cinematic"
 DEFAULT_REFRESH_INTERVAL = 999
 REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
 
@@ -17925,8 +17925,13 @@ def extract_story_locations(
     )
 
 
-def build_story_setting_description_messages(expanded_story, overall_location):
+def build_story_setting_description_messages(
+    expanded_story,
+    overall_location,
+    visual_style=DEFAULT_VISUAL_STYLE,
+):
     """Build a narrow extractor for persistent static environment facts."""
+    visual_style = normalize_visual_style(visual_style)
     return [
         {
             "role": "system",
@@ -17944,13 +17949,17 @@ def build_story_setting_description_messages(expanded_story, overall_location):
                 "instances or that relative identity is itself a persistent architectural "
                 "fact. When only one instance is established, describe it generically "
                 "(for example, entrance door rather than back door). Do not invent details. "
-                "If the story gives only a broad setting, return only that broad setting "
-                "and let the video model design unspecified details. Return JSON only."
+                "Respect the supplied visual style when choosing concise appearance "
+                "language, but do not let style add or alter setting facts. If the story "
+                "gives only a broad setting, return only that broad setting and let the "
+                "video model design unspecified details. Return JSON only."
             ),
         },
         {
             "role": "user",
             "content": (
+                "VISUAL STYLE\n"
+                f"{visual_style}\n\n"
                 "OVERALL LOCATION\n"
                 f"{str(overall_location or '').strip()}\n\n"
                 "EXPANDED STORY\n"
@@ -17999,6 +18008,7 @@ def extract_story_setting_description(
     expanded_story,
     overall_location,
     *,
+    visual_style=DEFAULT_VISUAL_STYLE,
     llm_request=None,
     history_metadata=None,
 ):
@@ -18011,6 +18021,7 @@ def extract_story_setting_description(
             build_story_setting_description_messages(
                 expanded_story,
                 overall_location,
+                visual_style=visual_style,
             ),
             response_format=build_story_setting_description_response_format(),
             parse_json_response=False,
@@ -29952,11 +29963,13 @@ def build_character_reference_h3_prompt(
     character_description,
     *,
     has_identity_reference=True,
+    visual_style=DEFAULT_VISUAL_STYLE,
 ):
     """Build a one-second front-facing character/current-appearance reference prompt."""
     description = " ".join(str(character_description or "").split()).strip(" .")
     if not description:
         raise ValueError("Character reference requires a character description.")
+    visual_style = normalize_visual_style(visual_style)
     identity_clause = (
         "<Picture 1> references only the identity and physical appearance of this "
         "character; preserve that same face/head, hair, age, build, species, body, "
@@ -29971,7 +29984,8 @@ def build_character_reference_h3_prompt(
         )
     )
     return (
-        "detailed_description: [Shot 1] A single subject is centered and "
+        f"detailed_description: [Shot 1] {visual_style}. "
+        "A single subject is centered and "
         "front-facing in a neutral natural full-body pose, with the complete current physical "
         "appearance clearly visible. Use one continuous static shot for exactly 1 second. "
         + identity_clause
@@ -30292,6 +30306,7 @@ def prepare_character_reference_workflow(
     noise_seed=None,
     picture_number=None,
     identity_image_name="",
+    visual_style=DEFAULT_VISUAL_STYLE,
 ):
     """Prepare the isolated one-second character/clothing reference render."""
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
@@ -30334,6 +30349,7 @@ def prepare_character_reference_workflow(
         build_character_reference_h3_prompt(
             character_description,
             has_identity_reference=bool(identity_image_name),
+            visual_style=visual_style,
         ),
         label,
         "DPRandomGenerator",
@@ -30409,6 +30425,7 @@ def render_character_reference_image(
     identity_image_name="",
     noise_seed=None,
     file_token="",
+    visual_style=DEFAULT_VISUAL_STYLE,
 ):
     """Render one second, then sample exactly the 0.5-second reference frame."""
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
@@ -30424,6 +30441,7 @@ def render_character_reference_image(
             picture_number=picture_number,
             identity_image_name=identity_image_name,
             noise_seed=noise_seed,
+            visual_style=visual_style,
         )
         try:
             prompt_id = queue_workflow(workflow)
@@ -30482,6 +30500,7 @@ def ensure_character_reference_images(
     subject_descriptions=None,
     loras=None,
     prior_detailed_description="",
+    visual_style=DEFAULT_VISUAL_STYLE,
 ):
     """Create/update clothing Pictures for visible Subjects before H3 rendering."""
     references = normalize_character_reference_images(character_references)
@@ -30528,8 +30547,9 @@ def ensure_character_reference_images(
         )
         if not description:
             continue
+        normalized_visual_style = normalize_visual_style(visual_style)
         signature = hashlib.sha256(
-            description.casefold().encode("utf-8")
+            f"{normalized_visual_style}\n{description}".casefold().encode("utf-8")
         ).hexdigest()
         if existing and existing.get("signature") == signature:
             continue
@@ -30579,6 +30599,7 @@ def ensure_character_reference_images(
             steps,
             loras=loras,
             identity_image_name=identity_image_name,
+            visual_style=normalized_visual_style,
         )
         references[name] = {
             "name": name,
@@ -30611,6 +30632,7 @@ def plan_character_reference_images(
     subject_descriptions=None,
     loras=None,
     prior_detailed_description="",
+    visual_style=DEFAULT_VISUAL_STYLE,
 ):
     """Plan immutable character-reference renders without contacting ComfyUI."""
     references = normalize_character_reference_images(character_references)
@@ -30656,8 +30678,9 @@ def plan_character_reference_images(
         )
         if not description:
             continue
+        normalized_visual_style = normalize_visual_style(visual_style)
         signature = hashlib.sha256(
-            description.casefold().encode("utf-8")
+            f"{normalized_visual_style}\n{description}".casefold().encode("utf-8")
         ).hexdigest()
         if existing and existing.get("signature") == signature:
             continue
@@ -30721,6 +30744,7 @@ def plan_character_reference_images(
             "before_segment": int(segment_number),
             "character_name": name,
             "character_description": description,
+            "visual_style": normalized_visual_style,
             "picture_number": picture_number,
             "version": version,
             "megapixels": float(requested_megapixels),
@@ -35235,7 +35259,10 @@ def _saved_reference_job_identity_image(identity_source):
     raise ValueError(f"Unknown saved identity source kind: {kind!r}")
 
 
-def render_saved_reference_jobs(reference_jobs):
+def render_saved_reference_jobs(
+    reference_jobs,
+    visual_style=DEFAULT_VISUAL_STYLE,
+):
     """Execute immutable saved reference jobs in package order."""
     location_reference_video_path = ""
     completed = set()
@@ -35288,6 +35315,7 @@ def render_saved_reference_jobs(reference_jobs):
                 identity_image_name=identity_image_name,
                 noise_seed=int(job["noise_seed"]),
                 file_token=str(job.get("file_token") or ""),
+                visual_style=job.get("visual_style", visual_style),
             )
             if expected_path and os.path.abspath(actual_path) != expected_path:
                 raise RuntimeError(
@@ -35344,7 +35372,10 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
             "story segments.",
             flush=True,
         )
-        planned_location_path = render_saved_reference_jobs(reference_jobs)
+        planned_location_path = render_saved_reference_jobs(
+            reference_jobs,
+            visual_style=config.get("visual_style", DEFAULT_VISUAL_STYLE),
+        )
         if planned_location_path:
             location_reference_video_path = planned_location_path
     generated_video_paths = []
@@ -35695,6 +35726,7 @@ def _run_main(
                 extract_story_setting_description(
                     expanded_story_context,
                     story_location_metadata["overall_location"],
+                    visual_style=visual_style,
                     history_metadata={"run_id": run_id},
                 )
             )
@@ -36835,6 +36867,7 @@ def _run_main(
                     subject_descriptions=canonical_subject_descriptions,
                     loras=global_loras,
                     prior_detailed_description=prior_clothing_reference_description,
+                    visual_style=visual_style,
                 )
             )
         else:
@@ -36850,6 +36883,7 @@ def _run_main(
                     subject_descriptions=canonical_subject_descriptions,
                     loras=global_loras,
                     prior_detailed_description=prior_clothing_reference_description,
+                    visual_style=visual_style,
                 )
             )
         if changed_character_references:
