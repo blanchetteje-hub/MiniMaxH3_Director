@@ -178,7 +178,8 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         )
         self.assertIn(
             "<Subject 2> is Stranger, male (S2), created in generated video "
-            "segment 1. continued from <Video 1>.",
+            "segment 1. The subject's opening appearance and position are "
+            "anchored by the supplied opening guide.",
             subject_text,
         )
 
