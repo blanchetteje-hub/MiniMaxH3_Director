@@ -205,7 +205,7 @@ class H3ContinuityBoundaryTests(unittest.TestCase):
                 )
 
                 self.assertIn(action, prompt)
-                self.assertEqual(prompt.count("Live-action, cinematic"), 1)
+                self.assertEqual(prompt.count("Live-Action cinematic"), 1)
                 self.assertEqual(
                     prompt.count("seamless continuation"),
                     1,
@@ -228,7 +228,7 @@ class H3ContinuityBoundaryTests(unittest.TestCase):
 
         self.assertNotIn("the camera continues from the previous shot", prompt)
         self.assertIn("Amy runs toward the door", prompt)
-        self.assertEqual(prompt.count("Live-action, cinematic"), 1)
+        self.assertEqual(prompt.count("Live-Action cinematic"), 1)
 
 
 if __name__ == "__main__":

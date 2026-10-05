@@ -725,3 +725,10 @@ travel (for example doorway -> back table in 1.5s) still reaches the existing
 timing-feasibility LLM unchanged. Prop/state semantic retries are also
 unchanged.
 
+### 2026-10-05 — run-level H3 visual style
+
+- Added `--visual-style "STYLE"` with default `Live-Action cinematic`.
+- Python now owns the global visual-style prefix at the final H3 assembly boundary. Every final `detailed_description` begins `[Shot 1] {visual_style}, ...`; Request 2 is told not to invent or repeat a global style phrase.
+- The historical `Live-action, cinematic` formatter prefix is stripped if it still appears, then the configured style is inserted once.
+- The style is saved in generation-state/run config and `generated_prompts.txt` metadata. Resume/repair reuse the saved style unless `--visual-style` explicitly overrides it.
+- The desktop UI exposes Visual style and passes it to `minimax.py` as one subprocess argv element, so spaces require no platform-specific quoting inside the app.

@@ -992,11 +992,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )[0]
         self.assertTrue(
             description.startswith(
-                "[Shot 1] Live-action, cinematic, seamless continuation."
+                "[Shot 1] Live-Action cinematic, seamless continuation."
                 " Mark opens the door."
             )
         )
-        self.assertEqual(description.count("Live-action, cinematic"), 1)
+        self.assertEqual(description.count("Live-Action cinematic"), 1)
         self.assertNotIn("camera pushes in", description.lower())
         self.assertIn("camera pans right", description.lower())
 

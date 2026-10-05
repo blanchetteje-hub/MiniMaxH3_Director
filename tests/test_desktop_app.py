@@ -97,6 +97,17 @@ class DesktopBridgeTests(unittest.TestCase):
                     else:
                         self.assertIn("--" + mode, bridge.build_command(settings))
 
+    def test_visual_style_is_passed_as_one_cli_argument(self):
+        command = self.make_bridge().build_command(dict(
+            BASE_SETTINGS,
+            visual_style="hand-painted storybook animation",
+        ))
+        index = command.index("--visual-style")
+        self.assertEqual(
+            command[index + 1],
+            "hand-painted storybook animation",
+        )
+
     def test_render_uses_package_without_duration_settings(self):
         command = self.make_bridge().build_command({"generation_mode": "render_only"})
         self.assertEqual(command[3], "--generate-from-prompts")

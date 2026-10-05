@@ -416,6 +416,7 @@ BEAT_VALIDATION_STATE_VERSION = 3
 # or validator behavior.
 BENCHMARK_SEED = 42
 DEFAULT_STORY_TEMPERATURE = 0.4
+DEFAULT_VISUAL_STYLE = "Live-Action cinematic"
 DEFAULT_REFRESH_INTERVAL = 999
 REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
 
@@ -1218,9 +1219,10 @@ Rules:
 - Do not invent actions, props, people, injuries, locations, sounds, camera
   movements, reactions, visual details, or consequences. Do not advance the
   next beat. Make only the grammatical changes needed for a coherent prompt.
-- Use one [Shot 1]. Keep `Live-action, cinematic` as the default only when no
-  other style is supplied, and use it no more than once. For continuation
-  segments, do not re-narrate the previous final frame or duplicate its opener.
+- Use one [Shot 1]. Do not add a global visual style phrase; Python inserts
+  the configured run-level visual style immediately after [Shot 1]. For
+  continuation segments, do not re-narrate the previous final frame or
+  duplicate its opener.
 - overall_soundscape may contain only sounds supported by RAW SCENE or directly
   relevant visible actions. Do not perpetuate unrelated opening-state sounds.
 - non_diegetic_music is the formatter's one allowed creative finishing choice.
@@ -1553,11 +1555,11 @@ _H3_CONTINUATION_PREFIX_TEXT = (
 )
 
 _H3_APPEND_DESCRIPTION_PREFIX = (
-    "[Shot 1] Live-action, cinematic, seamless continuation."
+    "[Shot 1] seamless continuation."
 )
 
 _H3_CONTINUATION_STYLE_PREFIX_RE = re.compile(
-    r"^\s*(?:live-action\s*,\s*cinematic\s*(?:,|\.)\s*)+",
+    r"^\s*(?:live-action\s*,?\s*cinematic\s*(?:,|\.)?\s*)+",
     re.IGNORECASE,
 )
 
@@ -2153,10 +2155,24 @@ def h3_guide_tail_window(
 # Normalize command line.
 def normalize_command_line(arguments):
     normalized = []
+    preserve_next = False
     for argument in arguments:
+        text = str(argument)
+        if preserve_next:
+            if text.strip():
+                normalized.append(text.strip())
+            preserve_next = False
+            continue
+        if text == "--visual-style":
+            normalized.append(text)
+            preserve_next = True
+            continue
+        if text.startswith("--visual-style="):
+            normalized.append(text)
+            continue
         normalized.extend(
             piece.strip()
-            for piece in argument.split(",")
+            for piece in text.split(",")
             if piece.strip()
         )
     return normalized
@@ -2184,6 +2200,15 @@ def parse_args(arguments=None):
         help=(
             "temperature for the initial story-writing LLM call only "
             f"(default: {DEFAULT_STORY_TEMPERATURE:g})"
+        ),
+    )
+    parser.add_argument(
+        "--visual-style",
+        default=None,
+        metavar="STYLE",
+        help=(
+            "global visual rendering style inserted immediately after [Shot 1] "
+            f"in every H3 prompt (default: {DEFAULT_VISUAL_STYLE})"
         ),
     )
     parser.add_argument(
@@ -3402,7 +3427,9 @@ def build_run_config(
     test_prompt_generation=False,
     no_music=False,
     disable_subject_removal=False,
+    visual_style=DEFAULT_VISUAL_STYLE,
 ):
+    visual_style = normalize_visual_style(visual_style)
     # Auto-discovered video subjects are durable continuity metadata, not a
     # user edit to the creative source. Excluding those appended lines keeps a
     # resumable run's source fingerprint stable as its registry grows.
@@ -3441,6 +3468,7 @@ def build_run_config(
         "test_prompt_generation": bool(test_prompt_generation),
         "no_music": bool(no_music),
         "disable_subject_removal": bool(disable_subject_removal),
+        "visual_style": visual_style,
         "source_sha256": hashlib.sha256(source_payload).hexdigest(),
     }
 
@@ -21532,9 +21560,9 @@ def build_h3_formatter_messages(
             "pose. Do not invent or add a redundant opening-camera setup. Preserve "
             "every camera movement explicitly present in RAW SCENE at its original "
             "timestamp. The pinned guide owns the opening airlock; do not describe a "
-            "different composition during that interval. Do not repeat the words "
-            "'Live-action, cinematic' in the description; the final H3 prompt supplies "
-            "that opener.\n\n"
+            "different composition during that interval. Do not add a global visual "
+            "style phrase; Python inserts the configured run-level visual style "
+            "immediately after [Shot 1].\n\n"
         )
     else:
         continuation_opening_rule = ""
@@ -27598,6 +27626,42 @@ def ensure_h3_continuous_take_instruction(description):
     ).strip()
 
 
+# Normalize the run-level visual style into one concise phrase.
+def normalize_visual_style(value):
+    style = " ".join(str(value or "").split()).strip(" ,.;:")
+    return style or DEFAULT_VISUAL_STYLE
+
+
+# Insert the configured style immediately after the canonical Shot 1 label.
+def inject_h3_visual_style(description, visual_style=DEFAULT_VISUAL_STYLE):
+    text = str(description or "").strip()
+    style = normalize_visual_style(visual_style)
+    if not text:
+        return f"[Shot 1] {style}"
+
+    match = re.match(
+        r"^\s*\[\s*Shot\s+1\s*\]\s*",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if match is None:
+        return f"[Shot 1] {style}, {text}"
+
+    body = text[match.end():].lstrip()
+    # Strip the historical hard-coded default if an older formatter still
+    # emits it. Python is now the sole owner of the run-level visual style.
+    body = _H3_CONTINUATION_STYLE_PREFIX_RE.sub("", body, count=1).strip()
+
+    style_prefix = re.compile(
+        rf"^{re.escape(style)}\s*[,.;:]?\s*",
+        re.IGNORECASE,
+    )
+    body = style_prefix.sub("", body, count=1).strip(" ,.;:")
+    if body:
+        return f"[Shot 1] {style}, {body}"
+    return f"[Shot 1] {style}"
+
+
 # Build h3 prompt.
 def build_h3_prompt(
     llm_result,
@@ -27615,6 +27679,7 @@ def build_h3_prompt(
     character_canon=None,
     starting_location="",
     retained_subject_ids=None,
+    visual_style=DEFAULT_VISUAL_STYLE,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -27860,6 +27925,7 @@ def build_h3_prompt(
                 if part
             )
     integrated = ensure_h3_continuous_take_instruction(integrated)
+    integrated = inject_h3_visual_style(integrated, visual_style)
     canonical_prompt_text = ""
     if segment_number is not None and int(segment_number) == 1:
         canonical_prompt_text = "\n".join(
@@ -32042,6 +32108,7 @@ def repair_existing_segment(
     story_path=STORY_FILE,
     input_directory=None,
     no_music=False,
+    visual_style=None,
 ):
     """Rerender one checkpointed middle segment without changing semantic state."""
 
@@ -32053,6 +32120,11 @@ def repair_existing_segment(
             f"{generation_state_path}"
         ) from None
     repair = validate_repair_checkpoint(generation_state, segment_number)
+    repair_visual_style = normalize_visual_style(
+        visual_style
+        if visual_style is not None
+        else repair["config"].get("visual_style", DEFAULT_VISUAL_STYLE)
+    )
     duration, megapixels = get_repair_render_settings(
         repair["config"],
         segment_number,
@@ -32241,6 +32313,7 @@ def repair_existing_segment(
         conditioning_mode=conditioning_mode,
         excluded_picture_ids=excluded_picture_ids,
         continuity_state=opening_state,
+        visual_style=repair_visual_style,
     )
 
     console_log()
@@ -35454,6 +35527,8 @@ def _run_main(
         getattr(args, "temp", DEFAULT_STORY_TEMPERATURE)
     )
     configure_formatter(getattr(args, "model", "gpt"))
+    requested_visual_style = getattr(args, "visual_style", None)
+    visual_style = normalize_visual_style(requested_visual_style)
     global_loras = normalize_lora_list(getattr(args, "lora", ()))
     lora_directory = getattr(args, "lora_dir", LORA_DIRECTORY)
     repair_segment = getattr(args, "repair", None)
@@ -35465,6 +35540,7 @@ def _run_main(
             steps=args.steps,
             global_loras=global_loras,
             no_music=getattr(args, "no_music", False),
+            visual_style=requested_visual_style,
         )
     run_id = str(uuid.uuid4())
 
@@ -35674,6 +35750,7 @@ def _run_main(
     saved_prompt_prefix = []
     saved_reference_jobs = []
     saved_reference_file_token = ""
+    saved_visual_style = ""
     if resume_segment > 1 and os.path.isfile(GENERATED_PROMPTS_FILE):
         try:
             previous_payload = load_generated_prompts_file(
@@ -35697,6 +35774,9 @@ def _run_main(
                 saved_reference_file_token = str(
                     previous_config.get("reference_file_token") or ""
                 ).strip()
+                saved_visual_style = str(
+                    previous_config.get("visual_style") or ""
+                ).strip()
         except Exception as error:
             console_log(
                 f"WARNING: could not reuse saved prompt prefix during "
@@ -35704,6 +35784,9 @@ def _run_main(
                 "current resume point.",
                 flush=True,
             )
+    if requested_visual_style is None and saved_visual_style:
+        visual_style = normalize_visual_style(saved_visual_style)
+
     generated_prompts_payload = {
         "version": 1,
         "config": {
@@ -35714,6 +35797,7 @@ def _run_main(
             "trim_frames": trim_frames,
             "refresh_interval": refresh_interval,
             "total_segments": total_segments,
+            "visual_style": visual_style,
             "disable_subject_removal": bool(
                 getattr(args, "disable_subject_removal", False)
             ),
@@ -35764,6 +35848,7 @@ def _run_main(
         disable_subject_removal=bool(
             getattr(args, "disable_subject_removal", False)
         ),
+        visual_style=visual_style,
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
@@ -36844,6 +36929,7 @@ def _run_main(
             retained_subject_ids=segment_reference_binding_snapshot.get(
                 "active_subject_ids", []
             ),
+            visual_style=visual_style,
         )
         if (
             location_setting_description

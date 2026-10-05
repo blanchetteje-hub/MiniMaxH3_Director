@@ -2493,3 +2493,12 @@ structural constraints. The existing structure validator remains as a backstop.
 Physical/spatial timing feasibility and prop/state legality are unchanged and
 still use their existing semantic validation/retry behavior.
 
+### 2026-10-05 — deterministic run-level H3 visual style
+
+- Added the run-level CLI option `--visual-style "STYLE"`; default is `Live-Action cinematic`.
+- This is render/prompt metadata, not story semantics. It is deliberately excluded from the story/source fingerprint.
+- Final H3 assembly, not the formatter LLM, owns style placement. Python normalizes every final `detailed_description` to `[Shot 1] {visual_style}, ...`.
+- Legacy formatter output beginning `Live-action, cinematic` is removed at the final assembly boundary before the configured style is inserted, preventing duplicate style phrases.
+- `visual_style` is persisted in run config/generation state and generated-prompt package metadata. Resume and repair inherit the saved style when no explicit CLI override is supplied.
+- `normalize_command_line` preserves the value following `--visual-style` as one argument, including embedded commas. The desktop bridge already launches `minimax.py` with an argv list and now emits `["--visual-style", value]`, so Windows/Linux quoting differences do not leak into the app.
+- The desktop Generation settings UI exposes a Visual style text field; no additional text file is required.

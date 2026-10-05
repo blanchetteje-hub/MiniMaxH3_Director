@@ -27,8 +27,10 @@ from typing import Any
 from minimax import (
     DEFAULT_REFRESH_INTERVAL,
     DEFAULT_STORY_TEMPERATURE,
+    DEFAULT_VISUAL_STYLE,
     LORA_DIRECTORY,
     VIDEO_OUTPUT,
+    normalize_visual_style,
     parse_args,
     require_existing_beats,
 )
@@ -67,6 +69,7 @@ DEFAULT_SETTINGS = {
     "repair": "",
     "model": "gpt",
     "temp": str(DEFAULT_STORY_TEMPERATURE),
+    "visual_style": DEFAULT_VISUAL_STYLE,
     "first_frame": False,
     "loras": [],
     "beat_count": "",
@@ -346,6 +349,9 @@ class MiniMaxBridge:
             raise ValueError("Model formatter must be 'gpt', 'mistral', or 'qwen'.")
         validated["model"] = model
         validated["temp"] = _story_temperature(settings.get("temp", DEFAULT_STORY_TEMPERATURE))
+        validated["visual_style"] = normalize_visual_style(
+            settings.get("visual_style", DEFAULT_VISUAL_STYLE)
+        )
 
         repair_value = settings.get("repair")
         if repair_value not in (None, ""):
@@ -480,6 +486,8 @@ class MiniMaxBridge:
             str(values["vision_continuity"]),
             "--model",
             values["model"],
+            "--visual-style",
+            values["visual_style"],
         ]
         if render:
             # Timing and rendering options come from the saved prompt package.

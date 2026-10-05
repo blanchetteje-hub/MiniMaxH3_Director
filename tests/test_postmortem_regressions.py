@@ -763,6 +763,66 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertIn("reframe only through continuous camera movement", prompt)
 
+    def test_final_h3_prompt_injects_configured_visual_style_after_shot_one(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000, a lantern glows on the counter."
+                ),
+                "overall_soundscape": "soft room tone",
+                "non_diegetic_music": "quiet strings",
+            },
+            "",
+            segment_number=1,
+            conditioning_mode="initial",
+            visual_style="stop-motion clay animation",
+        )
+        description = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:",
+            1,
+        )[0]
+        self.assertTrue(
+            description.startswith(
+                "[Shot 1] stop-motion clay animation, "
+            )
+        )
+
+    def test_final_h3_prompt_replaces_legacy_default_style_without_duplication(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] Live-action, cinematic, "
+                    "At 00:00.000, Amy waits by the door."
+                ),
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+            },
+            "",
+            segment_number=1,
+            conditioning_mode="initial",
+            visual_style="hand-painted storybook animation",
+        )
+        description = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:",
+            1,
+        )[0]
+        self.assertTrue(
+            description.startswith(
+                "[Shot 1] hand-painted storybook animation, "
+            )
+        )
+        self.assertNotIn("Live-action, cinematic", description)
+
+    def test_visual_style_cli_preserves_commas_inside_one_argument(self):
+        args = minimax.parse_args([
+            "8",
+            "2",
+            "0.5",
+            "--visual-style",
+            "live-action, cinematic",
+        ])
+        self.assertEqual(args.visual_style, "live-action, cinematic")
+
     def test_character_reference_numbering_uses_active_picture_count(self):
         state = minimax.new_continuity_state()
         state["subjects"]["Amy"] = minimax.new_subject_continuity_record({
