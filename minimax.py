@@ -34495,7 +34495,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         flush=True,
                     )
                     request1_messages = build_request1_retry_messages(
-                        f"PHYSICAL/SPATIAL: {issue}"
+                        f"PHYSICAL/SPATIAL: Fix this physical/spatial problem: {issue}"
                     )
                     continue
 
@@ -34536,7 +34536,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         flush=True,
                     )
                     request1_messages = build_request1_retry_messages(
-                        f"PROP/STATE: {issue}"
+                        f"PROP/STATE: Fix this prop/state problem: {issue}"
                     )
                     continue
 
