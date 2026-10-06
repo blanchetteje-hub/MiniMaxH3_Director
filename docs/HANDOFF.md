@@ -938,3 +938,26 @@ extractors. The current location chain is the reference example:
 `static_setting_extract -> story_setting_spatial_refine -> story_setting_extract`.
 Keep the final JSON+render-text extractor combined for now, but consider splitting it
 into separate state and serialization calls if future local runs show interference.
+
+
+## 2026-10-06 — visible wait/progress logging
+
+Added user-visible progress logging so long blocking work no longer looks hung.
+
+- Every `ask_llm()` request logs its `history_metadata.purpose`, attempt number,
+  approximate input-token count, and output-token cap immediately before the HTTP call.
+- Completed LLM calls log elapsed wall time and the host `finish_reason`.
+- `wait_for_completion()` logs when a ComfyUI render wait begins, emits a heartbeat
+  every ~15 seconds while the prompt is still pending, and logs total render wait time
+  when it completes.
+- If the canonical spatial-setting extractor returns malformed JSON,
+  `parse_story_setting_description()` prints the complete raw extractor response before
+  raising the existing recoverable error. This is diagnostic only; JSON repair behavior
+  was intentionally not changed yet.
+
+Commit: `ceac63a2f9ee419e0b488dd5af01df4d397443e1`.
+
+Immediate local action: rerun the same command. If `story_setting_extract` still fails,
+capture the newly printed raw response; that will show whether GPT-OSS is emitting
+single-quoted/Python-style objects, commentary around JSON, truncation, or another format
+error before deciding whether parser/prompt repair is warranted.
