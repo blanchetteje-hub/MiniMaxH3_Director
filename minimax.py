@@ -18298,7 +18298,6 @@ def seed_initial_location_subjects(
             state["subjects"][name] = record
             added.append(name)
         record["position"] = initial_state
-        record["pose_action"] = initial_state
     return state, added
 
 
