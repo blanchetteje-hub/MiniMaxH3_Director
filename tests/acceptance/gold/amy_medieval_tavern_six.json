@@ -1,0 +1,131 @@
+{
+  "benchmark_version": 1,
+  "status": "locked_gold_baseline",
+  "story_id": "amy_medieval_tavern_six",
+  "purpose": "Six-segment 8-second live pipeline bridge acceptance for current subject/wardrobe/location/prop plumbing.",
+  "evaluator": "GPT-5.6 Sol",
+  "story_text": "The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale-scented oil. She wears a rough-spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.\n\nA beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.\n\nFrom the doorway, a dragon-shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.\n\nThe dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.\n\nFinally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.",
+  "global_rules": [
+    "Six segments exactly, eight seconds each.",
+    "Goblin is already present before its first beat; Elf and Dragon enter later.",
+    "No invented dialogue.",
+    "Preserve subject identity, canonical appropriate attire, location geometry, and movable-prop identity."
+  ],
+  "runtime_reference": "Current object-state-work live prompt-generation acceptance.",
+  "input_subjects": [
+    "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features."
+  ],
+  "beats": [
+    {
+      "beat": 1,
+      "mode": "initial",
+      "length_seconds": 8,
+      "must_happen": [
+        "Amy wipes a polished table with an ale-scented cloth.",
+        "Amy's medieval work clothing is visible.",
+        "Goblin may already be present because it has no entry point."
+      ],
+      "must_not_happen": [
+        "Elf must not already be present.",
+        "Dragon must not already be present.",
+        "No invented dialogue."
+      ],
+      "expected_end_state": [
+        "Amy remains inside the tavern near the wiped table.",
+        "Goblin is the only later-beat Subject eligible to have been present from story start."
+      ]
+    },
+    {
+      "beat": 2,
+      "mode": "append",
+      "length_seconds": 8,
+      "must_happen": [
+        "Goblin is already at the counter with one chipped mug.",
+        "Amy refills that mug from the barrel beside the hearth."
+      ],
+      "must_not_happen": [
+        "Goblin must not newly enter.",
+        "Mug must not change identity.",
+        "Elf and Dragon must not enter early."
+      ],
+      "expected_end_state": [
+        "Goblin remains in the tavern with the same mug.",
+        "Amy has completed the refill."
+      ]
+    },
+    {
+      "beat": 3,
+      "mode": "append",
+      "length_seconds": 8,
+      "must_happen": [
+        "Elf visibly steps into the tavern.",
+        "Elf takes a seat at the back table.",
+        "Amy serves the elf in a crystal chalice."
+      ],
+      "must_not_happen": [
+        "Elf must not have been present from frame zero.",
+        "No modern athletic clothing for the elf.",
+        "No duplicated serving container."
+      ],
+      "expected_end_state": [
+        "Elf is seated at the back table with the served chalice."
+      ]
+    },
+    {
+      "beat": 4,
+      "mode": "append",
+      "length_seconds": 8,
+      "must_happen": [
+        "Dragon visibly enters from the doorway.",
+        "Dragon moves onto the high bar stool.",
+        "Amy serves the dragon a special brew in one crystal cup."
+      ],
+      "must_not_happen": [
+        "Dragon must not have been present from story start.",
+        "Dragon must not teleport to the stool.",
+        "Do not invent clothing when appropriate attire is naturally unclothed."
+      ],
+      "expected_end_state": [
+        "Dragon is established at the high bar stool with its drink."
+      ]
+    },
+    {
+      "beat": 5,
+      "mode": "append",
+      "length_seconds": 8,
+      "must_happen": [
+        "Dragon takes a slow sip and exhales contentedly.",
+        "Amy wipes the bar with a fresh cloth."
+      ],
+      "must_not_happen": [
+        "Drink container must not change identity.",
+        "No extra hands or duplicated glasses.",
+        "No invented dialogue."
+      ],
+      "expected_end_state": [
+        "Dragon remains with the same drink container.",
+        "Amy has wiped the bar."
+      ]
+    },
+    {
+      "beat": 6,
+      "mode": "append",
+      "length_seconds": 8,
+      "must_happen": [
+        "Amy turns off the lanterns.",
+        "Amy operates the back-door latch.",
+        "Amy steps outside and closes/locks the tavern for the night."
+      ],
+      "must_not_happen": [
+        "No teleportation.",
+        "No invented unseen room geometry.",
+        "No reverse-walking patrons caused by continuity drift."
+      ],
+      "expected_end_state": [
+        "Amy is outside after closing and locking the tavern.",
+        "The tavern is shut for the night."
+      ]
+    }
+  ],
+  "acceptance_run": {}
+}
