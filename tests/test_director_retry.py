@@ -546,10 +546,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             ),
         )
         text = messages[0]["content"] + "\n" + messages[1]["content"]
-        self.assertIn("SUBJECT MOVEMENT AND PHYSICAL ACTION ORDER", text)
-        self.assertIn("doors, barriers, seats, supports", text)
-        self.assertIn("Harmless invented staging is allowed", text)
-        self.assertIn("Do not judge prop sources", text)
+        self.assertIn("Validate only subject movement in RAW", text)
+        self.assertIn("KNOWN SUBJECT STATE", text)
+        self.assertIn("does not need an entrance", text)
+        self.assertIn("changes support or elevation", text)
+        self.assertIn("Ignore prop identity", text)
 
 
     def test_request_one_retries_physically_incoherent_raw_scene(self):
