@@ -368,7 +368,7 @@ def seed_story_start_presence(
     *,
     location_id: str,
 ) -> dict[str, Any]:
-    """Seed complete frame-zero presence from the dedicated initial-location extractor."""
+    """Seed explicit story-start presence without inferring absence from omission."""
     validate_world_state(world_state)
     if location_id not in world_state["locations"]:
         raise ValueError("Story-start presence requires a registered location ID.")
@@ -428,46 +428,33 @@ def seed_story_start_presence(
             }
             subject_by_name[name_key] = subject_id
 
-    for name_key, subject_id in subject_by_name.items():
+    for name_key, initial_state in present_by_name.items():
+        subject_id = subject_by_name[name_key]
         subject = candidate["subjects"][subject_id]
-        should_be_present = name_key in present_by_name
-        desired_presence = "present" if should_be_present else "absent"
         prior_presence = subject["presence"]
         provenance = subject.setdefault("provenance", {})
         prior_presence_source = provenance.get("presence", {})
-        if prior_presence not in {UNKNOWN, desired_presence}:
+        if prior_presence not in {UNKNOWN, "present"}:
             raise ValueError(
                 f"Story-start authority conflicts with registered presence for {subject['name']!r}."
             )
-        if prior_presence == desired_presence and prior_presence != UNKNOWN:
+        if prior_presence == "present":
             if prior_presence_source.get("authority") != "initial_location_subject_extractor":
                 raise ValueError(
                     f"Story-start presence for {subject['name']!r} was established by another authority."
                 )
-        subject["presence"] = desired_presence
-        if should_be_present:
-            prior_location = subject["location_id"]
-            if prior_location not in {UNKNOWN, location_id}:
-                raise ValueError(
-                    f"Story-start location conflicts for Subject {subject['name']!r}."
-                )
-            subject["location_id"] = location_id
-            subject["support_id"] = None
-            provenance["presence"] = {
-                "authority": "initial_location_subject_extractor",
-                "initial_state": present_by_name[name_key],
-            }
-        else:
-            if subject["location_id"] not in {UNKNOWN, location_id}:
-                raise ValueError(
-                    f"Absent story-start Subject {subject['name']!r} has a conflicting location."
-                )
-            subject["location_id"] = UNKNOWN
-            subject["support_id"] = None
-            provenance["presence"] = {
-                "authority": "initial_location_subject_extractor",
-                "result": "not_present_at_story_start",
-            }
+        prior_location = subject["location_id"]
+        if prior_location not in {UNKNOWN, location_id}:
+            raise ValueError(
+                f"Story-start location conflicts for Subject {subject['name']!r}."
+            )
+        subject["presence"] = "present"
+        subject["location_id"] = location_id
+        subject["support_id"] = None
+        provenance["presence"] = {
+            "authority": "initial_location_subject_extractor",
+            "initial_state": initial_state,
+        }
     return _changed_revision(before, candidate)
 
 

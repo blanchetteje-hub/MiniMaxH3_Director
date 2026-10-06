@@ -380,7 +380,7 @@ class WorldStateSeedTests(unittest.TestCase):
         self.assertEqual(subject["identity"]["physical_form"], "humanoid")
         self.assertIn("humanoid", subject["identity"]["source_description"])
 
-    def test_story_start_presence_registers_goblin_and_leaves_later_arrivals_absent(self):
+    def test_story_start_presence_registers_only_explicitly_returned_subjects(self):
         state = new_world_state({"subjects": {
             "1": {"subject_id": 1, "name": "Elf", "gender": UNKNOWN, "picture_ids": []},
             "2": {"subject_id": 2, "name": "Dragon", "gender": UNKNOWN, "picture_ids": []},
@@ -397,8 +397,8 @@ class WorldStateSeedTests(unittest.TestCase):
         by_name = {item["name"]: item for item in state["subjects"].values()}
         self.assertEqual(by_name["Goblin"]["presence"], "present")
         self.assertEqual(by_name["Goblin"]["location_id"], location_id)
-        self.assertEqual(by_name["Elf"]["presence"], "absent")
-        self.assertEqual(by_name["Dragon"]["presence"], "absent")
+        self.assertEqual(by_name["Elf"]["presence"], UNKNOWN)
+        self.assertEqual(by_name["Dragon"]["presence"], UNKNOWN)
 
         entered = reduce_world_state(state, [{
             "action_id": "elf-entry", "op": "enter",
@@ -406,7 +406,27 @@ class WorldStateSeedTests(unittest.TestCase):
         }], segment_number=1)
         self.assertTrue(entered.committed)
         self.assertEqual(entered.world_state["subjects"]["subject_1"]["presence"], "present")
-        self.assertEqual(state["subjects"]["subject_1"]["presence"], "absent")
+        self.assertEqual(state["subjects"]["subject_1"]["presence"], UNKNOWN)
+
+    def test_omitted_subject_keeps_explicit_existing_absence_unchanged(self):
+        state = new_world_state({"subjects": {
+            "1": {"subject_id": 1, "name": "Elf", "gender": UNKNOWN, "picture_ids": []},
+            "2": {"subject_id": 2, "name": "Dragon", "gender": UNKNOWN, "picture_ids": []},
+        }})
+        state, location_id = seed_canonical_static_location_state(
+            state, {"location": {"name": "Interior"}, "anchors": [], "objects": []}
+        )
+        state["subjects"]["subject_2"]["presence"] = "absent"
+        state["subjects"]["subject_2"]["provenance"]["presence"] = {
+            "authority": "explicit_story_start_absence"
+        }
+        seeded = seed_story_start_presence(
+            state,
+            [{"name": "Goblin", "initial_state": "seated near the hearth"}],
+            location_id=location_id,
+        )
+        self.assertEqual(seeded["subjects"]["subject_1"]["presence"], UNKNOWN)
+        self.assertEqual(seeded["subjects"]["subject_2"]["presence"], "absent")
 
     def test_canonical_layered_wardrobe_adapts_without_a_second_model_call(self):
         wardrobes = minimax.world_state_wardrobes_from_character_canon({

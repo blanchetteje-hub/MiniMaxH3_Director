@@ -18393,7 +18393,7 @@ def build_story_location_messages(expanded_story):
 
 
 def build_initial_location_subjects_messages(beats, subject_definitions=""):
-    """Build a beat-plan-wide extractor for the complete story-start cast."""
+    """Build a tiny beat-plan-wide extractor for Subjects present before Beat 1."""
     numbered_beats = "\n".join(
         f"Beat {index}: {str(beat).strip()}"
         for index, beat in enumerate(beats or [], start=1)
@@ -18403,16 +18403,13 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
         {
             "role": "system",
             "content": (
-                'Return the complete list of Subjects already present before Beat 1, '
-                'including Subjects in EXISTING SUBJECT DEFINITIONS.\n\n'
+                'Return subjects defined in beats that have no entry point (IE entered, '
+                'walked in, etc.).\n\n'
                 'Example 1: "Beat 2: Jim leered over at Daisy from his seat." - Jim is '
-                'already there, so include Jim.\n'
+                'already there, so add Jim.\n'
                 'Example 2: "Beat 2: William walked in from the rain." - William enters '
-                'the scene, so exclude William from the story-start list.\n\n'
-                '- Include every authored Subject who is present before Beat 1 and every '
-                'other Subject whose presence before Beat 1 is established by the beats.\n'
-                '- Exclude later arrivals. The result is exhaustive; omitted Subjects are '
-                'absent at story start.\n'
+                'the scene, so don\'t add William.\n\n'
+                '- do not return a subject defined in EXISTING SUBJECT DEFINITIONS.\n'
                 '- include a one sentence initial_state. initial_state must be the minimal '
                 'physical location/pose supported by the beats; do not invent appearance, '
                 'clothing, motives, actions, or plot facts.\n'
@@ -18426,7 +18423,7 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
                 + (str(subject_definitions or "").strip() or "N/A")
                 + "\n\nALL BEATS\n"
                 + (numbered_beats or "N/A")
-                + "\n\nReturn the exhaustive story-start subjects list."
+                + "\n\nReturn exactly subjects."
             ),
         },
     ]
@@ -18504,7 +18501,7 @@ def extract_initial_location_subjects(
     history_metadata=None,
     attempts=3,
 ):
-    """Extract the complete Subject presence list at story start."""
+    """Infer only Subjects whose beat-plan state proves story-start presence."""
     if llm_request is None:
         llm_request = ask_llm
     if not beats:
@@ -18519,9 +18516,8 @@ def extract_initial_location_subjects(
         messages = [dict(message) for message in base_messages]
         if attempt > 1:
             messages[-1]["content"] += (
-                "\n\nRETRY: Return strict JSON only. Include every authored Subject and "
-                "other Subject already present before Beat 1; exclude later arrivals. "
-                "The list must be exhaustive. Keep "
+                "\n\nRETRY: Return strict JSON only. Include only Subjects proven to "
+                "already be present before Beat 1; do not include later arrivals. Keep "
                 "initial_state to location/pose only with no held props."
             )
         try:
@@ -18542,21 +18538,7 @@ def extract_initial_location_subjects(
                 f"(attempt {attempt}/{max_attempts}):\n{raw}",
                 flush=True,
             )
-            parsed = parse_initial_location_subjects(raw)
-            authored = parse_subject_registry(subject_definitions)
-            authored_by_key = {}
-            for record in authored.values():
-                authored_name = record.get("name")
-                authored_key = _subject_identity_key(authored_name)
-                authored_by_key[authored_key] = authored_name
-                authored_by_key[f"{authored_key}1"] = authored_name
-            for item in parsed:
-                canonical_name = authored_by_key.get(
-                    _subject_identity_key(item["name"])
-                )
-                if canonical_name:
-                    item["name"] = canonical_name
-            return parsed
+            return parse_initial_location_subjects(raw)
         except LLMConnectionError:
             raise
         except (TypeError, ValueError) as error:

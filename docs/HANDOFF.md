@@ -242,12 +242,13 @@ Authority-specific seed APIs in `world_state.py`:
 - `seed_predefined_subject_identities(world_state, subject_definitions_seed)`
   accepts only the parsed authored Subject identity seed.
 - `seed_story_start_presence(world_state, initial_location_subjects,
-  location_id=...)` consumes the complete dedicated story-start Subject
-  extractor result. Listed Subjects become present at the registered starting
-  location; registered Subjects omitted from this exhaustive result become
-  absent. Extractor-discovered Subjects receive stable Python IDs and unknown
-  identity fields. Later `enter` actions remain the state transition for an
-  arriving Subject.
+  location_id=...)` consumes the Subjects explicitly returned by the dedicated
+  story-start extractor. Returned Subjects become present at the registered
+  starting location; omitted Subjects are left unchanged, usually `unknown`.
+  The extractor intentionally excludes Subjects already in existing
+  definitions, so its omissions cannot establish absence. Extractor-discovered
+  Subjects receive stable Python IDs and unknown identity fields. Later `enter`
+  actions remain the state transition for an arriving Subject.
 - `seed_canonical_wardrobes(world_state, wardrobes_by_subject)` consumes only
   dedicated per-Subject wardrobe-extractor output. `minimax.py` adapts the
   canonical text deterministically into slot arrays of `{garment, condition}`
@@ -309,7 +310,8 @@ it does not expose or persist a candidate state. The live Director response
 format and generation call are unchanged.
 
 Gate C phase 1 tests cover story-start Goblin presence without an entrance,
-Elf/Dragon absence until entry, canonical layered wardrobe adaptation,
+Elf/Dragon unknown until an entrance action, preservation of explicitly seeded
+absence on omitted Subjects, canonical layered wardrobe adaptation,
 non-humanoid `N/A`, stable fixture/support IDs, one-placement explicit prop
 registration, exclusion of legacy/visual/RAW/accepted-beat data, and rejection
 of an unregistered Director ID. Focused validation:
