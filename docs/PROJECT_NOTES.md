@@ -2568,3 +2568,11 @@ Current location pipeline is the concrete example:
 This separation is intentional. If a bad object is promoted from story action into the room, fix the static-setting extractor; if the right objects are arranged badly, fix spatial refinement; if the spatial facts are correct but JSON/text serialization is wrong, fix the final extractor. Do not push corrective rules downstream when the failure belongs to an earlier stage.
 
 The final extractor still performs two closely related outputs (canonical JSON and text derived from that JSON). Keep it combined for now because the text is intended to be a direct serialization of the same state. If future runs show that the local model compromises either output while doing both, test splitting JSON-state creation and render-text serialization into separate single-purpose calls.
+
+
+### Extractor retry ownership
+
+Each small extractor owns its own bounded parse/content retry loop. A malformed result from one
+extractor must retry only that extractor using its already-computed input; it must not restart
+unrelated successful extraction stages. Mixed-output extractors must preserve raw model text until
+their stage-specific parser splits structured state from prose.
