@@ -997,3 +997,45 @@ Commit: `23cb452d509ee03cdcf594d2a9becdd9b95a9172`.
 Next local action: rerun the tavern case. A malformed final spatial response should produce another
 `story_setting_extract` call with attempt 2/3 without rerunning wardrobe/location/upstream setting
 extractors. Inspect the preserved full mixed response before deciding whether more context is needed.
+
+
+## 2026-10-06 — infer Subjects already present at story start
+
+Added one narrow beat-plan-wide extractor before Segment 1 state is frozen.
+
+Problem observed:
+- later beats can reveal that an animate actor was already in the starting location even when
+  Beat 1 never mentions them. Example: Beat 2 says a goblin is already seated, so generating
+  Segment 1 without that goblin causes an apparent pop-in in Segment 2.
+
+Implementation:
+- new deterministic `initial_location_subjects_extract` receives ALL finalized beats plus the
+  existing configured Subject definitions;
+- it returns only `subjects: [{name, initial_state}]`;
+- it is conservative: include only actors whose first in-location state implies prior presence
+  and for whom no earlier beat shows entry/arrival/new reveal;
+- unnamed actors receive stable functional Role1-style names such as `Goblin1`;
+- `initial_state` is limited to the minimal physical location/pose supported by the beats;
+  appearance, wardrobe, motive, and plot invention are forbidden;
+- the extractor owns its own three-attempt parse/content retry loop;
+- inferred story-start Subjects are inserted into the normal durable Subject registry with
+  `origin_segment=0`, rather than creating a parallel background-cast system;
+- their derived Subject definition says `present at story start` instead of
+  `continued from <Video 1>`;
+- Segment 1 receives a compact authoritative
+  `SUBJECTS ALREADY PRESENT AT STORY START` block in its opening context;
+- inferred state is stored as the Subject's opening `position`, so the Director/H3 path sees
+  them as physically existing from frame zero;
+- configured Subjects returned by the extractor are not duplicated; their existing record simply
+  receives the inferred opening position.
+
+Commits:
+- `8c8800a4c5afa294af4074e58b60fcf5a250426e` — extractor + Segment 1 integration
+- `58c44eae15f8db3257c5fcf5fd7cff5d5ab4609d` — keep inferred opening state minimal
+- `cedbedc400642a946090dc5a4237fd473463b86e` — focused regressions
+
+Next local acceptance: rerun the tavern beats. The console should show an
+`initial_location_subjects_extract` call and should report `Goblin1` as already present if
+the finalized beats still establish him as seated before any entry. Segment 1 Director context
+should then contain Goblin1's starting state, allowing his identity/reference to exist before
+Beat 2 rather than materializing there.
