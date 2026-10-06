@@ -6,10 +6,18 @@ from pathlib import Path
 import minimax
 from world_state import (
     UNKNOWN,
+    build_director_state_action_contract,
     empty_world_state,
     new_world_state,
+    parse_and_dry_run_director_state_actions,
     props_held_by,
+    register_explicit_persistent_props,
     reduce_world_state,
+    seed_canonical_static_location_state,
+    seed_canonical_wardrobes,
+    seed_predefined_subject_identities,
+    seed_story_start_presence,
+    stable_world_state_id,
     validate_state_actions,
     validate_world_state,
 )
@@ -371,6 +379,175 @@ class WorldStateSeedTests(unittest.TestCase):
 
         self.assertEqual(subject["identity"]["physical_form"], "humanoid")
         self.assertIn("humanoid", subject["identity"]["source_description"])
+
+    def test_story_start_presence_registers_goblin_and_leaves_later_arrivals_absent(self):
+        state = new_world_state({"subjects": {
+            "1": {"subject_id": 1, "name": "Elf", "gender": UNKNOWN, "picture_ids": []},
+            "2": {"subject_id": 2, "name": "Dragon", "gender": UNKNOWN, "picture_ids": []},
+        }})
+        state, location_id = seed_canonical_static_location_state(
+            state,
+            {"location": {"name": "Interior"}, "anchors": [], "objects": []},
+        )
+        state = seed_story_start_presence(
+            state,
+            [{"name": "Goblin", "initial_state": "seated near the hearth"}],
+            location_id=location_id,
+        )
+        by_name = {item["name"]: item for item in state["subjects"].values()}
+        self.assertEqual(by_name["Goblin"]["presence"], "present")
+        self.assertEqual(by_name["Goblin"]["location_id"], location_id)
+        self.assertEqual(by_name["Elf"]["presence"], "absent")
+        self.assertEqual(by_name["Dragon"]["presence"], "absent")
+
+        entered = reduce_world_state(state, [{
+            "action_id": "elf-entry", "op": "enter",
+            "subject_id": "subject_1", "location_id": location_id,
+        }], segment_number=1)
+        self.assertTrue(entered.committed)
+        self.assertEqual(entered.world_state["subjects"]["subject_1"]["presence"], "present")
+        self.assertEqual(state["subjects"]["subject_1"]["presence"], "absent")
+
+    def test_canonical_layered_wardrobe_adapts_without_a_second_model_call(self):
+        wardrobes = minimax.world_state_wardrobes_from_character_canon({
+            "characters": [{
+                "name": "Amy",
+                "clothing": "rough-spun shirt, brown trousers, worn leather shoes",
+            }]
+        })
+        self.assertEqual(wardrobes["Amy"]["upper"], [
+            {"garment": "rough-spun shirt", "condition": "unknown"}
+        ])
+        self.assertEqual(wardrobes["Amy"]["lower"], [
+            {"garment": "brown trousers", "condition": "unknown"}
+        ])
+        self.assertEqual(wardrobes["Amy"]["footwear"], [
+            {"garment": "leather shoes", "condition": "worn"}
+        ])
+        self.assertEqual(wardrobes["Amy"]["other"], [])
+        state = new_world_state({"subjects": {
+            "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
+        }})
+        seeded = seed_canonical_wardrobes(state, wardrobes)
+        self.assertEqual(seeded["subjects"]["subject_1"]["wardrobe"], wardrobes["Amy"])
+
+    def test_non_humanoid_canonical_n_a_wardrobe_is_preserved(self):
+        state = new_world_state({"subjects": {
+            "1": {
+                "subject_id": 1, "name": "Subject One", "gender": UNKNOWN,
+                "picture_ids": [], "physical_form": "non_humanoid",
+            },
+        }})
+        wardrobe = minimax.world_state_wardrobes_from_character_canon({
+            "characters": [{"name": "Subject One", "clothing": "N/A"}],
+        })
+        seeded = seed_canonical_wardrobes(state, wardrobe)
+        self.assertEqual(
+            seeded["subjects"]["subject_1"]["wardrobe"],
+            {slot: "N/A" for slot in ("upper", "lower", "footwear", "other")},
+        )
+        validate_world_state(seeded)
+
+    def test_static_fixture_and_support_ids_are_stable_and_python_generated(self):
+        source = {
+            "location": {"name": "Hall"},
+            "anchors": [{"name": "north door", "type": "door"}],
+            "objects": [{
+                "name": "bench", "type": "wooden bench",
+                "world_state_role": "fixture_support", "mobility": "fixed",
+            }, {
+                "name": "loose cup", "type": "cup", "world_state_role": "untracked",
+            }],
+        }
+        first, location_id = seed_canonical_static_location_state(empty_world_state(), source)
+        second, second_location_id = seed_canonical_static_location_state(empty_world_state(), source)
+        self.assertEqual(location_id, second_location_id)
+        self.assertEqual(set(first["props"]), set(second["props"]))
+        self.assertEqual(len(first["props"]), 2)
+        kinds = {prop["name"]: prop["kind"] for prop in first["props"].values()}
+        self.assertEqual(kinds, {"north door": "fixture", "bench": "fixture_support"})
+        self.assertTrue(all(key.startswith("prop_") for key in first["props"]))
+        self.assertEqual(
+            stable_world_state_id("location", "Hall"),
+            stable_world_state_id("location", "  hall  "),
+        )
+
+    def test_explicit_persistent_prop_registration_requires_and_sets_one_placement(self):
+        state, location_id = seed_canonical_static_location_state(
+            empty_world_state(),
+            {"location": {"name": "Room"}, "anchors": [], "objects": []},
+        )
+        state = register_explicit_persistent_props(state, [{
+            "name": "silver key", "kind": "object", "mobility": "movable",
+            "needed_for_state": True, "reason": "It is picked up and carried across segments.",
+            "location_id": location_id,
+        }])
+        self.assertEqual(len(state["props"]), 1)
+        prop = next(iter(state["props"].values()))
+        self.assertEqual(prop["placement"], {"kind": "located", "location_id": location_id})
+        self.assertNotIn("holder_subject_id", prop["placement"])
+        with self.assertRaisesRegex(ValueError, "only when explicitly needed"):
+            register_explicit_persistent_props(state, [{
+                "name": "cup", "kind": "object", "mobility": "movable",
+                "needed_for_state": False, "reason": "ordinary detail", "location_id": location_id,
+            }])
+        with self.assertRaisesRegex(ValueError, "assigned by Python"):
+            register_explicit_persistent_props(state, [{
+                "id": "invented", "name": "cup", "kind": "object", "mobility": "movable",
+                "needed_for_state": True, "reason": "cross-segment action", "location_id": location_id,
+            }])
+
+    def test_legacy_visual_raw_and_accepted_state_do_not_seed_world_state(self):
+        state = minimax.new_generation_state({
+            "world_state_seed": {"subjects": {}},
+            "continuity_state": {"subjects": {"Legacy": {"position": "here"}}},
+            "accepted_beat_state": {"subjects": {"Legacy": {"location": "there"}}},
+            "raw_scene": "Legacy picks up a coin.",
+            "visual_observation": {"subjects": {"Legacy": {"presence": "present"}}},
+            "subject_state_ledger": {"Legacy": {"presence": "present"}},
+            "prop_ledger": {"coin": {"holder": "Legacy"}},
+        })
+        self.assertEqual(state["world_state"]["subjects"], {})
+        self.assertEqual(state["world_state"]["props"], {})
+        self.assertEqual(state["world_state"]["locations"], {})
+
+    def test_director_contract_uses_only_registered_ids_and_dry_runs_same_response(self):
+        state = new_world_state({"subjects": {
+            "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
+        }})
+        state, location_id = seed_canonical_static_location_state(
+            state, {"location": {"name": "Room"}, "anchors": [], "objects": []}
+        )
+        state = seed_story_start_presence(
+            state, [{"name": "Amy", "initial_state": "standing"}], location_id=location_id
+        )
+        contract = build_director_state_action_contract(state)
+        self.assertEqual([item["id"] for item in contract["vocabulary"]["subjects"]], ["subject_1"])
+        self.assertEqual([item["id"] for item in contract["vocabulary"]["locations"]], [location_id])
+        self.assertIn("never invent entity IDs", contract["instruction"])
+        schema = contract["response_format"]["json_schema"]["schema"]
+        self.assertIn("raw_scene", schema["required"])
+        self.assertIn("state_actions", schema["required"])
+
+        response = {
+            "raw_scene": "Amy stays in the room.",
+            "finite_activity_complete": True,
+            "named_beneficiaries_complete": True,
+            "activity_tools_settled": True,
+            "beat_complete": True,
+            "state_actions": [{
+                "action_id": "invented-ref",
+                "op": "enter",
+                "subject_id": "subject_not_registered",
+                "location_id": location_id,
+            }],
+        }
+        result = parse_and_dry_run_director_state_actions(
+            state, response, segment_number=1
+        )
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["outcomes"][0].code, "unknown_entity_id")
+        self.assertEqual(state["subjects"]["subject_1"]["presence"], "present")
 
 
 def make_reducer_state():

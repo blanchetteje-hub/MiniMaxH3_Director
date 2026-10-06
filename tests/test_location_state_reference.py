@@ -138,10 +138,12 @@ A rectangular tavern interior.
         )
         system = messages[0]["content"]
         user = messages[1]["content"]
-        self.assertIn("Return subjects defined in beats that have no entry point", system)
-        self.assertIn("Jim is already there, so add Jim", system)
-        self.assertIn("William enters the scene, so don't add William", system)
-        self.assertIn("do not return a subject defined in EXISTING SUBJECT DEFINITIONS", system)
+        self.assertIn("complete list of Subjects already present before Beat 1", system)
+        self.assertIn("including Subjects in EXISTING SUBJECT DEFINITIONS", system)
+        self.assertIn("Jim is already there, so include Jim", system)
+        self.assertIn("William enters the scene, so exclude William", system)
+        self.assertIn("The result is exhaustive", system)
+        self.assertNotIn("do not return a subject defined in EXISTING SUBJECT DEFINITIONS", system)
         self.assertIn("initial_state must be the minimal physical location/pose", system)
         self.assertIn("do not invent appearance, clothing, motives, actions, or plot facts", system)
         self.assertIn("Beat 2: A goblin already seated near the hearth", user)
@@ -169,6 +171,28 @@ A rectangular tavern interior.
             request.call_args_list[1].kwargs["history_metadata"]["attempt"],
             2,
         )
+
+    def test_initial_location_extractor_restores_authored_subject_spelling(self):
+        result = minimax.extract_initial_location_subjects(
+            ["Amy stands behind the counter."],
+            "<Subject 1> is Amy (S1).",
+            llm_request=lambda *_args, **_kwargs: {
+                "subjects": [{"name": "amy", "initial_state": "standing behind the counter"}]
+            },
+        )
+        self.assertEqual(result, [{
+            "name": "Amy", "initial_state": "standing behind the counter"
+        }])
+
+    def test_location_state_prompt_labels_only_needed_fixtures_and_supports(self):
+        messages = minimax.build_story_setting_description_messages(
+            "A room with a fixed bench and a loose cup."
+        )
+        system = messages[0]["content"]
+        self.assertIn('"world_state_role"', system)
+        self.assertIn('"mobility"', system)
+        self.assertIn("only identify persistent fixtures/supports needed for cross-segment", system)
+        self.assertIn("Do not create IDs", system)
 
     def test_dynamic_subject_wardrobe_uses_independent_story_extractor(self):
         state = minimax.new_continuity_state()

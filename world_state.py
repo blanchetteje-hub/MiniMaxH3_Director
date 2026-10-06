@@ -1,15 +1,19 @@
 """Canonical Python-owned world-state schema and authoritative seed boundary.
 
 This module intentionally contains no continuity, prompt, beat, or visual-state
-migration. During the staged migration, only parsed user-authored subject
-definitions may seed subject identity. Physical facts remain explicitly
-unknown until a later approved state-action phase supplies them.
+migration. WorldState is seeded only through explicit authority-specific
+functions for authored identities, story-start presence, canonical wardrobe,
+canonical static locations, and registered persistent props. Director actions
+can be dry-run through the reducer contract but are not committed here.
 """
 
 from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+import hashlib
+import json
+import re
 from typing import Any
 
 
@@ -190,6 +194,408 @@ def new_world_state(seed: dict[str, Any] | None = None) -> dict[str, Any]:
     }
     validate_world_state(world_state)
     return world_state
+
+
+def stable_world_state_id(namespace: str, label: str, *, scope: str = "") -> str:
+    """Create a deterministic Python-owned ID from an authoritative label."""
+    if not isinstance(namespace, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", namespace):
+        raise ValueError("WorldState ID namespace must be a lowercase identifier.")
+    normalized_label = " ".join(str(label or "").split()).strip().casefold()
+    normalized_scope = " ".join(str(scope or "").split()).strip().casefold()
+    if not normalized_label:
+        raise ValueError("WorldState IDs require a non-empty authoritative label.")
+    slug = re.sub(r"[^a-z0-9]+", "_", normalized_label).strip("_")[:32] or "entity"
+    digest = hashlib.sha256(
+        f"{namespace}\0{normalized_scope}\0{normalized_label}".encode("utf-8")
+    ).hexdigest()[:12]
+    return f"{namespace}_{slug}_{digest}"
+
+
+def _changed_revision(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    if after != before:
+        after["revision"] = before["revision"] + 1
+    validate_world_state(after)
+    return after
+
+
+def _name_key(value: Any) -> str:
+    return " ".join(str(value or "").split()).strip().casefold()
+
+
+def _seed_prop_record(
+    prop_id: str,
+    name: str,
+    kind: str,
+    mobility: str,
+    placement: dict[str, Any],
+    *,
+    contents: list[dict[str, Any]] | None = None,
+    capabilities: dict[str, Any] | None = None,
+    mechanism_state: str = UNKNOWN,
+    provenance: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "id": prop_id,
+        "name": name,
+        "kind": kind,
+        "mobility": mobility,
+        "status": "present",
+        "placement": deepcopy(placement),
+        "contents": deepcopy(contents or []),
+        "capabilities": {
+            field: UNKNOWN for field in CAPABILITY_FIELDS
+        } | deepcopy(capabilities or {}),
+        "mechanism_state": mechanism_state,
+        "condition": UNKNOWN,
+        "provenance": deepcopy(provenance or {}),
+    }
+
+
+def seed_predefined_subject_identities(
+    world_state: dict[str, Any],
+    subject_definitions_seed: dict[str, Any],
+) -> dict[str, Any]:
+    """Add only identities parsed from authored Subject definitions."""
+    validate_world_state(world_state)
+    authoritative = new_world_state(subject_definitions_seed)
+    before = deepcopy(world_state)
+    candidate = deepcopy(world_state)
+    by_name = {_name_key(item.get("name")): key for key, item in candidate["subjects"].items()}
+    for subject_id, subject in authoritative["subjects"].items():
+        existing = candidate["subjects"].get(subject_id)
+        if existing is not None:
+            if existing["name"] != subject["name"] or existing["identity"] != subject["identity"]:
+                raise ValueError(f"Authored identity conflicts with registered Subject {subject_id!r}.")
+            continue
+        name_key = _name_key(subject["name"])
+        if name_key in by_name:
+            raise ValueError(f"Authored Subject name {subject['name']!r} is already registered.")
+        candidate["subjects"][subject_id] = deepcopy(subject)
+        by_name[name_key] = subject_id
+    if candidate["source_sha256"] == UNKNOWN:
+        candidate["source_sha256"] = authoritative["source_sha256"]
+    return _changed_revision(before, candidate)
+
+
+def seed_canonical_static_location_state(
+    world_state: dict[str, Any],
+    location_state: dict[str, Any],
+    *,
+    location_name: str = "",
+) -> tuple[dict[str, Any], str]:
+    """Seed one structured location and explicitly classified static fixtures.
+
+    Anchors from the canonical location pipeline are fixed fixtures by
+    definition. Entries in `objects` are registered only when the pipeline
+    explicitly labels their `world_state_role` as fixture/support/fixture_support.
+    """
+    validate_world_state(world_state)
+    if not isinstance(location_state, dict):
+        raise ValueError("Canonical location state must be an object.")
+    loc_record = location_state.get("location")
+    if not isinstance(loc_record, dict):
+        raise ValueError("Canonical location state requires a location object.")
+    name = " ".join(str(location_name or loc_record.get("name") or "").split()).strip()
+    if not name:
+        raise ValueError("Canonical location state requires a location name.")
+    anchors = location_state.get("anchors", [])
+    objects = location_state.get("objects", [])
+    if not isinstance(anchors, list) or not isinstance(objects, list):
+        raise ValueError("Canonical location anchors and objects must be arrays.")
+
+    before = deepcopy(world_state)
+    candidate = deepcopy(world_state)
+    location_id = stable_world_state_id("location", name)
+    existing_location = candidate["locations"].get(location_id)
+    location_record = {"id": location_id, "name": name}
+    if existing_location is not None and existing_location != location_record:
+        raise ValueError(f"Stable location ID collision for {name!r}.")
+    candidate["locations"][location_id] = location_record
+
+    entries: list[tuple[str, dict[str, Any], bool]] = [
+        ("anchors", item, True) for item in anchors
+    ] + [("objects", item, False) for item in objects]
+    for source_field, item, is_anchor in entries:
+        if not isinstance(item, dict):
+            continue
+        item_name = " ".join(str(item.get("name") or "").split()).strip()
+        if not item_name:
+            continue
+        role = item.get("world_state_role")
+        if is_anchor and role is None:
+            role = "fixture"
+        if role not in {"fixture", "support", "fixture_support"}:
+            continue
+        prop_kind = role
+        mobility = item.get("mobility")
+        if mobility not in MOBILITY_VALUES:
+            mobility = "fixed" if role in {"fixture", "fixture_support"} else UNKNOWN
+        type_name = " ".join(str(item.get("type") or "").split()).strip()
+        identity = "|".join((location_id, prop_kind, item_name, type_name))
+        prop_id = stable_world_state_id("prop", identity)
+        placement = {"kind": "located", "location_id": location_id}
+        capabilities = item.get("capabilities")
+        if not isinstance(capabilities, dict):
+            capabilities = {}
+        capabilities = {
+            key: value for key, value in capabilities.items()
+            if key in CAPABILITY_FIELDS
+        }
+        prop = _seed_prop_record(
+            prop_id,
+            item_name,
+            prop_kind,
+            mobility,
+            placement,
+            capabilities=capabilities,
+            provenance={"registration": {
+                "authority": "canonical_location_state",
+                "source_field": source_field,
+                "source_type": type_name or UNKNOWN,
+            }},
+        )
+        existing_prop = candidate["props"].get(prop_id)
+        if existing_prop is not None and existing_prop != prop:
+            raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
+        candidate["props"][prop_id] = prop
+
+    return _changed_revision(before, candidate), location_id
+
+
+def seed_story_start_presence(
+    world_state: dict[str, Any],
+    initial_location_subjects: list[dict[str, Any]],
+    *,
+    location_id: str,
+) -> dict[str, Any]:
+    """Seed complete frame-zero presence from the dedicated initial-location extractor."""
+    validate_world_state(world_state)
+    if location_id not in world_state["locations"]:
+        raise ValueError("Story-start presence requires a registered location ID.")
+    if not isinstance(initial_location_subjects, list):
+        raise ValueError("Initial-location Subject results must be an array.")
+    present_by_name: dict[str, str] = {}
+    for item in initial_location_subjects:
+        if not isinstance(item, dict):
+            raise ValueError("Initial-location Subject entries must be objects.")
+        name = " ".join(str(item.get("name") or "").split()).strip()
+        initial_state = " ".join(str(item.get("initial_state") or "").split()).strip()
+        if not name or not initial_state:
+            raise ValueError("Initial-location Subjects require name and initial_state.")
+        key = _name_key(name)
+        if key in present_by_name:
+            raise ValueError(f"Duplicate initial-location Subject {name!r}.")
+        present_by_name[key] = initial_state
+
+    before = deepcopy(world_state)
+    candidate = deepcopy(world_state)
+    subject_by_name = {
+        _name_key(subject.get("name")): subject_id
+        for subject_id, subject in candidate["subjects"].items()
+    }
+    for name_key, initial_state in present_by_name.items():
+        if name_key not in subject_by_name:
+            name = next(
+                " ".join(str(item["name"]).split()).strip()
+                for item in initial_location_subjects
+                if _name_key(item["name"]) == name_key
+            )
+            subject_id = stable_world_state_id("subject", name)
+            if subject_id in candidate["subjects"]:
+                raise ValueError(f"Stable Subject ID collision for {name!r}.")
+            candidate["subjects"][subject_id] = {
+                "id": subject_id,
+                "subject_id": subject_id,
+                "name": name,
+                "identity": {
+                    "gender": UNKNOWN,
+                    "picture_ids": [],
+                    "canonical_description": UNKNOWN,
+                    "source_description": UNKNOWN,
+                    "physical_form": UNKNOWN,
+                    "clothing_applicability": UNKNOWN,
+                },
+                "presence": UNKNOWN,
+                "location_id": UNKNOWN,
+                "support_id": None,
+                "posture": UNKNOWN,
+                "wardrobe": {slot: UNKNOWN for slot in WARDROBE_SLOTS},
+                "persistent_condition": UNKNOWN,
+                "status": UNKNOWN,
+                "provenance": {"identity": {
+                    "authority": "initial_location_subject_extractor_name_only",
+                }},
+            }
+            subject_by_name[name_key] = subject_id
+
+    for name_key, subject_id in subject_by_name.items():
+        subject = candidate["subjects"][subject_id]
+        should_be_present = name_key in present_by_name
+        desired_presence = "present" if should_be_present else "absent"
+        prior_presence = subject["presence"]
+        provenance = subject.setdefault("provenance", {})
+        prior_presence_source = provenance.get("presence", {})
+        if prior_presence not in {UNKNOWN, desired_presence}:
+            raise ValueError(
+                f"Story-start authority conflicts with registered presence for {subject['name']!r}."
+            )
+        if prior_presence == desired_presence and prior_presence != UNKNOWN:
+            if prior_presence_source.get("authority") != "initial_location_subject_extractor":
+                raise ValueError(
+                    f"Story-start presence for {subject['name']!r} was established by another authority."
+                )
+        subject["presence"] = desired_presence
+        if should_be_present:
+            prior_location = subject["location_id"]
+            if prior_location not in {UNKNOWN, location_id}:
+                raise ValueError(
+                    f"Story-start location conflicts for Subject {subject['name']!r}."
+                )
+            subject["location_id"] = location_id
+            subject["support_id"] = None
+            provenance["presence"] = {
+                "authority": "initial_location_subject_extractor",
+                "initial_state": present_by_name[name_key],
+            }
+        else:
+            if subject["location_id"] not in {UNKNOWN, location_id}:
+                raise ValueError(
+                    f"Absent story-start Subject {subject['name']!r} has a conflicting location."
+                )
+            subject["location_id"] = UNKNOWN
+            subject["support_id"] = None
+            provenance["presence"] = {
+                "authority": "initial_location_subject_extractor",
+                "result": "not_present_at_story_start",
+            }
+    return _changed_revision(before, candidate)
+
+
+def seed_canonical_wardrobes(
+    world_state: dict[str, Any],
+    wardrobes_by_subject: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Seed only dedicated canonical wardrobe extractor output, never ledgers."""
+    validate_world_state(world_state)
+    if not isinstance(wardrobes_by_subject, dict):
+        raise ValueError("Canonical wardrobe seed must be an object keyed by Subject name.")
+    before = deepcopy(world_state)
+    candidate = deepcopy(world_state)
+    names = {_name_key(subject["name"]): subject for subject in candidate["subjects"].values()}
+    for name, wardrobe in wardrobes_by_subject.items():
+        subject = names.get(_name_key(name))
+        if subject is None:
+            raise ValueError(f"Canonical wardrobe references unregistered Subject {name!r}.")
+        if not isinstance(wardrobe, dict):
+            raise ValueError(f"Canonical wardrobe for {name!r} must be an object.")
+        for slot, value in wardrobe.items():
+            if slot not in WARDROBE_SLOTS:
+                raise ValueError(f"Canonical wardrobe has unsupported slot {slot!r}.")
+            if value == UNKNOWN:
+                continue
+            if value != "N/A" and not isinstance(value, list):
+                raise ValueError(f"Canonical wardrobe slot {slot!r} must be N/A or garment records.")
+            if isinstance(value, list):
+                value = deepcopy(value)
+            previous = subject["wardrobe"][slot]
+            if previous != UNKNOWN and previous != value:
+                raise ValueError(
+                    f"Canonical wardrobe cannot overwrite established {slot!r} attire for {name!r}."
+                )
+            subject["wardrobe"][slot] = value
+            subject.setdefault("provenance", {})[f"wardrobe.{slot}"] = {
+                "authority": "dedicated_subject_wardrobe_extractor",
+            }
+    return _changed_revision(before, candidate)
+
+
+def register_explicit_persistent_props(
+    world_state: dict[str, Any],
+    prop_registry: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Register only explicitly established props needed for persistent state.
+
+    Python generates every prop ID. Each registry entry must include an explicit
+    `needed_for_state: true` and a reason; model-created IDs are rejected.
+    """
+    validate_world_state(world_state)
+    if not isinstance(prop_registry, list):
+        raise ValueError("Persistent prop registry must be an array.")
+    before = deepcopy(world_state)
+    candidate = deepcopy(world_state)
+    for entry in prop_registry:
+        if not isinstance(entry, dict):
+            raise ValueError("Persistent prop registry entries must be objects.")
+        allowed = {
+            "name", "kind", "mobility", "needed_for_state", "reason",
+            "location_id", "holder_subject_id", "support_id", "contents",
+            "capabilities", "mechanism_state",
+        }
+        extra = set(entry) - allowed - {"id"}
+        if extra:
+            raise ValueError(
+                "Persistent prop registration contains unsupported fields: "
+                + ", ".join(sorted(extra))
+            )
+        if "id" in entry:
+            raise ValueError("Persistent prop IDs are assigned by Python, not registry input.")
+        required = {"name", "kind", "mobility", "needed_for_state", "reason"}
+        if not required.issubset(entry):
+            raise ValueError("Persistent props require name, kind, mobility, needed_for_state, and reason.")
+        if entry.get("needed_for_state") is not True:
+            raise ValueError("A prop may be registered only when explicitly needed for state reasoning.")
+        name = " ".join(str(entry.get("name") or "").split()).strip()
+        reason = " ".join(str(entry.get("reason") or "").split()).strip()
+        kind = entry.get("kind")
+        mobility = entry.get("mobility")
+        if not name or not reason:
+            raise ValueError("Persistent prop name and registration reason must be non-empty.")
+        if kind not in PROP_KINDS or mobility not in MOBILITY_VALUES:
+            raise ValueError("Persistent prop kind or mobility is invalid.")
+        location_id = entry.get("location_id")
+        holder_id = entry.get("holder_subject_id")
+        if (location_id is None) == (holder_id is None):
+            raise ValueError("Persistent prop requires exactly one location_id or holder_subject_id.")
+        if location_id is not None:
+            if location_id not in candidate["locations"]:
+                raise ValueError("Persistent prop location_id is not registered.")
+            placement = {"kind": "located", "location_id": location_id}
+            support_id = entry.get("support_id")
+            if support_id is not None:
+                support = candidate["props"].get(support_id)
+                if not isinstance(support, dict) or support.get("kind") not in {"support", "fixture_support"}:
+                    raise ValueError("Persistent prop support_id is not a registered support.")
+                if support.get("placement", {}).get("location_id") != location_id:
+                    raise ValueError("Persistent prop support is not in its registered location.")
+                placement["support_id"] = support_id
+        else:
+            if holder_id not in candidate["subjects"] or mobility != "movable":
+                raise ValueError("Held persistent props require a registered holder and movable mobility.")
+            placement = {"kind": "held", "subject_id": holder_id}
+
+        identity_scope = location_id or holder_id
+        prop_id = stable_world_state_id(
+            "prop", f"{kind}|{name}", scope=str(identity_scope)
+        )
+        prop = _seed_prop_record(
+            prop_id,
+            name,
+            kind,
+            mobility,
+            placement,
+            contents=entry.get("contents"),
+            capabilities=entry.get("capabilities"),
+            mechanism_state=entry.get("mechanism_state", UNKNOWN),
+            provenance={"registration": {
+                "authority": "explicit_persistent_prop_registry",
+                "reason": reason,
+            }},
+        )
+        existing = candidate["props"].get(prop_id)
+        if existing is not None and existing != prop:
+            raise ValueError(f"Explicit prop registration conflicts for {name!r}.")
+        candidate["props"][prop_id] = prop
+    return _changed_revision(before, candidate)
 
 
 def empty_world_state(source_sha256: str = "", seed_status: str = "unseeded") -> dict[str, Any]:
@@ -992,3 +1398,215 @@ def reduce_world_state(
     return _run_state_action_engine(
         world_state, state_actions, segment_number=segment_number
     )
+
+
+def _string_enum(values: list[str], *, nullable: bool = False) -> dict[str, Any]:
+    schema: dict[str, Any] = {"type": ["string", "null"] if nullable else "string"}
+    if values:
+        schema["enum"] = [*values, *([None] if nullable else [])]
+    elif nullable:
+        schema["enum"] = [None]
+    return schema
+
+
+def _director_action_schema(
+    op: str,
+    fields: dict[str, dict[str, Any]],
+    required: list[str],
+) -> dict[str, Any]:
+    properties = {
+        "action_id": {"type": "string", "minLength": 1},
+        "op": {"const": op},
+        **fields,
+    }
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": ["action_id", "op", *required],
+        "additionalProperties": False,
+    }
+
+
+def build_director_state_action_contract(world_state: dict[str, Any]) -> dict[str, Any]:
+    """Return the registered ID vocabulary and same-response JSON contract.
+
+    This is a design/building API only. It does not modify the live Director
+    prompt or generation call path.
+    """
+    validate_world_state(world_state)
+    subjects = [
+        {
+            "id": subject_id,
+            "name": subject["name"],
+            "presence": subject["presence"],
+            "location_id": subject["location_id"],
+        }
+        for subject_id, subject in sorted(world_state["subjects"].items())
+    ]
+    locations = [
+        {"id": location_id, "name": location["name"]}
+        for location_id, location in sorted(world_state["locations"].items())
+    ]
+    props = [
+        {
+            "id": prop_id,
+            "name": prop["name"],
+            "kind": prop["kind"],
+            "mobility": prop["mobility"],
+            "status": prop["status"],
+            "placement": deepcopy(prop["placement"]),
+            "contents": deepcopy(prop["contents"]),
+            "capabilities": deepcopy(prop["capabilities"]),
+            "mechanism_state": prop["mechanism_state"],
+        }
+        for prop_id, prop in sorted(world_state["props"].items())
+        if prop["status"] == "present"
+    ]
+    supports = [
+        {"id": prop["id"], "name": prop["name"], "location_id": prop["placement"].get("location_id")}
+        for prop in props
+        if prop["kind"] in {"support", "fixture_support"}
+    ]
+
+    subject_ids = [item["id"] for item in subjects]
+    location_ids = [item["id"] for item in locations]
+    prop_ids = [item["id"] for item in props]
+    support_ids = [item["id"] for item in supports]
+    action_schemas: list[dict[str, Any]] = []
+
+    def add(op: str, specs: dict[str, dict[str, Any]], required: list[str], *needed: list[str]) -> None:
+        if all(needed_ids for needed_ids in needed):
+            action_schemas.append(_director_action_schema(op, specs, required))
+
+    subject_field = lambda key="subject_id": {key: _string_enum(subject_ids)}
+    prop_field = lambda key="prop_id": {key: _string_enum(prop_ids)}
+    location_field = lambda key="location_id": {key: _string_enum(location_ids)}
+    support_field = lambda key="support_id", nullable=False: {key: _string_enum(support_ids, nullable=nullable)}
+
+    add("pickup", {**subject_field("actor_subject_id"), **prop_field()}, ["actor_subject_id", "prop_id"], subject_ids, prop_ids)
+    add("place", {
+        **subject_field("actor_subject_id"), **prop_field(), **location_field(),
+        **support_field(nullable=True),
+    }, ["actor_subject_id", "prop_id", "location_id"], subject_ids, prop_ids, location_ids)
+    add("handoff", {
+        **subject_field("from_subject_id"), **subject_field("to_subject_id"), **prop_field(),
+    }, ["from_subject_id", "to_subject_id", "prop_id"], subject_ids, prop_ids)
+    add("pour", {
+        **subject_field("actor_subject_id"),
+        "source_prop_id": _string_enum(prop_ids),
+        "target_prop_id": _string_enum(prop_ids),
+        "substance": {"type": "string", "minLength": 1},
+        "amount": {"type": "string", "enum": ["all", "partial"]},
+    }, ["actor_subject_id", "source_prop_id", "target_prop_id", "substance", "amount"], subject_ids, prop_ids)
+    add("consume", {
+        **subject_field("actor_subject_id"), **prop_field(),
+        "amount": {"type": "string", "enum": ["all", "partial"]},
+        "substance": {"type": "string", "minLength": 1},
+    }, ["actor_subject_id", "prop_id", "amount"], subject_ids, prop_ids)
+    add("enter", {**subject_field(), **location_field()}, ["subject_id", "location_id"], subject_ids, location_ids)
+    add("exit", {
+        **subject_field(),
+        "destination_location_id": _string_enum(location_ids, nullable=True),
+    }, ["subject_id"], subject_ids)
+    add("move", {
+        **subject_field(), **location_field("destination_location_id"),
+        **support_field(nullable=True),
+    }, ["subject_id", "destination_location_id"], subject_ids, location_ids)
+    add("set_support", {
+        **subject_field(), **support_field(nullable=True),
+        "resulting_posture": {"type": "string", "minLength": 1},
+    }, ["subject_id", "support_id"], subject_ids)
+    add("change_clothing", {
+        **subject_field(),
+        "change": {"type": "string", "enum": ["put_on", "remove", "replace", "set_condition"]},
+        "slot": {"type": "string", "enum": list(WARDROBE_SLOTS)},
+        "garment": {"type": "string", "minLength": 1},
+        "replaces": {"type": "string", "minLength": 1},
+        "condition": {"type": "string", "minLength": 1},
+    }, ["subject_id", "change", "slot", "garment"], subject_ids)
+    for op in ("open", "close", "lock", "unlock"):
+        add(op, {**subject_field("actor_subject_id"), **prop_field()}, ["actor_subject_id", "prop_id"], subject_ids, prop_ids)
+
+    format_schema = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "director_raw_scene_with_state_actions",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "raw_scene": {"type": "string", "minLength": 1},
+                    "finite_activity_complete": {"type": "boolean"},
+                    "named_beneficiaries_complete": {"type": "boolean"},
+                    "activity_tools_settled": {"type": "boolean"},
+                    "beat_complete": {"type": "boolean"},
+                    "state_actions": {
+                        "type": "array",
+                        "items": {"oneOf": action_schemas} if action_schemas else {"type": "object", "not": {}},
+                    },
+                },
+                "required": [
+                    "raw_scene", "finite_activity_complete",
+                    "named_beneficiaries_complete", "activity_tools_settled",
+                    "beat_complete", "state_actions",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    }
+    return {
+        "response_format": format_schema,
+        "vocabulary": {
+            "subjects": subjects,
+            "locations": locations,
+            "props": props,
+            "supports": supports,
+        },
+        "instruction": (
+            "Return raw_scene and state_actions in this same response. Use only IDs "
+            "listed in the supplied vocabulary; never invent entity IDs. Add an action "
+            "only when the scene explicitly changes persistent state. Off-camera is "
+            "not an action. Use an empty state_actions array when no represented state "
+            "changes."
+        ),
+    }
+
+
+def parse_and_dry_run_director_state_actions(
+    world_state: dict[str, Any],
+    raw_result: str | dict[str, Any],
+    *,
+    segment_number: int,
+) -> dict[str, Any]:
+    """Parse same-response RAW/actions and dry-run actions without committing."""
+    if isinstance(raw_result, str):
+        try:
+            response = json.loads(raw_result)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Director response is not valid JSON: {error}") from error
+    else:
+        response = raw_result
+    expected = {
+        "raw_scene", "finite_activity_complete", "named_beneficiaries_complete",
+        "activity_tools_settled", "beat_complete", "state_actions",
+    }
+    if not isinstance(response, dict) or set(response) != expected:
+        raise ValueError("Director action-contract response has an invalid shape.")
+    if not isinstance(response["raw_scene"], str) or not response["raw_scene"].strip():
+        raise ValueError("Director action-contract response requires raw_scene.")
+    if any(not isinstance(response[field], bool) for field in (
+        "finite_activity_complete", "named_beneficiaries_complete",
+        "activity_tools_settled", "beat_complete",
+    )):
+        raise ValueError("Director completion fields must be booleans.")
+    outcomes = validate_state_actions(
+        world_state,
+        response["state_actions"],
+        segment_number=segment_number,
+    )
+    return {
+        "raw_scene": response["raw_scene"],
+        "state_actions": deepcopy(response["state_actions"]),
+        "outcomes": outcomes,
+        "accepted": all(outcome.accepted for outcome in outcomes),
+    }

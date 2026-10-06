@@ -229,6 +229,118 @@ retention contracts, unrelated timing/speaker-repair assertions, and a test that
 tries to delete a ComfyUI output file outside the writable workspace. The whole
 suite was not rerun at this gate.
 
+## 2026-10-06 — Gate C phase 1: authority seeds and Director action contract
+
+Implemented Gate C phase 1 only. This adds explicit one-way WorldState seed
+functions, deterministic Python entity IDs, and a dry-run response contract.
+The initial seed composition runs before Segment 1. Director `state_actions`
+are not connected to the live Director call and are never written back to
+`generation_state["world_state"]`. Gate D transactions have not started.
+
+Authority-specific seed APIs in `world_state.py`:
+
+- `seed_predefined_subject_identities(world_state, subject_definitions_seed)`
+  accepts only the parsed authored Subject identity seed.
+- `seed_story_start_presence(world_state, initial_location_subjects,
+  location_id=...)` consumes the complete dedicated story-start Subject
+  extractor result. Listed Subjects become present at the registered starting
+  location; registered Subjects omitted from this exhaustive result become
+  absent. Extractor-discovered Subjects receive stable Python IDs and unknown
+  identity fields. Later `enter` actions remain the state transition for an
+  arriving Subject.
+- `seed_canonical_wardrobes(world_state, wardrobes_by_subject)` consumes only
+  dedicated per-Subject wardrobe-extractor output. `minimax.py` adapts the
+  canonical text deterministically into slot arrays of `{garment, condition}`
+  records. Unstated garment conditions are `unknown`; explicit condition words
+  remain separate from garment identity. `N/A` remains `N/A` for non-humanoid
+  wardrobes. No additional model call is made for this conversion.
+- `seed_canonical_static_location_state(world_state, location_state)` consumes
+  the established location-state pipeline. Anchors are registered as fixed
+  fixtures by default. Objects enter WorldState only when explicitly marked
+  `world_state_role` as `fixture`, `support`, or `fixture_support`; `untracked`
+  objects are omitted. The location extractor now labels role and mobility and
+  does not supply IDs.
+- `register_explicit_persistent_props(world_state, prop_registry)` requires a
+  Python-authored entry with `needed_for_state: true`, a reason, mobility,
+  kind, and exactly one initial location or Subject holder. It rejects
+  caller-supplied IDs and unneeded props. This is an explicit registration API;
+  there is no automatic noun/story-prop sweep.
+
+`stable_world_state_id(namespace, label, scope="")` normalizes authoritative
+labels and derives IDs from a stable SHA-256 digest. Location IDs derive from
+the canonical location name. Fixture/support IDs include location, role, name,
+and type. Registered prop IDs include the authoritative prop identity and
+initial placement scope. Subject IDs use authored Subject numbers where
+available, and extractor-discovered story-start Subjects use a deterministic
+normalized-name ID. These IDs are supplied in the Director vocabulary; the
+model cannot create IDs.
+
+The proposed Director response uses one response containing both RAW and
+actions:
+
+```json
+{
+  "raw_scene": "...",
+  "finite_activity_complete": true,
+  "named_beneficiaries_complete": true,
+  "activity_tools_settled": true,
+  "beat_complete": true,
+  "state_actions": []
+}
+```
+
+`build_director_state_action_contract(world_state)` creates the constrained
+JSON schema and the exact registered vocabulary supplied alongside it:
+
+- `subjects`: `{id, name, presence, location_id}`
+- `locations`: `{id, name}`
+- `props`: `{id, name, kind, mobility, status, placement, contents,
+  capabilities, mechanism_state}`
+- `supports`: `{id, name, location_id}` for registered `support` and
+  `fixture_support` props
+
+Every action ID field is constrained to the matching IDs in that vocabulary.
+The available operations follow the existing reducer contract (`pickup`,
+`place`, `handoff`, `pour`, `consume`, `enter`, `exit`, `move`, `set_support`,
+`change_clothing`, `open`, `close`, `lock`, `unlock`). `parse_and_dry_run_director_state_actions`
+parses the same-response envelope and calls `validate_state_actions`, which
+dry-runs the shared reducer engine. It returns diagnostics and acceptance only;
+it does not expose or persist a candidate state. The live Director response
+format and generation call are unchanged.
+
+Gate C phase 1 tests cover story-start Goblin presence without an entrance,
+Elf/Dragon absence until entry, canonical layered wardrobe adaptation,
+non-humanoid `N/A`, stable fixture/support IDs, one-placement explicit prop
+registration, exclusion of legacy/visual/RAW/accepted-beat data, and rejection
+of an unregistered Director ID. Focused validation:
+`python -m pytest -q tests/test_world_state_foundation.py tests/test_location_state_reference.py` — 65 passed.
+
+WorldState writers now include the explicit seed APIs above, existing
+construction/checkpoint APIs (`new_world_state`, `empty_world_state`,
+`minimax.new_generation_state`, load/save/restore/snapshot), and the approved
+reducer APIs (`reduce_world_state`, `validate_state_actions`). The contract
+builder and dry-run parser do not write WorldState. The startup composition
+assigns the result of authorized seed functions before Segment 1. No
+legacy-state-to-WorldState synchronization exists.
+
+The competing legacy writers remain active and compatibility-only:
+
+- `normalize_structured_continuity_state`, `request_combined_continuity`,
+  `merge_prompt_and_visual_end_state`, `apply_state_patch`,
+  `apply_accepted_beat_state_patch`, and
+  `_continuity_apply_authoritative_state_effects`.
+- `seed_initial_location_subjects`, `apply_visible_subject_bootstrap_metadata`,
+  `apply_authoritative_prop_state_effects`, `_run_main` legacy assignments,
+  `merge_prop_ledger`, `merge_subject_state_ledger`, and
+  `record_completed_segment`.
+- Wardrobe compatibility writers `seed_story_wardrobe`,
+  `seed_character_canon_wardrobe`, `seed_canonical_opening_wardrobe`,
+  `apply_story_subject_wardrobes`, and `_repair_candidate_wardrobe_extraction`.
+
+None of these writers updates WorldState. Gate C phase 2 must review this
+contract before connecting Director actions to segment processing. Gate D
+remains the later transactional migration.
+
 ### Test-suite maintenance and current status
 
 Use pytest from the repository root; some external-service modules use

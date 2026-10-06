@@ -49,7 +49,16 @@ from gpt_formatter import (
 from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
 from story_planner import StoryPlan, build_story_plan
-from world_state import empty_world_state, new_world_state, validate_world_state
+from world_state import (
+    empty_world_state,
+    new_world_state,
+    register_explicit_persistent_props,
+    seed_canonical_static_location_state,
+    seed_canonical_wardrobes,
+    seed_predefined_subject_identities,
+    seed_story_start_presence,
+    validate_world_state,
+)
 
 # ============================================================
 # CONSTANTS
@@ -3465,6 +3474,7 @@ def build_run_config(
     disable_subject_removal=False,
     visual_style=DEFAULT_VISUAL_STYLE,
     world_state_seed=None,
+    world_state_prop_registry=None,
 ):
     visual_style = normalize_visual_style(visual_style)
     # Auto-discovered video subjects are durable continuity metadata, not a
@@ -3489,6 +3499,7 @@ def build_run_config(
             "retention": bool(retention),
             "test_prompt_generation": bool(test_prompt_generation),
             "subject_definitions": source_subject_definitions,
+            "world_state_prop_registry": world_state_prop_registry or [],
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -3510,6 +3521,9 @@ def build_run_config(
         # This narrow seed is constructed from the user-authored subjects file.
         # Story-derived guesses and legacy continuity structures are excluded.
         "world_state_seed": copy.deepcopy(world_state_seed or {}),
+        # Optional Python-authored allowlist. Entries are still validated by
+        # register_explicit_persistent_props before entering WorldState.
+        "world_state_prop_registry": copy.deepcopy(world_state_prop_registry or []),
     }
 
 
@@ -6708,6 +6722,7 @@ def apply_story_subject_wardrobes(
     *,
     history_metadata=None,
     llm_request=None,
+    world_state_wardrobe_sink=None,
 ):
     """Run one independent attire call for each named Subject and seed its state."""
     state = copy.deepcopy(continuity_state) if isinstance(continuity_state, dict) else {}
@@ -6739,6 +6754,10 @@ def apply_story_subject_wardrobes(
             llm_request=llm_request,
             history_metadata=history_metadata,
         )
+        if world_state_wardrobe_sink is not None:
+            world_state_wardrobe_sink[existing_name] = (
+                _world_state_wardrobe_from_canonical_text(clothing)
+            )
         existing_wardrobe = record.get("wardrobe")
         if not isinstance(existing_wardrobe, dict):
             existing_wardrobe = {}
@@ -18374,7 +18393,7 @@ def build_story_location_messages(expanded_story):
 
 
 def build_initial_location_subjects_messages(beats, subject_definitions=""):
-    """Build a tiny beat-plan-wide extractor for Subjects present before Beat 1."""
+    """Build a beat-plan-wide extractor for the complete story-start cast."""
     numbered_beats = "\n".join(
         f"Beat {index}: {str(beat).strip()}"
         for index, beat in enumerate(beats or [], start=1)
@@ -18384,13 +18403,16 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
         {
             "role": "system",
             "content": (
-                'Return subjects defined in beats that have no entry point (IE entered, '
-                'walked in, etc.).\n\n'
+                'Return the complete list of Subjects already present before Beat 1, '
+                'including Subjects in EXISTING SUBJECT DEFINITIONS.\n\n'
                 'Example 1: "Beat 2: Jim leered over at Daisy from his seat." - Jim is '
-                'already there, so add Jim.\n'
+                'already there, so include Jim.\n'
                 'Example 2: "Beat 2: William walked in from the rain." - William enters '
-                'the scene, so don\'t add William.\n\n'
-                '- do not return a subject defined in EXISTING SUBJECT DEFINITIONS.\n'
+                'the scene, so exclude William from the story-start list.\n\n'
+                '- Include every authored Subject who is present before Beat 1 and every '
+                'other Subject whose presence before Beat 1 is established by the beats.\n'
+                '- Exclude later arrivals. The result is exhaustive; omitted Subjects are '
+                'absent at story start.\n'
                 '- include a one sentence initial_state. initial_state must be the minimal '
                 'physical location/pose supported by the beats; do not invent appearance, '
                 'clothing, motives, actions, or plot facts.\n'
@@ -18404,7 +18426,7 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
                 + (str(subject_definitions or "").strip() or "N/A")
                 + "\n\nALL BEATS\n"
                 + (numbered_beats or "N/A")
-                + "\n\nReturn exactly subjects."
+                + "\n\nReturn the exhaustive story-start subjects list."
             ),
         },
     ]
@@ -18437,8 +18459,8 @@ def parse_initial_location_subjects(raw_result):
         if (
             name
             and name == name.casefold()
-            and re.fullmatch(r"[a-z][a-z0-9 '\\-]*", name)
-            and not re.search(r"\\d$", name)
+            and re.fullmatch(r"[a-z][a-z0-9 '-]*", name)
+            and not re.search(r"\d$", name)
         ):
             role_tokens = re.findall(r"[a-z0-9]+", name)
             if role_tokens:
@@ -18448,8 +18470,8 @@ def parse_initial_location_subjects(raw_result):
         # the held-prop tail. Prop ownership is handled by the normal beat/prop
         # pipeline rather than this story-start presence extractor.
         held_prop_tail = re.search(
-            r"(?i)\\s+(?:while\\s+)?(?:hold|holds|holding|held|clutch|clutches|",
-            r"clutching|carry|carries|carrying|carried|grip|grips|gripping|gripped)\\b",
+            r"(?i)\s+(?:while\s+)?(?:hold|holds|holding|held|clutch|clutches|"
+            r"clutching|carry|carries|carrying|carried|grip|grips|gripping|gripped)\b",
             initial_state,
         )
         if held_prop_tail:
@@ -18457,8 +18479,8 @@ def parse_initial_location_subjects(raw_result):
             if pose_only:
                 initial_state = pose_only
         if re.search(
-            r"(?i)\\b(?:hold|holds|holding|held|clutch|clutches|clutching|",
-            r"carry|carries|carrying|carried|grip|grips|gripping|gripped)\\b",
+            r"(?i)\b(?:hold|holds|holding|held|clutch|clutches|clutching|"
+            r"carry|carries|carrying|carried|grip|grips|gripping|gripped)\b",
             initial_state,
         ):
             raise ValueError(
@@ -18482,7 +18504,7 @@ def extract_initial_location_subjects(
     history_metadata=None,
     attempts=3,
 ):
-    """Infer only Subjects whose beat-plan state proves story-start presence."""
+    """Extract the complete Subject presence list at story start."""
     if llm_request is None:
         llm_request = ask_llm
     if not beats:
@@ -18497,8 +18519,9 @@ def extract_initial_location_subjects(
         messages = [dict(message) for message in base_messages]
         if attempt > 1:
             messages[-1]["content"] += (
-                "\n\nRETRY: Return strict JSON only. Include only Subjects proven to "
-                "already be present before Beat 1; do not include later arrivals. Keep "
+                "\n\nRETRY: Return strict JSON only. Include every authored Subject and "
+                "other Subject already present before Beat 1; exclude later arrivals. "
+                "The list must be exhaustive. Keep "
                 "initial_state to location/pose only with no held props."
             )
         try:
@@ -18519,7 +18542,21 @@ def extract_initial_location_subjects(
                 f"(attempt {attempt}/{max_attempts}):\n{raw}",
                 flush=True,
             )
-            return parse_initial_location_subjects(raw)
+            parsed = parse_initial_location_subjects(raw)
+            authored = parse_subject_registry(subject_definitions)
+            authored_by_key = {}
+            for record in authored.values():
+                authored_name = record.get("name")
+                authored_key = _subject_identity_key(authored_name)
+                authored_by_key[authored_key] = authored_name
+                authored_by_key[f"{authored_key}1"] = authored_name
+            for item in parsed:
+                canonical_name = authored_by_key.get(
+                    _subject_identity_key(item["name"])
+                )
+                if canonical_name:
+                    item["name"] = canonical_name
+            return parsed
         except LLMConnectionError:
             raise
         except (TypeError, ValueError) as error:
@@ -18948,6 +18985,12 @@ def build_story_setting_description_messages(spatial_location, static_setting=""
                 "etc. For exteriors, use east_side, west_side, etc.\n"
                 "- Return a spatial description of the specified area only.\n"
                 "- Keep it literal without embellishment.\n"
+                "- For each anchor and object, add world_state_role with one of "
+                "fixture, support, fixture_support, or untracked, and mobility with "
+                "movable, fixed, or unknown. Use untracked for ordinary scene nouns; "
+                "only identify persistent fixtures/supports needed for cross-segment "
+                "state reasoning. Anchors are fixed fixtures unless clearly movable. "
+                "Do not create IDs.\n"
                 "- Preserve any historical period, culture, and genre in STATIC SETTING "
                 "FACTS and SPATIAL REFINEMENT in both the JSON location name/description "
                 "and the final text description. Treat those cues as visual constraints; "
@@ -18965,15 +19008,19 @@ def build_story_setting_description_messages(spatial_location, static_setting=""
                 "  },\n"
                 "  \"anchors\": [\n"
                 "    { \"name\": \"entrance\", \"type\": \"door\", "
-                "\"wall\": \"west\" },\n"
+                "\"wall\": \"west\", \"world_state_role\": \"fixture\", "
+                "\"mobility\": \"fixed\" },\n"
                 "    { \"name\": \"city hall\", \"type\": \"building\", "
-                "\"location\": \"east\" }\n"
+                "\"location\": \"east\", \"world_state_role\": \"fixture\", "
+                "\"mobility\": \"fixed\" }\n"
                 "  ],\n"
                 "  \"objects\": [\n"
                 "    {\n"
                 "      \"name\": \"sign post\",\n"
                 "      \"type\": \"wooden sign\",\n"
                 "      \"near\": [\"hearth\", \"barrel\"],\n"
+                "      \"world_state_role\": \"untracked\",\n"
+                "      \"mobility\": \"unknown\",\n"
                 "      ...\n"
                 "    },\n"
                 "    ...\n"
@@ -24415,6 +24462,62 @@ def _split_wardrobe_components(value):
         if part and field:
             parts.append((field, part))
     return parts
+
+
+_WORLD_STATE_GARMENT_CONDITIONS = (
+    "worn", "torn", "ripped", "damaged", "dirty", "muddy", "wet", "soaked",
+    "bloody", "burned", "burnt", "scorched", "stained", "patched", "frayed",
+    "pristine", "clean", "singed", "dusty",
+)
+
+
+def _world_state_garment_record(component):
+    """Separate explicitly stated garment condition from its identity."""
+    text = " ".join(str(component or "").split()).strip(" ,;:-")
+    conditions = []
+    remaining = text
+    for condition in _WORLD_STATE_GARMENT_CONDITIONS:
+        pattern = re.compile(rf"(?i)(?<!\w){re.escape(condition)}(?!\w)")
+        if pattern.search(remaining):
+            conditions.append(condition)
+            remaining = pattern.sub("", remaining)
+    garment = " ".join(remaining.split()).strip(" ,;:-") or text
+    return {
+        "garment": garment,
+        "condition": ", ".join(conditions) if conditions else "unknown",
+    }
+
+
+def _world_state_wardrobe_from_canonical_text(clothing):
+    """Convert dedicated canonical wardrobe text without another model call."""
+    slots = ("upper", "lower", "footwear", "other")
+    text = " ".join(str(clothing or "").split()).strip()
+    if not text or text.casefold() in {"n/a", "none", "unknown"}:
+        value = "N/A" if text.casefold() in {"n/a", "none"} else "unknown"
+        return {slot: value for slot in slots}
+    grouped = {slot: [] for slot in slots}
+    for slot, garment in _split_wardrobe_components(text):
+        if garment.casefold() in {"barefoot", "bare-chested", "bare chested"}:
+            continue
+        grouped[slot].append(_world_state_garment_record(garment))
+    if not any(grouped.values()):
+        grouped["other"].append(_world_state_garment_record(text))
+    return grouped
+
+
+def world_state_wardrobes_from_character_canon(character_canon):
+    """Adapt only the per-Subject dedicated wardrobe extractor output."""
+    wardrobes = {}
+    if not isinstance(character_canon, dict):
+        return wardrobes
+    for record in character_canon.get("characters", []):
+        if not isinstance(record, dict):
+            continue
+        name = " ".join(str(record.get("name") or "").split()).strip()
+        clothing = record.get("clothing")
+        if name and isinstance(clothing, str) and clothing.strip():
+            wardrobes[name] = _world_state_wardrobe_from_canonical_text(clothing)
+    return wardrobes
 
 
 # Join wardrobe components.
@@ -37331,12 +37434,14 @@ def _run_main(
             )
 
     initial_location_subjects = []
+    initial_location_subjects_extracted = False
     if resume_segment == 1 and beats:
         initial_location_subjects = extract_initial_location_subjects(
             beats,
             base_subject_definitions,
             history_metadata={"run_id": run_id},
         )
+        initial_location_subjects_extracted = True
         if initial_location_subjects:
             console_log(
                 "Subjects inferred as already present at story start: "
@@ -37506,6 +37611,57 @@ def _run_main(
                 location_metadata.pop("location_state", {})
             )
             generation_state["metadata"] = location_metadata
+        # Gate C phase 1: compose WorldState only from named authoritative
+        # sources before any Segment is generated. Legacy continuity/ledgers,
+        # RAW, accepted beats, and visual observations do not enter here.
+        world_state = seed_predefined_subject_identities(
+            generation_state["world_state"],
+            run_config.get("world_state_seed", {}),
+        )
+        canonical_location_state = generation_state.get("location_state")
+        if not isinstance(canonical_location_state, dict) or not isinstance(
+            canonical_location_state.get("location"), dict
+        ):
+            starting_location = str(
+                story_location_metadata.get("starting_location") or ""
+            ).strip()
+            if starting_location:
+                canonical_location_state = {
+                    "location": {"name": starting_location},
+                    "anchors": [],
+                    "objects": [],
+                }
+        location_id = None
+        if isinstance(canonical_location_state, dict) and isinstance(
+            canonical_location_state.get("location"), dict
+        ):
+            world_state, location_id = seed_canonical_static_location_state(
+                world_state,
+                canonical_location_state,
+                location_name=str(
+                    story_location_metadata.get("starting_location") or ""
+                ),
+            )
+        if initial_location_subjects_extracted and not location_id:
+            raise ValueError(
+                "WorldState story-start presence requires canonical starting-location state."
+            )
+        if initial_location_subjects_extracted and location_id:
+            world_state = seed_story_start_presence(
+                world_state,
+                initial_location_subjects,
+                location_id=location_id,
+            )
+        if character_canon:
+            world_state = seed_canonical_wardrobes(
+                world_state,
+                world_state_wardrobes_from_character_canon(character_canon),
+            )
+        world_state = register_explicit_persistent_props(
+            world_state,
+            run_config.get("world_state_prop_registry", []),
+        )
+        generation_state["world_state"] = world_state
         additional_subject_definitions = []
         completed_beat_ids = set()
         recent_results = []
@@ -37541,13 +37697,20 @@ def _run_main(
                 additional_subject_definitions,
             )
             if expanded_story_context:
+                dynamic_world_state_wardrobes = {}
                 continuity_state = apply_story_subject_wardrobes(
                     continuity_state,
                     expanded_story_context,
                     subject_definitions,
                     initial_added_subjects,
                     history_metadata={"run_id": run_id},
+                    world_state_wardrobe_sink=dynamic_world_state_wardrobes,
                 )
+                if dynamic_world_state_wardrobes:
+                    generation_state["world_state"] = seed_canonical_wardrobes(
+                        generation_state["world_state"],
+                        dynamic_world_state_wardrobes,
+                    )
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
         )
