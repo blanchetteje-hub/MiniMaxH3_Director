@@ -74,7 +74,7 @@ def pipeline_llm_side_effect(
                 "\n\nReturn {", 1
             )[0].strip()
             return {"raw_scene": raw}
-        if purpose == "director_raw_scene_subject_resolution":
+        if purpose == "director_raw_scene_visible_subject_resolution":
             messages = args[0] if args else []
             user_text = str(messages[-1].get("content", "")) if messages else ""
             raw = user_text.split("RAW SCENE\n", 1)[-1].split(
@@ -283,7 +283,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(names, ["Guard1", "Guard2"])
         self.assertEqual(
             request.call_args.kwargs["history_metadata"]["purpose"],
-            "director_raw_scene_subject_resolution",
+            "director_raw_scene_visible_subject_resolution",
         )
 
     def test_raw_subject_resolution_bootstraps_identity_and_wardrobe_once(self):

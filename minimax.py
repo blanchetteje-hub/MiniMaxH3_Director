@@ -255,8 +255,8 @@ LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES = 4
 # Character wardrobe references use the same isolated H3 render path as the
 # location reference, but produce one front-facing second and sample its
 # midpoint into an ordinary Picture reference.
-CHARACTER_REFERENCE_DURATION_SECONDS = 1.0
-CHARACTER_REFERENCE_SAMPLE_SECONDS = 0.5
+CHARACTER_REFERENCE_DURATION_SECONDS = 0.5
+CHARACTER_REFERENCE_SAMPLE_SECONDS = 0.25
 CHARACTER_REFERENCE_ASPECT_WIDTH = 13
 CHARACTER_REFERENCE_ASPECT_HEIGHT = 19
 CHARACTER_REFERENCE_RATIO_SCALE_MULTIPLE = 16
@@ -497,6 +497,20 @@ MUSIC_GENERATION_LLM_SETTINGS = {
     "enable_thinking": True,
 }
 
+SLIGHTLY_CREATIVE_LLM_SETTINGS = {
+    "temperature": 0.1,
+    "top_p": None,
+    "top_k": None,
+    "min_p": None,
+    "presence_penalty": None,
+    "frequency_penalty": None,
+    "repeat_penalty": 1.15,
+    "reasoning_effort": "low",
+    "thinking_budget_tokens": 384,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
+}
+
 DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "temperature": 0,
     "top_p": None,
@@ -507,7 +521,7 @@ DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "repeat_penalty": 1.15,
     "seed": BENCHMARK_SEED,
     "reasoning_effort": "low",
-    "thinking_budget_tokens": 128,
+    "thinking_budget_tokens": 256,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -553,6 +567,10 @@ SMART_EXTRACTOR_LLM_PURPOSES = frozenset({
     "story_setting_extract",
 })
 
+SLIGHTLY_CREATIVE_LLM_PURPOSES = frozenset({
+    "static_setting_extract",
+})
+
 DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "accepted_beat_state_extract",
     "beat_coherence_validation",
@@ -578,9 +596,8 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "macro_arc_validate",
     "source_unit_state_effects",
     "story_location_extract",
-    "static_setting_extract",
     "story_subject_wardrobe_extract",
-    "initial_location_subjects_extract",
+    "director_raw_scene_visible_subject_resolution",
     "subject_continuity",
     "visual_end_state",
 })
@@ -805,7 +822,7 @@ DIRECTOR_PRONOUN_RESOLUTION_RESPONSE_FORMAT = {
 INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
-        "name": "initial_location_subjects_extract",
+        "name": "director_raw_scene_subject_resolution",
         "strict": True,
         "schema": {
             "type": "object",
@@ -7921,7 +7938,7 @@ def build_location_reference_h3_prompt(setting_description):
     return (
         "subject_definitions: N/A\n\n"
         "detailed_description:\n\n"
-        "[Shot 1] The camera is positioned at a high-angle shot of an empty "
+        "[Shot 1] The camera is a medium shot of an empty "
         "location. It is a 3-second, full 360 orbital camera shot of the location:\n\n"
         f"{setting}\n\n"
         "overall_soundscape: N/A\n\n"
@@ -9525,6 +9542,8 @@ def ask_llm(
         llm_settings = CREATIVE_GENERATION_LLM_SETTINGS
     elif history_purpose in SMART_EXTRACTOR_LLM_PURPOSES:
         llm_settings = SMART_EXTRACTOR_LLM_SETTINGS
+    elif history_purpose in SLIGHTLY_CREATIVE_LLM_PURPOSES:
+        llm_settings = SLIGHTLY_CREATIVE_LLM_SETTINGS
     else:
         llm_settings = DETERMINISTIC_ANALYSIS_LLM_SETTINGS
 
@@ -9535,7 +9554,7 @@ def ask_llm(
     presence_penalty = llm_settings["presence_penalty"]
     frequency_penalty = llm_settings["frequency_penalty"]
     repeat_penalty = llm_settings["repeat_penalty"]
-    configured_seed = llm_settings["seed"]
+    configured_seed = llm_settings.get("seed")
     seed = generate_random_llm_seed() if configured_seed is None else configured_seed
     reasoning_effort = llm_settings["reasoning_effort"]
     thinking_budget_tokens = llm_settings["thinking_budget_tokens"]
@@ -18133,18 +18152,17 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
         {
             "role": "system",
             "content": (
-                "Find animate Subjects that must already be physically present in the "
-                "starting location before Beat 1 begins. Read ALL beats so later wording "
-                "can reveal an unstated starting presence. Return only a Subject whose "
-                "first in-location state assumes prior presence (for example already "
-                "seated, standing, waiting, sleeping, working, or otherwise established) "
-                "and no earlier beat shows that Subject entering, arriving, being brought "
-                "in, or being newly revealed as part of the story action. Do not include "
-                "a Subject merely because it appears later. For an unnamed actor, assign "
-                "one stable functional name using Role1-style numbering, such as Goblin1 "
-                "or Guard1. initial_state must be the minimal physical location/pose "
-                "supported by the beats; do not invent appearance, clothing, motives, "
-                "actions, or plot facts. Return JSON only."
+                'Return subjects defined in beats that have no entry point (IE entered, '
+                'walked in, etc.).\n\n'
+                'Example 1: "Beat 2: Jim leered over at Daisy from his seat." - Jim is '
+                'already there, so add Jim.\n'
+                'Example 2: "Beat 2: William walked in from the rain." - William enters '
+                'the scene, so don\'t add William.\n\n'
+                '- do not return a subject defined in EXISTING SUBJECT DEFINITIONS.\n'
+                '- include a one sentence initial_state. initial_state must be the minimal '
+                'physical location/pose supported by the beats; do not invent appearance, '
+                'clothing, motives, actions, or plot facts.\n'
+                '- Return JSON.'
             ),
         },
         {
@@ -18229,9 +18247,14 @@ def extract_initial_location_subjects(
                 context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **dict(history_metadata or {}),
-                    "purpose": "initial_location_subjects_extract",
+                    "purpose": "director_raw_scene_subject_resolution",
                     "attempt": attempt,
                 },
+            )
+            console_log(
+                "director_raw_scene_subject_resolution LLM result "
+                f"(attempt {attempt}/{max_attempts}):\n{raw}",
+                flush=True,
             )
             return parse_initial_location_subjects(raw)
         except LLMConnectionError:
@@ -18302,7 +18325,7 @@ def seed_initial_location_subjects(
 
 
 def format_initial_location_subjects_opening_state(initial_subjects):
-    """Render story-start Subject presence as compact authoritative Director context."""
+    """Render beat-inferred Subjects as optional-visibility Director context."""
     lines = []
     for item in initial_subjects or []:
         name = " ".join(str(item.get("name") or "").split()).strip()
@@ -18313,7 +18336,14 @@ def format_initial_location_subjects_opening_state(initial_subjects):
             lines.append(f"- {name}: already present; {initial_state}.")
     if not lines:
         return ""
-    return "SUBJECTS ALREADY PRESENT AT STORY START (authoritative)\n" + "\n".join(lines)
+    return (
+        "SUBJECTS INFERRED TO BE PRESENT AT STORY START\n"
+        "These Subjects are already present in the scene and their listed initial "
+        "states are authoritative. Use CURRENT BEAT to decide whether each needs "
+        "to be visible in this scene. Do not invent "
+        "an entrance or add action for a Subject merely because it is listed.\n"
+        + "\n".join(lines)
+    )
 
 
 def build_story_location_response_format():
@@ -26500,6 +26530,7 @@ def build_generation_messages(
     canonical_data="",
     static_setting_description="",
     persistent_movable_prop_state=None,
+    initial_location_subjects=(),
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
@@ -26537,6 +26568,11 @@ def build_generation_messages(
         str(static_setting_description or "").split()
     ).strip()
     sections = [f"SUBJECT DEFINITIONS:\n{subject_text}"]
+    initial_subject_text = format_initial_location_subjects_opening_state(
+        initial_location_subjects
+    )
+    if initial_subject_text:
+        sections.append(initial_subject_text)
     if static_setting:
         sections.append(
             "STATIC SETTING AUTHORITY — preserve these established static "
@@ -34565,13 +34601,15 @@ def build_director_raw_subject_resolution_messages(
                 "subject_descriptions. Also return subject_wardrobes for each newly named "
                 "Subject using exactly upper, lower, footwear, and other. Preserve clothing "
                 "explicitly stated in RAW. If RAW does not state clothing and the Subject is "
-                "a human or normally clothed humanoid, choose one simple setting-appropriate "
-                "outfit now; this becomes canonical and must not be re-invented later. "
+                "a human or humanoid, including humanoid creatures such as goblins, orcs, and trolls, etc., choose one simple "
+                "setting-appropriate outfit now; this becomes canonical and must not be "
+                "re-invented later. "
                 "Use STORY CONTEXT only when RAW does not specify clothing, so the chosen "
                 "outfit matches the established setting, period, culture, and visual world. "
                 "Do not use STORY CONTEXT to change RAW actions or explicit appearance facts. "
-                "For animals or creatures that normally do not wear clothing, use N/A for all "
-                "four wardrobe fields unless RAW explicitly gives clothing. Use absent for "
+                "For non-humanoid animals or creatures that normally do not wear clothing, "
+                "use N/A for all four wardrobe fields unless RAW explicitly gives clothing. "
+                "Use absent for "
                 "an explicitly absent garment/footwear slot; explicit nudity, barefoot state, "
                 "or garment absence wins over invention. Exclude action, pose, "
                 "location, held props, camera, and mood. Return JSON only."
@@ -34784,7 +34822,7 @@ def resolve_director_raw_scene_subjects(
         response_format=DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT,
         history_metadata={
             **dict(history_metadata or {}),
-            "purpose": "director_raw_scene_subject_resolution",
+            "purpose": "director_raw_scene_visible_subject_resolution",
         },
         max_tokens=2048,
     )
@@ -37593,6 +37631,10 @@ def _run_main(
             canonical_data=canonical_data,
             static_setting_description=location_setting_description,
             persistent_movable_prop_state=prop_ledger_snapshot,
+            initial_location_subjects=(
+                generation_state.get("initial_location_subjects", [])
+                if segment_number == 1 else []
+            ),
         )
         return {
             "segment": segment_number,

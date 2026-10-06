@@ -126,9 +126,11 @@ A rectangular tavern interior.
         )
         system = messages[0]["content"]
         user = messages[1]["content"]
-        self.assertIn("before Beat 1 begins", system)
-        self.assertIn("Read ALL beats", system)
-        self.assertIn("no earlier beat shows that Subject entering", system)
+        self.assertIn("subjects defined in beats that have no entry point", system)
+        self.assertIn("Jim is already there, so add Jim", system)
+        self.assertIn("William enters the scene, so don't add William", system)
+        self.assertIn("do not return a subject defined in EXISTING SUBJECT DEFINITIONS", system)
+        self.assertIn("one sentence initial_state", system)
         self.assertIn("Beat 2: A goblin already seated near the hearth", user)
 
     def test_initial_location_subject_extractor_retries_only_itself(self):
@@ -148,7 +150,7 @@ A rectangular tavern interior.
         self.assertEqual(request.call_count, 2)
         self.assertEqual(
             request.call_args_list[0].kwargs["history_metadata"]["purpose"],
-            "initial_location_subjects_extract",
+            "director_raw_scene_subject_resolution",
         )
         self.assertEqual(
             request.call_args_list[1].kwargs["history_metadata"]["attempt"],
@@ -186,8 +188,34 @@ A rectangular tavern interior.
         rendered = minimax.format_initial_location_subjects_opening_state([
             {"name": "Goblin1", "initial_state": "seated near the hearth"},
         ])
-        self.assertIn("SUBJECTS ALREADY PRESENT AT STORY START", rendered)
+        self.assertIn("SUBJECTS INFERRED TO BE PRESENT AT STORY START", rendered)
         self.assertIn("Goblin1: already present; seated near the hearth.", rendered)
+        self.assertIn("they may remain off-camera", rendered)
+
+    def test_request_one_receives_inferred_subjects_as_optional_scene_candidates(self):
+        messages, _, _ = minimax.build_generation_messages(
+            director_rules="rules",
+            story="story",
+            beats=["Amy wipes the counter."],
+            completed_beat_ids=set(),
+            recent_results=[],
+            current_segment=1,
+            total_segments=1,
+            segment_length=8,
+            total_length=8,
+            subject_definitions=(
+                "<Subject 2> is Goblin1 (S2), present at story start. "
+                "Last known state: Goblin1 was seated near the hearth."
+            ),
+            initial_location_subjects=[
+                {"name": "Goblin1", "initial_state": "seated near the hearth"},
+            ],
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn("Goblin1", prompt)
+        self.assertIn("seated near the hearth", prompt)
+        self.assertIn("decide whether each needs to be visible", prompt)
+        self.assertIn("they may remain off-camera", prompt)
 
     def test_new_generation_state_has_location_state(self):
         state = minimax.new_generation_state({})
