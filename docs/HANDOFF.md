@@ -6,7 +6,7 @@ Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This fi
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
-Active experimental branch: `location-state-test`
+Active experimental branch: `object-state-work`
 
 Runtime/bridge mailbox branch: `gpt-runtime`
 
@@ -887,3 +887,14 @@ Next local acceptance run:
 - Segment 3 Elf1 reference/registry should retain explicit female identity; Amy must visibly travel before interacting at the back table; mug/chalice identities should remain separate; a harmless held_props shape slip must not erase the chalice.
 - Segment 4 should retain Goblin1 through deterministic continuing-Subject text when he remains in the location, and pouring must have a real source container. Watch specifically for cup floating/duplication even with correct prompt state.
 - Inspect `generation_state.json.subject_state_ledger`: configured Subjects should exist from run start, dynamic Subjects should be added, and offscreen Subjects should retain last-known state.
+
+
+### 2026-10-05 — object-state-work branch
+
+Created branch `object-state-work` from `main` at commit
+`8dc5c86e2cc0ae8f3b79aaa8e327b100b5b792ac`.
+
+This branch is the active workspace for the next object-state work. The latest
+implementation and acceptance target are the 2026-10-05 Subject/prop ledger
+handoff immediately above; no new implementation changes are part of this
+branch setup.

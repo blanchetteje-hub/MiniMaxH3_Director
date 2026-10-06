@@ -6,7 +6,7 @@ This file is the persistent source of truth for the current MiniMax H3 architect
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
-Active experimental branch: `location-state-test`
+Active experimental branch: `object-state-work`
 
 ## Primary goal
 
@@ -2020,7 +2020,7 @@ This keeps hidden render mechanics deterministic and outside the local model's j
 
 ## 2026-10-04 experiment — persistent location-state reference
 
-Active experiment branch: `location-state-test`.
+Historical experiment branch (merged to `main`): `location-state-test`.
 
 The seamless 22-frame native AddGuide continuation is frozen. This experiment targets only
 off-camera spatial persistence.
@@ -2525,4 +2525,3 @@ clothing provisionally until this expanded-story extractor runs.
 
 This is intentionally separate from dynamic Subject wardrobe bootstrap. Dynamic
 Subjects still receive their one-time outfit from the existing post-RAW resolver.
-
