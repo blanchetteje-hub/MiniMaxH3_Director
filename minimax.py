@@ -6579,6 +6579,132 @@ def parse_story_subject_wardrobe_result(raw_result, llm_request=None):
     return clothing
 
 
+def extract_subject_canonical_wardrobe(
+    expanded_story,
+    subject_name,
+    subject_definition="",
+    canonical_record=None,
+    *,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Run the canonical appropriate-attire extractor for exactly one Subject."""
+    if llm_request is None:
+        llm_request = ask_llm
+    expanded_story = str(expanded_story or "").strip()
+    subject_name = " ".join(str(subject_name or "").split()).strip()
+    if not expanded_story or not subject_name:
+        raise ValueError("Subject wardrobe extraction requires story text and a Subject.")
+
+    clothing = None
+    last_error = None
+    for wardrobe_attempt in range(1, 4):
+        try:
+            raw = llm_request(
+                build_story_subject_wardrobe_messages(
+                    expanded_story,
+                    subject_name,
+                    subject_definition,
+                    canonical_record,
+                ),
+                response_format=build_story_subject_wardrobe_response_format(),
+                max_tokens=256,
+                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "story_subject_wardrobe_extract",
+                    "subject": subject_name,
+                    "subject_id": (
+                        int(canonical_record.get("subject_id"))
+                        if isinstance(canonical_record, dict)
+                        and str(canonical_record.get("subject_id", "")).isdigit()
+                        else None
+                    ),
+                    "attempt": wardrobe_attempt,
+                },
+            )
+            clothing = parse_story_subject_wardrobe_result(
+                raw,
+                llm_request=llm_request,
+            )
+            break
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            if wardrobe_attempt < 3:
+                console_log(
+                    f"Subject wardrobe extractor for {subject_name} returned unusable "
+                    f"output (attempt {wardrobe_attempt}/3); retrying only this "
+                    f"extractor: {error}",
+                    flush=True,
+                )
+    if clothing is None:
+        raise ValueError(
+            f"Could not extract canonical attire for {subject_name}: "
+            f"{last_error or 'unknown wardrobe extraction error'}"
+        )
+    return clothing
+
+
+def apply_story_subject_wardrobes(
+    continuity_state,
+    expanded_story,
+    subject_definitions,
+    subject_names,
+    *,
+    history_metadata=None,
+    llm_request=None,
+):
+    """Run one independent attire call for each named Subject and seed its state."""
+    state = copy.deepcopy(continuity_state) if isinstance(continuity_state, dict) else {}
+    subjects = state.get("subjects")
+    if not isinstance(subjects, dict):
+        return state
+
+    definition_lines = {}
+    for line in str(subject_definitions or "").splitlines():
+        match = re.match(
+            r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+(?P<name>[^,]+)",
+            line,
+        )
+        if match:
+            definition_lines[" ".join(match.group("name").split()).casefold()] = line.strip()
+
+    for requested_name in subject_names or []:
+        existing_name = _find_existing_subject_name(subjects, requested_name)
+        if existing_name is None:
+            continue
+        record = subjects.get(existing_name)
+        if not isinstance(record, dict):
+            continue
+        clothing = extract_subject_canonical_wardrobe(
+            expanded_story,
+            existing_name,
+            definition_lines.get(existing_name.casefold(), ""),
+            record,
+            llm_request=llm_request,
+            history_metadata=history_metadata,
+        )
+        wardrobe = {field: "N/A" for field in _WARDROBE_FIELDS}
+        if clothing != "N/A":
+            grouped = {}
+            for field, value in _split_wardrobe_components(clothing):
+                grouped.setdefault(field, []).append(value)
+            for field, values in grouped.items():
+                wardrobe[field] = _join_wardrobe_components(values)
+            # Preserve the complete canonical outfit even when prose is richer
+            # than the deterministic garment splitter can fully decompose.
+            if not grouped:
+                wardrobe["other"] = clothing
+        record["wardrobe"] = wardrobe
+        console_log(
+            f"Canonical appropriate attire for {existing_name}: {clothing}",
+            flush=True,
+        )
+    return state
+
+
 def canonicalize_defined_subject_wardrobes(
     character_canon,
     expanded_story,
@@ -18152,21 +18278,16 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
         {
             "role": "system",
             "content": (
-                'Find animate Subjects that are already physically present in the starting '
-                'location before Beat 1 but are first mentioned in a later beat. Read ALL '
-                'beats. Include a Subject only when its first in-location state assumes prior '
-                'presence and no earlier beat shows that Subject entering, arriving, being '
-                'brought in, or newly revealed as part of the story action.\n\n'
+                'Return subjects defined in beats that have no entry point (IE entered, '
+                'walked in, etc.).\n\n'
                 'Example 1: "Beat 2: Jim leered over at Daisy from his seat." - Jim is '
                 'already there, so add Jim.\n'
                 'Example 2: "Beat 2: William walked in from the rain." - William enters '
-                'the scene, so do not add William.\n\n'
-                '- do not return a Subject defined in EXISTING SUBJECT DEFINITIONS.\n'
-                '- preserve an explicit proper name. For an unnamed role/species, assign one '
-                'stable Role1-style functional name such as Goblin1 or Guard1.\n'
-                '- include a one sentence initial_state containing only the minimal physical '
-                'location/pose supported by the beats. Do not include held/carried props, '
-                'appearance, clothing, motives, new actions, or plot facts.\n'
+                'the scene, so don\'t add William.\n\n'
+                '- do not return a subject defined in EXISTING SUBJECT DEFINITIONS.\n'
+                '- include a one sentence initial_state. initial_state must be the minimal '
+                'physical location/pose supported by the beats; do not invent appearance, '
+                'clothing, motives, actions, or plot facts.\n'
                 '- Return JSON.'
             ),
         },
@@ -37181,6 +37302,14 @@ def _run_main(
                 base_subject_definitions,
                 additional_subject_definitions,
             )
+            if expanded_story_context:
+                continuity_state = apply_story_subject_wardrobes(
+                    continuity_state,
+                    expanded_story_context,
+                    subject_definitions,
+                    initial_added_subjects,
+                    history_metadata={"run_id": run_id},
+                )
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
         )
@@ -38149,6 +38278,18 @@ def _run_main(
                 subject_definitions,
                 continuity_state,
             )
+            if expanded_story_context:
+                continuity_state = apply_story_subject_wardrobes(
+                    continuity_state,
+                    expanded_story_context,
+                    subject_definitions,
+                    newly_registered_names,
+                    history_metadata={
+                        "run_id": run_id,
+                        "source_sha256": run_config["source_sha256"],
+                        "segment": segment,
+                    },
+                )
             generation_state["subject_registry_state"] = migrate_continuity_state(
                 continuity_state
             )
