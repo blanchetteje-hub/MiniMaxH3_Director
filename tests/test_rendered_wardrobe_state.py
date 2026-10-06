@@ -40,7 +40,7 @@ class RenderedWardrobeStateTests(unittest.TestCase):
             "wardrobe": wardrobe,
         }
 
-    def test_rendered_wardrobe_updates_only_positive_observations(self):
+    def test_rendered_wardrobe_is_diagnostic_not_a_canonical_update(self):
         merged = minimax.merge_prompt_and_visual_end_state(
             self.prompt_state(),
             self.visual_state(self.subject(
@@ -57,9 +57,9 @@ class RenderedWardrobeStateTests(unittest.TestCase):
         self.assertEqual(
             merged["subjects"]["Mark"]["wardrobe"],
             {
-                "upper": "torn blue jacket",
+                "upper": "requested red shirt",
                 "lower": "requested black jeans",
-                "footwear": "white sneakers",
+                "footwear": "requested boots",
                 "other": "requested watch",
             },
         )
@@ -81,7 +81,7 @@ class RenderedWardrobeStateTests(unittest.TestCase):
 
         self.assertEqual(merged["subjects"]["Mark"]["wardrobe"], prompt["subjects"]["Mark"]["wardrobe"])
 
-    def test_duplicate_rendered_wardrobe_slots_are_removed(self):
+    def test_rendered_duplicate_wardrobe_slots_do_not_rewrite_state(self):
         merged = minimax.merge_prompt_and_visual_end_state(
             self.prompt_state(),
             self.visual_state(self.subject(
@@ -96,10 +96,10 @@ class RenderedWardrobeStateTests(unittest.TestCase):
         )
 
         wardrobe = merged["subjects"]["Mark"]["wardrobe"]
-        self.assertEqual(wardrobe["lower"], "blue jeans")
+        self.assertEqual(wardrobe["lower"], "requested black jeans")
         self.assertEqual(wardrobe["footwear"], "requested boots")
 
-    def test_new_rendered_wardrobe_replaces_older_state(self):
+    def test_new_rendered_wardrobe_does_not_replace_canonical_state(self):
         first = minimax.merge_prompt_and_visual_end_state(
             self.prompt_state(),
             self.visual_state(self.subject(
@@ -125,17 +125,13 @@ class RenderedWardrobeStateTests(unittest.TestCase):
             )),
         )
 
-        self.assertEqual(
-            second["subjects"]["Mark"]["wardrobe"]["upper"],
-            "torn red dress",
-        )
-        self.assertNotIn("red dress", second["subjects"]["Mark"]["wardrobe"].values())
+        self.assertEqual(second["subjects"]["Mark"]["wardrobe"]["upper"], "requested red shirt")
         self.assertEqual(
             second["subjects"]["Mark"]["wardrobe"]["footwear"],
-            "black boots",
+            "requested boots",
         )
 
-    def test_explicit_none_clears_wardrobe_slot(self):
+    def test_visual_none_does_not_clear_wardrobe_slot(self):
         merged = minimax.merge_prompt_and_visual_end_state(
             self.prompt_state(),
             self.visual_state(self.subject(
@@ -148,11 +144,11 @@ class RenderedWardrobeStateTests(unittest.TestCase):
         )
 
         wardrobe = merged["subjects"]["Mark"]["wardrobe"]
-        self.assertEqual(wardrobe["upper"], "N/A")
-        self.assertEqual(wardrobe["lower"], "N/A")
+        self.assertEqual(wardrobe["upper"], "requested red shirt")
+        self.assertEqual(wardrobe["lower"], "requested black jeans")
         self.assertEqual(wardrobe["footwear"], "requested boots")
 
-    def test_subjects_keep_independent_rendered_wardrobe_state(self):
+    def test_subjects_keep_independent_canonical_wardrobe_state(self):
         merged = minimax.merge_prompt_and_visual_end_state(
             self.prompt_state(),
             self.visual_state(
@@ -177,20 +173,17 @@ class RenderedWardrobeStateTests(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(
-            merged["subjects"]["Mark"]["wardrobe"]["upper"],
-            "green coat",
-        )
+        self.assertEqual(merged["subjects"]["Mark"]["wardrobe"]["upper"], "requested red shirt")
         self.assertEqual(
             merged["subjects"]["Amy"]["wardrobe"]["upper"],
-            "white blouse",
+            "requested yellow blouse",
         )
         self.assertEqual(
             merged["subjects"]["Amy"]["wardrobe"]["footwear"],
             "requested sandals",
         )
 
-    def test_unseen_subject_prompt_wardrobe_is_cleared_without_visual_evidence(self):
+    def test_unseen_subject_keeps_wardrobe_when_camera_does_not_show_them(self):
         merged = minimax.merge_prompt_and_visual_end_state(
             self.prompt_state(),
             self.visual_state(self.subject(
@@ -204,9 +197,12 @@ class RenderedWardrobeStateTests(unittest.TestCase):
             )),
         )
 
-        self.assertNotIn("wardrobe", merged["subjects"]["Amy"])
+        self.assertEqual(
+            merged["subjects"]["Amy"]["wardrobe"],
+            self.prompt_state()["subjects"]["Amy"]["wardrobe"],
+        )
 
-    def test_prompt_only_clears_wardrobe_aliases_but_preserves_body_state(self):
+    def test_prompt_only_preserves_wardrobe_and_scrubs_aliases(self):
         state = {
             "subjects": {
                 "Mark": {
@@ -231,7 +227,8 @@ class RenderedWardrobeStateTests(unittest.TestCase):
         cleared = minimax.clear_unrendered_wardrobes(state)
         subject = cleared["subjects"]["Mark"]
 
-        for field in ("wardrobe", "clothing", "clothing_condition"):
+        self.assertEqual(subject["wardrobe"], {"upper": "invented shirt"})
+        for field in ("clothing", "clothing_condition"):
             self.assertNotIn(field, subject)
         self.assertNotIn("clothing", subject["body_state"])
         self.assertEqual(subject["body_state"]["injuries"], ["scraped palm"])
@@ -239,7 +236,7 @@ class RenderedWardrobeStateTests(unittest.TestCase):
         self.assertEqual(subject["persistent_effects"], ["the garage door is damaged"])
         self.assertEqual(state, before)
 
-    def test_malformed_wrapped_subject_cannot_bypass_prompt_only_clearing(self):
+    def test_wrapped_subject_wardrobe_survives_prompt_only_processing(self):
         state = {
             "subjects": [
                 {"Mark": {
@@ -251,9 +248,12 @@ class RenderedWardrobeStateTests(unittest.TestCase):
 
         cleared = minimax.clear_unrendered_wardrobes(state)
 
-        self.assertNotIn("wardrobe", cleared["subjects"][0]["Mark"])
+        self.assertEqual(
+            cleared["subjects"][0]["Mark"]["wardrobe"]["upper"],
+            "invented shirt",
+        )
 
-    def test_malformed_wrapped_subject_cannot_bypass_visual_merge_clearing(self):
+    def test_visual_merge_does_not_clear_wrapped_offscreen_wardrobe(self):
         state = {
             "subjects": [
                 {"Mark": {
@@ -270,7 +270,7 @@ class RenderedWardrobeStateTests(unittest.TestCase):
         merged = minimax.merge_prompt_and_visual_end_state(state, {})
 
         subject = merged["subjects"][0]["Mark"]
-        self.assertNotIn("wardrobe", subject)
+        self.assertEqual(subject["wardrobe"]["upper"], "invented shirt")
         self.assertNotIn("clothing", subject["body_state"])
         self.assertEqual(subject["body_state"]["injuries"], ["bruise"])
 
@@ -318,7 +318,7 @@ class RenderedWardrobeStateTests(unittest.TestCase):
         self.assertEqual(merged["subjects"]["Mark"]["body_state"], before_identity)
         self.assertNotIn(before_identity, merged["subjects"]["Mark"]["wardrobe"].values())
 
-    def test_legacy_clothing_shape_is_canonicalized_to_wardrobe(self):
+    def test_rendered_clothing_does_not_promote_legacy_shape_to_canonical(self):
         prompt = {
             "subjects": {
                 "Mark": {
@@ -340,10 +340,7 @@ class RenderedWardrobeStateTests(unittest.TestCase):
             )),
         )
 
-        self.assertEqual(
-            merged["subjects"]["Mark"]["wardrobe"]["upper"],
-            "gray coat",
-        )
+        self.assertNotIn("wardrobe", merged["subjects"]["Mark"])
         self.assertNotIn("clothing", merged["subjects"]["Mark"])
 
 

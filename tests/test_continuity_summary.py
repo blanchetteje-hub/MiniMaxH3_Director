@@ -949,7 +949,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
         self.assertEqual(result["physical_condition"], "N/A")
         self.assertEqual(result["body_state"], "left horn missing")
-        self.assertEqual(result["held_props"], ["flashlight"])
+        self.assertEqual(result["held_props"], [])
 
     def test_structured_state_rebuilds_name_keys_from_numeric_subject_ids(self):
         committed = minimax.new_continuity_state()
@@ -1054,7 +1054,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             copied["subjects"]["Unit"]["persistent_structural_change"]
         )
 
-    def test_clothing_removal_does_not_mark_persistent_structural_change(self):
+    def test_unmatched_clothing_removal_does_not_replace_known_wardrobe(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
         committed["subjects"]["Mark"]["wardrobe"]["upper"] = "red blouse"
         snapshot = canonical_candidate(self.SUBJECTS, committed)
@@ -1072,7 +1072,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
 
         mark_record = changed["subjects"]["Mark"]
-        self.assertEqual(mark_record["wardrobe"]["upper"], "absent")
+        self.assertEqual(mark_record["wardrobe"]["upper"], "red blouse")
         self.assertFalse(mark_record["persistent_structural_change"])
 
     def test_topology_change_marks_persistent_structural_change(self):
@@ -1181,7 +1181,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(result["position"], "N/A")
         self.assertEqual(result["wardrobe"]["upper"], "green sweater")
         self.assertEqual(result["physical_condition"], "N/A")
-        self.assertEqual(result["held_props"], ["flashlight"])
+        self.assertEqual(result["held_props"], [])
 
     def test_na_with_implied_note_normalizes_to_na_without_recovery(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)

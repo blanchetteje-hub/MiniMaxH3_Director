@@ -21,12 +21,13 @@ class PostmortemRegressionTests(unittest.TestCase):
 
     def test_subject_resolver_prefers_explicit_species_over_generic_creature(self):
         messages = minimax.build_director_raw_subject_resolution_messages(
-            "At 00:01.000, a dragon shifts outside while a griffin watches Amy."
+            "At 00:01.000, a pilot shifts outside while a mechanic watches Amy."
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("If RAW says dragon, use Dragon1", prompt)
-        self.assertIn("if RAW says griffin, use Griffin1", prompt)
-        self.assertIn("Use CreatureN only when the type is truly unknown", prompt)
+        self.assertIn("most specific explicit role/species plus an integer", prompt)
+        self.assertIn("neutral generic type label", prompt)
+        self.assertNotIn("dragon", prompt.casefold())
+        self.assertNotIn("griffin", prompt.casefold())
 
     def test_subject_resolver_reuses_single_known_functional_species(self):
         raw = (
@@ -853,18 +854,18 @@ class PostmortemRegressionTests(unittest.TestCase):
 
     def test_appropriate_attire_prompt_keeps_non_clothed_species_unclothed(self):
         messages = minimax.build_story_subject_wardrobe_messages(
-            "A dragon rests beside a modern family.",
-            "Dragon1",
-            "<Subject 2> is Dragon1, a dragon.",
-            {"name": "Dragon1", "age": "adult", "gender": "unknown"},
+            "A non-humanoid animal rests near its habitat.",
+            "Subject Two",
+            "<Subject 2> is Subject Two with a non-humanoid form.",
+            {"name": "Subject Two", "age": "adult", "gender": "unknown"},
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("Appropriate attire", prompt)
         self.assertIn("FIXED CLOTHING RULE", prompt)
-        self.assertIn("humanoid dragons", prompt)
-        self.assertIn("non-humanoid dragons, animals", prompt)
-        self.assertIn("T-shirt and blue jeans", prompt)
-        self.assertIn("must return N/A", prompt)
+        self.assertIn("humanoid physical form must wear clothing", prompt)
+        self.assertIn("A non-humanoid form may use N/A", prompt)
+        self.assertIn("established setting and occupation", prompt)
+        self.assertNotIn("dragon", prompt.casefold())
+        self.assertNotIn("T-shirt and blue jeans", prompt)
 
     def test_wardrobe_parser_keeps_lower_and_later_outfit_slots(self):
         components = minimax._split_wardrobe_components(

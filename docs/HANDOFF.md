@@ -39,10 +39,9 @@ generation:
 - Fixed wardrobe component parsing so the `lower:` slot label is not mistaken for
   the action verb “lower”; lower garments and later outfit slots now survive
   normalization.
-- Made “any subject described as humanoid must wear clothing, regardless of
-  species” a fixed rule in both defined-Subject wardrobe extraction and character
-  reference rendering. This covers humanoid dragons; genuinely non-humanoid
-  unclothed species can still use `N/A`.
+- Made the humanoid clothing requirement a fixed, species-neutral rule in
+  defined-Subject wardrobe extraction and character reference rendering.
+  Non-humanoid forms may use `N/A` when clothing does not apply.
 - Preserved explicit period/culture/genre cues through static-setting extraction,
   spatial refinement, location description, and the final location-reference
   prompt. Medieval-fantasy locations must retain a visibly medieval-fantasy look.
@@ -60,6 +59,86 @@ The broader Python object-state validators for Amy's cloth and the chalice remai
 deferred, as requested. After the next tavern run, inspect the wardrobe for
 Goblin1/Elf1, Dragon1's clothing, the location's period styling, furniture use,
 and whether Elf1/Dragon1 remain in their established positions through Segment 6.
+
+## 2026-10-06 — WorldState foundation, review gates A and B
+
+Implemented only the first two steps of the WorldState refactor for review. Do
+not start Gate C or Gate D until the user approves this checkpoint.
+
+- Gate A: sparse prop and Subject-ledger observations no longer replace
+  established scalar or wardrobe facts with omitted, blank, `N/A`, or `unknown`
+  defaults. Explicit empty Subject lists remain meaningful clears. A continuity
+  wardrobe replacement of an established garment now requires a matching
+  explicit put-on/take-off action in the newest scene. Story wardrobe extraction
+  fills unknown slots and preserves already-established attire.
+- The fixed clothing rule is explicit in wardrobe extraction and dynamic Subject
+  resolution: humanoids must remain clothed regardless of species; non-humanoid
+  forms may use `N/A` where clothing does not apply unless the source explicitly
+  gives clothing. WorldState validation uses the explicit clothing-applicability
+  field, not the Subject's name, and rejects `N/A` or `absent` slots when
+  clothing is required.
+- Gate B's identity-only seed is a temporary migration state. Later
+  authority-specific seed functions may initialize story-start presence,
+  canonical wardrobe, canonical location, and explicitly established props.
+  Legacy continuity, RAW, visual observations, and beat summaries remain
+  ineligible as WorldState seed or synchronization sources.
+- Current schema: `schema_version`, `revision`, `source_sha256`, `seed_status`,
+  `subjects`, `props`, and `locations`. A subject has immutable identity
+  metadata (`physical_form` and `clothing_applicability`), unknown-initialized
+  physical state, wardrobe slots, and identity provenance. A new run currently
+  seeds only identity metadata from the user-authored `subjects.txt` definitions;
+  other subject facts stay unknown and props/locations start empty. Old
+  checkpoints receive an unknown-only WorldState with no legacy migration.
+- There is no legacy-state-to-WorldState synchronization path. The only
+  current WorldState construction/write paths are `world_state.new_world_state`,
+  `world_state.empty_world_state`, `minimax.new_generation_state`,
+  `minimax.load_generation_state` (legacy-key fallback),
+  `minimax.save_generation_state` (legacy-key fallback),
+  `minimax.record_completed_segment` (snapshot), and
+  `minimax.restore_generation_state` (restore of that snapshot).
+  `minimax.authoritative_world_state_seed_from_subject_definitions` only
+  prepares the narrow authored-input seed; `world_state.copy_world_state`
+  returns a validated independent copy. No Director, reducer, visual observer,
+  beat summary, RAW parser, or legacy writer updates WorldState facts. This
+  remains a temporary state until reviewed authority-specific seed functions
+  and Gate C's action contract are added.
+
+Legacy state writers still active and therefore still competing authorities for
+their compatibility state:
+
+- `normalize_structured_continuity_state` applies continuity-model values to
+  legacy continuity; `request_combined_continuity` orchestrates that path.
+- `merge_prompt_and_visual_end_state` still applies visual position, pose,
+  camera, and environment observations to legacy continuity. Wardrobe is kept
+  diagnostic and no longer promoted from visual observations.
+- `apply_state_patch` and `apply_accepted_beat_state_patch` apply accepted-beat
+  effects to legacy beat state; `_continuity_apply_authoritative_state_effects`
+  applies scripted effects to legacy continuity and prop ledgers.
+- `seed_initial_location_subjects`, `apply_visible_subject_bootstrap_metadata`,
+  and `apply_authoritative_prop_state_effects` add or update legacy Subject and
+  prop facts. `_run_main` orchestrates these paths and additional direct legacy
+  assignments during segment processing.
+- `merge_prop_ledger`, `merge_subject_state_ledger`,
+  `record_completed_segment`, and generation-state load/restore/save still
+  canonicalize or merge the legacy ledgers and snapshots.
+- Wardrobe compatibility writers include `seed_story_wardrobe`,
+  `seed_character_canon_wardrobe`, `seed_canonical_opening_wardrobe`,
+  `apply_story_subject_wardrobes`, and `_repair_candidate_wardrobe_extraction`.
+  These do not write WorldState.
+
+These writers are intentionally not removed or redirected in this checkpoint.
+Gate C must report them again after adding Director `state_actions` and reducer
+validation; Gate D is where segment processing becomes transactional and legacy
+writers begin to be replaced or disabled.
+
+Focused validation: `tests/test_world_state_foundation.py`,
+`tests/test_rendered_wardrobe_state.py`, `tests/test_subject_identity_continuity.py`,
+`tests/test_location_state_reference.py`, `tests/test_postmortem_regressions.py`,
+and the relevant `tests/test_continuity_summary.py` cases had 225 passing tests
+and 12 passing subtests. Eleven existing tests were deselected: stale prompt or
+retention contracts, unrelated timing/speaker-repair assertions, and a test that
+tries to delete a ComfyUI output file outside the writable workspace. The whole
+suite was not rerun at this gate.
 
 ### Test-suite maintenance and current status
 
@@ -1068,9 +1147,9 @@ candidate Subjects to the RAW scene request.
 - The post-RAW resolver has the distinct purpose `director_raw_scene_visible_subject_resolution`;
   it handles Subjects that appear in accepted RAW. This avoids conflating it with beat-based
   resolution.
-- Dynamic humanoid creatures, including humanoid goblins, orcs, and trolls, may receive canonical
-  setting-appropriate clothing from the visible-Subject resolver. Non-humanoid animals or creatures
-  default to N/A wardrobe fields unless RAW explicitly gives clothing.
+- Dynamic Subjects with humanoid physical form receive canonical, setting-appropriate
+  clothing from the visible-Subject resolver. Non-humanoid forms may use N/A wardrobe
+  fields when clothing does not apply, unless RAW explicitly gives clothing.
 
 The pre-Director resolver now uses the `director_raw_scene_subject_resolution` purpose for LLM
 settings/logging. The visible-Subject resolver uses

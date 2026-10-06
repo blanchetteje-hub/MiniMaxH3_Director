@@ -49,6 +49,7 @@ from gpt_formatter import (
 from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
 from story_planner import StoryPlan, build_story_plan
+from world_state import empty_world_state, new_world_state, validate_world_state
 
 # ============================================================
 # CONSTANTS
@@ -3463,6 +3464,7 @@ def build_run_config(
     no_music=False,
     disable_subject_removal=False,
     visual_style=DEFAULT_VISUAL_STYLE,
+    world_state_seed=None,
 ):
     visual_style = normalize_visual_style(visual_style)
     # Auto-discovered video subjects are durable continuity metadata, not a
@@ -3505,6 +3507,9 @@ def build_run_config(
         "disable_subject_removal": bool(disable_subject_removal),
         "visual_style": visual_style,
         "source_sha256": hashlib.sha256(source_payload).hexdigest(),
+        # This narrow seed is constructed from the user-authored subjects file.
+        # Story-derived guesses and legacy continuity structures are excluded.
+        "world_state_seed": copy.deepcopy(world_state_seed or {}),
     }
 
 
@@ -3675,6 +3680,41 @@ def subject_identity_snapshot_for_definitions(subject_definitions):
             record,
         )
     return snapshot
+
+
+def authoritative_world_state_seed_from_subject_definitions(
+    subject_definitions,
+    source_path=SUBJECT_DEFINITIONS_FILE,
+):
+    """Build an identity-only seed from the user-authored subjects file."""
+    definitions = str(subject_definitions or "")
+    subjects = subject_identity_snapshot_for_definitions(definitions)
+    lines = definitions.splitlines()
+    for raw_id, identity in subjects.items():
+        marker = re.compile(rf"(?i)<\s*Subject\s+{re.escape(str(raw_id))}\s*>")
+        matching = next(
+            (
+                line.strip()
+                for line in lines
+                if marker.search(line)
+                and str(identity.get("name") or "").casefold() in line.casefold()
+            ),
+            "",
+        )
+        identity["source_description"] = matching
+        if re.search(r"(?i)\bnon[- ]humanoid\b", matching):
+            identity["physical_form"] = "non_humanoid"
+        elif re.search(r"(?i)\bhumanoid\b", matching):
+            identity["physical_form"] = "humanoid"
+        elif re.search(r"(?i)\banimal\b", matching):
+            identity["physical_form"] = "non_humanoid"
+        else:
+            identity["physical_form"] = "unknown"
+    return {
+        "source_path": str(source_path or ""),
+        "source_sha256": hashlib.sha256(definitions.encode("utf-8")).hexdigest(),
+        "subjects": subjects,
+    }
 
 
 # Subject identity mismatch.
@@ -4630,10 +4670,13 @@ def continuity_state_for_registry(subject_definitions, state=None):
     def copy_continuity_fields(record, existing):
         if not isinstance(existing, dict):
             return
-        record["persistent_structural_change"] = bool(
-            existing.get("persistent_structural_change", False)
-        )
-        if isinstance(existing.get("canonical_description"), str):
+        if existing.get("persistent_structural_change") is True:
+            record["persistent_structural_change"] = True
+        if (
+            isinstance(existing.get("canonical_description"), str)
+            and existing["canonical_description"].strip()
+            and existing["canonical_description"].strip().casefold() != "n/a"
+        ):
             record["canonical_description"] = " ".join(
                 existing["canonical_description"].split()
             )
@@ -4644,8 +4687,13 @@ def continuity_state_for_registry(subject_definitions, state=None):
             "body_state",
             "physical_condition",
         ):
-            if isinstance(existing.get(field), str):
-                record[field] = existing[field]
+            value = existing.get(field)
+            if (
+                isinstance(value, str)
+                and value.strip()
+                and value.strip().casefold() not in {"n/a", "unknown"}
+            ):
+                record[field] = value
         if isinstance(existing.get("held_props"), list):
             record["held_props"] = list(existing["held_props"])
         for field in SUBJECT_LIST_FIELDS:
@@ -4653,8 +4701,13 @@ def continuity_state_for_registry(subject_definitions, state=None):
                 record[field] = list(existing[field])
         if isinstance(existing.get("wardrobe"), dict):
             for garment in record["wardrobe"]:
-                if isinstance(existing["wardrobe"].get(garment), str):
-                    record["wardrobe"][garment] = existing["wardrobe"][garment]
+                value = existing["wardrobe"].get(garment)
+                if (
+                    isinstance(value, str)
+                    and value.strip()
+                    and value.strip().casefold() not in {"n/a", "unknown"}
+                ):
+                    record["wardrobe"][garment] = value
 
     subjects = {}
     used_subject_ids = set()
@@ -6509,16 +6562,12 @@ def build_story_subject_wardrobe_messages(
                 "pieces with simple appropriate attire for the subject's species, "
                 "body, setting, period, culture, and occupation so the visual "
                 "reference shows a complete coherent outfit. FIXED CLOTHING RULE: "
-                "any subject described as humanoid must wear clothing regardless "
-                "of species; never return N/A for a humanoid. This includes "
-                "humanoid dragons and other humanoid creatures. Appropriate attire "
-                "does not mean every subject wears clothes: non-humanoid dragons, "
-                "animals, and other beings that appropriately do not wear clothing "
-                "must return N/A unless the story explicitly gives them clothing. "
-                "For normally "
-                "clothed people whose outfit is unstated, choose ordinary appropriate "
-                "attire for the setting (for example, a T-shirt and blue jeans in a "
-                "modern casual setting). Do not change identity, anatomy, story "
+                "any subject with a humanoid physical form must wear clothing, "
+                "regardless of species; never return N/A for a humanoid. A "
+                "non-humanoid form may use N/A when clothing is not appropriate "
+                "unless the story explicitly gives that subject clothing. "
+                "For a humanoid whose outfit is unstated, choose ordinary appropriate "
+                "attire for the established setting and occupation. Do not change identity, anatomy, story "
                 "events, or explicit clothing facts. Return JSON only."
             ),
         },
@@ -6690,17 +6739,28 @@ def apply_story_subject_wardrobes(
             llm_request=llm_request,
             history_metadata=history_metadata,
         )
-        wardrobe = {field: "N/A" for field in _WARDROBE_FIELDS}
+        existing_wardrobe = record.get("wardrobe")
+        if not isinstance(existing_wardrobe, dict):
+            existing_wardrobe = {}
+        wardrobe = {
+            field: copy.deepcopy(existing_wardrobe.get(field, "N/A"))
+            for field in _WARDROBE_FIELDS
+        }
         if clothing != "N/A":
             grouped = {}
             for field, value in _split_wardrobe_components(clothing):
                 grouped.setdefault(field, []).append(value)
             for field, values in grouped.items():
-                wardrobe[field] = _join_wardrobe_components(values)
+                current = _known_replacement_value(
+                    wardrobe.get(field), f"wardrobe.{field}"
+                )
+                if current is None:
+                    wardrobe[field] = _join_wardrobe_components(values)
             # Preserve the complete canonical outfit even when prose is richer
             # than the deterministic garment splitter can fully decompose.
             if not grouped:
-                wardrobe["other"] = clothing
+                if _known_replacement_value(wardrobe.get("other"), "wardrobe.other") is None:
+                    wardrobe["other"] = clothing
         record["wardrobe"] = wardrobe
         console_log(
             f"Canonical appropriate attire for {existing_name}: {clothing}",
@@ -7015,6 +7075,14 @@ def format_dialogue_exclusion_instruction(dialogue_exclusions):
 
 # Create generation state.
 def new_generation_state(run_config):
+    world_state_seed = run_config.get("world_state_seed")
+    if not isinstance(world_state_seed, dict):
+        world_state_seed = {}
+    if not world_state_seed.get("source_sha256"):
+        world_state_seed = {
+            **world_state_seed,
+            "source_sha256": run_config.get("source_sha256", ""),
+        }
     state = {
         "version": 1,
         "config": dict(run_config),
@@ -7057,6 +7125,9 @@ def new_generation_state(run_config):
             "subjects": {},
         },
         "subject_registry_state": new_continuity_state(),
+        # Canonical physical state begins only from the explicit source seed.
+        # Legacy continuity, beat, prompt, and visual snapshots are not read.
+        "world_state": new_world_state(world_state_seed),
         # This is the append-only identity contract for the run. Subject
         # continuity facts may change, but this lock may only gain a brand-new
         # Subject identity; an existing ID can never be reassigned.
@@ -7110,6 +7181,13 @@ def load_generation_state(path=GENERATION_STATE_FILE):
     _canonicalize_generation_state_subjects(state)
     _canonicalize_generation_state_props(state)
     _canonicalize_generation_state_subject_ledger(state)
+    if "world_state" not in state:
+        # Do not reconstruct canonical state from legacy continuity or ledgers.
+        state["world_state"] = empty_world_state(
+            (state.get("config") or {}).get("source_sha256", ""),
+            seed_status="legacy_checkpoint_unseeded",
+        )
+    validate_world_state(state["world_state"])
     # Validate the internal append-only identity chain even when callers only
     # load the checkpoint. Resume adds the subjects.txt comparison separately.
     validate_subject_identity_state(state)
@@ -7175,6 +7253,12 @@ def save_generation_state(state, path=GENERATION_STATE_FILE):
     _canonicalize_generation_state_subjects(state)
     _canonicalize_generation_state_props(state)
     _canonicalize_generation_state_subject_ledger(state)
+    if "world_state" not in state:
+        state["world_state"] = empty_world_state(
+            (state.get("config") or {}).get("source_sha256", ""),
+            seed_status="legacy_checkpoint_unseeded",
+        )
+    validate_world_state(state["world_state"])
     validate_subject_identity_state(state)
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
@@ -7737,6 +7821,9 @@ def restore_generation_state(
         state["prop_ledger"] = normalize_prop_ledger(
             last_record.get("prop_ledger", {})
         )
+        if isinstance(last_record.get("world_state"), dict):
+            validate_world_state(last_record["world_state"])
+            state["world_state"] = copy.deepcopy(last_record["world_state"])
     else:
         state["continuity_prompt_state"] = {}
         state["continuity_state"] = {}
@@ -7775,6 +7862,7 @@ def restore_generation_state(
         "subject_registry_state": migrate_continuity_state(
             state.get("subject_registry_state")
         ),
+        "world_state": copy.deepcopy(state.get("world_state", empty_world_state())),
         "subject_identity_lock": copy.deepcopy(
             state.get("subject_identity_lock", {"subjects": {}})
         ),
@@ -7865,8 +7953,17 @@ def record_completed_segment(
         "subject_identity_snapshot": subject_identity_snapshot(
             subject_registry_state
         ),
+        "world_state": copy.deepcopy(
+            state.get("world_state")
+            if isinstance(state.get("world_state"), dict)
+            else empty_world_state(
+                (state.get("config") or {}).get("source_sha256", ""),
+                seed_status="legacy_checkpoint_unseeded",
+            )
+        ),
         "continuity_summary_pending": bool(continuity_summary_pending),
     }
+    validate_world_state(record["world_state"])
     records.append(record)
     state["recent_dialogues"] = collect_recent_dialogues(records)
     state["recent_dialogue_exclusions"] = list(state["recent_dialogues"])
@@ -7882,6 +7979,7 @@ def record_completed_segment(
     state["subject_registry_state"] = migrate_continuity_state(
         subject_registry_state
     )
+    state["world_state"] = copy.deepcopy(record["world_state"])
     state["continuity_summary_pending"] = bool(
         continuity_summary_pending
     )
@@ -24060,6 +24158,17 @@ def _complete_partial_continuity_candidate(candidate, committed_snapshot):
     for raw_name, record in list(subjects.items()):
         if not isinstance(record, dict):
             continue
+        explicit_empty_lists = set(
+            record.get("_explicit_empty_list_fields", [])
+            if isinstance(record.get("_explicit_empty_list_fields"), list)
+            else []
+        )
+        explicit_empty_lists.update(
+            field
+            for field in SUBJECT_LIST_FIELDS
+            if field in record and record[field] == []
+        )
+        record["_explicit_empty_list_fields"] = sorted(explicit_empty_lists)
         raw_text = str(raw_name).strip()
         known = known_by_name.get(raw_text.casefold())
         if known is None and raw_text.isdigit():
@@ -24515,6 +24624,21 @@ def _wardrobe_action_updates(description, subject_name):
     for _position, field, value in sorted(events, key=lambda event: event[0]):
         updates[field] = value
     return updates
+
+
+def _subject_definition_is_humanoid(subject_definitions, subject_name):
+    """Return true only when the authored definition calls this Subject humanoid."""
+    name = str(subject_name or "").strip()
+    if not name:
+        return False
+    for line in str(subject_definitions or "").splitlines():
+        if name.casefold() not in line.casefold():
+            continue
+        if re.search(r"(?i)\bnon[- ]humanoid\b", line):
+            continue
+        if re.search(r"(?i)\bhumanoid\b", line):
+            return True
+    return False
 
 
 # Return whether one wardrobe phrase belongs to a named Subject sentence.
@@ -25443,6 +25567,13 @@ def normalize_structured_continuity_state(
                 target["persistent_structural_change"] = True
 
         wardrobe = record.get("wardrobe", {})
+        wardrobe_actions = _wardrobe_action_updates(newest_description, name)
+        if not _subject_definition_is_humanoid(subject_definitions, name):
+            wardrobe_actions.update({
+                field: "absent"
+                for field in _wardrobe_absence_fields(newest_description, name)
+                if field not in wardrobe_actions
+            })
         for garment in wardrobe_fields:
             wardrobe_field = f"wardrobe.{garment}"
             value = _known_replacement_value(
@@ -25450,6 +25581,31 @@ def normalize_structured_continuity_state(
                 wardrobe_field,
             )
             if value is not None:
+                if (
+                    value.casefold() == "absent"
+                    and _subject_definition_is_humanoid(subject_definitions, name)
+                ):
+                    console_log(
+                        "WARNING: Ignoring wardrobe removal that would leave "
+                        f"humanoid Subject {name!r} without clothing."
+                    )
+                    continue
+                previous_wardrobe_value = _known_replacement_value(
+                    committed_record.get("wardrobe", {}).get(garment),
+                    wardrobe_field,
+                )
+                explicit_action_value = wardrobe_actions.get(garment)
+                if (
+                    previous_wardrobe_value is not None
+                    and value != previous_wardrobe_value
+                ):
+                    if explicit_action_value is None:
+                        console_log(
+                            "WARNING: Ignoring wardrobe replacement without an "
+                            f"explicit clothing action for {name} ({garment})."
+                        )
+                        continue
+                    value = explicit_action_value
                 value = _authoritative_terminal_replacement(
                     committed_record.get("wardrobe", {}).get(garment, "N/A"),
                     value,
@@ -25466,6 +25622,9 @@ def normalize_structured_continuity_state(
             ))
 
         for field in (*PERSISTENT_SUBJECT_LIST_FIELDS, "held_props"):
+            explicitly_cleared = field in set(
+                record.get("_explicit_empty_list_fields", [])
+            )
             cleaned = list(dict.fromkeys(
                 item
                 for raw_item in record.get(field, [])
@@ -25490,6 +25649,8 @@ def normalize_structured_continuity_state(
                 # A non-empty candidate is treated as the model's complete
                 # current list, preventing indefinite historical accumulation.
                 target[field] = cleaned
+            elif explicitly_cleared:
+                target[field] = []
             elif target.get(field) and _explicit_list_clear_is_grounded(
                 field,
                 newest_description,
@@ -25726,10 +25887,9 @@ def sanitize_prompt_derived_continuity_state(state):
     ``clothing_state``). Those claims are not rendered evidence and can bypass
     the atomic wardrobe replacement, so discard the aliases before the state is
     serialized or merged into the next segment. The canonical ``wardrobe``
-    field is intentionally retained here: merge_prompt_and_visual_end_state()
-    needs it in order to preserve a previously authoritative rendered slot
-    when the new visual observation is unknown. Prompt-only callers remove it
-    through clear_unrendered_wardrobes().
+    field is intentionally retained so visibility changes and prompt-only
+    processing cannot erase persistent wardrobe slots. Candidate state must
+    still be checked against its committed source before it is canonicalized.
     """
     if not isinstance(state, dict):
         return copy.deepcopy(state)
@@ -30155,88 +30315,36 @@ def _visual_wardrobe_update(visual_wardrobe, field):
     return _rendered_wardrobe_value(value)
 
 
-# Apply only positive wardrobe observations to one Subject.
+# Legacy hook retained for compatibility; observations are stored separately.
 def _replace_rendered_wardrobe(prompt_subject, visual_subject):
-    """Apply only positive wardrobe observations to one Subject.
-
-    A prompt-derived wardrobe is a request/prediction, not evidence, but an
-    unknown visual slot is not evidence either. Preserve the existing value
-    for N/A, unknown, occluded, or otherwise unobserved slots; only a positive
-    visual observation may update that slot.
-    """
-    visual_wardrobe = visual_subject.get("wardrobe")
-    rendered = {
-        field: _visual_wardrobe_update(visual_wardrobe, field)
-        for field in _WARDROBE_FIELDS
-    }
-
-    # Vision models can repeat the same garment in more than one slot. Keep
-    # one canonical occurrence so the next prompt cannot contain duplicate
-    # wardrobe descriptions.
-    seen = set()
-    for field in _WARDROBE_FIELDS:
-        value = rendered[field]
-        if value is _WARDROBE_NOT_OBSERVED or value == "N/A":
-            continue
-        folded = value.casefold()
-        if folded in seen:
-            rendered[field] = _WARDROBE_NOT_OBSERVED
-        else:
-            seen.add(folded)
-
-    wardrobe = prompt_subject.get("wardrobe")
-    if not isinstance(wardrobe, dict):
-        wardrobe = {}
-        prompt_subject["wardrobe"] = wardrobe
-    for field, value in rendered.items():
-        if value is not _WARDROBE_NOT_OBSERVED:
-            wardrobe[field] = value
-    prompt_subject.pop("clothing", None)
+    """Deprecated no-op: rendered wardrobe belongs in VisualObservation."""
+    del visual_subject
+    return prompt_subject
 
 
-# Remove all unobserved wardrobe claims from one Subject.
+# Retain the legacy helper name as a safe wardrobe-preserving operation.
 def _clear_unobserved_wardrobe(subject):
-    """Remove prompt-derived wardrobe claims without deleting body state."""
+    """Scrub prose aliases while preserving the canonical wardrobe slots."""
     if not isinstance(subject, dict):
         return subject
-
-    # Apply the same deterministic alias scrub used before continuity merge,
-    # then remove the canonical wardrobe from every nested malformed location.
-    # Updating in place matters because callers retain the canonical Subject
-    # record object for identity/state bookkeeping.
     cleaned = sanitize_prompt_derived_continuity_state(subject)
     if isinstance(cleaned, dict):
+        _remove_wardrobe_owned_persistent_effects(cleaned)
         subject.clear()
         subject.update(cleaned)
-
-    def remove_nested_wardrobe(value):
-        if isinstance(value, dict):
-            for key in list(value):
-                if str(key).strip().casefold() == "wardrobe":
-                    value.pop(key, None)
-                else:
-                    remove_nested_wardrobe(value[key])
-        elif isinstance(value, list):
-            for item in value:
-                remove_nested_wardrobe(item)
-
-    # The canonical wardrobe is still prompt-derived until a rendered visual
-    # observation replaces one or more slots. Clear it on prompt-only paths so
-    # requested clothing cannot become authoritative opening continuity.
-    remove_nested_wardrobe(subject)
-    _remove_wardrobe_owned_persistent_effects(subject)
     return subject
 
 
 # Return state without wardrobe claims when no positive observation exists.
 def clear_unrendered_wardrobes(state):
-    """Remove wardrobe claims when no rendered visual evidence exists."""
+    """Sanitize legacy aliases without erasing persistent wardrobe slots."""
     cleared = sanitize_prompt_derived_continuity_state(state)
     if not isinstance(cleared, dict):
         cleared = {}
     _subject_key, subjects = _prompt_subject_collection(cleared)
     for _key, subject in _continuity_subject_entries(subjects):
-        _clear_unobserved_wardrobe(subject)
+        if isinstance(subject, dict):
+            _remove_wardrobe_owned_persistent_effects(subject)
     return cleared
 
 
@@ -30291,12 +30399,10 @@ def _prompt_subject_collection(merged_state):
 
 # Overlay directly observed rendered facts onto Phase 1 continuity.
 def merge_prompt_and_visual_end_state(prompt_state, visual_state):
-    """Overlay directly observed rendered facts onto Phase 1 continuity.
+    """Overlay visible position and pose onto the legacy continuity view.
 
-    Prompt-derived state supplies facts the camera cannot establish. Wardrobe
-    is different: for a visible subject the rendered snapshot owns all four
-    slots, including explicit unknown/not-visible values. This prevents a
-    requested garment from being promoted into rendered state.
+    Rendered observations remain separately persisted diagnostics. Visibility
+    and wardrobe observations cannot erase or replace persistent subject facts.
     """
     merged = sanitize_prompt_derived_continuity_state(prompt_state)
     if not isinstance(merged, dict):
@@ -30329,7 +30435,6 @@ def merge_prompt_and_visual_end_state(prompt_state, visual_state):
         merged[camera_key] = visual_camera
 
     _subject_key, subjects = _prompt_subject_collection(merged)
-    visible_names = set()
     for visual_subject in visual_state.get("subjects") or []:
         if not isinstance(visual_subject, dict) or not visual_subject.get("visible", True):
             continue
@@ -30347,10 +30452,6 @@ def merge_prompt_and_visual_end_state(prompt_state, visual_state):
             # identity. Unknown names are ignored until the Director/state
             # registry establishes the subject explicitly.
             continue
-        visible_names.add(
-            str(prompt_subject.get("name") or visual_name).strip().casefold()
-        )
-
         for field, aliases in (
             ("position", ("position",)),
             ("pose_action", ("pose_action", "pose", "pose/action")),
@@ -30362,20 +30463,6 @@ def merge_prompt_and_visual_end_state(prompt_state, visual_state):
                     aliases[0],
                 )
                 prompt_subject[target_field] = value
-
-        _replace_rendered_wardrobe(prompt_subject, visual_subject)
-
-    # A subject omitted from the final-frame observation has no rendered
-    # wardrobe evidence. Clear the copied/requested value rather than allowing
-    # it to leak into the next segment as if it were visible.
-    for subject_key, subject in _continuity_subject_entries(subjects):
-        if not isinstance(subject, dict):
-            continue
-        subject_name = str(
-            subject.get("name") or subject_key or ""
-        ).strip().casefold()
-        if subject_name not in visible_names:
-            _clear_unobserved_wardrobe(subject)
 
     return merged
 
@@ -31233,7 +31320,7 @@ def build_character_reference_h3_prompt(
         "external anatomy species-appropriate and do not invent human sex-specific anatomy "
         "unless the description explicitly establishes it. Clothing in the supplied "
         "description is authoritative. FIXED CLOTHING RULE: any subject described as "
-        "humanoid must wear clothes regardless of species, including humanoid dragons. "
+        "humanoid must wear clothes regardless of species. "
         "If such a humanoid has no clothing specified in text, render simple "
         "setting-appropriate clothing. Otherwise do not add, remove, substitute, or "
         "redesign garments, footwear, or accessories; for a non-humanoid whose text "
@@ -34810,9 +34897,9 @@ def build_director_raw_subject_resolution_messages(
                 "EVERY reference to that participant in returned raw_scene with one stable "
                 "functional name; every name listed in subject_names must literally appear "
                 "in returned raw_scene. Make the functional name from its most specific "
-                "explicit role/species plus an integer. If RAW says dragon, use Dragon1; "
-                "if RAW says griffin, use Griffin1. Use CreatureN only when the type is "
-                "truly unknown. Capitalization alone does not make a role/species noun an "
+                "explicit role/species plus an integer. Use a neutral generic type label "
+                "only when the specific type is truly unknown. Capitalization alone does "
+                "not make a role/species noun an "
                 "established name. Reuse a KNOWN SUBJECT when RAW continues that same "
                 "individual; when exactly one KNOWN SUBJECT has the same role/species stem, "
                 "reuse it unless RAW explicitly says another/new/second individual appears. "
@@ -34828,17 +34915,19 @@ def build_director_raw_subject_resolution_messages(
                 "name unchanged. Never put clothing in subject_descriptions. Also return "
                 "subject_wardrobes using exactly upper, lower, footwear, and other. Preserve clothing "
                 "explicitly stated in RAW. If RAW does not state clothing and the Subject is "
-                "a human or humanoid, including humanoid creatures such as goblins, orcs, and trolls, etc., choose one simple "
+                "a human or has a humanoid physical form, choose one simple "
                 "setting-appropriate outfit now; this becomes canonical and must not be "
                 "re-invented later. "
                 "Use STORY CONTEXT only when RAW does not specify clothing, so the chosen "
                 "outfit matches the established setting, period, culture, and visual world. "
                 "Do not use STORY CONTEXT to change RAW actions or explicit appearance facts. "
-                "For non-humanoid animals or creatures that normally do not wear clothing, "
-                "use N/A for all four wardrobe fields unless RAW explicitly gives clothing. "
-                "Use absent for "
-                "an explicitly absent garment/footwear slot; explicit nudity, barefoot state, "
-                "or garment absence wins over invention. Exclude action, pose, "
+                "For a non-humanoid form that normally does not wear clothing, use N/A "
+                "for all four wardrobe fields unless RAW explicitly gives clothing. "
+                "Use absent only for a specifically removed garment when the subject "
+                "remains clothed in other attire. Humanoid subjects must never be "
+                "rendered nude or assigned N/A clothing, even when RAW omits their outfit; "
+                "fill missing coverage with simple setting-appropriate clothing. "
+                "Barefoot may be used when RAW explicitly says so. Exclude action, pose, "
                 "location, held props, camera, and mood. Return JSON only."
             ),
         },
@@ -35507,11 +35596,24 @@ def normalize_prop_ledger(value):
 def merge_prop_ledger(committed, observed):
     """Copy persistent props forward and apply only safe observed changes."""
     merged = copy.deepcopy(normalize_prop_ledger(committed))
-    observations = normalize_prop_ledger(observed)
+    # Keep observations sparse here: normalize_prop_ledger fills compatibility
+    # defaults, but those defaults must not be mistaken for reported changes.
+    observations = observed if isinstance(observed, dict) else {}
 
-    for observed_id, observed_record in observations.items():
+    for raw_observed_id, raw_record in observations.items():
+        observed_id = str(raw_observed_id or "").strip()
+        if not observed_id or not isinstance(raw_record, dict):
+            continue
+        observed_record = copy.deepcopy(raw_record)
+        observed_record["kind"] = str(
+            observed_record.get("kind") or ""
+        ).strip()
+        if not observed_record["kind"]:
+            continue
         if observed_id not in merged:
-            merged[observed_id] = copy.deepcopy(observed_record)
+            merged[observed_id] = normalize_prop_ledger(
+                {observed_id: observed_record}
+            ).get(observed_id, {})
             continue
 
         existing_record = merged[observed_id]
@@ -35520,7 +35622,43 @@ def merge_prop_ledger(committed, observed):
 
         if existing_kind.casefold() == observed_kind.casefold():
             updated = copy.deepcopy(existing_record)
-            updated.update(copy.deepcopy(observed_record))
+            for field in ("owner", "holder", "location", "contents", "status"):
+                if field not in observed_record:
+                    continue
+                value = observed_record[field]
+                if value is None:
+                    continue
+                if isinstance(value, str):
+                    value = value.strip()
+                    if not value or value.casefold() in {"n/a", "unknown"}:
+                        continue
+                if field == "status":
+                    normalized_status = str(value).casefold()
+                    if normalized_status not in PROP_LEDGER_STATUSES:
+                        continue
+                    if (
+                        str(existing_record.get("status") or "present").casefold()
+                        in {"lost", "destroyed", "consumed"}
+                        and normalized_status == "present"
+                    ):
+                        continue
+                    value = normalized_status
+                updated[field] = copy.deepcopy(value)
+
+            # Holder and location are one physical placement fact. A concrete
+            # update to either clears the mutually exclusive counterpart.
+            if (
+                "holder" in observed_record
+                and str(updated.get("holder") or "N/A").casefold()
+                not in {"n/a", "unknown", ""}
+            ):
+                updated["location"] = "N/A"
+            elif (
+                "location" in observed_record
+                and str(updated.get("location") or "N/A").casefold()
+                not in {"n/a", "unknown", ""}
+            ):
+                updated["holder"] = "N/A"
             updated["kind"] = existing_kind
             merged[observed_id] = updated
             continue
@@ -35534,7 +35672,9 @@ def merge_prop_ledger(committed, observed):
         while replacement_id in merged or replacement_id in observations:
             index += 1
             replacement_id = f"{base}_{index}"
-        merged[replacement_id] = copy.deepcopy(observed_record)
+        merged[replacement_id] = normalize_prop_ledger(
+            {replacement_id: observed_record}
+        ).get(replacement_id, {})
         console_log(
             f"WARNING: continuity tried to change {observed_id!r} from "
             f"{existing_kind!r} to {observed_kind!r}; preserved the original "
@@ -35607,8 +35747,14 @@ def merge_subject_state_ledger(committed, observed_state, segment_number=None):
             if field == "wardrobe" and isinstance(value, dict):
                 wardrobe = copy.deepcopy(target.get("wardrobe") or {})
                 for slot in _WARDROBE_FIELDS:
-                    slot_value = value.get(slot)
-                    if isinstance(slot_value, str) and slot_value.strip() and slot_value.strip().upper() != "N/A":
+                    if slot not in value:
+                        continue
+                    slot_value = value[slot]
+                    if (
+                        isinstance(slot_value, str)
+                        and slot_value.strip()
+                        and slot_value.strip().casefold() not in {"n/a", "unknown"}
+                    ):
                         wardrobe[slot] = slot_value.strip()
                         observed_any = True
                 if wardrobe:
@@ -35616,13 +35762,19 @@ def merge_subject_state_ledger(committed, observed_state, segment_number=None):
                 continue
             if isinstance(value, str):
                 stripped = value.strip()
-                if not stripped or stripped.upper() == "N/A":
+                if not stripped or stripped.casefold() in {"n/a", "unknown"}:
                     continue
                 target[field] = stripped
                 observed_any = True
             elif isinstance(value, list):
-                if value:
-                    target[field] = copy.deepcopy(value)
+                # Field absence means unchanged; an explicit [] is a known
+                # empty collection and must be able to release held props or
+                # clear resolved persistent lists.
+                target[field] = copy.deepcopy(value)
+                observed_any = True
+            elif field == "persistent_structural_change" and isinstance(value, bool):
+                if value or not target.get(field, False):
+                    target[field] = value
                     observed_any = True
             elif value is not None:
                 target[field] = copy.deepcopy(value)
@@ -37341,6 +37493,10 @@ def _run_main(
             getattr(args, "disable_subject_removal", False)
         ),
         visual_style=visual_style,
+        world_state_seed=authoritative_world_state_seed_from_subject_definitions(
+            base_subject_definitions,
+            SUBJECT_DEFINITIONS_FILE,
+        ),
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
