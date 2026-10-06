@@ -18345,9 +18345,22 @@ def parse_initial_location_subjects(raw_result):
             role_tokens = re.findall(r"[a-z0-9]+", name)
             if role_tokens:
                 name = "".join(token[:1].upper() + token[1:] for token in role_tokens) + "1"
+        # If the extractor includes a held prop in an otherwise valid opening
+        # pose/location, keep the correct Subject classification and strip only
+        # the held-prop tail. Prop ownership is handled by the normal beat/prop
+        # pipeline rather than this story-start presence extractor.
+        held_prop_tail = re.search(
+            r"(?i)\\s+(?:while\\s+)?(?:hold|holds|holding|held|clutch|clutches|",
+            r"clutching|carry|carries|carrying|carried|grip|grips|gripping|gripped)\\b",
+            initial_state,
+        )
+        if held_prop_tail:
+            pose_only = initial_state[:held_prop_tail.start()].strip(" ,.;")
+            if pose_only:
+                initial_state = pose_only
         if re.search(
-            r"(?i)\b(?:hold|holds|holding|held|clutch|clutches|clutching|"
-            r"carry|carries|carrying|carried|grip|grips|gripping|gripped)\b",
+            r"(?i)\\b(?:hold|holds|holding|held|clutch|clutches|clutching|",
+            r"carry|carries|carrying|carried|grip|grips|gripping|gripped)\\b",
             initial_state,
         ):
             raise ValueError(
@@ -18387,9 +18400,8 @@ def extract_initial_location_subjects(
         if attempt > 1:
             messages[-1]["content"] += (
                 "\n\nRETRY: Return strict JSON only. Include only Subjects proven to "
-                "already be present before Beat 1; do not include later arrivals. Use a "
-                "stable Role1 name for unnamed roles/species and keep initial_state to "
-                "location/pose only with no held props."
+                "already be present before Beat 1; do not include later arrivals. Keep "
+                "initial_state to location/pose only with no held props."
             )
         try:
             raw = llm_request(
