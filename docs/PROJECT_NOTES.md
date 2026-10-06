@@ -67,6 +67,19 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **Compact static-space existence bookkeeping.** `location_state` now stores structured location/anchor/object facts separately from the rendered orbit. It is the Python-owned spatial record; the matching literal prose is the visual serialization used to create the orbit.
 - [ ] **Multi-room / returning-location stress test.** Verify authority when the story moves between several spaces and later returns.
 
+
+
+### Story-start Subject inference
+
+Before Segment 1, one small deterministic extractor reads the complete finalized beat list to
+identify animate Subjects whose later beat wording proves they were already physically present
+when the story began. It returns only a stable functional name and minimal supported opening
+state. These Subjects are registered into the normal Python-owned Subject registry with
+`origin_segment=0` and their opening state is authoritative Segment 1 context. This exists to
+prevent later beats from causing actors that were implicitly present all along to pop into
+existence. Do not broaden this into general future-character extraction: actors with an earlier
+entry/arrival/reveal remain later dynamic Subjects.
+
 ### Subject identity / character consistency
 
 - [x] **Canonical named characters promote deterministically into the Subject registry** when they appear in accepted RAW.
