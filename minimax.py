@@ -6517,8 +6517,8 @@ def parse_story_subject_wardrobe_result(raw_result, llm_request=None):
             "Subject wardrobe extraction must contain only clothing."
         )
     clothing = " ".join(str(candidate.get("clothing") or "").split()).strip(" ,.;")
-    if not clothing:
-        raise ValueError("Subject wardrobe extraction returned empty clothing.")
+    if not clothing or not re.search(r"[A-Za-z0-9]", clothing):
+        raise ValueError("Subject wardrobe extraction returned unusable clothing.")
     if clothing.casefold() in {
         "none", "no clothes", "no clothing", "unclothed",
         "naturally unclothed", "not applicable", "n/a", "na",
@@ -6579,27 +6579,49 @@ def canonicalize_defined_subject_wardrobes(
             raise ValueError(
                 f"Defined Subject {name!r} has no canonical character record."
             )
-        raw = llm_request(
-            build_story_subject_wardrobe_messages(
-                expanded_story,
-                name,
-                definition_lines.get(subject_id, ""),
-                record,
-            ),
-            response_format=build_story_subject_wardrobe_response_format(),
-            max_tokens=256,
-            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-            history_metadata={
-                **dict(history_metadata or {}),
-                "purpose": "story_subject_wardrobe_extract",
-                "subject": name,
-                "subject_id": int(subject_id),
-            },
-        )
-        clothing = parse_story_subject_wardrobe_result(
-            raw,
-            llm_request=llm_request,
-        )
+        clothing = None
+        last_wardrobe_error = None
+        for wardrobe_attempt in range(1, 4):
+            try:
+                raw = llm_request(
+                    build_story_subject_wardrobe_messages(
+                        expanded_story,
+                        name,
+                        definition_lines.get(subject_id, ""),
+                        record,
+                    ),
+                    response_format=build_story_subject_wardrobe_response_format(),
+                    max_tokens=256,
+                    context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+                    history_metadata={
+                        **dict(history_metadata or {}),
+                        "purpose": "story_subject_wardrobe_extract",
+                        "subject": name,
+                        "subject_id": int(subject_id),
+                        "attempt": wardrobe_attempt,
+                    },
+                )
+                clothing = parse_story_subject_wardrobe_result(
+                    raw,
+                    llm_request=llm_request,
+                )
+                break
+            except LLMConnectionError:
+                raise
+            except (TypeError, ValueError) as error:
+                last_wardrobe_error = error
+                if wardrobe_attempt < 3:
+                    console_log(
+                        f"Subject wardrobe extractor for {name} returned unusable "
+                        f"output (attempt {wardrobe_attempt}/3); retrying only this "
+                        f"extractor: {error}",
+                        flush=True,
+                    )
+        if clothing is None:
+            raise ValueError(
+                f"Could not extract canonical attire for {name}: "
+                f"{last_wardrobe_error or 'unknown wardrobe extraction error'}"
+            )
         record["clothing"] = clothing
         console_log(
             f"Canonical appropriate attire for {name}: {clothing}",
@@ -9665,25 +9687,29 @@ def ask_llm(
                     "LLM host truncated the response at the configured "
                     f"max_tokens={effective_max_tokens} before completion."
                 )
-            try:
-                result = parse_llm_json_content(
-                    content,
-                    repair_on_failure=False,
-                )
-            except json.JSONDecodeError:
-                should_repair_json = (
-                    parse_json_response is not False
-                    and (response_format is not None or parse_json_response is True)
-                )
-                if should_repair_json and content.strip():
-                    result = repair_json_with_llm(
+            if parse_json_response is False:
+                # Explicit raw-text callers own their own parsing. This is required
+                # for mixed responses such as Location + JSON + render prose.
+                result = content
+            else:
+                try:
+                    result = parse_llm_json_content(
                         content,
-                        history_metadata=history_metadata,
+                        repair_on_failure=False,
                     )
-                else:
-                    # The pure formatter can also recover plain labeled fields.
-                    # Preserve empty or intentionally free-form responses.
-                    result = content
+                except json.JSONDecodeError:
+                    should_repair_json = (
+                        response_format is not None or parse_json_response is True
+                    )
+                    if should_repair_json and content.strip():
+                        result = repair_json_with_llm(
+                            content,
+                            history_metadata=history_metadata,
+                        )
+                    else:
+                        # The pure formatter can also recover plain labeled fields.
+                        # Preserve empty or intentionally free-form responses.
+                        result = content
             if (
                 history_purpose == "director_h3_formatter"
                 and response_format is not None
@@ -18251,40 +18277,55 @@ def extract_static_setting(
     visual_style=DEFAULT_VISUAL_STYLE,
     llm_request=None,
     history_metadata=None,
+    attempts=3,
 ):
     """Extract the compact story-grounded description consumed by spatial passes."""
     if llm_request is None:
         llm_request = ask_llm
     fallback = " ".join(str(overall_location or "").split()).strip(" .")
-    try:
-        raw = llm_request(
-            build_static_setting_extraction_messages(
-                expanded_story,
-                overall_location,
-                visual_style=visual_style,
-            ),
-            response_format=build_static_setting_extraction_response_format(),
-            parse_json_response=False,
-            max_tokens=512,
-            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-            history_metadata={
-                **dict(history_metadata or {}),
-                "purpose": "static_setting_extract",
-                "attempt": 1,
-            },
-        )
-        return parse_static_setting_extraction(raw, fallback=fallback)
-    except LLMConnectionError:
-        raise
-    except (TypeError, ValueError) as error:
-        if fallback:
-            console_log(
-                f"WARNING: setting seed extraction failed ({error}); "
-                f"using overall location {fallback!r}.",
-                flush=True,
+    last_error = None
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        try:
+            raw = llm_request(
+                build_static_setting_extraction_messages(
+                    expanded_story,
+                    overall_location,
+                    visual_style=visual_style,
+                ),
+                response_format=build_static_setting_extraction_response_format(),
+                parse_json_response=False,
+                max_tokens=512,
+                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "static_setting_extract",
+                    "attempt": attempt,
+                },
             )
-            return fallback
-        raise
+            return parse_static_setting_extraction(raw, fallback=fallback)
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            if attempt < max(1, int(attempts)):
+                console_log(
+                    f"Static setting extractor returned unusable output "
+                    f"(attempt {attempt}/{max(1, int(attempts))}); retrying only "
+                    f"this extractor: {error}",
+                    flush=True,
+                )
+    if fallback:
+        console_log(
+            f"WARNING: static setting extraction failed after "
+            f"{max(1, int(attempts))} attempts ({last_error}); "
+            f"using overall location {fallback!r}.",
+            flush=True,
+        )
+        return fallback
+    raise ValueError(
+        "Could not extract static setting: "
+        + str(last_error or "unknown static setting extraction error")
+    )
 
 
 def build_story_setting_spatial_refinement_messages(location):
@@ -18327,26 +18368,45 @@ def refine_story_setting_spatially(
     *,
     llm_request=None,
     history_metadata=None,
+    attempts=3,
 ):
     """Make a compact location description spatially explicit before structuring it."""
     if llm_request is None:
         llm_request = ask_llm
-    raw = llm_request(
-        build_story_setting_spatial_refinement_messages(location),
-        response_format=None,
-        parse_json_response=False,
-        max_tokens=3072,
-        context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS["context_token_budget"],
-        history_metadata={
-            **dict(history_metadata or {}),
-            "purpose": "story_setting_spatial_refine",
-            "attempt": 1,
-        },
+    last_error = None
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        try:
+            raw = llm_request(
+                build_story_setting_spatial_refinement_messages(location),
+                response_format=None,
+                parse_json_response=False,
+                max_tokens=3072,
+                context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS["context_token_budget"],
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "story_setting_spatial_refine",
+                    "attempt": attempt,
+                },
+            )
+            return _parse_plain_extractor_text(raw, "Spatial setting refinement")
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            if attempt < max(1, int(attempts)):
+                console_log(
+                    f"Spatial setting refinement returned unusable output "
+                    f"(attempt {attempt}/{max(1, int(attempts))}); retrying only "
+                    f"this extractor: {error}",
+                    flush=True,
+                )
+    raise ValueError(
+        "Could not refine story setting spatially: "
+        + str(last_error or "unknown spatial refinement error")
     )
-    return _parse_plain_extractor_text(raw, "Spatial setting refinement")
 
 
-def build_story_setting_description_messages(spatial_location):
+def build_story_setting_description_messages(spatial_location, static_setting=""):
     """Build the second SMART extractor that emits JSON state plus render prose."""
     return [
         {
@@ -18389,7 +18449,14 @@ def build_story_setting_description_messages(spatial_location):
         },
         {
             "role": "user",
-            "content": str(spatial_location or "").strip(),
+            "content": (
+                "STATIC SETTING FACTS\n"
+                + str(static_setting or "").strip()
+                + "\n\nSPATIAL REFINEMENT\n"
+                + str(spatial_location or "").strip()
+                + "\n\nReturn all three required parts: Location line, valid "
+                  "double-quoted JSON, then plain-text description based on that JSON."
+            ),
         },
     ]
 
@@ -18492,25 +18559,57 @@ def parse_story_setting_description(raw_result):
 def extract_story_setting_description(
     spatial_location,
     *,
+    static_setting="",
     llm_request=None,
     history_metadata=None,
+    attempts=3,
 ):
     """Create canonical location_state JSON plus the matching ComfyUI description."""
     if llm_request is None:
         llm_request = ask_llm
-    raw = llm_request(
-        build_story_setting_description_messages(spatial_location),
-        response_format=None,
-        parse_json_response=False,
-        max_tokens=4096,
-        context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS["context_token_budget"],
-        history_metadata={
-            **dict(history_metadata or {}),
-            "purpose": "story_setting_extract",
-            "attempt": 1,
-        },
+    last_error = None
+    base_messages = build_story_setting_description_messages(
+        spatial_location,
+        static_setting=static_setting,
     )
-    return parse_story_setting_description(raw)
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        messages = [dict(message) for message in base_messages]
+        if attempt > 1:
+            messages[-1]["content"] += (
+                "\n\nRETRY: The previous response could not be parsed. Preserve the "
+                "same setting facts. Return exactly: one Location: line, one valid JSON "
+                "object using double quotes with location/anchors/objects, then a plain-"
+                "text location description derived from that JSON."
+            )
+        try:
+            raw = llm_request(
+                messages,
+                response_format=None,
+                parse_json_response=False,
+                max_tokens=4096,
+                context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS["context_token_budget"],
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "story_setting_extract",
+                    "attempt": attempt,
+                },
+            )
+            return parse_story_setting_description(raw)
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            if attempt < max(1, int(attempts)):
+                console_log(
+                    f"Spatial setting extractor returned unusable mixed output "
+                    f"(attempt {attempt}/{max(1, int(attempts))}); retrying only "
+                    f"this extractor: {error}",
+                    flush=True,
+                )
+    raise ValueError(
+        "Could not extract canonical spatial setting: "
+        + str(last_error or "unknown spatial setting extraction error")
+    )
 
 
 def format_story_starting_location(starting_location):
@@ -36450,6 +36549,7 @@ def _run_main(
             )
             spatial_setting = extract_story_setting_description(
                 spatial_location,
+                static_setting=static_setting,
                 history_metadata={"run_id": run_id},
             )
             story_location_metadata["setting_description"] = (
