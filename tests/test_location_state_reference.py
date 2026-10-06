@@ -7,8 +7,8 @@ import minimax
 
 
 class LocationStateReferenceTests(unittest.TestCase):
-    def test_setting_seed_extractor_does_not_promote_plot_props(self):
-        messages = minimax.build_story_setting_seed_messages(
+    def test_static_setting_extractor_does_not_promote_plot_props(self):
+        messages = minimax.build_static_setting_extraction_messages(
             "Amy works in a medieval tavern. Later she pulls up a chair for a unicorn.",
             "medieval tavern",
         )

@@ -906,7 +906,7 @@ Implemented the location-state split on `object-state-work`.
 
 - Added `SMART_EXTRACTOR_LLM_SETTINGS`: temperature 0, seed 42, context budget 8192,
   medium reasoning, 1024 reasoning tokens.
-- The story-grounded compact setting remains the seed. Two SMART passes follow:
+- The story-grounded compact static-setting extraction remains the first stage. Two SMART passes follow:
   1. plain-text spatial refinement with cardinal directions, anchor-first layout,
      dimensions, accessibility, and non-overlap;
   2. structured spatial extraction in `Location + JSON + text description` format.
@@ -924,3 +924,17 @@ Implemented the location-state split on `object-state-work`.
 Next local action: run the tavern case and compare the emitted `location_state` JSON,
 its generated text description, and the resulting 3-second location video. Do not change
 Beat/RAW spatial rules until this upstream representation is verified.
+
+
+## 2026-10-06 — extractor naming + single-purpose rule
+
+Renamed the formerly internal `story_setting_seed_extract` stage to the clearer
+`static_setting_extract` terminology (`extract_static_setting` and matching
+builder/parser helpers). Its job is to decide which static location facts belong to the
+location; "seed" was only a refactor label and is no longer used.
+
+PROJECT_NOTES now records the local-LLM design finding: prefer small single-purpose
+extractors. The current location chain is the reference example:
+`static_setting_extract -> story_setting_spatial_refine -> story_setting_extract`.
+Keep the final JSON+render-text extractor combined for now, but consider splitting it
+into separate state and serialization calls if future local runs show interference.

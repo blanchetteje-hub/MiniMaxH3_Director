@@ -111,7 +111,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
 
     def test_story_setting_extractor_does_not_promote_relative_action_labels(self):
-        messages = minimax.build_story_setting_seed_messages(
+        messages = minimax.build_static_setting_extraction_messages(
             "Amy enters through the front door and later locks the back door.",
             "tavern",
         )

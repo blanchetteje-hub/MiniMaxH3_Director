@@ -57,7 +57,7 @@ This checklist is the compact current-status view. Historical sections below exp
 ### Location / environment continuity
 
 - [x] **Story-level overall + starting-location extraction** exists and Segment 1 gets authoritative starting-location context.
-- [x] **Structured spatial `location_state` extraction:** the existing story-grounded static setting seed is followed by two SMART extractor passes. The first makes the space explicit with cardinal directions, anchors, dimensions, accessibility, and non-overlap; the second emits both canonical JSON and literal prose derived from that JSON. The JSON is stored in `generation_state["location_state"]`; only the prose is sent to the 3-second location-reference render.
+- [x] **Structured spatial `location_state` extraction:** the existing story-grounded static setting extraction is followed by two SMART extractor passes. The first makes the space explicit with cardinal directions, anchors, dimensions, accessibility, and non-overlap; the second emits both canonical JSON and literal prose derived from that JSON. The JSON is stored in `generation_state["location_state"]`; only the prose is sent to the 3-second location-reference render.
 - [x] **Persistent location memory:** generate one character-free 3-second 360-orbit location clip before Segment 1 and reuse it throughout the run.
 - [x] **Location-reference audio is deterministically removed with ffmpeg** before conditioning reuse.
 - [x] **Location-reference authority is limited to static environment/spatial layout**, not characters or current camera composition.
@@ -2536,7 +2536,7 @@ Subjects still receive their one-time outfit from the existing post-RAW resolver
 
 Location creation now separates semantic spatial state from the H3 visual reference.
 
-- The existing story-grounded static-setting extractor still produces the compact source
+- The existing static-setting extractor still produces the compact source
   description and filters out plot-only props.
 - A new SMART spatial-refinement pass rewrites that description with cardinal directions,
   anchor-first layout, overall/object sizes, clear access paths, and non-overlap.
@@ -2553,3 +2553,18 @@ Location creation now separates semantic spatial state from the H3 visual refere
 
 The next acceptance should inspect the emitted `location_state`, its text serialization,
 and the resulting 3-second reference together before changing Beat/RAW spatial logic.
+
+
+### 2026-10-06 — prefer single-purpose local-LLM extractors
+
+Observed design rule for the local ~20B runtime: prefer small, single-purpose extractor calls over one extractor that must identify, transform, structure, and serialize several kinds of information at once. The extra calls are cheap compared with asking the smaller model to keep multiple semantic jobs straight, and each stage is easier to inspect and tune independently.
+
+Current location pipeline is the concrete example:
+
+1. `static_setting_extract`: decide which static location facts from the expanded story actually belong to the location.
+2. `story_setting_spatial_refine`: make those facts spatially coherent using anchors, cardinal directions, dimensions, accessibility, and non-overlap.
+3. `story_setting_extract`: convert that spatial description into canonical `location_state` JSON plus the literal text description used for the H3 location-reference prompt.
+
+This separation is intentional. If a bad object is promoted from story action into the room, fix the static-setting extractor; if the right objects are arranged badly, fix spatial refinement; if the spatial facts are correct but JSON/text serialization is wrong, fix the final extractor. Do not push corrective rules downstream when the failure belongs to an earlier stage.
+
+The final extractor still performs two closely related outputs (canonical JSON and text derived from that JSON). Keep it combined for now because the text is intended to be a direct serialization of the same state. If future runs show that the local model compromises either output while doing both, test splitting JSON-state creation and render-text serialization into separate single-purpose calls.

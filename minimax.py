@@ -578,7 +578,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "macro_arc_validate",
     "source_unit_state_effects",
     "story_location_extract",
-    "story_setting_seed_extract",
+    "static_setting_extract",
     "story_subject_wardrobe_extract",
     "subject_continuity",
     "visual_end_state",
@@ -18147,7 +18147,7 @@ def extract_story_locations(
     )
 
 
-def build_story_setting_seed_messages(
+def build_static_setting_extraction_messages(
     expanded_story,
     overall_location,
     visual_style=DEFAULT_VISUAL_STYLE,
@@ -18192,11 +18192,11 @@ def build_story_setting_seed_messages(
     ]
 
 
-def build_story_setting_seed_response_format():
+def build_static_setting_extraction_response_format():
     return {
         "type": "json_schema",
         "json_schema": {
-            "name": "story_setting_seed_extract",
+            "name": "static_setting_extract",
             "strict": True,
             "schema": {
                 "type": "object",
@@ -18210,7 +18210,7 @@ def build_story_setting_seed_response_format():
     }
 
 
-def parse_story_setting_seed(raw_result, fallback=""):
+def parse_static_setting_extraction(raw_result, fallback=""):
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
@@ -18228,7 +18228,7 @@ def parse_story_setting_seed(raw_result, fallback=""):
     return value
 
 
-def extract_story_setting_seed(
+def extract_static_setting(
     expanded_story,
     overall_location,
     *,
@@ -18242,22 +18242,22 @@ def extract_story_setting_seed(
     fallback = " ".join(str(overall_location or "").split()).strip(" .")
     try:
         raw = llm_request(
-            build_story_setting_seed_messages(
+            build_static_setting_extraction_messages(
                 expanded_story,
                 overall_location,
                 visual_style=visual_style,
             ),
-            response_format=build_story_setting_seed_response_format(),
+            response_format=build_static_setting_extraction_response_format(),
             parse_json_response=False,
             max_tokens=512,
             context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
             history_metadata={
                 **dict(history_metadata or {}),
-                "purpose": "story_setting_seed_extract",
+                "purpose": "static_setting_extract",
                 "attempt": 1,
             },
         )
-        return parse_story_setting_seed(raw, fallback=fallback)
+        return parse_static_setting_extraction(raw, fallback=fallback)
     except LLMConnectionError:
         raise
     except (TypeError, ValueError) as error:
@@ -36397,14 +36397,14 @@ def _run_main(
                 expanded_story_context,
                 history_metadata={"run_id": run_id},
             )
-            setting_seed = extract_story_setting_seed(
+            static_setting = extract_static_setting(
                 expanded_story_context,
                 story_location_metadata["overall_location"],
                 visual_style=visual_style,
                 history_metadata={"run_id": run_id},
             )
             spatial_location = refine_story_setting_spatially(
-                setting_seed,
+                static_setting,
                 history_metadata={"run_id": run_id},
             )
             spatial_setting = extract_story_setting_description(
