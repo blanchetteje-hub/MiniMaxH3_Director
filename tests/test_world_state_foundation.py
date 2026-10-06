@@ -4,7 +4,15 @@ import unittest
 from pathlib import Path
 
 import minimax
-from world_state import UNKNOWN, empty_world_state, new_world_state, validate_world_state
+from world_state import (
+    UNKNOWN,
+    empty_world_state,
+    new_world_state,
+    props_held_by,
+    reduce_world_state,
+    validate_state_actions,
+    validate_world_state,
+)
 
 
 class DestructiveStateMergeRegressionTests(unittest.TestCase):
@@ -356,6 +364,346 @@ class WorldStateSeedTests(unittest.TestCase):
 
         self.assertEqual(subject["identity"]["physical_form"], "humanoid")
         self.assertIn("humanoid", subject["identity"]["source_description"])
+
+
+def make_reducer_state():
+    state = new_world_state({
+        "source_sha256": "test-source",
+        "source_path": "subjects.txt",
+        "subjects": {
+            "1": {"subject_id": 1, "name": "Subject One", "gender": UNKNOWN, "picture_ids": []},
+            "2": {"subject_id": 2, "name": "Subject Two", "gender": UNKNOWN, "picture_ids": []},
+        },
+    })
+    state["locations"] = {
+        "location_a": {"id": "location_a", "name": "Area A"},
+        "location_b": {"id": "location_b", "name": "Area B"},
+    }
+    for subject_id in ("subject_1", "subject_2"):
+        state["subjects"][subject_id].update({
+            "presence": "present",
+            "location_id": "location_a",
+            "support_id": None,
+            "posture": "standing",
+        })
+
+    def prop(
+        prop_id, name, kind="object", mobility="movable", *,
+        location_id="location_a", support_id=None, capabilities=None,
+        contents=None, mechanism_state=UNKNOWN, status="present", placement=None,
+    ):
+        if placement is None:
+            placement = {"kind": "located", "location_id": location_id}
+            if support_id is not None:
+                placement["support_id"] = support_id
+        return {
+            "id": prop_id,
+            "name": name,
+            "kind": kind,
+            "mobility": mobility,
+            "status": status,
+            "placement": dict(placement),
+            "contents": list(contents or []),
+            "capabilities": {
+                "container": UNKNOWN,
+                "consumable": UNKNOWN,
+                "openable": UNKNOWN,
+                "lockable": UNKNOWN,
+                **(capabilities or {}),
+            },
+            "mechanism_state": mechanism_state,
+            "condition": UNKNOWN,
+            "provenance": {},
+        }
+
+    state["props"] = {
+        "prop_support_a": prop("prop_support_a", "Support A", "support", "fixed"),
+        "prop_support_b": prop(
+            "prop_support_b", "Support B", "fixture_support", "fixed",
+            location_id="location_b",
+        ),
+        "prop_movable": prop(
+            "prop_movable", "Movable object", support_id="prop_support_a"
+        ),
+        "prop_fixed": prop("prop_fixed", "Fixed object", "fixture", "fixed"),
+        "prop_source": prop(
+            "prop_source", "Source vessel", "container", capabilities={"container": True},
+            contents=[{"substance": "liquid", "amount": "some", "consumable": UNKNOWN}],
+        ),
+        "prop_target": prop(
+            "prop_target", "Target vessel", "container", capabilities={"container": True},
+        ),
+        "prop_food": prop(
+            "prop_food", "Food", "consumable", capabilities={"consumable": True},
+            contents=[{"substance": "food", "amount": "some", "consumable": True}],
+            placement={"kind": "held", "subject_id": "subject_1"},
+        ),
+        "prop_door": prop(
+            "prop_door", "Door", "fixture", "fixed",
+            capabilities={"openable": True, "lockable": True},
+            mechanism_state="closed",
+        ),
+    }
+    # The explicitly tracked food is currently held by Subject One.
+    state["props"]["prop_food"]["placement"] = {
+        "kind": "held", "subject_id": "subject_1"
+    }
+    validate_world_state(state)
+    return state
+
+
+class WorldStateReducerTests(unittest.TestCase):
+    def action(self, action_id, op, **fields):
+        return {"action_id": action_id, "op": op, **fields}
+
+    def test_reduce_is_pure_and_dry_run_uses_same_ordered_rules(self):
+        state = make_reducer_state()
+        before = copy.deepcopy(state)
+        actions = [
+            self.action(
+                "take", "pickup", actor_subject_id="subject_1", prop_id="prop_movable"
+            ),
+            self.action(
+                "set-down", "place", actor_subject_id="subject_1",
+                prop_id="prop_movable", location_id="location_a",
+                support_id="prop_support_a",
+            ),
+        ]
+
+        validated = validate_state_actions(state, actions, segment_number=3)
+        reduced = reduce_world_state(state, actions, segment_number=3)
+
+        self.assertEqual(validated, reduced.outcomes)
+        self.assertTrue(all(outcome.accepted for outcome in reduced.outcomes))
+        self.assertEqual(state, before)
+        self.assertEqual(
+            reduced.world_state["props"]["prop_movable"]["placement"],
+            {"kind": "located", "location_id": "location_a", "support_id": "prop_support_a"},
+        )
+        self.assertEqual(props_held_by(reduced.world_state, "subject_1"), ["prop_food"])
+        self.assertNotIn("held_props", reduced.world_state["subjects"]["subject_1"])
+        self.assertEqual(reduced.world_state["revision"], state["revision"] + 1)
+
+    def test_pickup_rejects_fixed_object_and_unknown_mobility(self):
+        state = make_reducer_state()
+        state["props"]["prop_mobile_unknown"] = copy.deepcopy(state["props"]["prop_movable"])
+        state["props"]["prop_mobile_unknown"]["id"] = "prop_mobile_unknown"
+        state["props"]["prop_mobile_unknown"]["mobility"] = UNKNOWN
+        result = reduce_world_state(
+            state,
+            [
+                self.action("fixed", "pickup", actor_subject_id="subject_1", prop_id="prop_fixed"),
+                self.action("unknown", "pickup", actor_subject_id="subject_1", prop_id="prop_mobile_unknown"),
+            ],
+            segment_number=1,
+        )
+        self.assertEqual([outcome.code for outcome in result.outcomes], ["fixed_object", "mobility_unknown"])
+        self.assertEqual(result.world_state, state)
+
+    def test_prop_has_one_placement_and_held_lists_are_derived(self):
+        state = make_reducer_state()
+        result = reduce_world_state(
+            state,
+            [self.action("take", "pickup", actor_subject_id="subject_1", prop_id="prop_movable")],
+            segment_number=1,
+        )
+        prop = result.world_state["props"]["prop_movable"]
+        self.assertEqual(prop["placement"], {"kind": "held", "subject_id": "subject_1"})
+        self.assertNotIn("holder_subject_id", prop)
+        self.assertNotIn("location_id", prop)
+        self.assertEqual(props_held_by(result.world_state, "subject_1"), ["prop_food", "prop_movable"])
+
+    def test_move_clears_support_and_keeps_presence(self):
+        state = make_reducer_state()
+        state["subjects"]["subject_1"]["support_id"] = "prop_support_a"
+        validate_world_state(state)
+        result = reduce_world_state(
+            state,
+            [self.action("move", "move", subject_id="subject_1", destination_location_id="location_b")],
+            segment_number=2,
+        )
+        subject = result.world_state["subjects"]["subject_1"]
+        self.assertEqual(subject["presence"], "present")
+        self.assertEqual(subject["location_id"], "location_b")
+        self.assertIsNone(subject["support_id"])
+
+    def test_move_can_explicitly_establish_new_support(self):
+        state = make_reducer_state()
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "move", "move", subject_id="subject_1",
+                destination_location_id="location_b", support_id="prop_support_b",
+            )],
+            segment_number=2,
+        )
+        subject = result.world_state["subjects"]["subject_1"]
+        self.assertEqual(subject["presence"], "present")
+        self.assertEqual(subject["support_id"], "prop_support_b")
+
+    def test_set_support_null_leaves_support(self):
+        state = make_reducer_state()
+        state["subjects"]["subject_1"]["support_id"] = "prop_support_a"
+        validate_world_state(state)
+        result = reduce_world_state(
+            state,
+            [self.action("leave", "set_support", subject_id="subject_1", support_id=None)],
+            segment_number=2,
+        )
+        self.assertIsNone(result.world_state["subjects"]["subject_1"]["support_id"])
+
+    def test_enter_and_exit_set_exact_presence_semantics(self):
+        state = make_reducer_state()
+        state["subjects"]["subject_2"].update(
+            presence="absent", location_id=UNKNOWN, support_id=None
+        )
+        entered = reduce_world_state(
+            state,
+            [self.action("in", "enter", subject_id="subject_2", location_id="location_a")],
+            segment_number=1,
+        )
+        self.assertEqual(entered.world_state["subjects"]["subject_2"]["presence"], "present")
+        exited = reduce_world_state(
+            entered.world_state,
+            [self.action("out", "exit", subject_id="subject_2")],
+            segment_number=2,
+        )
+        subject = exited.world_state["subjects"]["subject_2"]
+        self.assertEqual(subject["presence"], "absent")
+        self.assertEqual(subject["location_id"], UNKNOWN)
+
+    def test_off_camera_has_no_operation_and_empty_actions_leave_state_unchanged(self):
+        state = make_reducer_state()
+        no_actions = reduce_world_state(state, [], segment_number=1)
+        self.assertEqual(no_actions.world_state, state)
+        invalid = validate_state_actions(
+            state,
+            [self.action("offscreen", "off_camera", subject_id="subject_1")],
+            segment_number=1,
+        )
+        self.assertEqual(invalid[0].code, "unknown_operation")
+
+    def test_pour_uses_all_or_partial_coarse_amounts(self):
+        state = make_reducer_state()
+        partial = reduce_world_state(
+            state,
+            [self.action(
+                "partial", "pour", actor_subject_id="subject_1",
+                source_prop_id="prop_source", target_prop_id="prop_target",
+                substance="liquid", amount="partial",
+            )],
+            segment_number=1,
+        )
+        self.assertTrue(partial.outcomes[0].accepted)
+        self.assertEqual(partial.world_state["props"]["prop_source"]["contents"][0]["amount"], "some")
+        self.assertEqual(partial.world_state["props"]["prop_target"]["contents"][0]["amount"], "some")
+        all_poured = reduce_world_state(
+            state,
+            [self.action(
+                "all", "pour", actor_subject_id="subject_1",
+                source_prop_id="prop_source", target_prop_id="prop_target",
+                substance="liquid", amount="all",
+            )],
+            segment_number=1,
+        )
+        self.assertEqual(all_poured.world_state["props"]["prop_source"]["contents"][0]["amount"], "none")
+        self.assertEqual(all_poured.world_state["props"]["prop_target"]["contents"][0]["amount"], "some")
+
+    def test_partial_transfer_rejects_unknown_quantity(self):
+        state = make_reducer_state()
+        state["props"]["prop_source"]["contents"][0]["amount"] = UNKNOWN
+        validate_world_state(state)
+        outcomes = validate_state_actions(
+            state,
+            [self.action(
+                "partial", "pour", actor_subject_id="subject_1",
+                source_prop_id="prop_source", target_prop_id="prop_target",
+                substance="liquid", amount="partial",
+            )],
+            segment_number=1,
+        )
+        self.assertEqual(outcomes[0].code, "partial_amount_unknown")
+
+    def test_consume_requires_explicitly_consumable_content(self):
+        state = make_reducer_state()
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "eat", "consume", actor_subject_id="subject_1",
+                prop_id="prop_food", substance="food", amount="all",
+            )],
+            segment_number=1,
+        )
+        self.assertTrue(result.outcomes[0].accepted)
+        self.assertEqual(result.world_state["props"]["prop_food"]["status"], "consumed")
+        self.assertEqual(result.world_state["props"]["prop_food"]["placement"], {"kind": "unknown"})
+
+    def test_clothing_change_requires_exact_known_layer_and_preserves_required_clothing(self):
+        state = make_reducer_state()
+        subject = state["subjects"]["subject_1"]
+        subject["identity"]["physical_form"] = "humanoid"
+        subject["identity"]["clothing_applicability"] = "required"
+        subject["wardrobe"]["upper"] = "shirt; coat"
+        validate_world_state(state)
+        result = reduce_world_state(
+            state,
+            [
+                self.action(
+                    "remove-coat", "change_clothing", subject_id="subject_1",
+                    change="remove", slot="upper", garment="coat",
+                ),
+                self.action(
+                    "replace-shirt", "change_clothing", subject_id="subject_1",
+                    change="replace", slot="upper", garment="tunic", replaces="shirt",
+                ),
+            ],
+            segment_number=2,
+        )
+        self.assertTrue(all(outcome.accepted for outcome in result.outcomes))
+        self.assertEqual(result.world_state["subjects"]["subject_1"]["wardrobe"]["upper"], "tunic")
+        forbidden = reduce_world_state(
+            result.world_state,
+            [self.action(
+                "remove-last", "change_clothing", subject_id="subject_1",
+                change="remove", slot="upper", garment="tunic",
+            )],
+            segment_number=3,
+        )
+        self.assertEqual(forbidden.outcomes[0].code, "clothing_required")
+
+    def test_mechanism_operations_follow_explicit_states_and_capabilities(self):
+        state = make_reducer_state()
+        result = reduce_world_state(
+            state,
+            [
+                self.action("lock", "lock", actor_subject_id="subject_1", prop_id="prop_door"),
+                self.action("unlock", "unlock", actor_subject_id="subject_1", prop_id="prop_door"),
+                self.action("open", "open", actor_subject_id="subject_1", prop_id="prop_door"),
+                self.action("close", "close", actor_subject_id="subject_1", prop_id="prop_door"),
+            ],
+            segment_number=1,
+        )
+        self.assertTrue(all(outcome.accepted for outcome in result.outcomes))
+        self.assertEqual(result.world_state["props"]["prop_door"]["mechanism_state"], "closed")
+
+    def test_unknown_ids_and_generic_patch_operations_are_rejected(self):
+        state = make_reducer_state()
+        outcomes = validate_state_actions(
+            state,
+            [
+                self.action("unknown", "pickup", actor_subject_id="subject_1", prop_id="prop_unknown"),
+                self.action("patch", "set_subject_field", subject_id="subject_1", field="presence", value="absent"),
+            ],
+            segment_number=1,
+        )
+        self.assertEqual(outcomes[0].code, "unknown_entity_id")
+        self.assertEqual(outcomes[1].code, "unknown_operation")
+
+    def test_schema_rejects_non_boolean_capabilities(self):
+        state = make_reducer_state()
+        state["props"]["prop_target"]["capabilities"]["container"] = 1
+        with self.assertRaisesRegex(ValueError, "invalid capability value"):
+            validate_world_state(state)
 
 
 if __name__ == "__main__":

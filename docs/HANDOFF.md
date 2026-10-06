@@ -98,10 +98,10 @@ not start Gate C or Gate D until the user approves this checkpoint.
   `minimax.restore_generation_state` (restore of that snapshot).
   `minimax.authoritative_world_state_seed_from_subject_definitions` only
   prepares the narrow authored-input seed; `world_state.copy_world_state`
-  returns a validated independent copy. No Director, reducer, visual observer,
-  beat summary, RAW parser, or legacy writer updates WorldState facts. This
-  remains a temporary state until reviewed authority-specific seed functions
-  and Gate C's action contract are added.
+  returns a validated independent copy. At the Gate A/B checkpoint, no
+  Director, reducer, visual observer, beat summary, RAW parser, or legacy writer
+  updated WorldState facts. Step 3 below adds a pure reducer core without a
+  Director call site or legacy-state synchronization.
 
 Legacy state writers still active and therefore still competing authorities for
 their compatibility state:
@@ -130,6 +130,81 @@ These writers are intentionally not removed or redirected in this checkpoint.
 Gate C must report them again after adding Director `state_actions` and reducer
 validation; Gate D is where segment processing becomes transactional and legacy
 writers begin to be replaced or disabled.
+
+## 2026-10-06 — Step 3 reducer core
+
+Implemented the pure WorldState reducer and unit tests. This is only the reducer
+core: Director `state_actions` emission, prompt vocabulary injection, segment
+transactions, and disabling/replacing legacy writers remain out of scope.
+
+Public API in `world_state.py`:
+
+- `reduce_world_state(world_state, state_actions, *, segment_number)` returns a
+  `ReductionResult` containing a validated candidate state and ordered
+  `ActionOutcome` records. It deep-copies its input and does not mutate the
+  caller's state.
+- `validate_state_actions(world_state, state_actions, *, segment_number)` dry-
+  runs that same engine and returns the same outcomes without exposing the
+  candidate.
+- `props_held_by(world_state, subject_id)` derives a subject's held-prop IDs
+  from each prop's single `placement` field; no subject-held-props list is
+  persisted.
+
+Each `StateAction` has `action_id`, `op`, and only the operation-specific
+registered fields. Supported operations and effects:
+
+| Operation | State effect |
+| --- | --- |
+| `pickup` | Changes one movable prop from located to held by the actor. |
+| `place` | Changes an actor-held movable prop to a location, optionally on an explicitly registered support. |
+| `handoff` | Changes a movable prop's recorded holder from giver to receiver. |
+| `pour` | Transfers a registered substance using `all` or `partial` coarse amounts. |
+| `consume` | Consumes an explicitly consumable prop or content using `all` or `partial`. |
+| `enter` / `exit` | Set presence to present / absent; exit may record a known destination. |
+| `move` | Changes a present subject's registered location without changing presence; support clears unless supplied. |
+| `set_support` | Sets or clears (`support_id: null`) a subject's explicit support and optionally its posture. |
+| `change_clothing` | Puts on, removes, or replaces an exact recorded wardrobe layer. |
+| `open` / `close` / `lock` / `unlock` | Changes a registered mechanism state when explicit capabilities and prior states permit it. |
+
+Persistent props now carry one authoritative `placement`, `mobility` (`movable`,
+`fixed`, or `unknown`), a kind (including `fixture`, `support`, and
+`fixture_support`), coarse contents, explicit capabilities, and mechanism state.
+Pickup rejects fixed and unknown-mobility props. Entity references must resolve
+to IDs already present in the WorldState; arbitrary field-patch operations and
+unknown entity IDs are rejected.
+
+The reducer proves only facts encoded in WorldState: registered identity,
+presence, location equality, placement, mobility, capability, content, and
+mechanism state. It does not infer proximity, reachability, route plausibility,
+collision/fit, or whether a support is physically unoccupied. Within-location
+movement cannot be represented because the current schema has no position
+coordinate, so it is rejected as `movement_not_representable`. Physical staging
+remains the semantic validator's responsibility. An `off_camera` action is not
+defined; off-camera continuity produces no action.
+
+WorldState mutation and compatibility status at this gate:
+
+- `new_world_state` and `empty_world_state` construct seed states; neither
+  imports legacy continuity, RAW, visual observations, or beat summaries.
+- `reduce_world_state` and `validate_state_actions` call the shared reducer
+  engine. The engine mutates only private deep copies while evaluating actions;
+  the caller's input remains unchanged. `copy_world_state` returns a validated
+  copy and `props_held_by` is read-only.
+- `minimax.new_generation_state` assigns the authoritative identity seed.
+  `load_generation_state` creates an unknown-only state for legacy checkpoints;
+  `save_generation_state`, `record_completed_segment`, and
+  `restore_generation_state` validate or copy WorldState snapshots. None of
+  these paths applies legacy state facts to WorldState.
+- All legacy continuity, visual, beat, wardrobe, Subject, and prop-ledger
+  writers listed in Gate A/B remain active for compatibility state and have not
+  been integrated with this reducer. No Director call site invokes the reducer.
+
+Focused validation: `python -m pytest -q tests/test_world_state_foundation.py`.
+The reducer tests cover pure reduction/dry-run agreement, fixed and unknown
+mobility, placement and derived holders, support clearing, presence semantics,
+coarse transfer amounts, clothing applicability, mechanism prerequisites, and
+rejection of unregistered IDs and generic patches. This did not run the full
+repository suite.
 
 Focused validation: `tests/test_world_state_foundation.py`,
 `tests/test_rendered_wardrobe_state.py`, `tests/test_subject_identity_continuity.py`,
