@@ -113,6 +113,82 @@ A rectangular tavern interior.
             "story_setting_extract",
         )
 
+
+    def test_initial_location_subject_extractor_reads_all_beats(self):
+        beats = [
+            "Amy wipes the tavern counter.",
+            "A goblin already seated near the hearth asks Amy for a pint.",
+            "Amy serves the goblin.",
+        ]
+        messages = minimax.build_initial_location_subjects_messages(
+            beats,
+            "<Subject 1> is Amy (S1).",
+        )
+        system = messages[0]["content"]
+        user = messages[1]["content"]
+        self.assertIn("before Beat 1 begins", system)
+        self.assertIn("Read ALL beats", system)
+        self.assertIn("no earlier beat shows that Subject entering", system)
+        self.assertIn("Beat 2: A goblin already seated near the hearth", user)
+
+    def test_initial_location_subject_extractor_retries_only_itself(self):
+        request = mock.Mock(side_effect=[
+            '{"wrong":[]}',
+            '{"subjects":[{"name":"Goblin1","initial_state":"seated near the hearth"}]}',
+        ])
+        result = minimax.extract_initial_location_subjects(
+            ["Amy wipes the counter.", "A goblin already seated near the hearth asks for ale."],
+            "<Subject 1> is Amy (S1).",
+            llm_request=request,
+        )
+        self.assertEqual(
+            result,
+            [{"name": "Goblin1", "initial_state": "seated near the hearth"}],
+        )
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(
+            request.call_args_list[0].kwargs["history_metadata"]["purpose"],
+            "initial_location_subjects_extract",
+        )
+        self.assertEqual(
+            request.call_args_list[1].kwargs["history_metadata"]["attempt"],
+            2,
+        )
+
+    def test_initial_location_subject_is_registered_before_segment_one(self):
+        state = minimax.continuity_state_for_registry(
+            "<Subject 1> is Amy (S1).",
+            minimax.new_continuity_state(),
+        )
+        seeded, added = minimax.seed_initial_location_subjects(
+            state,
+            "<Subject 1> is Amy (S1).",
+            [{"name": "Goblin1", "initial_state": "seated near the hearth"}],
+        )
+        self.assertEqual(added, ["Goblin1"])
+        self.assertEqual(seeded["subjects"]["Goblin1"]["origin_segment"], 0)
+        self.assertEqual(
+            seeded["subjects"]["Goblin1"]["position"],
+            "seated near the hearth",
+        )
+        self.assertEqual(seeded["subjects"]["Goblin1"]["pose_action"], "N/A")
+
+        definitions = minimax.derive_additional_subject_definitions(
+            "<Subject 1> is Amy (S1).",
+            seeded,
+        )
+        self.assertEqual(len(definitions), 1)
+        self.assertIn("Goblin1", definitions[0])
+        self.assertIn("present at story start", definitions[0])
+        self.assertNotIn("continued from <Video 1>", definitions[0])
+
+    def test_initial_location_subject_opening_state_is_authoritative(self):
+        rendered = minimax.format_initial_location_subjects_opening_state([
+            {"name": "Goblin1", "initial_state": "seated near the hearth"},
+        ])
+        self.assertIn("SUBJECTS ALREADY PRESENT AT STORY START", rendered)
+        self.assertIn("Goblin1: already present; seated near the hearth.", rendered)
+
     def test_new_generation_state_has_location_state(self):
         state = minimax.new_generation_state({})
         self.assertEqual(state["location_state"], {})
