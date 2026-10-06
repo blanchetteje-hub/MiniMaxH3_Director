@@ -1570,3 +1570,44 @@ Next local acceptance:
 - Segment 3 should run a dedicated wardrobe call for Elf1 when she is first registered.
 - Segment 4 should run a dedicated wardrobe call for Dragon1 and should return N/A unless the
   expanded story explicitly clothes the dragon.
+
+
+## 2026-10-06 — Gate C phase 2 corrections, before Gate D
+
+Reworked pre-Request-1 WorldState preparation against the locked benchmark at
+`tests/acceptance/gold/amy_medieval_tavern_six.json`. Gate D is not started; accepted Director
+actions still do not commit to `generation_state["world_state"]`.
+
+- Added a separate one-call-per-authored-Subject story-start classifier. It seeds `present` only
+  with explicit source evidence that the Subject is already in the opening scene, `absent` only
+  with explicit later-entry evidence, and otherwise leaves presence `unknown`. The proven
+  initial-location Subject extractor was not changed.
+- Replaced whole-story persistent-prop prediction with a current-Segment-only extractor. Its
+  inputs are the current beat/source, registered Subjects, already registered props, and
+  registered location/support vocabulary. It returns only new props needed for persistent state
+  actions in that Segment; registration makes their persistence automatic. It does not predict
+  future beats or holders and does not harvest nouns.
+- Current-beat Subject identity/wardrobe extraction runs before Director Request 1. New arrivals
+  receive Python IDs and canonical wardrobes, but remain `unknown` until an explicit `enter` action.
+  The dragon-shaped creature remains `physical_form=unknown` because the benchmark does not
+  establish humanoid anatomy.
+- The real benchmark regression now covers Amy and Goblin1 already present; Goblin1 holding the
+  chipped mug; the later Elf1 entrance and chalice service; and the later dragon-shaped creature
+  with Amy taking the crystal cup from the shelf, pouring, and handing it over.
+- Request 1's Segment vocabulary uses those stable IDs. In the benchmark replay, Segment 1 has
+  Amy/Goblin1, mug/barrel, counter/hearth; Segment 3 adds Elf1, crystal chalice, and back table;
+  Segment 4 adds Dragon1, crystal cup, shelf, and high bar stool. Presence for newly registered
+  Elf1/Dragon1 stays `unknown` until `enter` is accepted.
+- Exact modeled initial placements: chipped mug is held by Goblin1; barrel is located in Tavern;
+  crystal cup is located in Tavern on the shelf; crystal chalice is located in Tavern with no
+  exact starting holder/support established before its Segment-3 service. The source says the
+  chalice is set on wood after service. “Beside the hearth” is retained as source meaning but is
+  not represented as a support or adjacency relation.
+- Updated 14 stale `test_director_retry.py` expectations against current prompt, timestamp,
+  identity-labeling, and subject-resolution contracts. No code regression was found in the
+  original 14 failures. The two-module suite is now green: `151 passed, 4 subtests passed`.
+
+Validation:
+- `pytest -q tests/test_director_retry.py tests/test_world_state_foundation.py` — 151 passed,
+  4 subtests passed.
+- No full tavern generation was run. Stop here for Gate C review before Gate D.

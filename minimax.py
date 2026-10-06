@@ -50,7 +50,6 @@ from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
 from story_planner import StoryPlan, build_story_plan
 from world_state import (
-    activate_persistent_props_for_segment,
     empty_world_state,
     new_world_state,
     build_director_state_action_contract,
@@ -60,6 +59,7 @@ from world_state import (
     seed_canonical_wardrobes,
     seed_current_segment_subject_identities,
     seed_predefined_subject_identities,
+    seed_registered_subject_story_start_presence,
     seed_story_start_presence,
     validate_world_state,
 )
@@ -611,7 +611,8 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "story_location_extract",
     "story_subject_wardrobe_extract",
     "world_state_current_segment_subjects",
-    "world_state_persistent_prop_registry",
+    "registered_subject_story_start_presence",
+    "world_state_current_segment_props",
     "static_setting_extract",
     "director_raw_scene_visible_subject_resolution",
     "subject_continuity",
@@ -3490,7 +3491,6 @@ def build_run_config(
     disable_subject_removal=False,
     visual_style=DEFAULT_VISUAL_STYLE,
     world_state_seed=None,
-    world_state_prop_registry=None,
 ):
     visual_style = normalize_visual_style(visual_style)
     # Auto-discovered video subjects are durable continuity metadata, not a
@@ -3515,7 +3515,6 @@ def build_run_config(
             "retention": bool(retention),
             "test_prompt_generation": bool(test_prompt_generation),
             "subject_definitions": source_subject_definitions,
-            "world_state_prop_registry": world_state_prop_registry or [],
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -3537,9 +3536,6 @@ def build_run_config(
         # This narrow seed is constructed from the user-authored subjects file.
         # Story-derived guesses and legacy continuity structures are excluded.
         "world_state_seed": copy.deepcopy(world_state_seed or {}),
-        # Optional Python-authored allowlist. Entries are still validated by
-        # register_explicit_persistent_props before entering WorldState.
-        "world_state_prop_registry": copy.deepcopy(world_state_prop_registry or []),
     }
 
 
@@ -3747,6 +3743,165 @@ def authoritative_world_state_seed_from_subject_definitions(
     }
 
 
+def build_registered_subject_story_start_response_format():
+    """Return the one-Subject story-start classification schema."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "registered_subject_story_start_presence",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "classification": {
+                        "type": "string",
+                        "enum": ["present", "absent", "unknown"],
+                    },
+                    "evidence": {"type": "string"},
+                    "initial_state": {"type": "string"},
+                },
+                "required": ["classification", "evidence", "initial_state"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def build_registered_subject_story_start_messages(subject, story, beats):
+    numbered_beats = "\n".join(
+        f"Beat {index}: {str(beat).strip()}"
+        for index, beat in enumerate(beats or [], start=1)
+    )
+    identity = subject.get("identity", {}) if isinstance(subject, dict) else {}
+    identity_text = json.dumps(
+        {
+            key: identity.get(key, "unknown")
+            for key in ("gender", "physical_form", "canonical_description", "source_description")
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Classify only this already-registered Subject's story-start status. "
+                "Return present only when the source explicitly establishes the Subject "
+                "is already in the starting scene before its first action, without an "
+                "entry. Return absent only when the source explicitly says the Subject "
+                "enters later, establishing it was absent at story start. Return unknown "
+                "when neither is explicit; do not infer absence from omission or from a "
+                "late first mention. Evidence for present/absent must be an exact quote "
+                "from STORY SOURCE or NUMBERED BEATS. For present, give a concise "
+                "starting-state phrase supported by that evidence. For absent or unknown, "
+                "initial_state must be empty. Classify only the named Subject, not the cast. "
+                "Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"REGISTERED SUBJECT\n{subject.get('name', '')}\n"
+                f"IDENTITY FACTS\n{identity_text}\n\n"
+                f"STORY SOURCE\n{str(story or '').strip() or 'N/A'}\n\n"
+                f"NUMBERED BEATS\n{numbered_beats or 'N/A'}\n\n"
+                "Return one classification for this Subject only."
+            ),
+        },
+    ]
+
+
+def parse_registered_subject_story_start_result(raw_result, subject, story, beats):
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {
+        "classification", "evidence", "initial_state",
+    }:
+        raise ValueError("Registered Subject story-start result has an invalid shape.")
+    classification = candidate["classification"]
+    evidence = " ".join(str(candidate["evidence"] or "").split()).strip()
+    initial_state = " ".join(str(candidate["initial_state"] or "").split()).strip()
+    if classification not in {"present", "absent", "unknown"}:
+        raise ValueError("Registered Subject story-start result has an invalid classification.")
+    if classification == "unknown":
+        if initial_state:
+            raise ValueError("Unknown story-start classification cannot include an initial state.")
+        return {
+            "name": subject["name"], "classification": "unknown",
+            "evidence": evidence, "initial_state": "",
+        }
+    source_text = "\n".join((str(story or ""), *(str(beat) for beat in beats or [])))
+    if not evidence or evidence.casefold() not in source_text.casefold():
+        raise ValueError("Explicit story-start classification requires exact source evidence.")
+    if classification == "present" and not initial_state:
+        raise ValueError("Present story-start classification requires an initial state.")
+    if classification == "absent" and initial_state:
+        raise ValueError("Absent story-start classification cannot include an initial state.")
+    return {
+        "name": subject["name"], "classification": classification,
+        "evidence": evidence, "initial_state": initial_state,
+    }
+
+
+def extract_registered_subject_story_start_presence(
+    world_state,
+    story,
+    beats,
+    *,
+    location_id,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Classify each unknown authored Subject with a separate narrow call."""
+    if llm_request is None:
+        llm_request = ask_llm
+    classifications = []
+    for subject_id, subject in sorted(world_state.get("subjects", {}).items()):
+        if subject.get("presence") != "unknown":
+            continue
+        if subject.get("provenance", {}).get("identity", {}).get("authority") != "user_authored_subject_definitions":
+            continue
+        last_error = None
+        messages = build_registered_subject_story_start_messages(subject, story, beats)
+        for attempt in range(1, 4):
+            attempt_messages = copy.deepcopy(messages)
+            if attempt > 1:
+                attempt_messages[-1]["content"] += (
+                    "\n\nFIX: return only present, absent, or unknown for this one Subject; "
+                    "unknown is required when explicit source evidence is missing. "
+                    f"Prior validation error: {last_error}"
+                )
+            try:
+                raw = llm_request(
+                    attempt_messages,
+                    response_format=build_registered_subject_story_start_response_format(),
+                    max_tokens=256,
+                    context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+                    history_metadata={
+                        **dict(history_metadata or {}),
+                        "purpose": "registered_subject_story_start_presence",
+                        "subject_id": subject_id,
+                        "attempt": attempt,
+                    },
+                )
+                classifications.append(
+                    parse_registered_subject_story_start_result(raw, subject, story, beats)
+                )
+                break
+            except LLMConnectionError:
+                raise
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                last_error = error
+        else:
+            raise ValueError(
+                f"Could not classify story-start presence for {subject['name']!r}: {last_error}"
+            )
+    return seed_registered_subject_story_start_presence(
+        world_state, classifications, location_id=location_id
+    )
+
+
 def build_current_segment_subject_response_format():
     """Return the narrow identity-only current-beat Subject extractor schema."""
     return {
@@ -3940,7 +4095,6 @@ def prepare_segment_world_state_for_director(
     assigned_source,
     story_context,
     *,
-    persistent_prop_registry=(),
     llm_request=None,
     history_metadata=None,
 ):
@@ -3997,21 +4151,23 @@ def prepare_segment_world_state_for_director(
         wardrobe_updates[name] = _world_state_wardrobe_from_canonical_text(clothing)
     if wardrobe_updates:
         state = seed_canonical_wardrobes(state, wardrobe_updates)
-    eligible_props = [
-        prop for prop in persistent_prop_registry
-        if isinstance(prop, dict)
-        and isinstance(prop.get("first_beat"), int)
-        and not isinstance(prop.get("first_beat"), bool)
-        and prop["first_beat"] <= int(segment_number)
-    ]
-    if eligible_props:
-        state = register_extracted_persistent_props(state, eligible_props)
-    state = activate_persistent_props_for_segment(state, int(segment_number))
+    extracted_props = extract_current_segment_persistent_props(
+        current_beat,
+        assigned_source,
+        state,
+        llm_request=llm_request,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "segment": int(segment_number),
+        },
+    )
+    if extracted_props:
+        state = register_extracted_persistent_props(state, extracted_props)
     return state, [item["name"] for item in added]
 
 
-def build_persistent_prop_registry_response_format():
-    """Return a compact strict schema for cross-Segment persistent prop facts."""
+def build_current_segment_persistent_prop_response_format():
+    """Return the narrow strict schema for new props needed in one Segment."""
     nullable_string = {"type": ["string", "null"]}
     content_schema = {
         "type": "object",
@@ -4029,8 +4185,6 @@ def build_persistent_prop_registry_response_format():
             "name": {"type": "string", "minLength": 1},
             "kind": {"type": "string", "enum": ["object", "container", "consumable", "tool"]},
             "mobility": {"type": "string", "enum": ["movable", "fixed", "unknown"]},
-            "first_beat": {"type": "integer", "minimum": 1},
-            "relevant_beats": {"type": "array", "items": {"type": "integer", "minimum": 1}},
             "initial_location": nullable_string,
             "initial_holder": nullable_string,
             "support_name": nullable_string,
@@ -4045,24 +4199,25 @@ def build_persistent_prop_registry_response_format():
                 "additionalProperties": False,
             },
             "reason": {"type": "string", "minLength": 1},
+            "evidence": {"type": "string", "minLength": 1},
         },
         "required": [
-            "name", "kind", "mobility", "first_beat", "relevant_beats",
+            "name", "kind", "mobility",
             "initial_location", "initial_holder", "support_name", "contents",
-            "capabilities", "reason",
+            "capabilities", "reason", "evidence",
         ],
         "additionalProperties": False,
     }
     return {
         "type": "json_schema",
         "json_schema": {
-            "name": "world_state_persistent_prop_registry",
+            "name": "world_state_current_segment_props",
             "strict": True,
             "schema": {
                 "type": "object",
                 "properties": {
                     "props": {
-                        "type": "array", "maxItems": 16,
+                        "type": "array", "maxItems": 8,
                         "items": prop_schema,
                     },
                 },
@@ -4073,164 +4228,176 @@ def build_persistent_prop_registry_response_format():
     }
 
 
-def build_persistent_prop_registry_messages(
-    story,
-    beats,
-    macro_arc=None,
-    location_state=None,
-    registered_subject_names=(),
+def build_current_segment_persistent_prop_messages(
+    current_beat,
+    assigned_source,
+    world_state,
 ):
-    """Build the one-run prop extractor from authored story-plan authorities."""
-    numbered_beats = "\n".join(
-        f"Beat {index}: {str(beat).strip()}"
-        for index, beat in enumerate(beats or [], start=1)
-    )
-    effect_events = []
-    for phase in (macro_arc or {}).get("phases", []):
-        if not isinstance(phase, dict):
-            continue
-        for event in phase.get("required_events", []):
-            if isinstance(event, dict) and event.get("state_effects"):
-                effect_events.append({
-                    "beat_number": event.get("beat_number"),
-                    "event": event.get("event"),
-                    "state_effects": event.get("state_effects"),
-                })
+    """Build a current-only prop extractor from registered vocabulary."""
+    subjects = [
+        {"id": item["id"], "name": item["name"], "presence": item["presence"]}
+        for _subject_id, item in sorted(world_state["subjects"].items())
+    ]
+    props = [
+        {"id": prop_id, "name": item["name"], "kind": item["kind"],
+         "placement": item["placement"]}
+        for prop_id, item in sorted(world_state["props"].items())
+    ]
+    locations = [
+        {"id": location_id, "name": item["name"]}
+        for location_id, item in sorted(world_state["locations"].items())
+    ]
+    supports = [
+        {"id": prop_id, "name": item["name"],
+         "location_id": item["placement"].get("location_id")}
+        for prop_id, item in sorted(world_state["props"].items())
+        if item["kind"] in {"support", "fixture_support"}
+    ]
     return [
         {
             "role": "system",
             "content": (
-                "Identify only physical props whose object identity must persist "
-                "across different numbered beats for an explicit transfer, reuse, "
-                "pour/consume, or source-to-vessel relationship. A source container "
-                "may be included when it supplies a registered vessel in multiple "
-                "beats. Do not list every noun or ordinary one-beat staging object. "
-                "Preserve distinct objects even if both are cups/glasses. Do not return "
-                "Subjects, fixtures already in LOCATION STATE, garments, or generic "
-                "atmosphere. For each selected object, relevant_beats must contain at "
-                "least two distinct beats and first_beat is the earliest of them. "
-                "Set exactly one of initial_location or initial_holder only when the "
-                "source explicitly establishes the prop's placement immediately "
-                "before its first narrated state-changing event in first_beat; for a "
-                "handoff, the named giver is the holder immediately before transfer. "
-                "Otherwise omit that prop. support_name is allowed only "
-                "when LOCATION STATE explicitly registers that support. Contents and "
-                "capabilities must be stated or explicitly established by the object's "
-                "role; use 'unknown' otherwise. Do not use RAW, visuals, continuity "
-                "summaries, accepted-beat summaries, or object ledgers. Return JSON only."
+                "Identify only new physical props whose distinct identity and "
+                "placement are needed to represent an explicit persistent "
+                "state-changing action in THIS SEGMENT. Existing props are listed "
+                "and must be reused by identity; never duplicate or rename them. "
+                "Do not harvest nouns, register ordinary staging objects, or "
+                "predict future props, beats, holders, or actions. Do not return "
+                "Subjects, fixtures already registered in the canonical location "
+                "vocabulary, garments, or background objects. Each new prop must be "
+                "directly involved in a transfer, placement, pour/consume, or "
+                "mechanism action in CURRENT BEAT or ASSIGNED SOURCE. Return exactly "
+                "one explicit initial_location or initial_holder, using only the "
+                "registered names below. A support_name may name only a registered "
+                "support/fixture. Do not guess a placement: omit any prop whose "
+                "initial placement is not supported by the current sources. Evidence "
+                "must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE. "
+                "Record contents/capabilities only when explicit; otherwise use "
+                "unknown or an empty contents list. Return JSON only."
             ),
         },
         {
             "role": "user",
             "content": (
-                "AUTHORITATIVE STORY\n" + (str(story or "").strip() or "N/A")
-                + "\n\nNUMBERED BEATS\n" + (numbered_beats or "N/A")
-                + "\n\nVALIDATED STRUCTURED EVENT STATE EFFECTS\n"
-                + json.dumps(effect_events, ensure_ascii=False, separators=(",", ":"))
-                + "\n\nCANONICAL LOCATION STATE\n"
-                + json.dumps(location_state or {}, ensure_ascii=False, separators=(",", ":"))
-                + "\n\nREGISTERED SUBJECT NAMES\n"
-                + (", ".join(str(name) for name in registered_subject_names) or "N/A")
-                + "\n\nReturn only the small cross-Segment prop registry."
+                "CURRENT BEAT\n" + (str(current_beat or "").strip() or "N/A")
+                + "\n\nASSIGNED SOURCE\n" + (str(assigned_source or "").strip() or "N/A")
+                + "\n\nREGISTERED SUBJECTS\n"
+                + json.dumps(subjects, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nCURRENT WORLDSTATE PROPS\n"
+                + json.dumps(props, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nCANONICAL LOCATIONS\n"
+                + json.dumps(locations, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nCANONICAL SUPPORTS / FIXTURES\n"
+                + json.dumps(supports, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nReturn only props needed for a persistent state action in this Segment."
             ),
         },
     ]
 
 
-def parse_persistent_prop_registry_result(raw_result, total_beats):
-    """Validate a small prop registry and its explicit initial placements."""
+def parse_current_segment_persistent_prop_result(
+    raw_result, current_beat, assigned_source, world_state,
+):
+    """Validate only new props, grounded in this Segment and its vocabulary."""
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
     if not isinstance(candidate, dict) or set(candidate) != {"props"}:
-        raise ValueError("Persistent prop extraction requires only a props array.")
-    if not isinstance(candidate["props"], list) or len(candidate["props"]) > 16:
-        raise ValueError("Persistent prop extraction must return at most 16 props.")
+        raise ValueError("Current-Segment prop extraction requires only a props array.")
+    if not isinstance(candidate["props"], list) or len(candidate["props"]) > 8:
+        raise ValueError("Current-Segment prop extraction must return at most 8 props.")
     parsed = []
     names = set()
+    source_text = "\n".join((str(current_beat or ""), str(assigned_source or "")))
+    locations = {item["name"].casefold() for item in world_state["locations"].values()}
+    subjects = {item["name"].casefold() for item in world_state["subjects"].values()}
+    supports = {
+        item["name"].casefold()
+        for item in world_state["props"].values()
+        if item["kind"] in {"support", "fixture_support"}
+    }
+    existing = {item["name"].casefold() for item in world_state["props"].values()}
     expected_keys = {
-        "name", "kind", "mobility", "first_beat", "relevant_beats",
+        "name", "kind", "mobility",
         "initial_location", "initial_holder", "support_name", "contents",
-        "capabilities", "reason",
+        "capabilities", "reason", "evidence",
     }
     for entry in candidate["props"]:
         if not isinstance(entry, dict) or set(entry) != expected_keys:
             raise ValueError("Persistent prop entry has an invalid shape.")
         name = " ".join(str(entry["name"] or "").split()).strip()
         key = name.casefold()
-        if not name or key in names:
-            raise ValueError("Persistent prop names must be non-empty and unique.")
+        if not name or key in names or key in existing:
+            raise ValueError("Current-Segment props must be new, non-empty, and unique.")
         names.add(key)
-        first_beat = entry["first_beat"]
-        relevant = entry["relevant_beats"]
-        if (
-            isinstance(first_beat, bool) or not isinstance(first_beat, int)
-            or first_beat < 1 or first_beat > total_beats
-            or not isinstance(relevant, list)
-            or any(isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= total_beats for value in relevant)
-            or len(set(relevant)) < 2 or first_beat != min(relevant)
-        ):
-            raise ValueError(f"Persistent prop {name!r} lacks cross-Segment grounding.")
         if (entry["initial_location"] is None) == (entry["initial_holder"] is None):
             raise ValueError(
                 f"Persistent prop {name!r} requires exactly one explicit initial location or holder."
             )
+        if entry["initial_location"] is not None and str(entry["initial_location"]).casefold() not in locations:
+            raise ValueError(f"Persistent prop {name!r} names an unregistered location.")
+        if entry["initial_holder"] is not None and str(entry["initial_holder"]).casefold() not in subjects:
+            raise ValueError(f"Persistent prop {name!r} names an unregistered holder.")
+        if entry["support_name"] is not None and str(entry["support_name"]).casefold() not in supports:
+            raise ValueError(f"Persistent prop {name!r} names an unregistered support.")
         if not isinstance(entry["contents"], list) or not isinstance(entry["capabilities"], dict):
             raise ValueError(f"Persistent prop {name!r} has invalid contents/capabilities.")
         reason = " ".join(str(entry["reason"] or "").split()).strip()
-        if not reason:
-            raise ValueError(f"Persistent prop {name!r} requires a grounding reason.")
-        parsed.append({**entry, "name": name, "reason": reason})
+        evidence = " ".join(str(entry["evidence"] or "").split()).strip()
+        if not reason or not evidence or evidence.casefold() not in source_text.casefold():
+            raise ValueError(f"Persistent prop {name!r} requires exact current-source evidence.")
+        parsed.append({**entry, "name": name, "reason": reason, "evidence": evidence})
     return parsed
 
 
-def extract_persistent_prop_registry(
-    story,
-    beats,
-    macro_arc=None,
-    location_state=None,
-    registered_subject_names=(),
+def extract_current_segment_persistent_props(
+    current_beat,
+    assigned_source,
+    world_state,
     *,
     llm_request=None,
     history_metadata=None,
 ):
-    """Extract only explicitly placed cross-Segment props from pre-generation sources."""
+    """Extract only newly needed props from this Segment's sources and state."""
     if llm_request is None:
         llm_request = ask_llm
-    messages = build_persistent_prop_registry_messages(
-        story, beats, macro_arc, location_state, registered_subject_names
+    messages = build_current_segment_persistent_prop_messages(
+        current_beat, assigned_source, world_state
     )
     last_error = None
     for attempt in range(1, 4):
         attempt_messages = copy.deepcopy(messages)
         if attempt > 1:
             attempt_messages[-1]["content"] += (
-                "\n\nFIX: Every selected prop needs two distinct relevant beat numbers "
-                "and exactly one explicit initial_location or initial_holder. "
+                "\n\nFIX: Return only new props needed for a persistent state-changing "
+                "action in this Segment, with exact source evidence and exactly one "
+                "registered initial location or holder. Do not predict future props. "
                 f"Prior validation error: {last_error}"
             )
         try:
             raw = llm_request(
                 attempt_messages,
-                response_format=build_persistent_prop_registry_response_format(),
-                max_tokens=1024,
+                response_format=build_current_segment_persistent_prop_response_format(),
+                max_tokens=512,
                 context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **dict(history_metadata or {}),
-                    "purpose": "world_state_persistent_prop_registry",
+                    "purpose": "world_state_current_segment_props",
                     "attempt": attempt,
                 },
             )
-            return parse_persistent_prop_registry_result(raw, len(beats or []))
+            return parse_current_segment_persistent_prop_result(
+                raw, current_beat, assigned_source, world_state
+            )
         except LLMConnectionError:
             raise
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             last_error = error
-    raise ValueError("Could not establish persistent prop registry: " + str(last_error))
+    raise ValueError("Could not extract current-Segment persistent props: " + str(last_error))
 
 
 def register_extracted_persistent_props(world_state, extracted_props):
-    """Resolve semantic extractor names to Python-assigned WorldState IDs."""
+    """Resolve current-Segment prop names to Python-assigned WorldState IDs."""
     validate_world_state(world_state)
     locations = {
         " ".join(record["name"].split()).casefold(): location_id
@@ -4293,7 +4460,6 @@ def register_extracted_persistent_props(world_state, extracted_props):
             "support_id": support_id,
             "contents": contents,
             "capabilities": capabilities,
-            "first_beat": prop["first_beat"],
         })
     return register_explicit_persistent_props(world_state, registry)
 
@@ -36790,6 +36956,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     state_action_contract = build_director_state_action_contract(
         world_state_opening,
         current_segment_text=current_segment_action_text,
+        current_segment_subject_names=bundle.get(
+            "world_state_current_segment_subject_names", []
+        ),
     )
     prop_ledger = normalize_prop_ledger(bundle.get("prop_ledger", {}))
 
@@ -38250,32 +38419,6 @@ def _run_main(
             flush=True,
         )
 
-    world_state_prop_registry = []
-    prop_registry_subject_names = [
-        name for _subject_id, name in parse_defined_subjects(
-            base_subject_definitions
-        )
-    ]
-    prop_registry_subject_names.extend(
-        str(item.get("name") or "").strip()
-        for item in initial_location_subjects
-        if isinstance(item, dict)
-    )
-    world_state_prop_registry = extract_persistent_prop_registry(
-        story,
-        beats,
-        macro_arc=macro_arc,
-        location_state=story_location_metadata.get("location_state", {}),
-        registered_subject_names=list(dict.fromkeys(prop_registry_subject_names)),
-        history_metadata={"run_id": run_id},
-    )
-    if world_state_prop_registry:
-        console_log(
-            "Authoritative persistent prop registry: "
-            + ", ".join(item["name"] for item in world_state_prop_registry),
-            flush=True,
-        )
-
     run_config = build_run_config(
         segment_length,
         total_length,
@@ -38299,7 +38442,6 @@ def _run_main(
             base_subject_definitions,
             SUBJECT_DEFINITIONS_FILE,
         ),
-        world_state_prop_registry=world_state_prop_registry,
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
@@ -38349,6 +38491,14 @@ def _run_main(
                 world_state,
                 initial_location_subjects,
                 location_id=location_id,
+            )
+        if location_id:
+            world_state = extract_registered_subject_story_start_presence(
+                world_state,
+                story,
+                beats,
+                location_id=location_id,
+                history_metadata={"run_id": run_id},
             )
         if character_canon:
             world_state = seed_canonical_wardrobes(
@@ -38860,6 +39010,7 @@ def _run_main(
         )
 
     prepared_world_state_segments = set()
+    prepared_world_state_subject_names = {}
 
     def prepare_current_segment_world_state(segment_number):
         """Register beat-established identities/props before Request 1."""
@@ -38882,9 +39033,6 @@ def _run_main(
             current_beat,
             assigned_source,
             expanded_story_context or story,
-            persistent_prop_registry=run_config.get(
-                "world_state_prop_registry", []
-            ),
             history_metadata={"run_id": run_id},
         )
         if generation_state.get("world_state") != world_state:
@@ -38897,6 +39045,13 @@ def _run_main(
                 flush=True,
             )
         prepared_world_state_segments.add(segment_number)
+        present_names = [
+            subject["name"] for subject in world_state["subjects"].values()
+            if subject.get("presence") == "present"
+        ]
+        prepared_world_state_subject_names[segment_number] = list(
+            dict.fromkeys(present_names + list(added))
+        )
 
     # Assemble the prefetched data needed for one segment.
     def build_segment_bundle(
@@ -39059,6 +39214,9 @@ def _run_main(
                 generation_state.get("world_state")
                 if isinstance(generation_state.get("world_state"), dict)
                 else empty_world_state("request1_world_state_unavailable")
+            ),
+            "world_state_current_segment_subject_names": list(
+                prepared_world_state_subject_names.get(segment_number, [])
             ),
             "prop_ledger": prop_ledger_snapshot,
             "static_setting_description": location_setting_description,

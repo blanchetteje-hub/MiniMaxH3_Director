@@ -531,6 +531,70 @@ def seed_story_start_presence(
     return _changed_revision(before, candidate)
 
 
+def seed_registered_subject_story_start_presence(
+    world_state: dict[str, Any],
+    classifications: list[dict[str, Any]],
+    *,
+    location_id: str,
+) -> dict[str, Any]:
+    """Seed explicit present/absent findings for authored Subjects only."""
+    validate_world_state(world_state)
+    if not isinstance(classifications, list):
+        raise ValueError("Registered Subject presence classifications must be an array.")
+    if location_id not in world_state["locations"]:
+        raise ValueError("Registered Subject classification requires the starting location.")
+    before = deepcopy(world_state)
+    candidate = deepcopy(world_state)
+    by_name = {
+        _name_key(subject.get("name")): subject
+        for subject in candidate["subjects"].values()
+    }
+    seen: set[str] = set()
+    for item in classifications:
+        if not isinstance(item, dict) or set(item) != {
+            "name", "classification", "evidence", "initial_state",
+        }:
+            raise ValueError("Registered Subject presence classification has an invalid shape.")
+        name = " ".join(str(item.get("name") or "").split()).strip()
+        key = _name_key(name)
+        if not name or key in seen:
+            raise ValueError("Registered Subject presence names must be non-empty and unique.")
+        seen.add(key)
+        subject = by_name.get(key)
+        if subject is None:
+            raise ValueError(f"Presence classification references unregistered Subject {name!r}.")
+        if subject.get("provenance", {}).get("identity", {}).get("authority") != "user_authored_subject_definitions":
+            raise ValueError(f"Only authored Subject definitions may use this presence authority: {name!r}.")
+        classification = item["classification"]
+        if classification not in {"present", "absent", "unknown"}:
+            raise ValueError(f"Invalid story-start classification for {name!r}.")
+        if classification == "unknown":
+            continue
+        evidence = " ".join(str(item.get("evidence") or "").split()).strip()
+        if not evidence:
+            raise ValueError(f"Explicit story-start classification for {name!r} requires evidence.")
+        initial_state = " ".join(str(item.get("initial_state") or "").split()).strip()
+        if classification == "present" and not initial_state:
+            raise ValueError(f"Present Subject {name!r} requires an initial state.")
+        if classification == "absent" and initial_state:
+            raise ValueError(f"Absent Subject {name!r} cannot have an initial state.")
+        prior_presence = subject["presence"]
+        if prior_presence not in {UNKNOWN, classification}:
+            raise ValueError(f"Story-start presence classification conflicts for Subject {name!r}.")
+        if prior_presence == classification:
+            continue
+        subject["presence"] = classification
+        subject["location_id"] = location_id if classification == "present" else UNKNOWN
+        subject["support_id"] = None if classification == "present" else UNKNOWN
+        subject["provenance"].setdefault("presence", {})
+        subject["provenance"]["presence"] = {
+            "authority": "registered_subject_story_start_classifier",
+            "evidence": evidence,
+            "initial_state": initial_state or UNKNOWN,
+        }
+    return _changed_revision(before, candidate)
+
+
 def seed_canonical_wardrobes(
     world_state: dict[str, Any],
     wardrobes_by_subject: dict[str, dict[str, Any]],
@@ -589,7 +653,7 @@ def register_explicit_persistent_props(
         allowed = {
             "name", "kind", "mobility", "needed_for_state", "reason",
             "location_id", "holder_subject_id", "support_id", "contents",
-            "capabilities", "mechanism_state", "first_beat",
+            "capabilities", "mechanism_state",
         }
         extra = set(entry) - allowed - {"id"}
         if extra:
@@ -637,9 +701,6 @@ def register_explicit_persistent_props(
         prop_id = stable_world_state_id(
             "prop", f"{kind}|{name}", scope=str(identity_scope)
         )
-        first_beat = entry.get("first_beat", 1)
-        if isinstance(first_beat, bool) or not isinstance(first_beat, int) or first_beat < 1:
-            raise ValueError("Persistent prop first_beat must be a positive integer.")
         prop = _seed_prop_record(
             prop_id,
             name,
@@ -649,35 +710,16 @@ def register_explicit_persistent_props(
             contents=entry.get("contents"),
             capabilities=entry.get("capabilities"),
             mechanism_state=entry.get("mechanism_state", UNKNOWN),
-            status="present" if first_beat <= 1 else UNKNOWN,
+            status="present",
             provenance={"registration": {
                 "authority": "explicit_persistent_prop_registry",
                 "reason": reason,
-                "first_beat": first_beat,
             }},
         )
         existing = candidate["props"].get(prop_id)
         if existing is not None and existing != prop:
             raise ValueError(f"Explicit prop registration conflicts for {name!r}.")
         candidate["props"][prop_id] = prop
-    return _changed_revision(before, candidate)
-
-
-def activate_persistent_props_for_segment(
-    world_state: dict[str, Any],
-    segment_number: int,
-) -> dict[str, Any]:
-    """Activate registered props at their extractor-established first beat."""
-    validate_world_state(world_state)
-    if isinstance(segment_number, bool) or not isinstance(segment_number, int) or segment_number < 1:
-        raise ValueError("Segment number must be a positive integer.")
-    before = deepcopy(world_state)
-    candidate = deepcopy(world_state)
-    for prop in candidate["props"].values():
-        registration = prop.get("provenance", {}).get("registration", {})
-        first_beat = registration.get("first_beat", 1)
-        if first_beat <= segment_number and prop["status"] == UNKNOWN:
-            prop["status"] = "present"
     return _changed_revision(before, candidate)
 
 
@@ -1535,6 +1577,7 @@ def build_director_state_action_contract(
     world_state: dict[str, Any],
     *,
     current_segment_text: str = "",
+    current_segment_subject_names: list[str] | None = None,
 ) -> dict[str, Any]:
     """Return compact registered vocabulary and same-response action schema."""
     validate_world_state(world_state)
@@ -1567,8 +1610,15 @@ def build_director_state_action_contract(
         if prop["status"] == "present"
     ]
     segment_text = " ".join(str(current_segment_text or "").split())
+    explicit_subject_names = {
+        _name_key(name) for name in (current_segment_subject_names or [])
+    }
     subjects = (
-        [item for item in all_subjects if _registered_name_is_referenced(item["name"], segment_text)]
+        [
+            item for item in all_subjects
+            if _registered_name_is_referenced(item["name"], segment_text)
+            or _name_key(item["name"]) in explicit_subject_names
+        ]
         if segment_text else all_subjects
     )
     relevant_subject_ids = {item["id"] for item in subjects}

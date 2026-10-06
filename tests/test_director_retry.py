@@ -2,6 +2,7 @@ import unittest
 import json
 import re
 import copy
+from pathlib import Path
 from unittest import mock
 
 import minimax
@@ -71,88 +72,157 @@ def goblin_mug_bundle():
     return bundle
 
 
-def tavern_persistent_prop_extractor_result():
-    """Representative semantic extractor output for the six-beat tavern plan."""
-    def prop(name, kind, first_beat, relevant_beats, holder=None, contents=None):
-        return {
-            "name": name,
-            "kind": kind,
-            "mobility": "fixed" if name == "barrel" else "movable",
-            "first_beat": first_beat,
-            "relevant_beats": relevant_beats,
-            "initial_location": None if holder else "Tavern",
-            "initial_holder": holder,
-            "support_name": "bar counter" if name == "barrel" else None,
-            "contents": contents or [],
-            "capabilities": {
-                "container": True if kind == "container" else "unknown",
-                "consumable": "unknown",
-                "openable": "unknown",
-                "lockable": "unknown",
-            },
-            "reason": f"{name} has an explicit cross-beat identity/state role.",
-        }
+TAVERN_BENCHMARK = json.loads(
+    (Path(__file__).parent / "acceptance" / "gold" / "amy_medieval_tavern_six.json")
+    .read_text(encoding="utf-8")
+)
+TAVERN_SOURCE_PARAGRAPHS = TAVERN_BENCHMARK["story_text"].split("\n\n")
+TAVERN_SEGMENT_BEATS = [
+    "\n".join(item["must_happen"])
+    for item in TAVERN_BENCHMARK["beats"]
+]
+TAVERN_SEGMENT_SOURCES = [
+    TAVERN_SOURCE_PARAGRAPHS[0],
+    TAVERN_SOURCE_PARAGRAPHS[0],
+    TAVERN_SOURCE_PARAGRAPHS[1],
+    TAVERN_SOURCE_PARAGRAPHS[2],
+    TAVERN_SOURCE_PARAGRAPHS[3],
+    TAVERN_SOURCE_PARAGRAPHS[4],
+]
 
-    return {"props": [
-        prop("mug", "container", 1, [1, 3]),
-        prop(
-            "barrel", "container", 1, [1, 4],
-            contents=[{"substance": "ale", "amount": "some", "consumable": "unknown"}],
-        ),
-        prop("crystal chalice", "container", 3, [3, 5]),
-        prop("cup", "container", 4, [4, 5], holder="Elf1"),
-    ]}
+
+def current_prop(name, holder=None, location="Tavern", support=None, evidence="", reason=""):
+    return {
+        "name": name,
+        "kind": "container",
+        "mobility": "movable",
+        "initial_location": location if holder is None else None,
+        "initial_holder": holder,
+        "support_name": support,
+        "contents": [],
+        "capabilities": {
+            "container": True,
+            "consumable": "unknown",
+            "openable": "unknown",
+            "lockable": "unknown",
+        },
+        "reason": reason,
+        "evidence": evidence,
+    }
+
+
+def tavern_segment_prop_results(segment_number):
+    if segment_number == 1:
+        return {"props": [
+            current_prop(
+                "mug", holder="Goblin1",
+                evidence="tiny hands clutching a chipped mug",
+                reason="The goblin holds this persistent container in the opening scene.",
+            ),
+            current_prop(
+                "barrel", support=None,
+                evidence="a barrel beside the hearth",
+                reason="The barrel is the source container for the current tavern service sequence.",
+            ),
+        ]}
+    if segment_number == 3:
+        return {"props": [
+            current_prop(
+                "crystal chalice",
+                evidence="Amy pours a steaming cup into a crystal chalice for the elf",
+                reason="The chalice is the serving container introduced and handled this Segment.",
+            ),
+        ]}
+    if segment_number == 4:
+        return {"props": [
+            current_prop(
+                "crystal cup", support="shelf",
+                evidence="lifts a crystal cup from her shelf",
+                reason="The crystal cup is picked up, filled, and handed to the new arrival this Segment.",
+            ),
+        ]}
+    return {"props": []}
 
 
 def tavern_world_state_from_authorities():
-    """Build only authored/story-start state, then use the prop registry path."""
-    state = new_world_state({
-        "source_sha256": "tavern-authority-source",
-        "subjects": {
-            "1": {
-                "subject_id": 1, "name": "Amy", "gender": "female",
-                "picture_ids": [], "physical_form": "humanoid",
-            },
-        },
-    })
+    """Seed from the locked benchmark's authored identity, location, and opening facts."""
+    identity_seed = minimax.authoritative_world_state_seed_from_subject_definitions(
+        "\n".join(TAVERN_BENCHMARK["input_subjects"]),
+        "tests/acceptance/gold/amy_medieval_tavern_six.json",
+    )
+    state = new_world_state(identity_seed)
     state, location_id = seed_canonical_static_location_state(
         state,
         {
             "location": {"name": "Tavern"},
-            "anchors": [],
-            "objects": [{
-                "name": "bar counter",
-                "world_state_role": "fixture_support",
-                "mobility": "fixed",
-            }],
+            "anchors": [
+                {"name": "counter", "type": "work surface", "world_state_role": "fixture_support", "mobility": "fixed"},
+                {"name": "hearth", "type": "hearth", "world_state_role": "fixture", "mobility": "fixed"},
+                {"name": "back table", "type": "table", "world_state_role": "fixture_support", "mobility": "fixed"},
+                {"name": "shelf", "type": "shelf", "world_state_role": "fixture_support", "mobility": "fixed"},
+                {"name": "high bar stool", "type": "stool", "world_state_role": "fixture_support", "mobility": "fixed"},
+            ],
+            "objects": [],
         },
     )
     state = seed_story_start_presence(
         state,
-        [
-            {"name": "Amy", "initial_state": "standing behind the counter"},
-            {"name": "Goblin1", "initial_state": "standing by the hearth"},
-        ],
+        [{"name": "Goblin1", "initial_state": "leaning over the counter, tiny hands clutching a chipped mug"}],
         location_id=location_id,
     )
-    beats = [
-        "Amy wipes the counter beside Goblin1's chipped mug; the ale barrel stands behind the bar.",
-        "Goblin1 lifts his mug and sets it on the counter.",
-        "Elf1, a humanoid elf, steps into the tavern and lifts a crystal chalice.",
-        "Dragon1, a humanoid dragon, steps inside as Elf1 hands him a cup refilled from the barrel.",
-        "Elf1 drinks from the crystal chalice while Dragon1 drinks from the cup.",
-        "Amy closes the barrel tap and the guests leave.",
-    ]
-    registry_call = mock.Mock(return_value=tavern_persistent_prop_extractor_result())
-    prop_registry = minimax.extract_persistent_prop_registry(
-        "Amy serves guests in a tavern.",
-        beats,
-        macro_arc={"phases": []},
-        location_state={"location": {"name": "Tavern"}},
-        registered_subject_names=["Amy", "Goblin1"],
-        llm_request=registry_call,
+    state = minimax.extract_registered_subject_story_start_presence(
+        state,
+        TAVERN_BENCHMARK["story_text"],
+        TAVERN_SEGMENT_BEATS,
+        location_id=location_id,
+        llm_request=mock.Mock(return_value={
+            "classification": "present",
+            "evidence": "Amy wipes a polished table",
+            "initial_state": "wiping a polished table",
+        }),
     )
-    return state, location_id, beats, prop_registry
+    return state, location_id
+
+
+def prepare_tavern_segment(state, segment_number):
+    subject_reply = {"subjects": []}
+    wardrobe_reply = None
+    if segment_number == 3:
+        subject_reply = {"subjects": [{
+            "name": "Elf1",
+            "physical_form": "unknown",
+            "gender": "female",
+            "source_description": "female elf",
+            "evidence": "A beautiful female elf steps in, silver hair streaming down its shoulders",
+        }]}
+        wardrobe_reply = {"clothing": "a wool tunic, a travel cloak, and leather shoes"}
+    elif segment_number == 4:
+        subject_reply = {"subjects": [{
+            "name": "Dragon1",
+            "physical_form": "unknown",
+            "gender": "unknown",
+            "source_description": "dragon-shaped creature",
+            "evidence": "a dragon-shaped creature slides onto a high bar stool",
+        }]}
+        wardrobe_reply = {"clothing": "N/A"}
+    replies = [subject_reply]
+    if wardrobe_reply is not None:
+        replies.append(wardrobe_reply)
+    replies.append(tavern_segment_prop_results(segment_number))
+    llm = mock.Mock(side_effect=replies)
+    state, added_names = minimax.prepare_segment_world_state_for_director(
+        state,
+        segment_number,
+        TAVERN_SEGMENT_BEATS[segment_number - 1],
+        TAVERN_SEGMENT_SOURCES[segment_number - 1],
+        TAVERN_BENCHMARK["story_text"],
+        llm_request=llm,
+    )
+    included_names = [
+        subject["name"] for subject in state["subjects"].values()
+        if subject["presence"] == "present"
+    ] + added_names
+    return state, added_names, list(dict.fromkeys(included_names))
 
 
 def goblin_mug_transfer_actions(mug_id):
@@ -259,16 +329,16 @@ def non_audio_llm_calls(request):
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths(self):
-        state, _location_id, beats, prop_registry = tavern_world_state_from_authorities()
-        no_dynamic_subjects = mock.Mock(return_value={"subjects": []})
-        state, added = minimax.prepare_segment_world_state_for_director(
-            state, 1, beats[0], beats[0], "Amy serves guests in a tavern.",
-            persistent_prop_registry=prop_registry,
-            llm_request=no_dynamic_subjects,
-        )
+        state, _location_id = tavern_world_state_from_authorities()
+        state, added, subject_names = prepare_tavern_segment(state, 1)
         self.assertEqual(added, [])
+        subject_by_name = {s["name"]: s for s in state["subjects"].values()}
+        self.assertEqual(subject_by_name["Amy"]["presence"], "present")
+        self.assertEqual(subject_by_name["Goblin1"]["presence"], "present")
         contract = minimax.build_director_state_action_contract(
-            state, current_segment_text=beats[0]
+            state,
+            current_segment_text=TAVERN_SEGMENT_BEATS[0] + TAVERN_SEGMENT_SOURCES[0],
+            current_segment_subject_names=subject_names,
         )
         vocabulary = contract["vocabulary"]
         self.assertEqual(
@@ -277,35 +347,18 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             {prop["name"] for prop in vocabulary["props"]},
-            {"mug", "barrel", "bar counter"},
+            {"mug", "barrel", "counter", "hearth"},
         )
+        mug = next(prop for prop in state["props"].values() if prop["name"] == "mug")
         self.assertEqual(
-            {prop["name"] for prop in state["props"].values()},
-            {"mug", "barrel", "bar counter"},
+            mug["placement"],
+            {"kind": "held", "subject_id": "subject_goblin1_34aa4679d81b"},
         )
 
     def test_tavern_segment_three_registers_elf_before_raw_and_allows_enter(self):
-        state, location_id, beats, prop_registry = tavern_world_state_from_authorities()
-        state, _ = minimax.prepare_segment_world_state_for_director(
-            state, 1, beats[0], beats[0], "Amy serves guests in a tavern.",
-            persistent_prop_registry=prop_registry,
-            llm_request=mock.Mock(return_value={"subjects": []}),
-        )
-        extractor = mock.Mock(side_effect=[
-            {"subjects": [{
-                "name": "Elf1",
-                "physical_form": "humanoid",
-                "gender": "female",
-                "source_description": "a humanoid elf",
-                "evidence": "Elf1, a humanoid elf",
-            }]},
-            {"clothing": "green tunic, brown trousers, leather boots"},
-        ])
-        state, added = minimax.prepare_segment_world_state_for_director(
-            state, 3, beats[2], beats[2], "A humanoid elf enters a tavern.",
-            persistent_prop_registry=prop_registry,
-            llm_request=extractor,
-        )
+        state, location_id = tavern_world_state_from_authorities()
+        state, _, _ = prepare_tavern_segment(state, 1)
+        state, added, subject_names = prepare_tavern_segment(state, 3)
         self.assertEqual(added, ["Elf1"])
         elf_id, elf = next(
             (subject_id, subject)
@@ -314,10 +367,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(elf["presence"], "unknown")
         self.assertEqual(elf["location_id"], "unknown")
-        self.assertEqual(elf["identity"]["clothing_applicability"], "required")
-        self.assertEqual(elf["wardrobe"]["upper"][0]["garment"], "green tunic")
+        self.assertEqual(elf["identity"]["physical_form"], "unknown")
+        self.assertEqual(elf["wardrobe"]["upper"][0]["garment"], "wool tunic")
         contract = minimax.build_director_state_action_contract(
-            state, current_segment_text=beats[2]
+            state,
+            current_segment_text=TAVERN_SEGMENT_BEATS[2] + TAVERN_SEGMENT_SOURCES[2],
+            current_segment_subject_names=subject_names,
         )
         vocabulary_subject_ids = {
             subject["id"] for subject in contract["vocabulary"]["subjects"]
@@ -339,36 +394,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertTrue(outcome[0].accepted)
 
     def test_tavern_segment_four_registers_dragon_and_distinguishes_vessels(self):
-        state, _location_id, beats, prop_registry = tavern_world_state_from_authorities()
-        state, _ = minimax.prepare_segment_world_state_for_director(
-            state, 1, beats[0], beats[0], "Amy serves guests in a tavern.",
-            persistent_prop_registry=prop_registry,
-            llm_request=mock.Mock(return_value={"subjects": []}),
-        )
-        elf_extractor = mock.Mock(side_effect=[
-            {"subjects": [{
-                "name": "Elf1", "physical_form": "humanoid", "gender": "female",
-                "source_description": "a humanoid elf", "evidence": "Elf1, a humanoid elf",
-            }]},
-            {"clothing": "green tunic, brown trousers, leather boots"},
-        ])
-        state, _ = minimax.prepare_segment_world_state_for_director(
-            state, 3, beats[2], beats[2], "A humanoid elf enters a tavern.",
-            persistent_prop_registry=prop_registry,
-            llm_request=elf_extractor,
-        )
-        dragon_extractor = mock.Mock(side_effect=[
-            {"subjects": [{
-                "name": "Dragon1", "physical_form": "humanoid", "gender": "unknown",
-                "source_description": "a humanoid dragon", "evidence": "Dragon1, a humanoid dragon",
-            }]},
-            {"clothing": "dark vest, fitted trousers, sturdy boots"},
-        ])
-        state, added = minimax.prepare_segment_world_state_for_director(
-            state, 4, beats[3], beats[3], "A humanoid dragon enters a tavern.",
-            persistent_prop_registry=prop_registry,
-            llm_request=dragon_extractor,
-        )
+        state, location_id = tavern_world_state_from_authorities()
+        state, _, _ = prepare_tavern_segment(state, 1)
+        state, _, _ = prepare_tavern_segment(state, 3)
+        state, added, subject_names = prepare_tavern_segment(state, 4)
         self.assertEqual(added, ["Dragon1"])
         dragon_id, dragon = next(
             (subject_id, subject)
@@ -376,21 +405,26 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             if subject["name"] == "Dragon1"
         )
         self.assertEqual(dragon["presence"], "unknown")
+        self.assertEqual(dragon["identity"]["physical_form"], "unknown")
         cup_id, cup = next(
             (prop_id, prop) for prop_id, prop in state["props"].items()
-            if prop["name"] == "cup"
+            if prop["name"] == "crystal cup"
         )
-        elf_id = next(
-            subject_id for subject_id, subject in state["subjects"].items()
-            if subject["name"] == "Elf1"
+        shelf_id = next(
+            prop_id for prop_id, prop in state["props"].items()
+            if prop["name"] == "shelf"
         )
-        self.assertEqual(cup["placement"], {"kind": "held", "subject_id": elf_id})
+        self.assertEqual(cup["placement"], {
+            "kind": "located", "location_id": location_id, "support_id": shelf_id,
+        })
         contract = minimax.build_director_state_action_contract(
-            state, current_segment_text=beats[3]
+            state,
+            current_segment_text=TAVERN_SEGMENT_BEATS[3] + TAVERN_SEGMENT_SOURCES[3],
+            current_segment_subject_names=subject_names,
         )
         self.assertEqual(
             {prop["name"] for prop in contract["vocabulary"]["props"]},
-            {"barrel", "cup", "bar counter"},
+            {"mug", "crystal cup", "shelf", "high bar stool"},
         )
         schema = contract["response_format"]["json_schema"]["schema"]
         action_schemas = schema["properties"]["state_actions"]["items"]["oneOf"]
@@ -405,35 +439,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn(dragon_id, enter_schema["properties"]["subject_id"]["enum"])
 
     def test_reducer_operation_contract_does_not_depend_on_verb_spelling(self):
-        state, _location_id, beats, prop_registry = tavern_world_state_from_authorities()
-        state, _ = minimax.prepare_segment_world_state_for_director(
-            state, 1, beats[0], beats[0], "Amy serves guests in a tavern.",
-            persistent_prop_registry=prop_registry,
-            llm_request=mock.Mock(return_value={"subjects": []}),
-        )
-        for segment, new_name, physical_form, gender, evidence, clothing in (
-            (3, "Elf1", "humanoid", "female", "Elf1, a humanoid elf", "green tunic, trousers, boots"),
-            (4, "Dragon1", "humanoid", "unknown", "Dragon1, a humanoid dragon", "dark vest, trousers, boots"),
-        ):
-            responses = mock.Mock(side_effect=[
-                {"subjects": [{
-                    "name": new_name,
-                    "physical_form": physical_form,
-                    "gender": gender,
-                    "source_description": evidence.removeprefix(new_name + ", "),
-                    "evidence": evidence,
-                }]},
-                {"clothing": clothing},
-            ])
-            state, _ = minimax.prepare_segment_world_state_for_director(
-                state,
-                segment,
-                beats[segment - 1],
-                beats[segment - 1],
-                "Tavern story context.",
-                persistent_prop_registry=prop_registry,
-                llm_request=responses,
-            )
+        state, _location_id = tavern_world_state_from_authorities()
+        state, _, _ = prepare_tavern_segment(state, 1)
+        state, _, _ = prepare_tavern_segment(state, 3)
+        state, _, subject_names = prepare_tavern_segment(state, 4)
         shared_entities = (
             "Amy Goblin1 Elf1 Dragon1 mug barrel crystal chalice cup "
             "bar counter Tavern"
@@ -448,7 +457,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         operation_sets = []
         for text in variants:
             contract = minimax.build_director_state_action_contract(
-                state, current_segment_text=text
+                state,
+                current_segment_text=text,
+                current_segment_subject_names=subject_names,
             )
             schemas = contract["response_format"]["json_schema"]["schema"][
                 "properties"]["state_actions"]["items"]["oneOf"]
@@ -827,19 +838,20 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("unnamed foreground animate identities", text)
         self.assertIn("finalized timed RAW scene", text)
         self.assertIn("Keep already-named Subjects unchanged", text)
-        self.assertIn("Guard1 or Creature1", text)
-        self.assertIn("Reuse a KNOWN SUBJECT name", text)
+        self.assertIn("most specific explicit role/species plus an integer", text)
+        self.assertIn("one stable functional name", text)
+        self.assertIn("Reuse a KNOWN SUBJECT when RAW continues", text)
         self.assertIn("Do not label interchangeable background crowds/groups", text)
         self.assertIn("KNOWN SUBJECTS", text)
 
     def test_raw_subject_resolution_accepts_only_identity_labeling(self):
         original = (
-            "At 00:01.000, a guard enters the room.\n"
+            "At 00:00.000, a guard enters the room.\n"
             "At 00:05.000, another guard blocks the door.\n"
             "End continuity state: both guards remain in the room."
         )
         resolved_timed = (
-            "At 00:01.000, Guard1 enters the room.\n"
+            "At 00:00.000, Guard1 enters the room.\n"
             "At 00:05.000, Guard2 blocks the door."
         )
         request = mock.Mock(return_value={
@@ -865,12 +877,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_raw_subject_resolution_bootstraps_identity_and_wardrobe_once(self):
         original = (
-            "At 00:01.000, a beautiful female elf with long silver hair enters.\n"
+            "At 00:00.000, a beautiful female elf with long silver hair enters.\n"
             "At 00:05.000, the elf sits at the back table.\n"
             "End continuity state: the elf remains seated."
         )
         resolved_timed = (
-            "At 00:01.000, Elf1, a beautiful female elf with long silver hair, enters.\n"
+            "At 00:00.000, Elf1, a beautiful female elf with long silver hair, enters.\n"
             "At 00:05.000, Elf1 sits at the back table."
         )
         request = mock.Mock(return_value={
@@ -927,13 +939,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_raw_subject_resolution_preserves_existing_identifiers(self):
         original = (
-            "At 00:01.000, Will and Amber watch Zombie2 enter.\n"
+            "At 00:00.000, Will and Amber watch Zombie2 enter.\n"
             "At 00:05.000, Zombie2 falls beside Amy.\n"
             "End continuity state: Will and Amber remain nearby; Zombie2 is down."
         )
         request = mock.Mock(return_value={
             "raw_scene": (
-                "At 00:01.000, Will1 and Amber1 watch Zombie2_1 enter.\n"
+                "At 00:00.000, Will1 and Amber1 watch Zombie2_1 enter.\n"
                 "At 00:05.000, Zombie2_1 falls beside Amy."
             ),
             "subject_names": ["Will1", "Amber1", "Zombie2_1"],
@@ -948,12 +960,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             llm_request=request,
             segment_seconds=6.0,
         )
-        self.assertIn("Will and Amber watch Zombie2 enter.", result)
+        self.assertIn("Will1 and Amber1 watch Zombie2 enter.", result)
         self.assertIn("Zombie2 falls beside Amy.", result)
-        self.assertNotIn("Will1", result)
-        self.assertNotIn("Amber1", result)
+        self.assertIn("Will1", result)
+        self.assertIn("Amber1", result)
         self.assertNotIn("Zombie2_1", result)
-        self.assertEqual(names, ["Zombie2"])
+        self.assertEqual(names, ["Will1", "Amber1"])
 
     def test_raw_subject_resolution_rejects_timestamp_drift(self):
         original = (
@@ -999,12 +1011,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_raw_pronoun_resolution_accepts_name_only_rewrite(self):
         original = (
-            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:00.000, Amy grabs Will and Amber.\n"
             "At 00:04.500, she pushes them into the closet.\n"
             "End continuity state: they are inside the closet."
         )
         resolved_timed = (
-            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:00.000, Amy grabs Will and Amber.\n"
             "At 00:04.500, Amy pushes Will and Amber into the closet."
         )
         request = mock.Mock(return_value={"raw_scene": resolved_timed})
@@ -1025,12 +1037,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_raw_pronoun_resolution_preserves_clear_local_possessives(self):
         original = (
-            "At 00:01.000, she looks at Will and touches her palm.\n"
+            "At 00:00.000, she looks at Will and touches her palm.\n"
             "At 00:04.500, Will gives her their bowls.\n"
             "End continuity state: Amy stands beside Will."
         )
         resolved_timed = (
-            "At 00:01.000, Amy looks at Will and touches her palm.\n"
+            "At 00:00.000, Amy looks at Will and touches her palm.\n"
             "At 00:04.500, Will gives Amy their bowls."
         )
         request = mock.Mock(return_value={"raw_scene": resolved_timed})
@@ -1047,12 +1059,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_raw_pronoun_resolution_logs_replacements(self):
         original = (
-            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:00.000, Amy grabs Will and Amber.\n"
             "At 00:04.500, she pushes them into the closet.\n"
             "End continuity state: they are inside the closet."
         )
         resolved_timed = (
-            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:00.000, Amy grabs Will and Amber.\n"
             "At 00:04.500, Amy pushes Will and Amber into the closet."
         )
         request = mock.Mock(return_value={"raw_scene": resolved_timed})
@@ -1072,13 +1084,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_raw_pronoun_resolution_preserves_end_state_exactly(self):
         original = (
-            "At 00:01.000, Amy looks at Will.\n"
+            "At 00:00.000, Amy looks at Will.\n"
             "At 00:04.500, she waves to him.\n"
             "End continuity state: she stands beside him."
         )
         request = mock.Mock(return_value={
             "raw_scene": (
-                "At 00:01.000, Amy looks at Will.\n"
+                "At 00:00.000, Amy looks at Will.\n"
                 "At 00:04.500, Amy waves to Will."
             )
         })
@@ -1568,13 +1580,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "\n\noverall_soundscape:",
             1,
         )[0]
-        self.assertTrue(
-            description.startswith(
-                "[Shot 1] Live-Action cinematic, seamless continuation."
-                " Mark opens the door."
-            )
-        )
-        self.assertEqual(description.count("Live-Action cinematic"), 1)
+        self.assertIn("[Shot 1] Live-action cinematic, seamless continuation. Mark opens the door.", description)
+        self.assertEqual(description.count("Live-action cinematic"), 1)
         self.assertNotIn("camera pushes in", description.lower())
         self.assertIn("camera pans right", description.lower())
 
@@ -1699,7 +1706,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
         self.assertNotIn("```", prompt)
         self.assertIn("Reference alignment: Amy's identity and the cabin remain consistent.", prompt)
-        self.assertIn("[Shot 1] Amy enters the cabin.", prompt)
+        self.assertIn("[Shot 1] Live-action cinematic, Amy enters the cabin.", prompt)
         self.assertIn("Footsteps on the wooden floor.", prompt)
         self.assertIn("non_diegetic_music: Soft piano undercurrent.", prompt)
 
@@ -1758,16 +1765,17 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             final_quarter_start=6,
             beat_number=1,
             story_segment_ending_rules="",
+            camera_choreography_rules=minimax.build_director_camera_choreography_rules(1, "initial"),
         )
         self.assertIn("You are the creative director", prompt)
-        self.assertIn("ASSIGNED SOURCE is the story authority", prompt)
-        self.assertIn("CURRENT BEAT is the scene to stage", prompt)
-        self.assertIn("Harmless local route or prop details are allowed", prompt)
-        self.assertIn("Python will normalize minor timestamp formatting differences", prompt)
+        self.assertIn("CURRENT BEAT is the story authority", prompt)
+        self.assertIn("the scene to stage in this clip", prompt)
+        self.assertIn("Add only details needed to physically connect or clearly show CURRENT BEAT", prompt)
+        self.assertIn("begin at 00:00.000", prompt)
         self.assertNotIn("AUTHORITATIVE FINAL STATE CONTRACT", prompt)
         self.assertIn("finite_activity_complete", prompt)
         self.assertIn("beat_complete", prompt)
-        self.assertLess(len(prompt), 3500)
+        self.assertLess(len(prompt), 4300)
     def test_director_raw_scene_rejects_early_timeline_completion(self):
         raw_scene = (
             "At 00:00.000, Alex reaches for the latch.\n"
@@ -2621,9 +2629,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             final_quarter_start=6,
             beat_number=1,
             story_segment_ending_rules="",
+            camera_choreography_rules=minimax.build_director_camera_choreography_rules(1, "initial"),
         )
-        self.assertIn("Harmless local route or prop details are allowed", prompt)
-        self.assertIn("natural physical staging", prompt)
+        self.assertIn("Add only details needed to physically connect or clearly show CURRENT BEAT", prompt)
+        self.assertIn("Preserve spatial continuity", prompt)
         self.assertNotIn("Do not invent structural geography", prompt)
     def test_completion_prompt_allows_small_route_details(self):
         messages = minimax.build_director_raw_scene_completion_messages(
@@ -2682,9 +2691,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             final_quarter_start=6,
             beat_number=1,
             story_segment_ending_rules="",
+            camera_choreography_rules=minimax.build_director_camera_choreography_rules(1, "initial"),
         )
-        self.assertIn("ASSIGNED SOURCE is the story authority", prompt)
-        self.assertIn("CURRENT BEAT is the scene to stage", prompt)
+        self.assertIn("CURRENT BEAT is the story authority", prompt)
+        self.assertIn("the scene to stage in this clip", prompt)
     def test_completion_prompt_rejects_concrete_action_substitution(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "A parent grabs two children and rushes them into the shelter.",
@@ -2715,6 +2725,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             final_quarter_start=6,
             beat_number=1,
             story_segment_ending_rules="",
+            camera_choreography_rules=minimax.build_director_camera_choreography_rules(1, "initial"),
         )
         self.assertNotIn("already terminal target", prompt)
         self.assertNotIn("new, another, or incoming target", prompt)
