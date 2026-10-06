@@ -52,6 +52,8 @@ from story_planner import StoryPlan, build_story_plan
 from world_state import (
     empty_world_state,
     new_world_state,
+    build_director_state_action_contract,
+    parse_and_dry_run_director_state_actions,
     register_explicit_persistent_props,
     seed_canonical_static_location_state,
     seed_canonical_wardrobes,
@@ -785,7 +787,7 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
         "name": "director_raw_scene",
-        "strict": True,
+        "strict": False,
         "schema": {
             "type": "object",
             "properties": {
@@ -800,6 +802,12 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                 "named_beneficiaries_complete": {"type": "boolean"},
                 "activity_tools_settled": {"type": "boolean"},
                 "beat_complete": {"type": "boolean"},
+                # The live Request-1 call replaces this unconstrained
+                # placeholder with ID enums from the registered WorldState.
+                "state_actions": {
+                    "type": "array",
+                    "items": {"type": "object"},
+                },
             },
             "required": [
                 "raw_scene",
@@ -807,6 +815,7 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                 "named_beneficiaries_complete",
                 "activity_tools_settled",
                 "beat_complete",
+                "state_actions",
             ],
             "additionalProperties": False,
         },
@@ -1243,8 +1252,11 @@ COMPLETION CHECK
 - activity_tools_settled: true only if tools/props used by CURRENT BEAT reach the required end condition.
 - beat_complete: true only when all three checks above are true.
 
+STATE ACTIONS
+- Return state_actions in this same JSON response. Describe only explicit persistent changes staged in RAW SCENE. Use only the Python-supplied registered IDs; never invent or rename an ID. Use [] when this Segment makes no represented persistent change. Off-camera is not a state action.
+
 RETURN JSON ONLY
-{{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true}}
+{{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true,"state_actions":[]}}
 """
 # Request 2 is a formatter/translator. Request 1 owns creative direction.
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
@@ -21018,6 +21030,9 @@ def _parse_director_raw_scene_result(raw_result):
                 "activity_tools_settled",
             )
         )
+        state_actions = candidate.get("state_actions", [])
+        if not isinstance(state_actions, list):
+            state_actions = []
         if completion_checks_present:
             finite_activity_complete = (
                 candidate.get("finite_activity_complete") is True
@@ -21050,6 +21065,7 @@ def _parse_director_raw_scene_result(raw_result):
         finite_activity_complete = False
         named_beneficiaries_complete = False
         activity_tools_settled = False
+        state_actions = []
 
     return {
         "raw_scene": raw_scene,
@@ -21057,6 +21073,7 @@ def _parse_director_raw_scene_result(raw_result):
         "named_beneficiaries_complete": named_beneficiaries_complete,
         "activity_tools_settled": activity_tools_settled,
         "beat_complete": beat_complete,
+        "state_actions": state_actions,
     }
 
 
@@ -27048,6 +27065,35 @@ def build_generation_messages(
             f"budget {LLM_INPUT_TOKEN_BUDGET})."
         )
     return messages, estimated, 0
+
+
+def director_state_action_operations_for_segment(current_segment_text):
+    """Return only reducer operations signaled by the current Segment text."""
+    text = " ".join(str(current_segment_text or "").casefold().split())
+    triggers = {
+        "pickup": r"\b(?:pick(?:s|ed)?\s+up|grab(?:s|bed)?|take(?:s|n)?|lift(?:s|ed)?|retrieve(?:s|d)?)\b",
+        "place": r"\b(?:place(?:s|d)?|put(?:s|ting)?\s+.+\s+(?:on|in|at)\b|set(?:s)?\s+(?:down|.+\s+down)\b|drop(?:s|ped)?|leave\s+behind|leave(?:s)?\s+(?:it|them|the\s+\w+)\s+(?:on|in|at))\b",
+        "handoff": r"\b(?:hand(?:s|ed)?|give(?:s)?|gave|pass(?:es|ed)?|transfer(?:s|red)?)\b",
+        "pour": r"\b(?:pour(?:s|ed|ing)?|fill(?:s|ed|ing)?|spill(?:s|ed|ing)?|empty(?:ies|ied|ing)?)\b",
+        "consume": r"\b(?:eat(?:s|en|ing)?|ate|drink(?:s|ing)?|drank|consum(?:e|es|ed|ing))\b",
+        "enter": r"\b(?:enter(?:s|ed|ing)?|walks?\s+(?:in|into)|steps?\s+(?:in|into)|arrive(?:s|d)?)\b",
+        "exit": r"\b(?:exit(?:s|ed|ing)?|depart(?:s|ed|ing)?|leave(?:s|d)?|left|walks?\s+out|steps?\s+out)\b",
+        "move": r"\b(?:moves?|walks?\s+to|steps?\s+toward|cross(?:es|ed|ing)?|approach(?:es|ed|ing)?|backs?\s+away)\b",
+        "set_support": r"\b(?:sit(?:s|ting)?|sat|stand(?:s|ing)?|stood|lean(?:s|ing)?|knelt|kneel(?:s|ing)?|lie(?:s|ing)?|lay|climb(?:s|ed|ing)?)\b",
+        "change_clothing": r"\b(?:puts?\s+on|takes?\s+off|removes?|dons?|changes?\s+(?:clothes|clothing)|changes?\s+into)\b",
+        "open": r"\bopens?\b",
+        "close": r"\bcloses?\b",
+        "lock": r"\blocks?\b",
+        "unlock": r"\bunlocks?\b",
+    }
+    operations = [
+        op for op, pattern in triggers.items()
+        if re.search(pattern, text)
+    ]
+    if any(op in operations for op in ("handoff", "pour", "consume")):
+        if "pickup" not in operations:
+            operations.insert(0, "pickup")
+    return operations
 
 
 # ============================================================
@@ -33700,6 +33746,11 @@ def repair_existing_segment(
             or ""
         ).strip(),
         "registry_state": opening_state,
+        "world_state_opening": copy.deepcopy(
+            repair.get("state", {}).get("world_state")
+            if isinstance(repair.get("state", {}).get("world_state"), dict)
+            else empty_world_state("repair_request1_world_state_unavailable")
+        ),
         "subject_definitions": historical_subject_definitions,
         "dialogue_exclusions": dialogue_exclusions,
         "phrase_exclusions": phrase_exclusions,
@@ -36198,9 +36249,55 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
     current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
+    current_segment_action_text = "\n".join(
+        part for part in (
+            current_beat_for_topology,
+            str(bundle.get("assigned_source") or "").strip(),
+        ) if part
+    )
+    world_state_opening = copy.deepcopy(
+        bundle.get("world_state_opening")
+        if isinstance(bundle.get("world_state_opening"), dict)
+        else empty_world_state("director_request1_no_registered_world_state")
+    )
+    validate_world_state(world_state_opening)
+    state_action_contract = build_director_state_action_contract(
+        world_state_opening,
+        current_segment_text=current_segment_action_text,
+        allowed_operations=director_state_action_operations_for_segment(
+            current_segment_action_text
+        ),
+    )
     prop_ledger = normalize_prop_ledger(bundle.get("prop_ledger", {}))
 
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
+    registered_vocabulary_prompt = (
+        "REGISTERED WORLDSTATE VOCABULARY — Python-assigned IDs; select only "
+        "IDs shown here:\n"
+        + json.dumps(
+            state_action_contract["vocabulary"],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        + "\n\nSTATE ACTION CONTRACT — Return state_actions in this same "
+        "response as RAW SCENE. Add only explicit persistent changes staged "
+        "in RAW SCENE; off-camera is not an action. Use [] if no represented "
+        "state changes. The response schema restricts operations and IDs to "
+        "the registered vocabulary."
+    )
+    if request1_base_messages:
+        last_message = dict(request1_base_messages[-1])
+        last_message["content"] = (
+            str(last_message.get("content") or "")
+            + "\n\n"
+            + registered_vocabulary_prompt
+        )
+        request1_base_messages[-1] = last_message
+    else:
+        request1_base_messages = [{
+            "role": "user",
+            "content": registered_vocabulary_prompt,
+        }]
     request1_topology_contracts = build_director_barrier_topology_contract(
         bundle.get("assigned_state_effects", []),
         bundle.get("subject_definitions", ""),
@@ -36235,6 +36332,23 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
         return messages
 
+    def build_request1_state_action_retry_messages(failure):
+        """Retry from the immutable base with only the first reducer failure."""
+        messages = copy.deepcopy(request1_base_messages)
+        messages.append({
+            "role": "user",
+            "content": (
+                "STATE ACTION RETRY — correct the state_actions batch using the "
+                "same opening WorldState and registered IDs. The reducer rejected "
+                "the first failing action with this concrete diagnostic:\n"
+                f"{failure}\n"
+                "Fix this first failure and return the complete corrected action "
+                "batch. Do not carry forward other validation feedback from earlier "
+                "attempts."
+            ),
+        })
+        return messages
+
     request1_messages = request1_base_messages
     for request1_attempt in range(1, DIRECTOR_RAW_SCENE_ATTEMPTS + 1):
         request1_metadata = {
@@ -36248,10 +36362,62 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         }
         raw_scene_result = ask_llm(
             request1_messages,
-            response_format=DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
+            response_format=state_action_contract["response_format"],
             history_metadata=request1_metadata,
         )
+        try:
+            state_action_dry_run = parse_and_dry_run_director_state_actions(
+                world_state_opening,
+                raw_scene_result,
+                segment_number=segment_number,
+            )
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            state_action_dry_run = {
+                "accepted": False,
+                "state_actions": [],
+                "outcomes": (),
+            }
+            state_action_failure = (
+                "invalid_state_action_response: "
+                + " ".join(str(error).split())
+            )
+        else:
+            state_action_failure = ""
+            if not state_action_dry_run["accepted"]:
+                first_failure = next(
+                    (
+                        outcome for outcome in state_action_dry_run["outcomes"]
+                        if not outcome.accepted
+                    ),
+                    None,
+                )
+                state_action_failure = (
+                    f"{first_failure.op} action {first_failure.action_id}: "
+                    f"{first_failure.code}: {first_failure.message}"
+                    if first_failure is not None
+                    else "invalid_state_action_batch: reducer rejected the batch."
+                )
+        if state_action_failure:
+            if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                raise BeatGenerationError(
+                    f"Director Request 1 state_actions failed for Segment "
+                    f"{segment_number}: {state_action_failure}"
+                )
+            console_log(
+                f"Director Request 1 state_actions failed "
+                f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                f"retrying from the same opening WorldState: {state_action_failure}",
+                flush=True,
+            )
+            request1_messages = build_request1_state_action_retry_messages(
+                state_action_failure
+            )
+            continue
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
+        request1_result["state_actions"] = copy.deepcopy(
+            state_action_dry_run["state_actions"]
+        )
+        request1_result["state_actions_dry_run_accepted"] = True
         raw_scene = _normalize_director_raw_scene_structure(
             request1_result.get("raw_scene", ""),
             segment_seconds=duration,
@@ -38304,6 +38470,11 @@ def _run_main(
                 previous_result.get("non_diegetic_music") or ""
             ).strip(),
             "registry_state": opening_state,
+            "world_state_opening": copy.deepcopy(
+                generation_state.get("world_state")
+                if isinstance(generation_state.get("world_state"), dict)
+                else empty_world_state("request1_world_state_unavailable")
+            ),
             "prop_ledger": prop_ledger_snapshot,
             "static_setting_description": location_setting_description,
             "opening_summary": director_opening_summary,

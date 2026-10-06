@@ -1625,19 +1625,30 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             8, 4, 1, SUBJECTS, 2,
         )
         normalized = " ".join(rules.split())
-        self.assertIn("ASSIGNED SOURCE is the story authority", normalized)
-        self.assertIn("CURRENT BEAT is the scene to stage", normalized)
-        self.assertIn("Harmless local route or prop details are allowed", normalized)
-        self.assertIn('RETURN JSON ONLY {"raw_scene":"..."}', normalized)
-        self.assertNotIn("finite_activity_complete", normalized)
-        self.assertNotIn("final quarter", normalized)
+        self.assertIn("CURRENT BEAT is the story authority", normalized)
+        self.assertIn("CURRENT BEAT wins", normalized)
+        self.assertIn("STATE ACTIONS", normalized)
+        self.assertIn("state_actions", normalized)
+        self.assertIn("Use only the Python-supplied registered IDs", normalized)
+        self.assertIn('"state_actions":[]', normalized)
+        self.assertIn("finite_activity_complete", normalized)
 
-    def test_director_response_schema_contains_raw_scene_only(self):
+    def test_director_response_schema_includes_state_actions(self):
         schema = minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT[
             "json_schema"
         ]["schema"]
-        self.assertEqual(set(schema["properties"]), {"raw_scene"})
-        self.assertEqual(schema["required"], ["raw_scene"])
+        self.assertEqual(
+            set(schema["properties"]),
+            {
+                "raw_scene", "finite_activity_complete",
+                "named_beneficiaries_complete", "activity_tools_settled",
+                "beat_complete", "state_actions",
+            },
+        )
+        self.assertIn("state_actions", schema["required"])
+        self.assertEqual(
+            schema["properties"]["state_actions"]["type"], "array"
+        )
         self.assertIn(
             "CURRENT BEAT",
             schema["properties"]["raw_scene"]["description"],
@@ -2101,8 +2112,8 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             2,
         )
         self.assertEqual(
-            request.call_args_list[0].kwargs["response_format"],
-            minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
+            request.call_args_list[0].kwargs["response_format"]["json_schema"]["name"],
+            "director_raw_scene_with_state_actions",
         )
         self.assertEqual(
             request.call_args_list[1].kwargs["response_format"],

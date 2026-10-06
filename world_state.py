@@ -1185,12 +1185,15 @@ def _apply_state_action(
                 "invalid_clothing_change",
                 "Clothing change must be put_on, remove, replace, or set_condition.",
             )
-        if change != "replace" and "replaces" in action:
+        if change != "replace" and action.get("replaces") is not None:
             _reject(
                 "unsupported_action_field",
                 "The replaces field is valid only for a replace clothing action.",
             )
-        if change not in {"put_on", "replace", "set_condition"} and "condition" in action:
+        if (
+            change not in {"put_on", "replace", "set_condition"}
+            and action.get("condition") is not None
+        ):
             _reject(
                 "unsupported_action_field",
                 "The condition field is valid only when adding, replacing, or updating a garment.",
@@ -1205,7 +1208,9 @@ def _apply_state_action(
         current = subject["wardrobe"][slot]
         layers = deepcopy(current) if isinstance(current, list) else []
         condition = action.get("condition", UNKNOWN)
-        if "condition" in action and (
+        if condition is None:
+            condition = UNKNOWN
+        if action.get("condition") is not None and (
             not isinstance(condition, str) or not condition.strip()
         ):
             _reject("invalid_garment_condition", "Garment condition must be a non-empty string.")
@@ -1249,7 +1254,7 @@ def _apply_state_action(
                 _reject("garment_to_remove_unknown", "Removal must identify an exact recorded garment layer.")
             layers.pop(remove_index)
         else:  # set_condition
-            if "condition" not in action:
+            if action.get("condition") is None:
                 _reject("missing_action_field", "set_condition requires a condition value.")
             matching_layer = next(
                 (
@@ -1409,19 +1414,36 @@ def _director_action_schema(
     return {
         "type": "object",
         "properties": properties,
-        "required": ["action_id", "op", *required],
+        "required": list(properties),
         "additionalProperties": False,
     }
 
 
-def build_director_state_action_contract(world_state: dict[str, Any]) -> dict[str, Any]:
-    """Return the registered ID vocabulary and same-response JSON contract.
+def _registered_name_is_referenced(name: str, segment_text: str) -> bool:
+    text = " ".join(str(segment_text or "").casefold().split())
+    normalized_name = " ".join(str(name or "").casefold().split())
+    aliases = {normalized_name}
+    aliases.add(re.sub(r"\s*\d+$", "", normalized_name).strip())
+    aliases.update(
+        alias + suffix
+        for alias in tuple(aliases) if alias
+        for suffix in ("s", "es")
+    )
+    for alias in aliases:
+        if alias and re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", text):
+            return True
+    return False
 
-    This is a design/building API only. It does not modify the live Director
-    prompt or generation call path.
-    """
+
+def build_director_state_action_contract(
+    world_state: dict[str, Any],
+    *,
+    current_segment_text: str = "",
+    allowed_operations: list[str] | None = None,
+) -> dict[str, Any]:
+    """Return compact registered vocabulary and same-response action schema."""
     validate_world_state(world_state)
-    subjects = [
+    all_subjects = [
         {
             "id": subject_id,
             "name": subject["name"],
@@ -1430,11 +1452,11 @@ def build_director_state_action_contract(world_state: dict[str, Any]) -> dict[st
         }
         for subject_id, subject in sorted(world_state["subjects"].items())
     ]
-    locations = [
+    all_locations = [
         {"id": location_id, "name": location["name"]}
         for location_id, location in sorted(world_state["locations"].items())
     ]
-    props = [
+    all_props = [
         {
             "id": prop_id,
             "name": prop["name"],
@@ -1449,20 +1471,76 @@ def build_director_state_action_contract(world_state: dict[str, Any]) -> dict[st
         for prop_id, prop in sorted(world_state["props"].items())
         if prop["status"] == "present"
     ]
+    segment_text = " ".join(str(current_segment_text or "").split())
+    subjects = (
+        [item for item in all_subjects if _registered_name_is_referenced(item["name"], segment_text)]
+        if segment_text else all_subjects
+    )
+    relevant_subject_ids = {item["id"] for item in subjects}
+    needed_support_ids = {
+        world_state["subjects"][subject_id].get("support_id")
+        for subject_id in relevant_subject_ids
+    } - {None, UNKNOWN}
+    held_prop_ids = {
+        prop_id for prop_id, prop in world_state["props"].items()
+        if prop.get("placement", {}).get("kind") == "held"
+        and prop.get("placement", {}).get("subject_id") in relevant_subject_ids
+    }
+    props = (
+        [
+            item for item in all_props
+            if item["id"] in held_prop_ids
+            or item["id"] in needed_support_ids
+            or _registered_name_is_referenced(item["name"], segment_text)
+        ]
+        if segment_text else all_props
+    )
+    active_location_ids = {
+        item["location_id"] for item in subjects
+        if item["presence"] == "present" and item["location_id"] != UNKNOWN
+    }
+    referenced_location_ids = {
+        item["id"] for item in all_locations
+        if _registered_name_is_referenced(item["name"], segment_text)
+    }
+    prop_location_ids = {
+        item["placement"].get("location_id") for item in props
+        if item["placement"].get("kind") == "located"
+    }
+    selected_location_ids = (
+        active_location_ids | referenced_location_ids | prop_location_ids
+        if segment_text else {item["id"] for item in all_locations}
+    )
+    if segment_text and len(all_locations) == 1:
+        selected_location_ids.add(all_locations[0]["id"])
+    locations = [item for item in all_locations if item["id"] in selected_location_ids]
     supports = [
         {"id": prop["id"], "name": prop["name"], "location_id": prop["placement"].get("location_id")}
         for prop in props
         if prop["kind"] in {"support", "fixture_support"}
     ]
+    for prop_id, prop in sorted(world_state["props"].items()):
+        if (
+            prop_id in needed_support_ids
+            and prop["status"] == "present"
+            and prop["kind"] in {"support", "fixture_support"}
+            and not any(item["id"] == prop_id for item in supports)
+        ):
+            supports.append({
+                "id": prop_id,
+                "name": prop["name"],
+                "location_id": prop["placement"].get("location_id"),
+            })
 
     subject_ids = [item["id"] for item in subjects]
     location_ids = [item["id"] for item in locations]
     prop_ids = [item["id"] for item in props]
     support_ids = [item["id"] for item in supports]
     action_schemas: list[dict[str, Any]] = []
+    allowed = set(allowed_operations) if allowed_operations is not None else set(ACTION_FIELDS)
 
     def add(op: str, specs: dict[str, dict[str, Any]], required: list[str], *needed: list[str]) -> None:
-        if all(needed_ids for needed_ids in needed):
+        if op in allowed and all(needed_ids for needed_ids in needed):
             action_schemas.append(_director_action_schema(op, specs, required))
 
     subject_field = lambda key="subject_id": {key: _string_enum(subject_ids)}
@@ -1488,7 +1566,7 @@ def build_director_state_action_contract(world_state: dict[str, Any]) -> dict[st
     add("consume", {
         **subject_field("actor_subject_id"), **prop_field(),
         "amount": {"type": "string", "enum": ["all", "partial"]},
-        "substance": {"type": "string", "minLength": 1},
+        "substance": {"type": ["string", "null"], "minLength": 1},
     }, ["actor_subject_id", "prop_id", "amount"], subject_ids, prop_ids)
     add("enter", {**subject_field(), **location_field()}, ["subject_id", "location_id"], subject_ids, location_ids)
     add("exit", {
@@ -1501,15 +1579,15 @@ def build_director_state_action_contract(world_state: dict[str, Any]) -> dict[st
     }, ["subject_id", "destination_location_id"], subject_ids, location_ids)
     add("set_support", {
         **subject_field(), **support_field(nullable=True),
-        "resulting_posture": {"type": "string", "minLength": 1},
+        "resulting_posture": {"type": ["string", "null"], "minLength": 1},
     }, ["subject_id", "support_id"], subject_ids)
     add("change_clothing", {
         **subject_field(),
         "change": {"type": "string", "enum": ["put_on", "remove", "replace", "set_condition"]},
         "slot": {"type": "string", "enum": list(WARDROBE_SLOTS)},
         "garment": {"type": "string", "minLength": 1},
-        "replaces": {"type": "string", "minLength": 1},
-        "condition": {"type": "string", "minLength": 1},
+        "replaces": {"type": ["string", "null"], "minLength": 1},
+        "condition": {"type": ["string", "null"], "minLength": 1},
     }, ["subject_id", "change", "slot", "garment"], subject_ids)
     for op in ("open", "close", "lock", "unlock"):
         add(op, {**subject_field("actor_subject_id"), **prop_field()}, ["actor_subject_id", "prop_id"], subject_ids, prop_ids)
@@ -1529,7 +1607,8 @@ def build_director_state_action_contract(world_state: dict[str, Any]) -> dict[st
                     "beat_complete": {"type": "boolean"},
                     "state_actions": {
                         "type": "array",
-                        "items": {"oneOf": action_schemas} if action_schemas else {"type": "object", "not": {}},
+                        "items": {"oneOf": action_schemas} if action_schemas else {},
+                        **({} if action_schemas else {"maxItems": 0}),
                     },
                 },
                 "required": [

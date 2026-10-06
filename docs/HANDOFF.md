@@ -339,9 +339,65 @@ The competing legacy writers remain active and compatibility-only:
   `seed_character_canon_wardrobe`, `seed_canonical_opening_wardrobe`,
   `apply_story_subject_wardrobes`, and `_repair_candidate_wardrobe_extraction`.
 
-None of these writers updates WorldState. Gate C phase 2 must review this
-contract before connecting Director actions to segment processing. Gate D
-remains the later transactional migration.
+None of these writers updates WorldState. At the Gate C phase 2 checkpoint,
+these compatibility writers remain active; connecting the reducer candidate
+to canonical segment state and changing legacy writers remains for the next
+approved phase.
+
+## 2026-10-06 — Gate C phase 2: Director action contract and dry-run
+
+Director Request 1 now receives a compact registered WorldState vocabulary and
+returns `state_actions` in its existing response with `raw_scene` and the four
+completion fields. No second LLM call was added. The contract includes only
+registered Subjects referenced by the current beat/source, their current
+locations/supports and held props, plus registered props and locations
+referenced by that Segment. Action operations are limited to those signaled by
+the current beat/source. IDs in the strict dynamic response schema are enums
+from this Python-built vocabulary.
+
+The exact Request 1 user-message addition is:
+
+```text
+REGISTERED WORLDSTATE VOCABULARY — Python-assigned IDs; select only IDs shown here:
+{minified JSON vocabulary}
+
+STATE ACTION CONTRACT — Return state_actions in this same response as RAW SCENE. Add only explicit persistent changes staged in RAW SCENE; off-camera is not an action. Use [] if no represented state changes. The response schema restricts operations and IDs to the registered vocabulary.
+```
+
+The system prompt also states that actions must correspond to explicit changes
+staged in RAW SCENE, IDs must come from Python, off-camera is not an action,
+and an empty array is correct when no represented persistent state changes.
+The same-response object is:
+
+```json
+{
+  "raw_scene": "...",
+  "finite_activity_complete": true,
+  "named_beneficiaries_complete": true,
+  "activity_tools_settled": true,
+  "beat_complete": true,
+  "state_actions": []
+}
+```
+
+`request_segment_llm()` deep-copies the opening WorldState once and parses and
+dry-runs each response with `parse_and_dry_run_director_state_actions()` and
+`validate_state_actions()`. A rejected batch retries from the same immutable
+opening state with only the first concrete reducer diagnostic. This retry is
+rebuilt from the base Request 1 messages, so failures from earlier physical,
+prop, timing, or reducer attempts do not accumulate. A passing dry-run is
+attached to the Request 1 result for downstream inspection; its candidate is
+not assigned to `generation_state["world_state"]`. Existing RAW physical,
+prop-state, and timing validators still run afterward and retain their
+semantic staging role. No legacy writers are disabled or redirected, and Gate
+D transactions have not started.
+
+Focused regressions cover a valid Goblin mug transfer, duplicate pickup and
+unknown prop IDs, a handoff whose giver is not the holder, and a reducer retry
+that includes only the first reducer error without stale prior-attempt text.
+The dynamic schema and prompt vocabulary are also checked in the Request 1
+path. Legacy compatibility writers listed in the phase 1 report remain active;
+they are still the competing state writers to audit before Gate D.
 
 ### Test-suite maintenance and current status
 
