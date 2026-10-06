@@ -1213,7 +1213,7 @@ WRITE THE SCENE
 - Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the final continuity state.
 - Add only details needed to physically connect or clearly show CURRENT BEAT.
 - Preserve spatial continuity. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
-- Preserve body support/elevation literally. Do not put a subject onto, over, across, or down from a counter, table, bar, shelf, stool, or other support unless the prior state establishes that route/position or CURRENT BEAT requires it. Prefer ordinary floor routes over gratuitous climbing.
+- Preserve body support/elevation literally. Do not put a subject onto, over, across, or down from a counter, table, bar, shelf, stool, or other support unless the prior state establishes that route/position or CURRENT BEAT requires it. Prefer ordinary floor routes over gratuitous climbing. A subject may not climb furniture merely to reach an ordinary prop, perform routine work, or add visual business when a floor-level route or reachable surface is available.
 - Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
 - Preserve prop identity.
 
@@ -1361,7 +1361,7 @@ _WARDROBE_DESCRIPTION_RE = re.compile(
 _WARDROBE_ACTION_BOUNDARY_RE = re.compile(
     r"(?i)(?:,\s*|\s+)\b(?:while|as|when|then|before|after|"
     r"stands?|sits?|walks?|runs?|moves?|turns?|looks?|holds?|carries?|"
-    r"raises?|lowers?(?!\s+garments?\b)|reaches?|speaks?|says?|"
+    r"raises?|lowers?(?!\s+garments?\b)(?!\s*:)|reaches?|speaks?|says?|"
     r"enters?|exits?|flips?|cooks?|fries?|stirs?|serves?|places?|"
     r"picks?|sets?|grabs?|pushes?|pulls?|swings?|shoots?|strikes?|"
     r"kicks?|steps?)\b.*$"
@@ -6508,10 +6508,14 @@ def build_story_subject_wardrobe_messages(
                 "and role-specific garments. Then fill only missing normal outfit "
                 "pieces with simple appropriate attire for the subject's species, "
                 "body, setting, period, culture, and occupation so the visual "
-                "reference shows a complete coherent outfit. Appropriate attire "
-                "does not mean every subject wears clothes: dragons, animals, and "
-                "other beings that appropriately do not wear clothing must return "
-                "N/A unless the story explicitly gives them clothing. For normally "
+                "reference shows a complete coherent outfit. FIXED CLOTHING RULE: "
+                "any subject described as humanoid must wear clothing regardless "
+                "of species; never return N/A for a humanoid. This includes "
+                "humanoid dragons and other humanoid creatures. Appropriate attire "
+                "does not mean every subject wears clothes: non-humanoid dragons, "
+                "animals, and other beings that appropriately do not wear clothing "
+                "must return N/A unless the story explicitly gives them clothing. "
+                "For normally "
                 "clothed people whose outfit is unstated, choose ordinary appropriate "
                 "attire for the setting (for example, a T-shirt and blue jeans in a "
                 "modern casual setting). Do not change identity, anatomy, story "
@@ -8066,6 +8070,10 @@ def build_location_reference_h3_prompt(setting_description):
         "detailed_description:\n\n"
         "[Shot 1] The camera is a medium shot of an empty "
         "location. It is a 3-second, full 360 orbital camera shot of the location:\n\n"
+        "Preserve any historical period, culture, and genre stated below as visible "
+        "design constraints. A medieval fantasy tavern must look medieval and fantasy, "
+        "with no modern fixtures or period-neutral redesign. Preserve the listed layout "
+        "and fixed objects without adding unrelated props.\n\n"
         f"{setting}\n\n"
         "overall_soundscape: N/A\n\n"
         "non_diegetic_music: N/A\n"
@@ -18338,8 +18346,8 @@ def parse_initial_location_subjects(raw_result):
             if role_tokens:
                 name = "".join(token[:1].upper() + token[1:] for token in role_tokens) + "1"
         if re.search(
-            r"(?i)\\b(?:hold|holds|holding|held|clutch|clutches|clutching|"
-            r"carry|carries|carrying|carried|grip|grips|gripping|gripped)\\b",
+            r"(?i)\b(?:hold|holds|holding|held|clutch|clutches|clutching|"
+            r"carry|carries|carrying|carried|grip|grips|gripping|gripped)\b",
             initial_state,
         ):
             raise ValueError(
@@ -18619,9 +18627,12 @@ def build_static_setting_extraction_messages(
                 "fact. When only one instance is established, describe it generically "
                 "(for example, entrance door rather than back door). Do not invent details. "
                 "Respect the supplied visual style when choosing concise appearance "
-                "language, but do not let style add or alter setting facts. If the story "
-                "gives only a broad setting, return only that broad setting and let the "
-                "video model design unspecified details. Return JSON only."
+                "language, but do not let style add or alter setting facts. Preserve any "
+                "explicit historical period, culture, or genre in the story or overall "
+                "location (for example, medieval or fantasy) as a mandatory visual cue; "
+                "do not reduce a medieval-fantasy tavern to a period-neutral tavern. If the "
+                "story gives only a broad setting, return that broad setting with its stated "
+                "period/genre and let the video model design unspecified details. Return JSON only."
             ),
         },
         {
@@ -18746,6 +18757,9 @@ def build_story_setting_spatial_refinement_messages(location):
                 "- Define the size of the overall space and sizes of the objects.\n"
                 "- Make sure nothing is overlapping and everything is accessible "
                 "(especially doors).\n"
+                "- Preserve every stated historical period, culture, and genre cue exactly; "
+                "spatial refinement must not turn a medieval/fantasy place into a modern or "
+                "period-neutral one.\n"
                 "- Return plain text, no tables or JSON."
             ),
         },
@@ -18824,6 +18838,11 @@ def build_story_setting_description_messages(spatial_location, static_setting=""
                 "etc. For exteriors, use east_side, west_side, etc.\n"
                 "- Return a spatial description of the specified area only.\n"
                 "- Keep it literal without embellishment.\n"
+                "- Preserve any historical period, culture, and genre in STATIC SETTING "
+                "FACTS and SPATIAL REFINEMENT in both the JSON location name/description "
+                "and the final text description. Treat those cues as visual constraints; "
+                "a stated medieval fantasy tavern must read visibly medieval and fantasy, "
+                "not modern or period-neutral.\n"
                 "- Make the format:\n"
                 "Location: [location]\n"
                 "[JSON representation]\n"
@@ -28729,20 +28748,45 @@ def ensure_h3_continuous_take_instruction(description):
     ).strip()
 
 
-def ensure_h3_continuing_subject_state(description, continuity_state):
+def ensure_h3_continuing_subject_state(
+    description,
+    continuity_state,
+    subject_state_ledger=None,
+):
     """Keep stationary continuing Subjects from silently disappearing."""
     text = str(description or "").strip()
-    if not text or not isinstance(continuity_state, dict):
+    if not text:
         return text
-    subjects = continuity_state.get("subjects", {})
-    if isinstance(subjects, list):
-        subjects = {
-            str(record.get("name") or "").strip(): record
-            for record in subjects
-            if isinstance(record, dict) and str(record.get("name") or "").strip()
-        }
-    if not isinstance(subjects, dict):
-        return text
+    subjects = {}
+    for source in (subject_state_ledger, continuity_state):
+        source_subjects = (
+            source.get("subjects", source)
+            if isinstance(source, dict)
+            else {}
+        )
+        if isinstance(source_subjects, list):
+            source_subjects = {
+                str(record.get("name") or "").strip(): record
+                for record in source_subjects
+                if isinstance(record, dict)
+                and str(record.get("name") or "").strip()
+            }
+        if not isinstance(source_subjects, dict):
+            continue
+        for raw_name, raw_record in source_subjects.items():
+            if not isinstance(raw_record, dict):
+                continue
+            name = str(raw_record.get("name") or raw_name or "").strip()
+            if name:
+                # Current concrete observations win; N/A/empty values should
+                # not erase the last known position from the durable ledger.
+                existing = subjects.setdefault(name, {})
+                for key, value in raw_record.items():
+                    if isinstance(value, str) and (
+                        not value.strip() or value.strip().upper() == "N/A"
+                    ):
+                        continue
+                    existing[key] = value
 
     carry = []
     for raw_name, record in subjects.items():
@@ -28830,6 +28874,7 @@ def build_h3_prompt(
     starting_location="",
     retained_subject_ids=None,
     visual_style=DEFAULT_VISUAL_STYLE,
+    subject_state_ledger=None,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -29078,6 +29123,7 @@ def build_h3_prompt(
         integrated = ensure_h3_continuing_subject_state(
             integrated,
             continuity_state,
+            subject_state_ledger=subject_state_ledger,
         )
     integrated = ensure_h3_continuous_take_instruction(integrated)
     integrated = ensure_h3_prop_identity_instruction(integrated)
@@ -30705,6 +30751,7 @@ def build_segment_reference_bindings(
         }
 
     active_ids = set()
+    defined_ids = set()
     removed_ids = set()
     binding_reason_by_name = {}
     for name, tracking in list(subjects.items()):
@@ -30715,11 +30762,22 @@ def build_segment_reference_bindings(
             last_explicit = int(tracking.get("last_explicit_segment"))
         except (TypeError, ValueError):
             continue
+        if subject_id in explicit_ids:
+            tracking["explicitly_departed"] = (
+                _director_subject_explicitly_leaves_final_frame(
+                    name,
+                    detailed_description,
+                )
+            )
+        explicitly_departed = bool(tracking.get("explicitly_departed"))
         segments_since = max(0, segment_number - last_explicit)
         currently_bound = bool(
-            disable_subject_removal
-            or segments_since < window
-            or subject_id in explicit_ids
+            not explicitly_departed
+            and (
+                disable_subject_removal
+                or segments_since < window
+                or subject_id in explicit_ids
+            )
         )
         reason = (
             "explicit_current_segment"
@@ -30744,12 +30802,14 @@ def build_segment_reference_bindings(
             tracking["last_bound_segment"] = segment_number
         else:
             removed_ids.add(subject_id)
+        if not explicitly_departed:
+            defined_ids.add(subject_id)
 
     active_subject_definitions, _ = _filter_h3_subject_definitions(
         subject_definitions,
-        active_ids,
+        defined_ids,
         "",
-        retained_subject_ids=active_ids,
+        retained_subject_ids=defined_ids,
     )
 
     configured_picture_ids = set()
@@ -30891,6 +30951,7 @@ def build_segment_reference_bindings(
         "current_segment_number": segment_number,
         "current_bindings": copy.deepcopy(bindings),
         "current_active_subject_ids": sorted(active_ids),
+        "current_defined_subject_ids": sorted(defined_ids),
         "current_explicit_subject_ids": sorted(explicit_ids),
         "current_removed_subject_ids": sorted(removed_ids),
         "current_excluded_configured_picture_ids": list(
@@ -30904,6 +30965,7 @@ def build_segment_reference_bindings(
         "subject_removal_window_segments": window,
         "explicit_subject_ids": sorted(explicit_ids),
         "active_subject_ids": sorted(active_ids),
+        "defined_subject_ids": sorted(defined_ids),
         "removed_subject_ids": sorted(removed_ids),
         "excluded_configured_picture_ids": list(
             excluded_configured_picture_ids
@@ -31158,9 +31220,12 @@ def build_character_reference_h3_prompt(
         "distinguishing features clear and unobstructed. For a nonhuman creature, keep "
         "external anatomy species-appropriate and do not invent human sex-specific anatomy "
         "unless the description explicitly establishes it. Clothing in the supplied "
-        "description is authoritative. Do not add, remove, substitute, or redesign "
-        "garments, footwear, or accessories. If no clothing is described, do not invent "
-        "clothing. Use a plain unobtrusive background. Do not orbit, "
+        "description is authoritative. FIXED CLOTHING RULE: any subject described as "
+        "humanoid must wear clothes regardless of species, including humanoid dragons. "
+        "If such a humanoid has no clothing specified in text, render simple "
+        "setting-appropriate clothing. Otherwise do not add, remove, substitute, or "
+        "redesign garments, footwear, or accessories; for a non-humanoid whose text "
+        "specifies no clothing, do not invent clothing. Use a plain unobtrusive background. Do not orbit, "
         "pan, zoom, cut, add another character, or invent story action.\n\n"
         "overall_soundscape: N/A\n"
         "non_diegetic_music: N/A\n"
@@ -33504,6 +33569,7 @@ def repair_existing_segment(
         conditioning_mode=conditioning_mode,
         excluded_picture_ids=excluded_picture_ids,
         continuity_state=opening_state,
+        subject_state_ledger=generation_state.get("subject_state_ledger", {}),
         visual_style=repair_visual_style,
     )
 
@@ -35300,8 +35366,12 @@ def build_director_raw_scene_physical_messages(
                 "1) a participant not listed in KNOWN SUBJECT STATE is not shown entering or "
                 "revealed by the camera; 2) a subject interacts at a different established "
                 "location without visibly moving there first; 3) a subject changes support or "
-                "elevation without showing that movement; 4) End continuity moves a subject "
-                "after the final timed action. Ordinary furniture "
+                "elevation without showing that movement; 4) RAW adds a climb, step, or "
+                "stand on a furniture (counter, table, shelf, etc.) or other furniture that "
+                "CURRENT BEAT does not require and the previous state does not establish, "
+                "including a gratuitous climb to reach an ordinary prop or perform routine "
+                "work; 5) End continuity moves a subject after the final timed action. "
+                "Ordinary furniture "
                 "required by CURRENT BEAT is allowed. Ignore prop identity, contents, "
                 "ownership, transfers, prose, camera taste, and timing. Return exactly one "
                 "JSON object with boolean valid and string issue. Report only the first "
@@ -38424,6 +38494,7 @@ def _run_main(
             conditioning_mode=segment_bundle["conditioning_mode"],
             excluded_picture_ids=segment_excluded_picture_ids,
             continuity_state=continuity_state,
+            subject_state_ledger=generation_state.get("subject_state_ledger", {}),
             previous_visible_subject_ids=previous_visible_subject_ids,
             character_canon=character_canon,
             retention=retention,
@@ -38441,7 +38512,8 @@ def _run_main(
                 else ""
             ),
             retained_subject_ids=segment_reference_binding_snapshot.get(
-                "active_subject_ids", []
+                "defined_subject_ids",
+                segment_reference_binding_snapshot.get("active_subject_ids", []),
             ),
             visual_style=visual_style,
         )

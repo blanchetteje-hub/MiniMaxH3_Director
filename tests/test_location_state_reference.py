@@ -300,13 +300,12 @@ A rectangular tavern interior.
 
     def test_physical_validator_prompt_knows_existing_offscreen_subject(self):
         state = minimax.new_continuity_state()
-        state["subjects"] = {
-            "Goblin1": minimax.new_subject_continuity_record({
+        goblin = minimax.new_subject_continuity_record({
                 "subject_id": 2,
                 "name": "Goblin1",
-                "position": "leaning over the counter",
-            }),
-        }
+            })
+        goblin["position"] = "leaning over the counter"
+        state["subjects"] = {"Goblin1": goblin}
         messages = minimax.build_director_raw_scene_physical_messages(
             "Goblin1 leans over the counter while Amy refills a mug.",
             "At 00:02.000, the camera pans to Goblin1 leaning over the counter.",
@@ -367,8 +366,36 @@ A rectangular tavern interior.
         self.assertIn("medium shot of an empty location", prompt)
         self.assertIn("3-second, full 360 orbital camera shot", prompt)
         self.assertIn("The entrance is on the north wall.", prompt)
+        self.assertIn("historical period, culture, and genre", prompt)
+        self.assertIn("medieval and fantasy", prompt)
         self.assertNotIn("static, fast", prompt)
         self.assertEqual(minimax.LOCATION_REFERENCE_DURATION_SECONDS, 3.0)
+
+    def test_setting_extractors_preserve_explicit_period_and_genre(self):
+        static_prompt = "\n".join(
+            message["content"]
+            for message in minimax.build_static_setting_extraction_messages(
+                "A medieval fantasy tavern with a timber counter.",
+                "Medieval Tavern",
+            )
+        )
+        refinement_prompt = "\n".join(
+            message["content"]
+            for message in minimax.build_story_setting_spatial_refinement_messages(
+                "Medieval fantasy tavern; timber counter on the east wall."
+            )
+        )
+        final_prompt = "\n".join(
+            message["content"]
+            for message in minimax.build_story_setting_description_messages(
+                "Medieval fantasy tavern; timber counter on the east wall.",
+                static_setting="Medieval fantasy tavern.",
+            )
+        )
+        self.assertIn("historical period", static_prompt)
+        self.assertIn("period-neutral tavern", static_prompt)
+        self.assertIn("period-neutral one", refinement_prompt)
+        self.assertIn("medieval fantasy tavern", final_prompt)
 
     def test_strip_video_audio_uses_video_stream_copy_and_no_audio(self):
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as handle:
@@ -444,12 +471,8 @@ A rectangular tavern interior.
             label,
             "MiniMaxH3AddGuide",
         )
-        guide_loader_id, _ = minimax.find_workflow_node(
-            workflow,
-            minimax.LOAD_VIDEO_NODE_NAME,
-            label,
-            "VHS_LoadVideoPath",
-        )
+        guide_loader_id = str(guide["inputs"]["image"][0])
+        self.assertEqual(workflow[guide_loader_id]["class_type"], "VHS_LoadVideoPath")
         _, conditioner = minimax.find_workflow_node(
             workflow,
             minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,

@@ -38,7 +38,8 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         self.assertIn("complete current physical appearance", prompt)
         self.assertIn("body/anatomy, species traits", prompt)
         self.assertIn("Clothing in the supplied description is authoritative", prompt)
-        self.assertIn("If no clothing is described, do not invent clothing", prompt)
+        self.assertIn("FIXED CLOTHING RULE", prompt)
+        self.assertIn("humanoid must wear clothes regardless of species", prompt)
         self.assertNotIn("complete current outfit", prompt)
 
     def test_dynamic_subject_registration_persists_bootstrap_wardrobe(self):

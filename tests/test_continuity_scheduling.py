@@ -53,6 +53,8 @@ class ContinuitySchedulingTests(unittest.TestCase):
                     "beat_complete": True,
                 },
                 formatted,
+                {"overall_soundscape": "Room tone."},
+                {"non_diegetic_music": "N/A"},
             ],
         ), mock.patch("builtins.print") as printed:
             result = minimax.request_segment_llm(
@@ -107,6 +109,8 @@ class ContinuitySchedulingTests(unittest.TestCase):
                     "beat_complete": True,
                 },
                 formatted,
+                {"overall_soundscape": "Room tone."},
+                {"non_diegetic_music": "N/A"},
             ],
         ), mock.patch("builtins.print") as printed:
             minimax.request_segment_llm(

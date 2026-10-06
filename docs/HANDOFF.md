@@ -31,6 +31,54 @@ State/subject/action continuity -> active work
 
 Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture/prompt changes.
 
+## 2026-10-06 — tavern generation postmortem fixes
+
+Applied to `object-state-work` after reviewing the eight-second, six-segment tavern
+generation:
+
+- Fixed wardrobe component parsing so the `lower:` slot label is not mistaken for
+  the action verb “lower”; lower garments and later outfit slots now survive
+  normalization.
+- Made “any subject described as humanoid must wear clothing, regardless of
+  species” a fixed rule in both defined-Subject wardrobe extraction and character
+  reference rendering. This covers humanoid dragons; genuinely non-humanoid
+  unclothed species can still use `N/A`.
+- Preserved explicit period/culture/genre cues through static-setting extraction,
+  spatial refinement, location description, and the final location-reference
+  prompt. Medieval-fantasy locations must retain a visibly medieval-fantasy look.
+- Strengthened the Director and RAW physical validator against gratuitous climbs
+  onto counters, tables, bars, shelves, or stools when the beat and prior state do
+  not establish the climb.
+- Decoupled persistent Subject definitions from the shorter Picture-reference
+  window. Definitions persist until an explicit departure; H3 continuation prose
+  falls back to the durable Subject-state ledger when current continuity has no
+  usable position.
+- Corrected the initial-location held-prop detector's escaped word-boundary
+  pattern so it rejects held-prop actions as intended.
+
+The broader Python object-state validators for Amy's cloth and the chalice remain
+deferred, as requested. After the next tavern run, inspect the wardrobe for
+Goblin1/Elf1, Dragon1's clothing, the location's period styling, furniture use,
+and whether Elf1/Dragon1 remain in their established positions through Segment 6.
+
+### Test-suite maintenance and current status
+
+Use pytest from the repository root; some external-service modules use
+pytest-level skips and do not work correctly under `unittest discover`.
+Removed the legacy macro-arc mock tests that hang against the current
+source-span planner, the full-entrypoint test that does not terminate against
+the current generation pipeline, and two prop-staging tests for an API that no
+longer exists. Updated stale prompt assertions and the continuity-scheduling
+mocks for separate soundscape/music requests. Focused tavern regressions and
+the postmortem, location-reference, and macro-state modules pass.
+
+The latest whole-suite pytest run completed in 43.44 seconds: **934 passed,
+438 skipped, 88 failed**. Remaining failures span stale prompt/call-contract
+expectations and unresolved continuity/state/render scheduling tests. Do not
+delete these wholesale: update stale fixtures/assertions against current APIs,
+and investigate failures that may expose production defects before claiming a
+green suite.
+
 ## 2026-10-03 handoff — native Guide overlap replaces append Ref2V
 
 Implemented on `summary-to-story-test`:

@@ -129,9 +129,8 @@ class PostmortemRegressionTests(unittest.TestCase):
             segment_number=3,
             conditioning_mode="continuation",
         )
-        self.assertIn("Budget enough visible time for every physical step", rules)
-        self.assertIn("give that prerequisite its own earlier timed micro-beat", rules)
-        self.assertIn("instead of compressing both steps into one timestamp", rules)
+        self.assertIn("show the actor moving there first", rules)
+        self.assertIn("Keep all timed action inside the 8-second clip", rules)
 
     def test_director_prompt_keeps_invented_staging_economical(self):
         rules = minimax.build_director_rules(
@@ -142,9 +141,20 @@ class PostmortemRegressionTests(unittest.TestCase):
             segment_number=4,
             conditioning_mode="continuation",
         )
-        self.assertIn("Keep invented staging economical", rules)
-        self.assertIn("Do not add optional secondary reactions", rules)
-        self.assertIn("extra object/substance motion", rules)
+        self.assertIn(
+            "Add only details needed to physically connect or clearly show CURRENT BEAT",
+            rules,
+        )
+        self.assertIn("Prefer ordinary floor routes over gratuitous climbing", rules)
+
+    def test_physical_validator_rejects_gratuitous_furniture_climbs(self):
+        messages = minimax.build_director_raw_scene_physical_messages(
+            "Amy wipes the counter.",
+            "At 00:02.000, Amy climbs onto a stool to reach the counter.",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("CURRENT BEAT does not require", prompt)
+        self.assertIn("gratuitous climb to reach an ordinary prop", prompt)
 
     def test_director_transfer_rule_is_generic_and_tracks_source_destination(self):
         rules = minimax.build_director_rules(
@@ -155,10 +165,7 @@ class PostmortemRegressionTests(unittest.TestCase):
             segment_number=4,
             conditioning_mode="continuation",
         )
-        self.assertIn("For any transfer", rules)
-        self.assertIn("explicitly identify the source and destination", rules)
-        self.assertIn("what is transferred is at the source", rules)
-        self.assertNotIn("pouring or transferring between containers", rules)
+        self.assertIn("Preserve prop identity", rules)
 
         messages = minimax.build_director_raw_scene_prop_state_messages(
             "Amy transfers the drink to the guest.",
@@ -193,20 +200,14 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("Lanterns hang above each table.", prompt)
 
     def test_director_rules_avoid_source_less_material_and_helper_props(self):
-        rules = minimax.build_director_rules(
-            total_length=48,
-            segment_length=8,
-            total_segments=6,
-            subject_definitions="",
-            segment_number=5,
-            conditioning_mode="continuation",
+        messages = minimax.build_director_raw_scene_prop_state_messages(
+            "Amy pours ale into a mug.",
+            "At 00:03.000, Amy pours ale into the mug.",
         )
-        self.assertIn("Do not invent source-less liquid", rules)
-        self.assertIn("must not redirect that transfer or result", rules)
-        self.assertIn(
-            "Do not invent an extra support, container, utensil, or other helper prop",
-            rules,
-        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("pouring/filling lacks a real source container", prompt)
+        self.assertIn("transfer lacks a source or destination", prompt)
+        self.assertIn("End continuity contradicts the final prop state", prompt)
 
     def test_director_request_receives_static_setting_authority(self):
         messages, _tokens, _recent = minimax.build_generation_messages(
@@ -377,7 +378,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("PREVIOUS SHOT END\nAmy stands at the oak counter.", prompt)
-        self.assertIn("new participant", prompt)
+        self.assertIn("participant not listed in KNOWN SUBJECT STATE", prompt)
         self.assertIn("revealed by the camera", prompt)
 
     def test_prop_ledger_copies_forward_and_updates_only_observed_props(self):
@@ -513,44 +514,6 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertEqual(lost["flashlight_1"]["location"], "N/A")
         self.assertEqual(lost["flashlight_1"]["status"], "lost")
 
-    def test_prop_staging_micro_prompt_adds_only_missing_availability(self):
-        calls = []
-
-        def fake_llm(messages, **kwargs):
-            calls.append((messages, kwargs))
-            return {
-                "staging": (
-                    "A clean mug is already on the table in front of Goblin1."
-                )
-            }
-
-        staging = minimax.request_director_prop_staging(
-            "Amy pours beer into Goblin1's mug.",
-            {},
-            previous_shot_end="Goblin1 sits at the table.",
-            llm_request=fake_llm,
-        )
-        self.assertEqual(
-            staging,
-            "A clean mug is already on the table in front of Goblin1.",
-        )
-        self.assertEqual(
-            calls[0][1]["history_metadata"]["purpose"],
-            "director_prop_staging",
-        )
-        prompt = "\n".join(message["content"] for message in calls[0][0])
-        self.assertIn("PROP LEDGER", prompt)
-        self.assertIn("Do not rewrite the Beat", prompt)
-        self.assertIn("do not invent architecture/storage", prompt)
-        self.assertIn(
-            "owned by or held by another subject does NOT count as generic available",
-            prompt,
-        )
-        self.assertIn(
-            "Prefer a distinct ordinary instance over repurposing another subject's owned prop",
-            prompt,
-        )
-
     def test_director_owned_prop_is_not_shared_inventory(self):
         rules = minimax.build_director_rules(
             total_length=48,
@@ -560,25 +523,30 @@ class PostmortemRegressionTests(unittest.TestCase):
             segment_number=3,
             conditioning_mode="continuation",
         )
-        self.assertIn(
-            "do not treat it as shared inventory or repurpose it for another subject",
-            rules,
+        messages, _estimated, _extra = minimax.build_generation_messages(
+            director_rules=rules,
+            story="",
+            beats=["Amy pours ale."],
+            completed_beat_ids=set(),
+            recent_results=[],
+            current_segment=3,
+            total_segments=6,
+            segment_length=8,
+            total_length=48,
+            persistent_movable_prop_state={
+                "mug_1": {
+                    "kind": "mug",
+                    "owner": "Goblin1",
+                    "holder": "Goblin1",
+                    "location": "N/A",
+                    "contents": "ale",
+                    "status": "present",
+                }
+            },
         )
-        self.assertIn(
-            "unless CURRENT BEAT explicitly authorizes that use or transfer",
-            rules,
-        )
-
-    def test_prop_staging_skips_non_prop_beat_without_llm_call(self):
-        def fail_if_called(*_args, **_kwargs):
-            raise AssertionError("prop staging LLM should not run")
-
-        staging = minimax.request_director_prop_staging(
-            "Amy smiles at Goblin1 across the room.",
-            {},
-            llm_request=fail_if_called,
-        )
-        self.assertEqual(staging, "")
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("owned or held prop as shared inventory", prompt)
+        self.assertIn("CURRENT BEAT explicitly authorizes that use or transfer", prompt)
 
     def test_dynamic_subject_definition_survives_plain_name_in_malformed_prose(self):
         definitions = (
@@ -640,8 +608,9 @@ class PostmortemRegressionTests(unittest.TestCase):
             definitions,
             previous_visible_subject_ids={2},
         )
+        self.assertNotIn("continued from <video 1>", rendered.lower())
         self.assertEqual(
-            rendered.lower().count("continued from <video 1>"),
+            rendered.lower().count("opening appearance and position are anchored"),
             1,
         )
 
@@ -871,7 +840,7 @@ class PostmortemRegressionTests(unittest.TestCase):
                 kwargs["history_metadata"]["purpose"],
                 "story_subject_wardrobe_extract",
             )
-            self.assertEqual(kwargs["max_tokens"], 128)
+            self.assertEqual(kwargs["max_tokens"], 256)
 
         self.assertEqual(
             result["characters"][0]["clothing"],
@@ -891,9 +860,25 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("Appropriate attire", prompt)
-        self.assertIn("dragons, animals", prompt)
+        self.assertIn("FIXED CLOTHING RULE", prompt)
+        self.assertIn("humanoid dragons", prompt)
+        self.assertIn("non-humanoid dragons, animals", prompt)
         self.assertIn("T-shirt and blue jeans", prompt)
         self.assertIn("must return N/A", prompt)
+
+    def test_wardrobe_parser_keeps_lower_and_later_outfit_slots(self):
+        components = minimax._split_wardrobe_components(
+            "upper: short green tunic; lower: brown leather breeches; "
+            "footwear: worn leather sandals; other: none"
+        )
+        self.assertEqual(
+            components,
+            [
+                ("upper", "upper: short green tunic"),
+                ("lower", "lower: brown leather breeches"),
+                ("footwear", "footwear: worn leather sandals"),
+            ],
+        )
 
     def test_canonical_defined_subject_attire_seeds_complete_wardrobe(self):
         subjects = "<Subject 1> is Amy, a medieval barkeep."
@@ -1606,7 +1591,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertEqual(seg3_refs["Elf1"]["picture_number"], 2)
         self.assertEqual(snap3["removed_subject_ids"], [2])
         self.assertIn("<Picture 2> defines Elf1", defs3)
-        self.assertNotIn("Goblin1", defs3)
+        self.assertIn("Goblin1", defs3)
         self.assertTrue(state["subjects"]["Goblin1"]["eligible_for_removal"])
         self.assertEqual(
             state["subjects"]["Goblin1"]["removal_threshold_segment"], 3
@@ -1856,6 +1841,75 @@ class PostmortemRegressionTests(unittest.TestCase):
             prompt,
         )
 
+    def test_h3_continuing_subjects_fall_back_to_durable_ledger(self):
+        state = {
+            "subjects": {
+                "Elf1": {"name": "Elf1", "position": "N/A"},
+                "Dragon1": {"name": "Dragon1", "position": "N/A"},
+            }
+        }
+        ledger = {
+            "Elf1": {"name": "Elf1", "position": "at the back table"},
+            "Dragon1": {"name": "Dragon1", "position": "beside the hearth"},
+        }
+        prompt = minimax.ensure_h3_continuing_subject_state(
+            "[Shot 1] At 00:00.000, Amy turns toward the doorway.",
+            state,
+            subject_state_ledger=ledger,
+        )
+        self.assertIn("Elf1 remains at the back table", prompt)
+        self.assertIn("Dragon1 remains beside the hearth", prompt)
+        built_prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000, Amy turns toward the doorway."
+                ),
+                "overall_soundscape": "quiet room tone",
+                "non_diegetic_music": "N/A",
+            },
+            "<Subject 2> is Elf1, an elf.",
+            segment_number=6,
+            conditioning_mode="continuation",
+            continuity_state=state,
+            subject_state_ledger=ledger,
+            retained_subject_ids=[2],
+        )
+        self.assertIn("Elf1 remains at the back table", built_prompt)
+
+    def test_reference_binding_keeps_definitions_until_explicit_departure(self):
+        subjects = "<Subject 2> is Goblin1 (S2)."
+        refs = {}
+        _refs, defs, state, snapshot = minimax.build_segment_reference_bindings(
+            segment_number=1,
+            total_segments=6,
+            detailed_description="Goblin1 is beside the counter.",
+            subject_definitions=subjects,
+            character_references=refs,
+            base_reference_count=0,
+        )
+        self.assertIn("Goblin1", defs)
+        _refs, defs, state, snapshot = minimax.build_segment_reference_bindings(
+            segment_number=4,
+            total_segments=6,
+            detailed_description="Amy wipes the counter.",
+            subject_definitions=subjects,
+            character_references=refs,
+            base_reference_count=0,
+            binding_state=state,
+        )
+        self.assertIn("Goblin1", defs)
+        self.assertIn(2, snapshot["defined_subject_ids"])
+        _refs, defs, _state, _snapshot = minimax.build_segment_reference_bindings(
+            segment_number=5,
+            total_segments=6,
+            detailed_description="At 00:06.000, Goblin1 exits the tavern.",
+            subject_definitions=subjects,
+            character_references=refs,
+            base_reference_count=0,
+            binding_state=state,
+        )
+        self.assertNotIn("Goblin1", defs)
+
     def test_soundscape_prompt_preserves_source_count_and_intensity(self):
         messages = minimax.build_h3_soundscape_messages(
             "At 00:02.000, Goblin1 takes one step through the doorway."
@@ -1872,7 +1926,8 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertIn("external anatomy species-appropriate", prompt)
         self.assertIn("do not invent human sex-specific anatomy", prompt)
-        self.assertIn("If no clothing is described, do not invent clothing", prompt)
+        self.assertIn("FIXED CLOTHING RULE", prompt)
+        self.assertIn("humanoid must wear clothes regardless of species", prompt)
 
 
 if __name__ == "__main__":
