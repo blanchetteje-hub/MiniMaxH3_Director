@@ -1075,6 +1075,11 @@ Changes on `object-state-work`:
 Commits:
 - `689541a24af715892b46e1e6e532483f91510e5e` — implementation
 - `79211309cbf111c2491f86ca9176ac1a425b665b` — focused regressions
+- `4481ab9324e11b64a6eab0c96ca108ea91e73afa` — update older physical-validator prompt regression
+
+The GitHub connector cannot execute the local Python suite; pushed source and call sites were
+re-read after the commits, but the next local acceptance should run the focused tests before the
+full render.
 
 Next local acceptance:
 - Story-start resolver should return `Goblin1` with a state such as `leaning over the counter`,
