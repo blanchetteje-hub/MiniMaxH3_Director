@@ -1,0 +1,9 @@
+{
+  "job_id": "tavern-6x8-live-20261006-1507",
+  "kind": "run_tests",
+  "code_branch": "object-state-work",
+  "tests": [
+    "tests/bridge_runs/test_tavern_six_segment_bridge.py::test_tavern_six_segment_live_pipeline"
+  ],
+  "timeout_seconds": 1800
+}
