@@ -521,7 +521,7 @@ DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "repeat_penalty": 1.15,
     "seed": BENCHMARK_SEED,
     "reasoning_effort": "low",
-    "thinking_budget_tokens": 256,
+    "thinking_budget_tokens": 128,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -563,12 +563,11 @@ MUSIC_GENERATION_LLM_PURPOSES = frozenset({
 })
 
 SMART_EXTRACTOR_LLM_PURPOSES = frozenset({
-    "story_setting_spatial_refine",
     "story_setting_extract",
 })
 
 SLIGHTLY_CREATIVE_LLM_PURPOSES = frozenset({
-    "static_setting_extract",
+    "story_setting_spatial_refine",
 })
 
 DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
@@ -597,6 +596,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "source_unit_state_effects",
     "story_location_extract",
     "story_subject_wardrobe_extract",
+    "static_setting_extract",
     "director_raw_scene_visible_subject_resolution",
     "subject_continuity",
     "visual_end_state",
@@ -18152,16 +18152,21 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
         {
             "role": "system",
             "content": (
-                'Return subjects defined in beats that have no entry point (IE entered, '
-                'walked in, etc.).\n\n'
+                'Find animate Subjects that are already physically present in the starting '
+                'location before Beat 1 but are first mentioned in a later beat. Read ALL '
+                'beats. Include a Subject only when its first in-location state assumes prior '
+                'presence and no earlier beat shows that Subject entering, arriving, being '
+                'brought in, or newly revealed as part of the story action.\n\n'
                 'Example 1: "Beat 2: Jim leered over at Daisy from his seat." - Jim is '
                 'already there, so add Jim.\n'
                 'Example 2: "Beat 2: William walked in from the rain." - William enters '
-                'the scene, so don\'t add William.\n\n'
-                '- do not return a subject defined in EXISTING SUBJECT DEFINITIONS.\n'
-                '- include a one sentence initial_state. initial_state must be the minimal '
-                'physical location/pose supported by the beats; do not invent appearance, '
-                'clothing, motives, actions, or plot facts.\n'
+                'the scene, so do not add William.\n\n'
+                '- do not return a Subject defined in EXISTING SUBJECT DEFINITIONS.\n'
+                '- preserve an explicit proper name. For an unnamed role/species, assign one '
+                'stable Role1-style functional name such as Goblin1 or Guard1.\n'
+                '- include a one sentence initial_state containing only the minimal physical '
+                'location/pose supported by the beats. Do not include held/carried props, '
+                'appearance, clothing, motives, new actions, or plot facts.\n'
                 '- Return JSON.'
             ),
         },
@@ -18202,6 +18207,23 @@ def parse_initial_location_subjects(raw_result):
         initial_state = " ".join(
             str(item.get("initial_state") or "").split()
         ).strip(" ,.;")
+        if (
+            name
+            and name == name.casefold()
+            and re.fullmatch(r"[a-z][a-z0-9 '\\-]*", name)
+            and not re.search(r"\\d$", name)
+        ):
+            role_tokens = re.findall(r"[a-z0-9]+", name)
+            if role_tokens:
+                name = "".join(token[:1].upper() + token[1:] for token in role_tokens) + "1"
+        if re.search(
+            r"(?i)\\b(?:hold|holds|holding|held|clutch|clutches|clutching|"
+            r"carry|carries|carrying|carried|grip|grips|gripping|gripped)\\b",
+            initial_state,
+        ):
+            raise ValueError(
+                "Initial-location Subject state must contain location/pose only, not held props."
+            )
         if not name or not initial_state or not _subject_name_is_promotable(name):
             raise ValueError("Initial-location Subject contains unusable data.")
         key = _subject_identity_key(name)
@@ -18236,7 +18258,9 @@ def extract_initial_location_subjects(
         if attempt > 1:
             messages[-1]["content"] += (
                 "\n\nRETRY: Return strict JSON only. Include only Subjects proven to "
-                "already be present before Beat 1; do not include later arrivals."
+                "already be present before Beat 1; do not include later arrivals. Use a "
+                "stable Role1 name for unnamed roles/species and keep initial_state to "
+                "location/pose only with no held props."
             )
         try:
             raw = llm_request(
@@ -18325,7 +18349,7 @@ def seed_initial_location_subjects(
 
 
 def format_initial_location_subjects_opening_state(initial_subjects):
-    """Render beat-inferred Subjects as optional-visibility Director context."""
+    """Render beat-inferred Subjects as required Segment-1 visual presence."""
     lines = []
     for item in initial_subjects or []:
         name = " ".join(str(item.get("name") or "").split()).strip()
@@ -18337,11 +18361,12 @@ def format_initial_location_subjects_opening_state(initial_subjects):
     if not lines:
         return ""
     return (
-        "SUBJECTS INFERRED TO BE PRESENT AT STORY START\n"
-        "These Subjects are already present in the scene and their listed initial "
-        "states are authoritative. Use CURRENT BEAT to decide whether each needs "
-        "to be visible in this scene. Do not invent "
-        "an entrance or add action for a Subject merely because it is listed.\n"
+        "SUBJECTS ALREADY PRESENT AT STORY START — VISUAL ESTABLISHMENT REQUIRED\n"
+        "These Subjects physically exist from frame 0 and their listed initial states "
+        "are authoritative. In Segment 1, show each Subject at least once in that state, "
+        "even if only in the background or at the edge of frame. Do not invent an "
+        "entrance or add a new action merely because a Subject is listed; a Subject may "
+        "remain stationary while CURRENT BEAT action proceeds.\n"
         + "\n".join(lines)
     )
 
@@ -34597,9 +34622,12 @@ def build_director_raw_subject_resolution_messages(
                 "also return subject_descriptions with one short stable visual identity "
                 "sentence using only explicit non-clothing appearance facts already present "
                 "in RAW or CURRENT BEAT (species/type, sex/gender wording, age, hair, skin/scales/fur, build, "
-                "body/anatomy, and distinguishing features). Never put clothing in "
-                "subject_descriptions. Also return subject_wardrobes for each newly named "
-                "Subject using exactly upper, lower, footwear, and other. Preserve clothing "
+                "body/anatomy, and distinguishing features). If an already-named KNOWN SUBJECT "
+                "is visible in RAW but its definition lacks stable appearance or wardrobe "
+                "details, include that Subject in subject_names too and return only its missing "
+                "subject_descriptions and/or subject_wardrobes metadata; keep its established "
+                "name unchanged. Never put clothing in subject_descriptions. Also return "
+                "subject_wardrobes using exactly upper, lower, footwear, and other. Preserve clothing "
                 "explicitly stated in RAW. If RAW does not state clothing and the Subject is "
                 "a human or humanoid, including humanoid creatures such as goblins, orcs, and trolls, etc., choose one simple "
                 "setting-appropriate outfit now; this becomes canonical and must not be "
@@ -34977,26 +35005,25 @@ def resolve_director_raw_scene_subjects(
     wardrobes = {}
     seen = set()
     known_keys = {name.casefold() for name in protected_names}
+    defined_name_keys = {
+        existing.casefold()
+        for _number, existing in parse_defined_subjects(subject_definitions)
+    }
     for raw_name in resolved_subject_names:
         name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
         for protected_name in sorted(protected_names, key=len, reverse=True):
             if re.fullmatch(
-                rf"{re.escape(protected_name)}(?:_\d+|\d+)",
+                rf"{re.escape(protected_name)}(?:_\\d+|\\d+)",
                 name,
                 re.I,
             ):
                 name = protected_name
                 break
         key = name.casefold()
-        if key in known_keys and any(
-            existing.casefold() == key
-            for _number, existing in parse_defined_subjects(subject_definitions)
-        ):
-            continue
         if not name or key in seen or not _subject_name_is_promotable(name):
             continue
         if re.search(
-            rf"(?<![\w]){re.escape(name)}(?![\w])",
+            rf"(?<![\\w]){re.escape(name)}(?![\\w])",
             _h3_visual_identity_text(resolved_timed),
             re.I,
         ) is None:
@@ -35008,15 +35035,12 @@ def resolve_director_raw_scene_subjects(
             )
             continue
         seen.add(key)
-        names.append(name)
         description = " ".join(
             str(raw_subject_descriptions.get(raw_name)
                 or raw_subject_descriptions.get(name)
                 or "").split()
         ).strip()
         if description:
-            # Clothing has exactly one canonical owner: subject_wardrobes.
-            # Do not allow a duplicate wearing-clause to survive in identity prose.
             descriptions[name] = _strip_character_description_clothing(description)
         raw_wardrobe = (
             raw_subject_wardrobes.get(raw_name)
@@ -35028,6 +35052,9 @@ def resolve_director_raw_scene_subjects(
                 field: str(raw_wardrobe.get(field) or "N/A").strip() or "N/A"
                 for field in _WARDROBE_FIELDS
             }
+        if key in known_keys and key in defined_name_keys:
+            continue
+        names.append(name)
 
     console_log(
         "Checking RAW Subjects segment: "
@@ -35041,23 +35068,119 @@ def resolve_director_raw_scene_subjects(
     return resolved, names
 
 
+def apply_visible_subject_bootstrap_metadata(
+    continuity_state,
+    subject_descriptions=None,
+    subject_wardrobes=None,
+):
+    """Fill only missing canonical metadata for already-registered visible Subjects."""
+    state = copy.deepcopy(continuity_state) if isinstance(continuity_state, dict) else {}
+    subjects = state.get("subjects")
+    if not isinstance(subjects, dict):
+        return state, []
+
+    descriptions = subject_descriptions if isinstance(subject_descriptions, dict) else {}
+    wardrobes = subject_wardrobes if isinstance(subject_wardrobes, dict) else {}
+    changed = []
+
+    for raw_name in set(descriptions) | set(wardrobes):
+        existing_name = _find_existing_subject_name(subjects, raw_name)
+        if existing_name is None:
+            continue
+        record = subjects.get(existing_name)
+        if not isinstance(record, dict):
+            continue
+        record_changed = False
+
+        description = " ".join(str(descriptions.get(raw_name) or "").split()).strip()
+        current_description = " ".join(
+            str(record.get("canonical_description") or "").split()
+        ).strip()
+        fallback_description = _functional_subject_role_description(existing_name)
+        if (
+            description
+            and (
+                not current_description
+                or current_description.casefold() == fallback_description.casefold()
+            )
+        ):
+            record["canonical_description"] = _strip_character_description_clothing(
+                description
+            )
+            gender = normalize_subject_gender(record.get("gender"))
+            if gender == "unknown":
+                if re.search(r"(?i)\\b(?:female|woman|girl)\\b", description):
+                    record["gender"] = "female"
+                elif re.search(r"(?i)\\b(?:male|man|boy)\\b", description):
+                    record["gender"] = "male"
+            record_changed = True
+
+        incoming_wardrobe = wardrobes.get(raw_name)
+        if isinstance(incoming_wardrobe, dict):
+            current_wardrobe = record.get("wardrobe")
+            if not isinstance(current_wardrobe, dict):
+                current_wardrobe = {}
+            for field in _WARDROBE_FIELDS:
+                current_value = str(current_wardrobe.get(field) or "").strip()
+                incoming_value = str(incoming_wardrobe.get(field) or "").strip()
+                if (
+                    incoming_value
+                    and incoming_value.casefold() not in {"n/a", "na", "unknown"}
+                    and current_value.casefold() in {"", "n/a", "na", "unknown"}
+                ):
+                    current_wardrobe[field] = incoming_value
+                    record_changed = True
+            record["wardrobe"] = current_wardrobe
+
+        if record_changed:
+            changed.append(existing_name)
+
+    return state, list(dict.fromkeys(changed))
+
+
+def format_known_subject_state_for_validator(continuity_state):
+    """Render compact durable Subject presence for the physical RAW validator."""
+    state = continuity_state if isinstance(continuity_state, dict) else {}
+    subjects = state.get("subjects")
+    if not isinstance(subjects, dict):
+        return "N/A"
+    lines = []
+    for name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        position = _known_continuity_value(record.get("position"))
+        pose = _known_continuity_value(record.get("pose_action"))
+        details = []
+        if position:
+            details.append(f"position: {position}")
+        if pose:
+            details.append(f"pose/action: {pose}")
+        if details:
+            lines.append(f"- {name}: already established; " + "; ".join(details))
+    return "\n".join(lines) or "N/A"
+
+
 def build_director_raw_scene_physical_messages(
     current_beat,
     raw_scene,
     previous_shot_end="",
     *,
     static_setting_description="",
+    known_subject_state=None,
 ):
     """Check only subject movement, spatial continuity, and physical action order."""
     return [
         {
             "role": "system",
             "content": (
-                "Validate only subject movement in RAW. Reject if: 1) a new participant "
-                "is not shown entering or revealed by the camera; 2) a subject interacts at "
-                "a different established location without visibly moving there first; 3) a "
-                "subject changes support or elevation without showing that movement; 4) End "
-                "continuity moves a subject after the final timed action. Ordinary furniture "
+                "Validate only subject movement in RAW. A participant listed in KNOWN SUBJECT "
+                "STATE is already established in the scene and does not need an entrance; it "
+                "may first become visible through ordinary camera framing/reveal. Reject if: "
+                "1) a participant not listed in KNOWN SUBJECT STATE is not shown entering or "
+                "revealed by the camera; 2) a subject interacts at a different established "
+                "location without visibly moving there first; 3) a subject changes support or "
+                "elevation without showing that movement; 4) End continuity moves a subject "
+                "after the final timed action. Ordinary furniture "
                 "required by CURRENT BEAT is allowed. Ignore prop identity, contents, "
                 "ownership, transfers, prose, camera taste, and timing. Return exactly one "
                 "JSON object with boolean valid and string issue. Report only the first "
@@ -35071,6 +35194,8 @@ def build_director_raw_scene_physical_messages(
                 f"{str(current_beat or '').strip()}\n\n"
                 "PREVIOUS SHOT END\n"
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
+                "KNOWN SUBJECT STATE\n"
+                f"{format_known_subject_state_for_validator(known_subject_state)}\n\n"
                 "STATIC SETTING AUTHORITY\n"
                 f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
@@ -35137,6 +35262,7 @@ def build_director_raw_scene_coherence_messages(
     *,
     prop_ledger=None,
     static_setting_description="",
+    known_subject_state=None,
 ):
     """Compatibility alias for the old combined validator prompt."""
     return build_director_raw_scene_physical_messages(
@@ -35144,6 +35270,7 @@ def build_director_raw_scene_coherence_messages(
         raw_scene,
         previous_shot_end=previous_shot_end,
         static_setting_description=static_setting_description,
+        known_subject_state=known_subject_state,
     )
 
 
@@ -35489,6 +35616,7 @@ def validate_director_raw_scene_physical(
     *,
     previous_shot_end="",
     static_setting_description="",
+    known_subject_state=None,
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -35506,6 +35634,7 @@ def validate_director_raw_scene_physical(
             raw_scene,
             previous_shot_end=previous_shot_end,
             static_setting_description=static_setting_description,
+            known_subject_state=known_subject_state,
         ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
@@ -35565,6 +35694,7 @@ def validate_director_raw_scene_coherence(
     previous_shot_end="",
     prop_ledger=None,
     static_setting_description="",
+    known_subject_state=None,
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -35574,6 +35704,7 @@ def validate_director_raw_scene_coherence(
         raw_scene,
         previous_shot_end=previous_shot_end,
         static_setting_description=static_setting_description,
+        known_subject_state=known_subject_state,
         llm_request=llm_request,
         history_metadata=history_metadata,
     )
@@ -35757,6 +35888,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         raw_scene,
                         previous_shot_end=previous_shot_end,
                         static_setting_description=static_setting_description,
+                        known_subject_state=bundle.get("registry_state"),
                         history_metadata=validator_metadata,
                     )
                 except (
@@ -37934,6 +38066,30 @@ def _run_main(
             else {}
         )
         formatter_subject_names = list(formatter_subject_genders)
+
+        continuity_state, enriched_existing_subjects = (
+            apply_visible_subject_bootstrap_metadata(
+                continuity_state,
+                raw_subject_descriptions,
+                raw_subject_wardrobes,
+            )
+        )
+        if enriched_existing_subjects:
+            generation_state["subject_registry_state"] = migrate_continuity_state(
+                continuity_state
+            )
+            generation_state["subject_state_ledger"] = merge_subject_state_ledger(
+                generation_state.get("subject_state_ledger", {}),
+                continuity_state,
+                segment_number=segment,
+            )
+            checkpoint_generation_state()
+            console_log(
+                "Filled missing visible metadata for existing Subject(s): "
+                + ", ".join(enriched_existing_subjects),
+                flush=True,
+            )
+
         registration_subject_genders = dict(formatter_subject_genders)
         registration_subject_genders.update(canonical_subject_genders)
         for subject_name, description in raw_subject_descriptions.items():
