@@ -9577,6 +9577,15 @@ def ask_llm(
                     **({"entry_type": "request"} if log_beat_response else {}),
                 },
             )
+            request_label = history_purpose or "unclassified"
+            llm_wait_started_at = time.monotonic()
+            console_log(
+                f"LLM request started: {request_label} "
+                f"(attempt {attempt}/{max_attempts}, "
+                f"~{estimated_input_tokens} input tokens, "
+                f"max {effective_max_tokens} output tokens).",
+                flush=True,
+            )
             response = requests.post(
                 f"{LLM_HOST_URL}/v1/chat/completions",
                 json=request_payload,
@@ -9629,6 +9638,13 @@ def ask_llm(
             content = choice["message"]["content"]
             last_content = content
             finish_reason = str(choice.get("finish_reason") or "").strip().lower()
+            console_log(
+                f"LLM request finished: {request_label} "
+                f"({time.monotonic() - llm_wait_started_at:.1f}s"
+                + (f", finish_reason={finish_reason}" if finish_reason else "")
+                + ").",
+                flush=True,
+            )
             if log_beat_response:
                 response_metadata = {
                     "response_format": response_format_used,
@@ -18419,6 +18435,11 @@ def parse_story_setting_description(raw_result):
     try:
         location_state = json.loads(json_text)
     except json.JSONDecodeError as error:
+        console_log(
+            "Spatial setting extractor raw response that failed JSON parsing:\n"
+            + text,
+            flush=True,
+        )
         raise ValueError(
             f"Spatial setting extractor returned invalid JSON: {error}"
         ) from error
@@ -28757,6 +28778,12 @@ def wait_for_completion(
     consecutive_errors = 0
     last_connection_error = None
     deadline = clock() + timeout if timeout is not None else None
+    render_wait_started_at = time.monotonic()
+    next_progress_log_at = render_wait_started_at + 15.0
+    console_log(
+        f"Waiting for ComfyUI prompt {prompt_id} to finish rendering.",
+        flush=True,
+    )
 
     while True:
         if deadline is not None and clock() >= deadline:
@@ -28807,7 +28834,21 @@ def wait_for_completion(
                         raise ComfyUIExecutionError(
                             "ComfyUI execution failed:\n" + detail_text
                         )
+                    console_log(
+                        f"ComfyUI prompt {prompt_id} finished after "
+                        f"{time.monotonic() - render_wait_started_at:.1f}s.",
+                        flush=True,
+                    )
                     return result
+
+            wall_now = time.monotonic()
+            if wall_now >= next_progress_log_at:
+                console_log(
+                    f"Still waiting for ComfyUI prompt {prompt_id} "
+                    f"({wall_now - render_wait_started_at:.0f}s elapsed).",
+                    flush=True,
+                )
+                next_progress_log_at = wall_now + 15.0
 
             sleep_time = 2
             if deadline is not None:
