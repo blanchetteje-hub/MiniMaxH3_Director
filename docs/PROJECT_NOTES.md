@@ -2556,11 +2556,13 @@ Location creation now separates semantic spatial state from the H3 visual refere
 - The altered second SMART extractor converts that refined location into the required
   `Location: ...` + JSON + literal text format. Python parses the JSON into
   `generation_state["location_state"]` and sends only the text description to ComfyUI.
-- `SMART_EXTRACTOR_LLM_SETTINGS` is deterministic: seed 42, 8192-token context budget,
-  medium reasoning effort, 1024-token reasoning budget.
-- The 3-second location-reference prompt now uses the tested compact high-angle,
-  character-free 360-orbit wording and no longer includes the contradictory
-  `high, low-angle` / `static orbital` language.
+- `story_setting_extract` still uses `SMART_EXTRACTOR_LLM_SETTINGS`: seed 42,
+  8192-token context budget, medium reasoning effort, 1024-token reasoning budget.
+- `story_setting_spatial_refine` intentionally uses `SLIGHTLY_CREATIVE_LLM_SETTINGS`
+  so unspecified spatial layout can vary modestly between runs while static fact selection
+  remains deterministic.
+- The 3-second location-reference prompt uses the tested compact medium-shot,
+  character-free 360-orbit wording.
 - `generated_prompts.txt` also carries the frozen `location_state` in config so the
   prompt-only/render-only package retains the same canonical spatial record.
 
@@ -2589,3 +2591,36 @@ Each small extractor owns its own bounded parse/content retry loop. A malformed 
 extractor must retry only that extractor using its already-computed input; it must not restart
 unrelated successful extraction stages. Mixed-output extractors must preserve raw model text until
 their stage-specific parser splits structured state from prose.
+
+
+### 2026-10-06 — story-start Subject visual establishment
+
+A beat-wide pre-Director extractor reads all finalized beats once to find animate Subjects whose
+first later-beat state proves they were already physically present before Beat 1 and who have no
+earlier entry/arrival. This exists specifically to prevent later beats from making an already-present
+actor materialize into the scene.
+
+Rules:
+- preserve explicit proper names;
+- unnamed roles/species use stable Role1-style names such as `Goblin1`;
+- lowercase generic role outputs are normalized deterministically to that form;
+- `initial_state` contains only minimal supported location/pose, never held/carried props,
+  wardrobe, motives, or invented actions;
+- inferred Subjects are inserted into the normal durable Subject registry with
+  `origin_segment=0`, not into a parallel background-cast system;
+- Segment 1 must visually establish each inferred Subject at least once in the inferred position,
+  even if the Subject remains stationary in the background;
+- because the Subject then appears in accepted RAW, normal H3 reference binding retains that
+  Subject naturally;
+- the physical RAW validator receives compact durable KNOWN SUBJECT STATE, so a Subject already
+  known to exist is not misclassified as a new arrival merely because PREVIOUS SHOT END omitted it;
+- when an already-registered inferred Subject first becomes visually established, the visible-
+  Subject resolver may fill only missing canonical appearance/wardrobe metadata. Existing canonical
+  fields remain immutable.
+
+LLM profile ownership:
+- `static_setting_extract` is deterministic again;
+- `story_setting_spatial_refine` uses the slight-creativity profile;
+- global `DETERMINISTIC_ANALYSIS_LLM_SETTINGS.thinking_budget_tokens` remains 128;
+- character-reference duration remains 0.5s with midpoint sample at 0.25s;
+- location-reference framing remains medium shot.
