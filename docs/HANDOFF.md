@@ -1090,3 +1090,46 @@ Next local acceptance:
 - When Goblin1 is first visually established, missing canonical appearance/appropriate humanoid
   wardrobe may be filled once and then remain stable.
 
+
+
+## 2026-10-06 — restore proven story-start prompt + dedicated wardrobe calls for dynamic Subjects
+
+The tavern acceptance run showed two regressions in the local Codex pass:
+
+- `director_raw_scene_subject_resolution` was given all beats correctly, but its rewritten
+  system prompt returned Goblin1, Elf1, and Dragon1 as story-start Subjects even though the
+  elf explicitly "steps in" and the dragon explicitly "enters" in later beats.
+- `story_subject_wardrobe_extract` ran only for Amy because it was invoked only for
+  pre-defined `subjects.txt` Subjects. Inferred/dynamically registered Subjects were created
+  later and therefore never received the dedicated per-Subject wardrobe call.
+
+Fixes on `object-state-work`:
+
+- Restored the user-proven story-start system prompt verbatim in substance:
+  "Return subjects defined in beats that have no entry point (IE entered, walked in, etc.)"
+  with the original Jim/William examples and minimal `initial_state` rule.
+- Added a reusable one-Subject `extract_subject_canonical_wardrobe()` path using the same
+  `story_subject_wardrobe_extract` prompt/profile/retry behavior.
+- Story-start Subjects newly registered before Segment 1 now each receive one independent
+  wardrobe extractor call after their dynamic Subject definitions are created.
+- Subjects first registered from a later RAW segment now each receive one independent
+  wardrobe extractor call immediately after registration and before H3 character-reference
+  creation.
+- Naturally unclothed Subjects (for example dragons when appropriate) keep all wardrobe slots
+  at N/A. Humanoid Subjects use the dedicated appropriate-attire extractor rather than relying
+  on the combined visible-Subject resolver as their primary wardrobe source.
+- Added focused regressions for the restored prompt, one-call-per-dynamic-Subject wardrobe
+  extraction, and N/A wardrobe for a naturally unclothed dragon.
+
+Commits:
+- `bee33a7c9d4ce977d31895081cdd2271fed344a5` — implementation
+- `2c6cffba9911c34cdcd0f0296e2b9743b4cf7216` — focused regressions
+
+Next local acceptance:
+- `director_raw_scene_subject_resolution` should return only Goblin1 for the current tavern
+  beats; Elf1 and Dragon1 must remain later arrivals.
+- Startup should log one `story_subject_wardrobe_extract` call for Amy and one separate call
+  for Goblin1.
+- Segment 3 should run a dedicated wardrobe call for Elf1 when she is first registered.
+- Segment 4 should run a dedicated wardrobe call for Dragon1 and should return N/A unless the
+  expanded story explicitly clothes the dragon.
