@@ -580,6 +580,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "story_location_extract",
     "static_setting_extract",
     "story_subject_wardrobe_extract",
+    "initial_location_subjects_extract",
     "subject_continuity",
     "visual_end_state",
 })
@@ -800,6 +801,34 @@ DIRECTOR_PRONOUN_RESOLUTION_RESPONSE_FORMAT = {
         },
     },
 }
+
+INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "initial_location_subjects_extract",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "subjects": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "minLength": 1},
+                            "initial_state": {"type": "string", "minLength": 1},
+                        },
+                        "required": ["name", "initial_state"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": ["subjects"],
+            "additionalProperties": False,
+        },
+    },
+}
+
 
 DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
     "type": "json_schema",
@@ -6086,10 +6115,16 @@ def derive_additional_subject_definitions(
         speaker_id = _subject_speaker_token(
             record.get("speaker_id") or f"S{subject_id}"
         )
-        definition = (
-            f"<Subject {subject_id}> is {name}{gender_clause} ({speaker_id}), "
-            "continued from <Video 1>."
-        )
+        if record.get("origin_segment") == 0:
+            definition = (
+                f"<Subject {subject_id}> is {name}{gender_clause} ({speaker_id}), "
+                "present at story start."
+            )
+        else:
+            definition = (
+                f"<Subject {subject_id}> is {name}{gender_clause} ({speaker_id}), "
+                "continued from <Video 1>."
+            )
         if canonical_description:
             definition += " " + canonical_description
         state_description = format_subject_state_for_definition(
@@ -18085,6 +18120,201 @@ def build_story_location_messages(expanded_story):
             ),
         },
     ]
+
+
+def build_initial_location_subjects_messages(beats, subject_definitions=""):
+    """Build a tiny beat-plan-wide extractor for Subjects present before Beat 1."""
+    numbered_beats = "\n".join(
+        f"Beat {index}: {str(beat).strip()}"
+        for index, beat in enumerate(beats or [], start=1)
+        if str(beat).strip()
+    )
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Find animate Subjects that must already be physically present in the "
+                "starting location before Beat 1 begins. Read ALL beats so later wording "
+                "can reveal an unstated starting presence. Return only a Subject whose "
+                "first in-location state assumes prior presence (for example already "
+                "seated, standing, waiting, sleeping, working, or otherwise established) "
+                "and no earlier beat shows that Subject entering, arriving, being brought "
+                "in, or being newly revealed as part of the story action. Do not include "
+                "a Subject merely because it appears later. For an unnamed actor, assign "
+                "one stable functional name using Role1-style numbering, such as Goblin1 "
+                "or Guard1. initial_state must be the minimal physical location/pose "
+                "supported by the beats; do not invent appearance, clothing, motives, "
+                "actions, or plot facts. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "EXISTING SUBJECT DEFINITIONS\n"
+                + (str(subject_definitions or "").strip() or "N/A")
+                + "\n\nALL BEATS\n"
+                + (numbered_beats or "N/A")
+                + "\n\nReturn exactly subjects."
+            ),
+        },
+    ]
+
+
+def parse_initial_location_subjects(raw_result):
+    """Normalize beat-plan inference for Subjects already present at story start."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"subjects"}:
+        raise ValueError(
+            "Initial-location Subject extraction must contain only subjects."
+        )
+    raw_subjects = candidate.get("subjects")
+    if not isinstance(raw_subjects, list):
+        raise ValueError("Initial-location subjects must be an array.")
+
+    normalized = []
+    seen = set()
+    for item in raw_subjects:
+        if not isinstance(item, dict) or set(item) != {"name", "initial_state"}:
+            raise ValueError(
+                "Each initial-location Subject requires only name and initial_state."
+            )
+        name = " ".join(str(item.get("name") or "").split()).strip(" ,.;:-")
+        initial_state = " ".join(
+            str(item.get("initial_state") or "").split()
+        ).strip(" ,.;")
+        if not name or not initial_state or not _subject_name_is_promotable(name):
+            raise ValueError("Initial-location Subject contains unusable data.")
+        key = _subject_identity_key(name)
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append({"name": name, "initial_state": initial_state})
+    return normalized
+
+
+def extract_initial_location_subjects(
+    beats,
+    subject_definitions="",
+    *,
+    llm_request=None,
+    history_metadata=None,
+    attempts=3,
+):
+    """Infer only Subjects whose beat-plan state proves story-start presence."""
+    if llm_request is None:
+        llm_request = ask_llm
+    if not beats:
+        return []
+    last_error = None
+    base_messages = build_initial_location_subjects_messages(
+        beats,
+        subject_definitions=subject_definitions,
+    )
+    max_attempts = max(1, int(attempts))
+    for attempt in range(1, max_attempts + 1):
+        messages = [dict(message) for message in base_messages]
+        if attempt > 1:
+            messages[-1]["content"] += (
+                "\n\nRETRY: Return strict JSON only. Include only Subjects proven to "
+                "already be present before Beat 1; do not include later arrivals."
+            )
+        try:
+            raw = llm_request(
+                messages,
+                response_format=INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT,
+                parse_json_response=False,
+                max_tokens=512,
+                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "initial_location_subjects_extract",
+                    "attempt": attempt,
+                },
+            )
+            return parse_initial_location_subjects(raw)
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            if attempt < max_attempts:
+                console_log(
+                    f"Initial-location Subject extractor returned unusable output "
+                    f"(attempt {attempt}/{max_attempts}); retrying only this "
+                    f"extractor: {error}",
+                    flush=True,
+                )
+    raise ValueError(
+        "Could not extract initial-location Subjects: "
+        + str(last_error or "unknown initial Subject extraction error")
+    )
+
+
+def seed_initial_location_subjects(
+    continuity_state,
+    subject_definitions,
+    initial_subjects,
+):
+    """Register inferred story-start Subjects and seed their opening physical state."""
+    state = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(continuity_state),
+    )
+    used_ids = {
+        int(record.get("subject_id"))
+        for record in state.get("subjects", {}).values()
+        if isinstance(record, dict) and str(record.get("subject_id", "")).isdigit()
+    }
+    added = []
+    for item in initial_subjects or []:
+        name = " ".join(str(item.get("name") or "").split()).strip()
+        initial_state = " ".join(
+            str(item.get("initial_state") or "").split()
+        ).strip()
+        if not name or not initial_state:
+            continue
+        existing_name = _find_existing_subject_name(state["subjects"], name)
+        if existing_name is not None:
+            record = state["subjects"][existing_name]
+        else:
+            subject_id = max(used_ids, default=0) + 1
+            while subject_id in used_ids:
+                subject_id += 1
+            used_ids.add(subject_id)
+            record = new_subject_continuity_record({
+                "subject_id": subject_id,
+                "name": name,
+                "gender": "unknown",
+                "picture_ids": [],
+                "picture_id": None,
+                "speaker_id": available_subject_speaker_id(
+                    subject_id,
+                    state["subjects"].values(),
+                ),
+                "origin_segment": 0,
+                "canonical_description": _functional_subject_role_description(name),
+            })
+            state["subjects"][name] = record
+            added.append(name)
+        record["position"] = initial_state
+        record["pose_action"] = initial_state
+    return state, added
+
+
+def format_initial_location_subjects_opening_state(initial_subjects):
+    """Render story-start Subject presence as compact authoritative Director context."""
+    lines = []
+    for item in initial_subjects or []:
+        name = " ".join(str(item.get("name") or "").split()).strip()
+        initial_state = " ".join(
+            str(item.get("initial_state") or "").split()
+        ).strip(" .")
+        if name and initial_state:
+            lines.append(f"- {name}: already present; {initial_state}.")
+    if not lines:
+        return ""
+    return "SUBJECTS ALREADY PRESENT AT STORY START (authoritative)\n" + "\n".join(lines)
 
 
 def build_story_location_response_format():
@@ -36576,6 +36806,28 @@ def _run_main(
                 flush=True,
             )
 
+    initial_location_subjects = []
+    if resume_segment == 1 and beats:
+        initial_location_subjects = extract_initial_location_subjects(
+            beats,
+            base_subject_definitions,
+            history_metadata={"run_id": run_id},
+        )
+        if initial_location_subjects:
+            console_log(
+                "Subjects inferred as already present at story start: "
+                + "; ".join(
+                    f"{item['name']} ({item['initial_state']})"
+                    for item in initial_location_subjects
+                ),
+                flush=True,
+            )
+        else:
+            console_log(
+                "No additional Subjects inferred as already present at story start.",
+                flush=True,
+            )
+
     segments_to_generate = get_segments_to_generate(
         resume_segment,
         total_segments,
@@ -36679,6 +36931,7 @@ def _run_main(
             "location_state": copy.deepcopy(
                 story_location_metadata.get("location_state", {})
             ),
+            "initial_location_subjects": copy.deepcopy(initial_location_subjects),
         },
         "macro_arc": copy.deepcopy(macro_arc),
         "reference_jobs": saved_reference_jobs,
@@ -36745,8 +36998,30 @@ def _run_main(
             character_canon,
             continuity_state,
         )
+        continuity_state, initial_added_subjects = seed_initial_location_subjects(
+            continuity_state,
+            subject_definitions,
+            initial_location_subjects,
+        )
+        if initial_added_subjects:
+            additional_subject_definitions = derive_additional_subject_definitions(
+                base_subject_definitions,
+                continuity_state,
+            )
+            subject_definitions = combine_subject_definitions(
+                base_subject_definitions,
+                additional_subject_definitions,
+            )
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
+        )
+        generation_state["subject_state_ledger"] = merge_subject_state_ledger(
+            generation_state.get("subject_state_ledger", {}),
+            continuity_state,
+            segment_number=0,
+        )
+        generation_state["initial_location_subjects"] = copy.deepcopy(
+            initial_location_subjects
         )
         generation_state["continuity_state"] = {}
         # Bind the first segment to the current subjects.txt definitions before
@@ -37238,15 +37513,21 @@ def _run_main(
             if isinstance(state_metadata, dict)
             else ""
         )
-        if segment_number == 1 and starting_location:
-            starting_location_sentence = format_story_starting_location(
-                starting_location
+        if segment_number == 1:
+            opening_parts = []
+            if starting_location:
+                opening_parts.append(
+                    "STARTING LOCATION (authoritative)\n"
+                    + format_story_starting_location(starting_location)
+                )
+            initial_subject_context = format_initial_location_subjects_opening_state(
+                generation_state.get("initial_location_subjects", [])
             )
-            director_opening_summary = (
-                "STARTING LOCATION (authoritative)\n"
-                + starting_location_sentence
-            )
-            h3_opening_summary = director_opening_summary
+            if initial_subject_context:
+                opening_parts.append(initial_subject_context)
+            if opening_parts:
+                director_opening_summary = "\n\n".join(opening_parts)
+                h3_opening_summary = director_opening_summary
         source_opening_state = format_source_authorized_opening_state(
             macro_arc,
             segment_number,
