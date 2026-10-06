@@ -140,9 +140,11 @@ transactions, and disabling/replacing legacy writers remain out of scope.
 Public API in `world_state.py`:
 
 - `reduce_world_state(world_state, state_actions, *, segment_number)` returns a
-  `ReductionResult` containing a validated candidate state and ordered
-  `ActionOutcome` records. It deep-copies its input and does not mutate the
-  caller's state.
+  `ReductionResult` containing ordered `ActionOutcome` records and a `committed`
+  flag. Successful batches return the fully reduced candidate. On the first
+  rejected action, processing stops and the result contains a deep copy of the
+  original input with `committed=false`; earlier successful actions are rolled
+  back and later actions are not evaluated.
 - `validate_state_actions(world_state, state_actions, *, segment_number)` dry-
   runs that same engine and returns the same outcomes without exposing the
   candidate.
@@ -163,7 +165,7 @@ registered fields. Supported operations and effects:
 | `enter` / `exit` | Set presence to present / absent; exit may record a known destination. |
 | `move` | Changes a present subject's registered location without changing presence; support clears unless supplied. |
 | `set_support` | Sets or clears (`support_id: null`) a subject's explicit support and optionally its posture. |
-| `change_clothing` | Puts on, removes, or replaces an exact recorded wardrobe layer. |
+| `change_clothing` | Puts on, removes, or replaces an exact recorded garment layer, or updates its separate condition. |
 | `open` / `close` / `lock` / `unlock` | Changes a registered mechanism state when explicit capabilities and prior states permit it. |
 
 Persistent props now carry one authoritative `placement`, `mobility` (`movable`,
@@ -172,6 +174,18 @@ Persistent props now carry one authoritative `placement`, `mobility` (`movable`,
 Pickup rejects fixed and unknown-mobility props. Entity references must resolve
 to IDs already present in the WorldState; arbitrary field-patch operations and
 unknown entity IDs are rejected.
+
+WorldState wardrobe slots (`upper`, `lower`, `footwear`, `other`) each hold
+`unknown`, `N/A`, or a list of zero or more `{garment, condition}` records.
+Garment identity and condition are separate; for example, a torn shirt remains
+`garment: "shirt"` with `condition: "torn"`. `change_clothing` supports a
+`set_condition` action for an exact recorded garment. Garments are not global
+props. `clothing_applicability: "required"` does not require all four slots to
+contain garments: empty lists and an `other: "N/A"` slot are valid when another
+garment is recorded. A fully known required wardrobe with no garments is
+rejected. The reducer also rejects removing the last recorded garment from a
+required-clothing subject; it does not infer garment coverage or appropriateness
+from slot names, so semantic clothing validation must check that separately.
 
 The reducer proves only facts encoded in WorldState: registered identity,
 presence, location equality, placement, mobility, capability, content, and
@@ -200,11 +214,11 @@ WorldState mutation and compatibility status at this gate:
   been integrated with this reducer. No Director call site invokes the reducer.
 
 Focused validation: `python -m pytest -q tests/test_world_state_foundation.py`.
-The reducer tests cover pure reduction/dry-run agreement, fixed and unknown
-mobility, placement and derived holders, support clearing, presence semantics,
-coarse transfer amounts, clothing applicability, mechanism prerequisites, and
-rejection of unregistered IDs and generic patches. This did not run the full
-repository suite.
+The reducer tests cover atomic fail-fast rollback, dry-run agreement, fixed and
+unknown mobility, placement and derived holders, support clearing, presence
+semantics, coarse transfer amounts, layered garments and per-garment condition,
+clothing applicability, mechanism prerequisites, and rejection of unregistered
+IDs and generic patches. This did not run the full repository suite.
 
 Focused validation: `tests/test_world_state_foundation.py`,
 `tests/test_rendered_wardrobe_state.py`, `tests/test_subject_identity_continuity.py`,

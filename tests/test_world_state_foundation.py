@@ -307,10 +307,17 @@ class WorldStateSeedTests(unittest.TestCase):
         self.assertEqual(subject["identity"]["clothing_applicability"], "required")
         self.assertEqual(subject["wardrobe"]["upper"], UNKNOWN)
 
-        subject["wardrobe"]["upper"] = "N/A"
-        with self.assertRaisesRegex(ValueError, "requires clothing"):
-            validate_world_state(state)
-        subject["wardrobe"]["upper"] = "absent"
+        subject["wardrobe"] = {
+            "upper": [{"garment": "shirt", "condition": "intact"}],
+            "lower": [],
+            "footwear": [],
+            "other": "N/A",
+        }
+        validate_world_state(state)
+
+        subject["wardrobe"] = {
+            "upper": [], "lower": [], "footwear": [], "other": "N/A",
+        }
         with self.assertRaisesRegex(ValueError, "requires clothing"):
             validate_world_state(state)
 
@@ -483,6 +490,48 @@ class WorldStateReducerTests(unittest.TestCase):
         self.assertEqual(props_held_by(reduced.world_state, "subject_1"), ["prop_food"])
         self.assertNotIn("held_props", reduced.world_state["subjects"]["subject_1"])
         self.assertEqual(reduced.world_state["revision"], state["revision"] + 1)
+        self.assertTrue(reduced.committed)
+
+    def test_failed_action_batch_returns_original_state_and_stops_at_first_failure(self):
+        state = make_reducer_state()
+        before = copy.deepcopy(state)
+        result = reduce_world_state(
+            state,
+            [
+                self.action(
+                    "take", "pickup", actor_subject_id="subject_1",
+                    prop_id="prop_movable",
+                ),
+                self.action(
+                    "bad-place", "place", actor_subject_id="subject_1",
+                    prop_id="prop_movable", location_id="location_b",
+                ),
+                self.action(
+                    "must-not-run", "enter", subject_id="subject_2",
+                    location_id="location_b",
+                ),
+            ],
+            segment_number=1,
+        )
+
+        self.assertFalse(result.committed)
+        self.assertEqual(result.world_state, before)
+        self.assertIsNot(result.world_state, state)
+        self.assertEqual(len(result.outcomes), 2)
+        self.assertTrue(result.outcomes[0].accepted)
+        self.assertFalse(result.outcomes[1].accepted)
+        self.assertEqual(result.outcomes[1].code, "destination_location_mismatch")
+
+    def test_empty_and_fully_valid_batches_commit(self):
+        state = make_reducer_state()
+        empty = reduce_world_state(state, [], segment_number=1)
+        valid = reduce_world_state(
+            state,
+            [self.action("leave-support", "set_support", subject_id="subject_1", support_id=None)],
+            segment_number=1,
+        )
+        self.assertTrue(empty.committed)
+        self.assertTrue(valid.committed)
 
     def test_pickup_rejects_fixed_object_and_unknown_mobility(self):
         state = make_reducer_state()
@@ -491,13 +540,18 @@ class WorldStateReducerTests(unittest.TestCase):
         state["props"]["prop_mobile_unknown"]["mobility"] = UNKNOWN
         result = reduce_world_state(
             state,
-            [
-                self.action("fixed", "pickup", actor_subject_id="subject_1", prop_id="prop_fixed"),
-                self.action("unknown", "pickup", actor_subject_id="subject_1", prop_id="prop_mobile_unknown"),
-            ],
+            [self.action("fixed", "pickup", actor_subject_id="subject_1", prop_id="prop_fixed")],
             segment_number=1,
         )
-        self.assertEqual([outcome.code for outcome in result.outcomes], ["fixed_object", "mobility_unknown"])
+        unknown_mobility = reduce_world_state(
+            state,
+            [self.action("unknown", "pickup", actor_subject_id="subject_1", prop_id="prop_mobile_unknown")],
+            segment_number=1,
+        )
+        self.assertEqual([outcome.code for outcome in result.outcomes], ["fixed_object"])
+        self.assertEqual([outcome.code for outcome in unknown_mobility.outcomes], ["mobility_unknown"])
+        self.assertFalse(result.committed)
+        self.assertFalse(unknown_mobility.committed)
         self.assertEqual(result.world_state, state)
 
     def test_prop_has_one_placement_and_held_lists_are_derived(self):
@@ -643,33 +697,80 @@ class WorldStateReducerTests(unittest.TestCase):
         subject = state["subjects"]["subject_1"]
         subject["identity"]["physical_form"] = "humanoid"
         subject["identity"]["clothing_applicability"] = "required"
-        subject["wardrobe"]["upper"] = "shirt; coat"
+        subject["wardrobe"] = {
+            "upper": [
+                {"garment": "shirt", "condition": "torn"},
+                {"garment": "coat", "condition": "intact"},
+                {"garment": "vest", "condition": "worn"},
+            ],
+            "lower": [{"garment": "trousers", "condition": "intact"}],
+            "footwear": [],
+            "other": "N/A",
+        }
         validate_world_state(state)
         result = reduce_world_state(
             state,
             [
                 self.action(
-                    "remove-coat", "change_clothing", subject_id="subject_1",
-                    change="remove", slot="upper", garment="coat",
+                    "remove-vest", "change_clothing", subject_id="subject_1",
+                    change="remove", slot="upper", garment="vest",
                 ),
                 self.action(
                     "replace-shirt", "change_clothing", subject_id="subject_1",
-                    change="replace", slot="upper", garment="tunic", replaces="shirt",
+                    change="replace", slot="upper", garment="tunic",
+                    condition="clean", replaces="shirt",
+                ),
+                self.action(
+                    "tear-tunic", "change_clothing", subject_id="subject_1",
+                    change="set_condition", slot="upper", garment="tunic",
+                    condition="torn",
                 ),
             ],
             segment_number=2,
         )
         self.assertTrue(all(outcome.accepted for outcome in result.outcomes))
-        self.assertEqual(result.world_state["subjects"]["subject_1"]["wardrobe"]["upper"], "tunic")
+        self.assertEqual(
+            result.world_state["subjects"]["subject_1"]["wardrobe"]["upper"],
+            [
+                {"garment": "tunic", "condition": "torn"},
+                {"garment": "coat", "condition": "intact"},
+            ],
+        )
+        self.assertEqual(
+            result.world_state["subjects"]["subject_1"]["wardrobe"]["lower"],
+            [{"garment": "trousers", "condition": "intact"}],
+        )
+        # Removing the final upper layer is allowed while a lower garment remains.
+        remove_upper = reduce_world_state(
+            result.world_state,
+            [self.action(
+                "remove-coat", "change_clothing", subject_id="subject_1",
+                change="remove", slot="upper", garment="coat",
+            )],
+            segment_number=3,
+        )
+        self.assertTrue(remove_upper.committed)
+        self.assertEqual(remove_upper.world_state["subjects"]["subject_1"]["wardrobe"]["upper"], [
+            {"garment": "tunic", "condition": "torn"},
+        ])
+
+        # A required-clothing subject cannot remove the last recorded garment.
+        result.world_state["subjects"]["subject_1"]["wardrobe"]["lower"] = []
+        result.world_state["subjects"]["subject_1"]["wardrobe"]["upper"] = [
+            {"garment": "tunic", "condition": "torn"},
+        ]
+        validate_world_state(result.world_state)
         forbidden = reduce_world_state(
             result.world_state,
             [self.action(
                 "remove-last", "change_clothing", subject_id="subject_1",
                 change="remove", slot="upper", garment="tunic",
             )],
-            segment_number=3,
+            segment_number=4,
         )
         self.assertEqual(forbidden.outcomes[0].code, "clothing_required")
+        self.assertFalse(forbidden.committed)
+        self.assertEqual(forbidden.world_state, result.world_state)
 
     def test_mechanism_operations_follow_explicit_states_and_capabilities(self):
         state = make_reducer_state()
@@ -690,14 +791,16 @@ class WorldStateReducerTests(unittest.TestCase):
         state = make_reducer_state()
         outcomes = validate_state_actions(
             state,
-            [
-                self.action("unknown", "pickup", actor_subject_id="subject_1", prop_id="prop_unknown"),
-                self.action("patch", "set_subject_field", subject_id="subject_1", field="presence", value="absent"),
-            ],
+            [self.action("unknown", "pickup", actor_subject_id="subject_1", prop_id="prop_unknown")],
             segment_number=1,
         )
         self.assertEqual(outcomes[0].code, "unknown_entity_id")
-        self.assertEqual(outcomes[1].code, "unknown_operation")
+        patch_action = validate_state_actions(
+            state,
+            [self.action("patch", "set_subject_field", subject_id="subject_1", field="presence", value="absent")],
+            segment_number=1,
+        )
+        self.assertEqual(patch_action[0].code, "unknown_operation")
 
     def test_schema_rejects_non_boolean_capabilities(self):
         state = make_reducer_state()

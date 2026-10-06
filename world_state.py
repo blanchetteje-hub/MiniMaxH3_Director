@@ -39,7 +39,9 @@ ACTION_FIELDS = {
     "exit": {"subject_id", "destination_location_id"},
     "move": {"subject_id", "destination_location_id", "support_id"},
     "set_support": {"subject_id", "support_id", "resulting_posture"},
-    "change_clothing": {"subject_id", "change", "slot", "garment", "replaces"},
+    "change_clothing": {
+        "subject_id", "change", "slot", "garment", "replaces", "condition",
+    },
     "open": {"actor_subject_id", "prop_id"},
     "close": {"actor_subject_id", "prop_id"},
     "lock": {"actor_subject_id", "prop_id"},
@@ -78,10 +80,11 @@ class ActionOutcome:
 
 @dataclass(frozen=True)
 class ReductionResult:
-    """Candidate state plus deterministic per-action outcomes."""
+    """Atomic reduction result; uncommitted results contain the original state."""
 
     world_state: dict[str, Any]
     outcomes: tuple[ActionOutcome, ...]
+    committed: bool
 
 
 def new_world_state(seed: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -283,15 +286,49 @@ def validate_world_state(world_state: dict[str, Any]) -> None:
         wardrobe = subject.get("wardrobe")
         if not isinstance(wardrobe, dict) or set(wardrobe) != set(WARDROBE_SLOTS):
             raise ValueError(f"WorldState subject {key!r} has invalid wardrobe slots.")
-        if any(not isinstance(wardrobe[slot], str) for slot in WARDROBE_SLOTS):
-            raise ValueError(f"WorldState subject {key!r} has invalid wardrobe data.")
-        if applicability == "required" and any(
-            wardrobe[slot].strip().casefold() in {"n/a", "absent"}
-            for slot in WARDROBE_SLOTS
-        ):
-            raise ValueError(
-                f"Subject {subject.get('name')!r} requires clothing and cannot have an N/A or absent wardrobe slot."
+        for slot in WARDROBE_SLOTS:
+            slot_value = wardrobe[slot]
+            if slot_value == UNKNOWN or slot_value == "N/A":
+                continue
+            if not isinstance(slot_value, list):
+                raise ValueError(
+                    f"WorldState subject {key!r} has invalid wardrobe data for {slot!r}."
+                )
+            seen_garments: set[str] = set()
+            for layer in slot_value:
+                if not isinstance(layer, dict) or set(layer) != {"garment", "condition"}:
+                    raise ValueError(
+                        f"WorldState subject {key!r} has invalid garment layer in {slot!r}."
+                    )
+                garment = layer.get("garment")
+                condition = layer.get("condition")
+                if not isinstance(garment, str) or not garment.strip():
+                    raise ValueError(
+                        f"WorldState subject {key!r} has invalid garment identity in {slot!r}."
+                    )
+                if not isinstance(condition, str) or not condition.strip():
+                    raise ValueError(
+                        f"WorldState subject {key!r} has invalid garment condition in {slot!r}."
+                    )
+                garment_key = garment.casefold().strip()
+                if garment_key in seen_garments:
+                    raise ValueError(
+                        f"WorldState subject {key!r} has duplicate garment identity in {slot!r}."
+                    )
+                seen_garments.add(garment_key)
+
+        if applicability == "required":
+            has_garment = any(
+                isinstance(wardrobe[slot], list) and wardrobe[slot]
+                for slot in WARDROBE_SLOTS
             )
+            wardrobe_is_known = all(
+                wardrobe[slot] != UNKNOWN for slot in WARDROBE_SLOTS
+            )
+            if wardrobe_is_known and not has_garment:
+                raise ValueError(
+                    f"Subject {subject.get('name')!r} requires clothing but has no recorded garments."
+                )
 
     for prop_id, prop in world_state["props"].items():
         if not isinstance(prop, dict) or prop.get("id") != prop_id:
@@ -750,12 +787,20 @@ def _apply_state_action(
         subject_id = action["subject_id"]
         subject = _require_record(state["subjects"], subject_id, "subject")
         change, slot = action["change"], action["slot"]
-        if change not in {"put_on", "remove", "replace"}:
-            _reject("invalid_clothing_change", "Clothing change must be put_on, remove, or replace.")
+        if change not in {"put_on", "remove", "replace", "set_condition"}:
+            _reject(
+                "invalid_clothing_change",
+                "Clothing change must be put_on, remove, replace, or set_condition.",
+            )
         if change != "replace" and "replaces" in action:
             _reject(
                 "unsupported_action_field",
                 "The replaces field is valid only for a replace clothing action.",
+            )
+        if change not in {"put_on", "replace", "set_condition"} and "condition" in action:
+            _reject(
+                "unsupported_action_field",
+                "The condition field is valid only when adding, replacing, or updating a garment.",
             )
         if slot not in WARDROBE_SLOTS:
             _reject("invalid_wardrobe_slot", "The wardrobe slot is not registered.")
@@ -765,29 +810,75 @@ def _apply_state_action(
         garment = garment.strip()
         applicability = subject["identity"]["clothing_applicability"]
         current = subject["wardrobe"][slot]
-        layers = [] if current.casefold() in {UNKNOWN, "n/a", "absent"} else current.split("; ")
+        layers = deepcopy(current) if isinstance(current, list) else []
+        condition = action.get("condition", UNKNOWN)
+        if "condition" in action and (
+            not isinstance(condition, str) or not condition.strip()
+        ):
+            _reject("invalid_garment_condition", "Garment condition must be a non-empty string.")
+        if isinstance(condition, str):
+            condition = condition.strip()
+
         if change == "put_on":
-            if garment not in layers:
-                layers.append(garment)
+            if not any(layer["garment"].casefold() == garment.casefold() for layer in layers):
+                layers.append({"garment": garment, "condition": condition})
         elif change == "replace":
             replaces = action.get("replaces")
-            if not isinstance(replaces, str) or replaces not in layers:
+            if not isinstance(replaces, str) or not replaces.strip():
                 _reject("garment_to_replace_unknown", "Replacement must identify an exact recorded garment layer.")
-            layers[layers.index(replaces)] = garment
-        else:
-            if garment not in layers:
+            replaces = replaces.strip()
+            replace_index = next(
+                (
+                    index for index, layer in enumerate(layers)
+                    if layer["garment"].casefold() == replaces.casefold()
+                ),
+                None,
+            )
+            if replace_index is None:
+                _reject("garment_to_replace_unknown", "Replacement must identify an exact recorded garment layer.")
+            if garment.casefold() == replaces.casefold():
+                _reject("same_garment_replacement", "Use set_condition to change condition without changing garment identity.")
+            if any(
+                index != replace_index and layer["garment"].casefold() == garment.casefold()
+                for index, layer in enumerate(layers)
+            ):
+                _reject("duplicate_garment_identity", "A slot cannot contain duplicate garment identities.")
+            layers[replace_index] = {"garment": garment, "condition": condition}
+        elif change == "remove":
+            remove_index = next(
+                (
+                    index for index, layer in enumerate(layers)
+                    if layer["garment"].casefold() == garment.casefold()
+                ),
+                None,
+            )
+            if remove_index is None:
                 _reject("garment_to_remove_unknown", "Removal must identify an exact recorded garment layer.")
-            layers.remove(garment)
-            if not layers:
-                if applicability == "required":
-                    _reject("clothing_required", "Removing the final known garment from this slot would violate clothing applicability.")
-                if applicability == UNKNOWN:
-                    _reject("clothing_applicability_unknown", "Cannot decide whether removing the final garment is allowed.")
-                subject["wardrobe"][slot] = "absent"
-                changed.append((subject, f"wardrobe.{slot}"))
-        if layers:
-            subject["wardrobe"][slot] = "; ".join(layers)
-            changed.append((subject, f"wardrobe.{slot}"))
+            layers.pop(remove_index)
+        else:  # set_condition
+            if "condition" not in action:
+                _reject("missing_action_field", "set_condition requires a condition value.")
+            matching_layer = next(
+                (
+                    layer for layer in layers
+                    if layer["garment"].casefold() == garment.casefold()
+                ),
+                None,
+            )
+            if matching_layer is None:
+                _reject("garment_condition_target_unknown", "Condition updates require an exact recorded garment layer.")
+            matching_layer["condition"] = condition
+
+        if applicability == "required" and not any(
+            isinstance(subject["wardrobe"][wardrobe_slot], list)
+            and subject["wardrobe"][wardrobe_slot]
+            for wardrobe_slot in WARDROBE_SLOTS
+            if wardrobe_slot != slot
+        ) and not layers:
+            _reject("clothing_required", "A required-clothing subject must retain at least one recorded garment.")
+
+        subject["wardrobe"][slot] = layers
+        changed.append((subject, f"wardrobe.{slot}"))
 
     elif op in {"open", "close", "lock", "unlock"}:
         actor_id, prop_id = action["actor_subject_id"], action["prop_id"]
@@ -835,10 +926,10 @@ def _run_state_action_engine(
     if isinstance(segment_number, bool) or not isinstance(segment_number, int) or segment_number < 1:
         raise ValueError("segment_number must be a positive integer.")
 
+    original = deepcopy(world_state)
     candidate = deepcopy(world_state)
     outcomes: list[ActionOutcome] = []
     seen_action_ids: set[str] = set()
-    any_change = False
     for index, action in enumerate(state_actions):
         try:
             op, action_id = _validate_action_shape(action)
@@ -854,7 +945,6 @@ def _run_state_action_engine(
             changed = next_candidate != before
             if changed:
                 candidate = next_candidate
-                any_change = True
             outcomes.append(ActionOutcome(
                 action_id, op, True, "applied" if changed else "no_change",
                 "Action passed registered-state rules." if changed else "Action caused no state change.",
@@ -865,17 +955,19 @@ def _run_state_action_engine(
             outcomes.append(ActionOutcome(
                 str(raw_id), str(raw_op), False, error.code, str(error)
             ))
+            return ReductionResult(original, tuple(outcomes), False)
         except (KeyError, TypeError, ValueError) as error:
             raw_op = action.get("op", "") if isinstance(action, dict) else ""
             raw_id = action.get("action_id", "") if isinstance(action, dict) else ""
             outcomes.append(ActionOutcome(
                 str(raw_id), str(raw_op), False, "invalid_action_value", str(error)
             ))
+            return ReductionResult(original, tuple(outcomes), False)
 
-    if any_change:
+    if candidate != world_state:
         candidate["revision"] = world_state["revision"] + 1
     validate_world_state(candidate)
-    return ReductionResult(candidate, tuple(outcomes))
+    return ReductionResult(candidate, tuple(outcomes), True)
 
 
 def validate_state_actions(
