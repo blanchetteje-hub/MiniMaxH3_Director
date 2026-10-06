@@ -961,3 +961,39 @@ Immediate local action: rerun the same command. If `story_setting_extract` still
 capture the newly printed raw response; that will show whether GPT-OSS is emitting
 single-quoted/Python-style objects, commentary around JSON, truncation, or another format
 error before deciding whether parser/prompt repair is warranted.
+
+
+## 2026-10-06 — extractor-local retries + mixed spatial-output preservation
+
+The first local run of the new location-state chain exposed two orchestration/parser problems.
+
+- Extractor parse/content failures were escaping to the run-level recoverable restart, causing
+  unrelated successful stages (character canon, per-Subject wardrobe, story location, and earlier
+  setting passes) to rerun.
+- `story_setting_extract` intentionally returns a mixed payload:
+  `Location:` line + JSON `location_state` + plain-text render description. Although it passed
+  `parse_json_response=False`, `ask_llm()` still opportunistically extracted the first JSON
+  object and returned a Python dict, silently discarding the prefix and trailing prose. The later
+  parser then stringified that dict into single-quoted Python syntax and falsely reported invalid
+  JSON.
+
+Implemented on `object-state-work`:
+
+- `parse_json_response=False` now means exactly raw model text. Mixed-output callers keep the
+  complete response; stage-specific parsers remain responsible for extracting JSON when needed.
+- The defined-Subject wardrobe extractor, static-setting extractor, spatial-refinement extractor,
+  and final mixed spatial extractor now each have their own bounded content/parse retry loop.
+  A failure retries only that extractor against its already-computed input.
+- Wardrobe output now rejects punctuation-only garbage such as `:[{` before committing canon.
+- The final spatial extractor receives both the original compact static-setting facts and the
+  spatial-refinement text. This preserves semantic setting facts while still using the refinement
+  as its spatial input; the full expanded story is not re-fed unless production evidence shows it
+  is needed.
+- On retries, the final extractor is reminded to return all three required parts and valid
+  double-quoted JSON.
+
+Commit: `23cb452d509ee03cdcf594d2a9becdd9b95a9172`.
+
+Next local action: rerun the tavern case. A malformed final spatial response should produce another
+`story_setting_extract` call with attempt 2/3 without rerunning wardrobe/location/upstream setting
+extractors. Inspect the preserved full mixed response before deciding whether more context is needed.
