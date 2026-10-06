@@ -289,14 +289,30 @@ A rectangular tavern interior.
         self.assertIn("show each Subject at least once", prompt)
         self.assertIn("may remain stationary", prompt)
 
-    def test_initial_location_subject_rejects_held_prop_state(self):
-        with self.assertRaisesRegex(ValueError, "location/pose only"):
-            minimax.parse_initial_location_subjects({
-                "subjects": [{
-                    "name": "goblin",
-                    "initial_state": "leaning over the counter clutching a chipped mug",
-                }],
-            })
+    def test_initial_location_subject_strips_held_prop_tail_without_losing_subject(self):
+        result = minimax.parse_initial_location_subjects({
+            "subjects": [{
+                "name": "goblin",
+                "initial_state": "leaning over the counter clutching a chipped mug",
+            }],
+        })
+        self.assertEqual(
+            result,
+            [{"name": "Goblin1", "initial_state": "leaning over the counter"}],
+        )
+
+    def test_initial_location_subject_retry_does_not_force_generic_role_name(self):
+        request = mock.Mock(side_effect=[
+            '{"wrong":[]}',
+            '{"subjects":[{"name":"goblin","initial_state":"leaning over the counter"}]}',
+        ])
+        minimax.extract_initial_location_subjects(
+            ["Amy wipes the counter.", "A goblin leans over the counter."],
+            "<Subject 1> is Amy (S1).",
+            llm_request=request,
+        )
+        retry_prompt = request.call_args_list[1].args[0][-1]["content"]
+        self.assertNotIn("Role1", retry_prompt)
 
     def test_physical_validator_prompt_knows_existing_offscreen_subject(self):
         state = minimax.new_continuity_state()
