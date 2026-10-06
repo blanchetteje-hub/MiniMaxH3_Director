@@ -1703,7 +1703,8 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         rules = minimax.build_director_rules(
             8, 4, 1, "<Subject 1> is Amy, a woman.", 2,
         )
-        self.assertIn("Short dialogue is allowed", rules)
+        self.assertIn("write a brief direct spoken line using <d>...</d>", rules)
+        self.assertIn("Do not add intelligible dialogue", rules)
         self.assertTrue(minimax._h3_contains_spoken_dialogue(
             "Amy asks, 'Who wants eggs?'"
         ))

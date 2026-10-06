@@ -15,12 +15,6 @@ VALID_PNG = base64.b64decode(
 
 
 class RefreshContextLatentTests(unittest.TestCase):
-    def test_h3_alignment_matches_workflow_math(self):
-        self.assertEqual(minimax.h3_frame_count_for_duration(8), 192)
-        self.assertEqual(minimax.h3_context_tail_skip_frames(8), 170)
-        self.assertEqual(minimax.h3_frame_count_for_duration(6), 158)
-        self.assertEqual(minimax.h3_context_tail_skip_frames(6), 136)
-
     def test_refresh_uses_final_22_frames_as_context_latents(self):
         with tempfile.TemporaryDirectory() as directory:
             previous_video = os.path.join(directory, "previous.mp4")

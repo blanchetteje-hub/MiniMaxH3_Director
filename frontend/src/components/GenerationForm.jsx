@@ -4,8 +4,9 @@ import HelpTip from './HelpTip.jsx'
 
 const INITIAL_SETTINGS = {
   generation_mode: 'new', vram_mode: '32', segment_length: '', total_segments: '',
-  megapixels: '0.5', resume: '1', steps: '6', trim_frames: '2', refresh: '6',
-  vision_continuity: '0', retention: false, repair: '', model: 'gpt', temp: '0.8', first_frame: false,
+  megapixels: '0.5', resume: '1', steps: '6', trim_frames: '2', refresh: '999',
+  vision_continuity: '0', retention: false, disable_subject_removal: false,
+  repair: '', model: 'gpt', temp: '0.4', visual_style: 'Live-Action cinematic', first_frame: false,
   loras: [], beat_count: '', beat_length: '', use_prompts: '',
   test_prompt_generation: false, director_only: false,
   capture_h3_segment: '', capture_h3_fixture: '', capture_h3_validation_segment: '',
@@ -87,14 +88,15 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
         {rendering && <p className="muted-note">Clip count, duration, and workflow metadata come from the saved prompt package.</p>}
         {!rendering && <details className="advanced"><summary>Rendering & continuity</summary><div className="field-grid">
           {input('steps', 'Sampling steps', 'ComfyUI sampling steps. More steps may improve quality but take longer.', 'number', { min: '1' })}
-          {input('trim_frames', 'Trim frames', 'Frames removed from each clip after the first when stitching the final video.')}
-          {!rendering && input('refresh', 'Refresh interval', 'Compatibility fallback: regenerate from the preceding clip’s last frame every N segments.', 'number', { min: '1' })}
+          {input('trim_frames', 'Trim frames', 'Frames removed from non-guided continuation clips when stitching. Guided clips already remove their exact Guide overlap.')}
+          {!rendering && input('refresh', 'Refresh interval', 'Automatic clean-refresh cadence. Default 999 effectively disables routine refresh; an explicit value overrides source-span chapter refreshes.', 'number', { min: '1' })}
           {!rendering && !limited && input('vision_continuity', 'Vision continuity interval', 'Check rendered frames every N segments. 0 disables checks; requires both the LLM and ComfyUI.')}
         </div></details>}
         {!rendering && <details className="advanced"><summary>Prompt & story options</summary><div className="field-grid">
-          {mode === 'new' && input('temp', 'Story temperature', 'Controls creativity in the initial story-writing LLM call only (--temp). Default: 0.8. Zero is allowed; later LLM calls keep their own settings.', 'number', { min: '0', step: 'any' })}
+          {mode === 'new' && input('temp', 'Story temperature', 'Controls creativity in the initial story-writing LLM call only (--temp). Default: 0.4. Zero is allowed; later LLM calls keep their own settings.', 'number', { min: '0', step: 'any' })}
+          {input('visual_style', 'Visual style', 'Global rendering style injected immediately after [Shot 1] in every H3 prompt (--visual-style).', 'text', { placeholder: 'Live-Action cinematic' })}
           <Field label="Response formatter" help="Choose how the LLM response is parsed. Match this to your configured model."><select aria-label="Response formatter" value={settings.model} onChange={event => setField('model', event.target.value)} disabled={disabled}><option value="gpt">GPT</option><option value="mistral">Mistral</option><option value="qwen">Qwen</option></select></Field>
-        </div>{check('retention', 'Include retention analysis', 'Append retention analysis to every clip after the first.')}{check('first_frame', 'First-frame instructions', 'Add first-frame guidance to the prompt for segment 1.')}
+        </div>{check('retention', 'Include retention analysis', 'Append retention analysis to every clip after the first.')}{check('disable_subject_removal', 'Disable subject removal', 'Keep every previously seen Subject/reference bound instead of aging inactive Subjects out after half the story.')}{check('first_frame', 'First-frame instructions', 'Add first-frame guidance to the prompt for segment 1.')}
         {!limited && mode === 'new' && <div className="story-tools"><p>Prepare beats separately without rendering a video.</p><div className="field-grid">{input('beat_count', 'Story beat count', 'Number of beats to write from story.txt using Generate Beats.', 'number', { min: '1' })}{input('beat_length', 'Beat duration (seconds)', 'Duration per story beat. If blank, use clip duration.', 'number', { min: '0.01', step: 'any' })}</div><button type="button" className="secondary-button" disabled={disabled} onClick={generateBeats}>Generate Beats</button></div>}
         </details>}
         <details className="advanced"><summary>{rendering ? 'Reference images' : 'Reference images & LoRAs'}</summary><p className="muted-note">Set all six reference image overrides in Defined Images above. Their order determines Picture 1 through Picture 6. Edit project files below for character definitions.</p><div className="field-grid"></div>

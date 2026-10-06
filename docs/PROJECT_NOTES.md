@@ -2,6 +2,12 @@
 
 This file is the persistent source of truth for the current MiniMax H3 architecture and acceptance target. Historical iteration details belong in Git history, not here.
 
+## Repository / active branch
+
+Repository: `blanchetteje-hub/MiniMaxH3_Director`
+
+Active experimental branch: `location-state-test`
+
 ## Primary goal
 
 The goal is:
@@ -9,6 +15,115 @@ The goal is:
 > **story.txt -> gold-standard MiniMax H3 prompts**
 
 The pipeline is disposable. Any intermediate representation, LLM call, validator, state object, or Python layer exists only if it improves that path.
+
+## Project progress checklist
+
+This checklist is the compact current-status view. Historical sections below explain why each decision exists. A checked item means the architecture has been implemented and has enough production evidence to treat it as provisionally complete. Unchecked items are active verification targets or remaining work.
+
+### Story / planning / local-LLM pipeline
+
+- [x] **story.txt remains the sole narrative authority.**
+- [x] **Summary -> expanded story** path is established, with filmable/literal prose and a deliberately small prompt.
+- [x] **Expanded story -> Beats** is established; SUMMARY is a final guide and Beats preserve required source ordering/content.
+- [x] **Beat validation/repair** handles finite endpoints, beneficiary delivery, explicit participant/object enumerations, and source-faithful completion without inventing unnecessary terminal outcomes.
+- [x] **20B-class local runtime is the production target.** GPT-5.6 Sol is development/evaluation only.
+- [x] **Task-specific LLM sampling/reasoning profiles** are separated by job rather than loaded model.
+- [x] **Prompt generation and ComfyUI rendering can be separated** for a one-GPU workflow.
+- [x] **Bridge/mailbox workflow retired.** Local runs + uploaded artifacts are the active acceptance/debugging path.
+
+### Director / H3 prompt quality
+
+- [x] **Two-stage Director path:** Request 1 owns creative RAW staging; downstream H3 handling is lossless/translation-oriented.
+- [x] **RAW starts at 00:00.000** and continuation frame zero is a Guide-authority anchor rather than a semantic restage.
+- [x] **RAW physical/order coherence** rejects teleportation, omitted prerequisite movement, impossible barrier order, stale end state, unexplained prop changes, and similar causal failures.
+- [x] **Post-RAW pronoun cleanup** changes only unambiguous person pronouns.
+- [x] **Post-RAW dynamic Subject resolution** owns functional naming of newly staged unnamed foreground characters/creatures.
+- [x] **Final H3 action preservation** keeps accepted RAW action authoritative instead of allowing formatter drift.
+- [x] **Direct speech handling** uses stable H3 dialogue syntax with Subject speaker IDs.
+- [x] **Soundscape and music are separate jobs.** Soundscape is extraction-only; music is the narrow creative audio stage.
+- [x] **Good camera movement.** Continuous choreography, natural pan/truck/tilt/pedestal/arc/tracking/reframing, and the periodic reframe rule have produced excellent camera work across roughly the last six production videos.
+- [x] **Continuous-take default / no gratuitous cuts** is copied into the actual H3 prompt.
+- [x] **RAW timing-feasibility validator accepted in production.** The next tavern run eliminated the prior impossible doorway/table/bar spatial jumps and H3 no longer needed to hide compressed travel with cuts. The validator remains qualitative (temperature 0, no hardcoded minimum interval).
+- [ ] **Verify RAW temperature 0.2 + economical-staging rule.** Confirm reduced unnecessary reactions/fluid/object embellishment without making staging too sterile.
+
+### Immediate segment-to-segment continuity
+
+- [x] **Native 22-frame MiniMax H3 AddGuide continuation** is the normal seam mechanism.
+- [x] **Guide carries aligned video + audio context** while PREVIOUS SHOT END no longer dictates visible frame-zero composition.
+- [x] **All literal 22 overlap frames are removed after guided render** and guided clips do not receive another two-frame seam trim.
+- [x] **Current wardrobe/pose/held-state can come from immediate visual continuation** rather than being reset by a Picture reference.
+- [ ] **Occasional ~0.25-second continuation replay at segment start.** This has appeared more than once even after literal Guide-overlap trimming. Determine whether it is generated temporal echo inside H3 rather than a retained-frame trim error.
+
+### Location / environment continuity
+
+- [x] **Story-level overall + starting-location extraction** exists and Segment 1 gets authoritative starting-location context.
+- [x] **Persistent location memory:** generate one character-free 3-second 360-orbit location clip before Segment 1 and reuse it throughout the run.
+- [x] **Location-reference audio is deterministically removed with ffmpeg** before conditioning reuse.
+- [x] **Location-reference authority is limited to static environment/spatial layout**, not characters or current camera composition.
+- [x] **Location continuity accepted.** Recent tavern runs preserved covered room geometry with unexpectedly high accuracy across changing viewpoints.
+- [x] **Setting extraction avoids over-promoting action-only props** and treats relative labels such as front/back/side as uncertain unless distinct architecture is established.
+- [ ] **Production-verify Director static-setting authority.** Request 1 and RAW coherence now receive the compact extracted static setting and must preserve explicitly described fixed fixtures/lighting placement without forcing off-camera elements into frame.
+- [ ] **Compact static-space existence bookkeeping.** Add only enough text/JSON state to answer whether a closet, shelf, doorway, storage point, or other interaction location has been established. Do not duplicate the orbit video's geometry.
+- [ ] **Multi-room / returning-location stress test.** Verify authority when the story moves between several spaces and later returns.
+
+### Subject identity / character consistency
+
+- [x] **Canonical named characters promote deterministically into the Subject registry** when they appear in accepted RAW.
+- [x] **Dynamic functional Subject names are stable** and preserve role/species semantics without same-type alias drift.
+- [x] **Named dynamic Subjects carry canonical prose** such as age/gender/clothing where available.
+- [x] **Full Python Subject continuity state is text-renderable on re-entry:** position, pose/action, wardrobe, topology, physical condition, held/attached props, injuries/substances, spatial relationships, persistent effects, and terminal absence.
+- [ ] **Production-verify generated identity Pictures for dynamic Subjects.** Before first H3 story appearance, a no-source dynamic Subject now gets a 1-second portrait reference whose sampled frame owns identity + current appearance. Later intentional wardrobe/condition changes reuse the prior generated Picture as identity conditioning. Verify first appearance and re-entry stay on that identity.
+- [ ] **Verify dynamic identity survives wardrobe changes.** A dynamic Subject's generated Picture may depict current clothing, but versioned wardrobe updates must preserve the same face/head, build, species, and distinguishing traits while allowing semantic clothing to change.
+- [ ] **DINO recovery path remains fallback only.** Revisit DINO extraction/cropping if deliberate pre-generated character references fail or cannot cover a use case.
+
+### Clothing / wardrobe continuity
+
+- [x] **Source identity Pictures no longer own current clothing.** Source-backed Subjects use their original Picture for persistent identity/body appearance plus a separate generated current-clothing Picture. Dynamic Subjects with no source Picture use a generated identity + current-appearance Picture that is versioned from its prior identity when wardrobe changes.
+- [x] **Current wardrobe is stored in Python-owned Subject state and can be rendered back into re-entry Subject prose.**
+- [ ] **Intentional wardrobe-change persistence.** Stress test Outfit A -> explicit change to Outfit B -> character leaves for multiple segments -> character returns while permanent identity reference still depicts A. The return must stay in B.
+- [ ] **Wardrobe-change bookkeeping/validation.** Ensure changes occur only when source/Beat authorizes them and stale canonical/reference clothing cannot roll them backward.
+
+### Props / physical bookkeeping
+
+- [x] **Prop identity and acquisition provenance** are enforced: manipulated props cannot silently become another object and newly acquired props need a visible/stated source.
+- [x] **Generic transfer physics:** every transfer requires an explicit, distinct, traceable source and destination, with the transferred object/material established at the source first.
+- [x] **Spatial travel is generalized:** interacting with something at another established position requires actual subject movement there first.
+- [x] **Final continuity state must match the final timed action**, not an earlier convenient state.
+- [x] **Barrier/containment and irreversible-state bookkeeping** has deterministic/narrow semantic support from earlier acceptance work.
+- [x] **Persistent movable-prop ledger architecture is implemented.** The existing combined-continuity call now also maintains stable IDs and state for distinct reusable/interactable props (for example mugs, glasses, baskets, tools, weapons, keys, and containers), including kind, owner, holder, location, contents, and present/lost/destroyed status. Unchanged props copy forward even when offscreen, so this adds no new always-on LLM stage. Existing source-authorized item effects (held/equipped/stored/dropped/lost) deterministically override prompt-derived ledger state rather than creating a competing inventory authority.
+- [x] **Missing-prop handling is proactive rather than generate/reject/regenerate.** Before RAW, only prop-interaction Beats trigger a tiny temperature-0 micro-call. If a required usable prop is not established, it returns one minimal natural staging instruction for Request 1; otherwise it returns nothing. Existing validators remain backstops rather than the normal repair loop.
+- [x] **Basic movable-prop persistence accepted in production.** The latest tavern rerun eliminated the prior appearing/disappearing glasses/basket behavior, and liquid/container behavior was acceptable overall. The remaining demonstrated prop defect was semantic ownership: Segment 3 reused Goblin1's tracked mug as serving inventory for Elf1.
+- [x] **Owned/held props are not shared inventory.** The pre-RAW prop-staging micro-call and Director now treat another subject's owned/held prop as unavailable unless CURRENT BEAT explicitly authorizes that use/taking/transfer; missing serving props should be staged as distinct ordinary instances instead of hijacking a tracked patron prop.
+- [x] **Deterministic final-participant carry-forward.** After dynamic Subject resolution, Python now compares the final timed micro-action with the End continuity state. A named Subject still present in the final action but omitted by End state is copied into that state from the exact final-action evidence, without another LLM call. Explicit exits/leaving/occlusion are not carried.
+- [ ] **Production-verify ownership + final-subject/final-prop carry-forward.** Rerun the tavern case and verify Goblin1 remains semantically located after Segment 2, does not wander into Elf1's seat in Segment 3, and Goblin1's mug is not repurposed to serve Elf1. Also verify Dragon1's handed crystal cup survives Segment 4 End state/ledger and remains the drink source in Segment 5.
+- [ ] **End-to-end bookkeeping stress test.** Use a story that stores, drops, retrieves, transfers, equips, loses, and later reuses props while characters leave/re-enter rooms.
+
+### Refresh / long-run quality / runtime robustness
+
+- [x] **Clean-refresh loader ambiguity fixed** after location reference added a second video loader.
+- [x] **Routine auto-refresh is intentionally dormant by default (999).** The legacy refresh path remains available, but Guide + location-reference behavior is preferred unless long-run degradation gives evidence to re-enable periodic refresh.
+- [x] **Missing required workflow nodes fail loudly/fatally** instead of being retried as transient generation failures.
+- [x] **Reference-video experiments were narrowed back from full-clip/56-frame history to native Guide continuation** after runtime/VRAM and composition tradeoffs were measured.
+- [ ] **Longer-run degradation test.** Run substantially more than six segments before declaring periodic refresh unnecessary for general use.
+
+### Back-pocket experiments — not active work
+
+- [ ] **RefMod:** potential future experiment for persistent-reference efficiency / reduced VRAM-time cost; do not integrate while current reference architecture is working.
+- [ ] **Full spatial JSON/scene graph:** intentionally avoided unless existence-level bookkeeping proves insufficient.
+- [ ] **DINO-based character harvesting:** fallback if deliberate generated character-reference creation is not reliable.
+
+### Final completion / release acceptance
+
+The project is close to feature-complete when the remaining bookkeeping/identity tests pass. Before calling the pipeline done, run at least one deliberately hostile acceptance story covering:
+
+- [ ] multiple rooms with later returns;
+- [ ] dynamically generated named characters that leave and re-enter;
+- [ ] at least one intentional clothing change across an absence;
+- [ ] prop storage/retrieval/transfer/loss across multiple segments;
+- [ ] enough segments to expose cumulative continuation quality drift;
+- [ ] a genre/staging pattern materially different from the current tavern and zombie examples (for example high fantasy with nonhuman characters).
+
+If those pass without exposing a new architectural gap, remaining work should be packaging, documentation, usability, and performance rather than another core continuity subsystem.
 
 ## Rule 0: story.txt is the one narrative source of truth
 
@@ -61,8 +176,12 @@ Current task profiles:
 - `STORY_EXPANSION_LLM_SETTINGS`: continuous prose expansion from the source
   summary; temperature `0.4`, high reasoning, randomized seed.
 - `CREATIVE_GENERATION_LLM_SETTINGS`: open-ended creative staging such as
-  character canon, ARC create/repair, and Director RAW scene creation;
-  temperature `0.8`, high reasoning, randomized seed.
+  character canon and ARC create/repair; temperature `0.8`, high reasoning,
+  randomized seed.
+- `DIRECTOR_RAW_SCENE_LLM_SETTINGS`: Director RAW scene creation; temperature
+  `0.2`, high reasoning, randomized seed. RAW remains creative, but uses lower
+  sampling than other creative-generation work to reduce gratuitous staging
+  embellishment while preserving useful concrete invention.
 - `BEAT_WRITING_LLM_SETTINGS`: Beat CREATE/REPAIR; temperature `0`, high
   reasoning, seed `42`.
 - `STORY_TO_BEATS_LLM_SETTINGS`: derive Beats from an expanded story;
@@ -1499,7 +1618,7 @@ as blocking acceptance gates.
   - NEXT BEAT is only the boundary.
 - Request 1 no longer receives Python-generated final-state contracts, barrier
   contracts, or HELD/EQUIPPED/STORED item instructions.
-- Request 1 structured output is now creation-only: \`{"raw_scene":"..."}\`.
+- Request 1 structured output is now creation-only: `{"raw_scene":"..."}`.
   Model-owned completion booleans were removed from the production schema.
 - Existing deterministic Director checks are retained as diagnostics only.
   Hand conflicts, item-state contradictions, missing subjects, topology/crossing,
@@ -1897,3 +2016,513 @@ Architecture is simplified again:
   8-second Director plan.
 
 This keeps hidden render mechanics deterministic and outside the local model's job.
+
+
+## 2026-10-04 experiment — persistent location-state reference
+
+Active experiment branch: `location-state-test`.
+
+The seamless 22-frame native AddGuide continuation is frozen. This experiment targets only
+off-camera spatial persistence.
+
+At run start, the expanded story is used to establish the broad location as before. A second
+small deterministic-temperature LLM extraction now returns only static setting facts actually
+supported by the expanded story (architecture, layout, fixtures, entrances, surfaces,
+persistent furniture, landmarks, lighting sources). When the story is vague, the extractor
+falls back to the broad location and H3 is allowed to design unspecified details.
+
+Before Segment 1, Python renders one character-free 2-second panoramic H3 location video.
+Configured Picture references are deliberately disconnected for this render. The resulting
+video is saved separately and is never stitched into the story.
+
+For normal initial/append segments, the same clip is supplied as Ref2V `<Video 1>` and the
+prompt states that it owns only static environment/spatial layout. Append's existing 22-frame
+native AddGuide remains a separate loader and continues to own exact seam composition and
+temporal continuation. Location-reference audio is never supplied.
+
+The clean-refresh conditioner has no Ref2V video input, so refresh samples four frames from
+the same location clip into its existing reference-image batch. This avoids replacing the
+proven refresh architecture while keeping static environment evidence available.
+
+Characters/dynamic subject state are explicitly out of scope for this experiment.
+
+
+## Current continuity decisions — 2026-10-04
+
+These decisions supersede older refresh/location notes above where they conflict:
+
+- Persistent location memory is a single character-free 3-second 360-orbit
+  reference video rendered before Segment 1 and reused for the run. The latest
+  tavern acceptance showed near-complete consistency for geometry visible in
+  that reference.
+- Routine clean refresh is disabled in practice by the default
+  `DEFAULT_REFRESH_INTERVAL = 999`. An explicitly supplied numeric refresh
+  interval is authoritative; source-span chapter refreshes are only a legacy
+  fallback when no interval is supplied.
+- Native AddGuide continuation owns ordinary segment-to-segment visual
+  continuity. Its full 22-frame overlap is removed once during guided-append
+  postprocessing; stitching must not trim another two frames from guided clips.
+- Summary-to-story expansion should remain creative enough to stage the source,
+  but its physical prose must be literal and filmable. Attachment, movement,
+  action targets, containers, and destinations may not depend on figurative
+  wording. Default story temperature is 0.4.
+- Explicit speech in a Beat is explicit speech in RAW/H3. Indirect actions such
+  as "asks for a pint" or "orders a pint" must be rendered as short direct
+  `<d>...</d>` dialogue; once the speaker's dynamic Subject is registered,
+  Python supplies the stable speaker ID, e.g.
+  `Goblin1 (S3) said <d>Give me a pint.</d>`.
+- Post-RAW dynamic Subject resolution is a required pre-H3 identity stage, not a
+  best-effort decoration. A resolved foreground Subject must be registered in
+  the same segment in which it first appears or generation stops before render.
+- Continuous-take staging must preserve physical travel. A subject established
+  at one location cannot interact with a distant location without explicit
+  timed movement there.
+
+
+## 2026-10-04 update — location wording, action pacing, RAW sampling
+
+The latest tavern acceptance confirmed that the persistent location-reference
+video is working well for room geometry, while several remaining failures were
+caused by RAW staging/timing:
+
+- Static setting extraction must not treat relative action wording as proof of
+  separate architecture. Labels such as front/back/side door or left/right table
+  are preserved only when the story establishes multiple distinct instances or
+  the relative identity is itself a persistent architectural fact. With one
+  established instance, use a generic static description such as `entrance door`.
+- Director RAW must budget visible time for every physical prerequisite it
+  invents. Movement, acquisition, positioning, opening, or another prerequisite
+  that must precede a dependent action gets its own earlier timed micro-beat
+  instead of being compressed into the same timestamp.
+- A separate temperature-0 timing-feasibility validator now checks consecutive
+  RAW timestamps and rejects only obvious compression that would force a hidden
+  cut, teleport, skipped prerequisite, or instantaneous relocation/manipulation.
+  It deliberately uses no fixed minimum interval.
+- Transfer physics are generic: every transfer must have an explicit, distinct,
+  traceable source and destination, and the transferred material/object must be
+  established at the source before reaching the destination.
+- RAW invention remains allowed, but optional secondary reactions, extra
+  consequences, and extra object/substance motion should not be added once the
+  required action is already readable.
+- Director RAW now uses its own task profile at temperature `0.2`; other
+  open-ended creative generation remains at `0.8`.
+
+A structured static-space catalog remains a future experiment, not current
+architecture.
+
+
+## Continuity authority model — target architecture
+
+The continuity system should use different evidence for different kinds of
+state instead of asking one representation to solve every continuity problem:
+
+- **Location not externally referenced:** generate one short character-free
+  3-second 360-orbit location video before Segment 1 and reuse it as the
+  persistent location reference. This video is the visual authority for the
+  location's appearance, geometry, layout, fixtures, entrances, furniture, and
+  other static spatial relationships. Text/JSON should not attempt to reproduce
+  its geometry when the visual reference already carries that information.
+- **Current character clothing:** implemented as a parallel generated
+  Picture reference. When a visible character first needs a generated visual
+  reference, or the canonical current wardrobe changes, render a 1-second
+  front-facing neutral character clip from the existing character description
+  and current wardrobe, sample the 0.5-second frame, and register that Picture
+  as clothing-only authority. External/original Pictures continue to own
+  identity; the generated Picture exists specifically so old reference-image
+  clothing cannot override current wardrobe.
+- **Immediate visual state:** native AddGuide continuation frames own the exact
+  state at ordinary segment seams: current composition, pose, visible clothing,
+  held objects, nearby subjects, and other details H3 can directly continue
+  from the preceding frames.
+- **Semantic state:** Python/LLM bookkeeping owns facts that cannot safely be
+  inferred from a visual reference alone: subject presence and identity,
+  current wardrobe, prop possession/provenance/transfers, intentional state
+  changes, and which architectural/interaction elements have actually been
+  established. A future compact static-space catalog may therefore be useful as
+  an *existence validator* (for example, rejecting "Amy grabs the broom from the
+  closet" when no closet has been established), rather than as a textual map of
+  coordinates already represented by the location-reference video.
+
+In short, the intended authority split is:
+
+- unreferenced location -> generated 3-second orbit -> persistent location ref
+- current character wardrobe -> generated 1-second front-facing clip -> 0.5-second clothing-only Picture
+- immediate seam state -> AddGuide overlap frames
+- nonvisual/history-dependent facts -> semantic bookkeeping
+
+This division is intentional. Persistent visual references should establish
+what things look like; semantic bookkeeping should establish what exists, what
+changed, who owns or wears what, and whether a requested action is physically
+and causally legal. Avoid duplicating visual geometry in text/JSON unless a
+validator specifically needs an existence-level fact.
+
+
+## 2026-10-04 update — persistent movable-prop ledger and proactive staging
+
+The latest tavern run closed the remaining obvious spatial/travel failure: the prior
+doorway/table/bar jumps were gone. The remaining visible continuity failures were ordinary
+movable props—especially glasses and the basket—appearing or disappearing across actions
+and segment boundaries.
+
+The prop solution deliberately avoids another generate -> validate -> reject -> regenerate
+cycle:
+
+1. The existing combined-continuity call, which already runs while H3 renders, now also
+   maintains a separate persistent movable-prop ledger. This adds no new always-on LLM call.
+2. Distinct reusable/interactable props receive stable IDs such as `mug_1` and carry
+   `kind`, `owner`, `holder`, `location`, `contents`, and `status`
+   (`present`, `lost`, or `destroyed`). Unchanged props copy forward even when
+   offscreen. Existing source-owned `set_item_state` effects remain higher authority:
+   held/equipped/stored/dropped/lost state is deterministically overlaid onto the ledger.
+   A source-owned destroyed object also marks a uniquely matching tracked prop destroyed.
+3. Architecture, fixed fixtures, furniture, clothing, and ambient clutter are excluded
+   from this ledger. Static architectural existence remains a separate future bookkeeping
+   concern.
+4. Before Director RAW, Python cheaply screens for strong prop-interaction verbs. Only
+   those Beats may run a tiny deterministic-analysis micro-call. The call compares CURRENT
+   BEAT, PREVIOUS SHOT END, and the prop ledger. If the Beat assumes a missing usable prop,
+   it returns one short natural staging sentence to make that prop available before the
+   dependent action. If the prop is already available—or the Beat itself acquires it—the
+   result is empty.
+5. The micro-call may not rewrite the Beat, change its outcome, add dialogue/characters,
+   replace an established prop, or invent unsupported architecture/storage. When no
+   established storage source exists, it may place the needed prop directly at a natural
+   interaction point.
+6. Request 1 receives the persistent prop ledger plus any one-line availability staging
+   before generating RAW. The existing physical/coherence validator remains a backstop,
+   not the primary prop-repair mechanism.
+
+Next acceptance should focus on mug/glass/basket persistence and transfer/container state.
+Do not reopen the location-reference or spatial-timing architecture unless that run shows
+a regression.
+
+## 2026-10-04 update — prop persistence accepted; ownership and final-subject carry-forward
+
+The next tavern acceptance showed that the persistent movable-prop ledger solved the main
+visible object-continuity problem: glasses/basket no longer appeared and disappeared, and
+fluid/container behavior was acceptable overall.
+
+One Segment 3 failure exposed two narrower bookkeeping defects:
+
+1. Segment 2's final timed action still had Goblin1 present and stepping back toward the
+   hearth, but Request 1's End continuity state omitted Goblin1 entirely. Combined
+   continuity therefore knew Goblin1 existed but lost his current position, leaving H3's
+   22-frame Guide to visually continue a subject whose semantic state was effectively
+   locationless.
+2. The prop ledger correctly preserved `mug_1` as Goblin1's owned mug on the counter,
+   but Director treated that tracked mug as generic serving inventory and used it as the
+   source for Elf1's drink.
+
+Implemented response:
+
+- After post-RAW Subject resolution gives every dynamic participant a stable name, Python
+  deterministically inspects the final timed micro-action. If a named Subject is still
+  present there but the End continuity state omits that Subject, the exact final-action
+  evidence is appended to End state. This is bookkeeping repair, not another semantic
+  validator or generate/reject/regenerate cycle. Explicit leave/exit/fully-occluded final
+  actions are not carried.
+- Prop ownership/holding is now an availability boundary. A ledger prop owned or held by
+  another Subject does not count as shared inventory unless CURRENT BEAT explicitly
+  authorizes reuse, taking, or transfer.
+- The existing conditional prop-staging micro-call is instructed to prefer a distinct
+  ordinary instance when the only matching tracked prop belongs to somebody else, and
+  Request 1 receives the same ownership rule in both its Director contract and injected
+  prop-state block.
+- No new always-on LLM call was added.
+
+Next acceptance: rerun the same tavern case and specifically verify Segment 2 -> 3:
+Goblin1 should retain his final location/state, should not drift into Elf1's seat, and his
+tracked mug should remain his rather than becoming Elf1's serving source.
+
+## 2026-10-04 update — one-second character clip -> current-clothing Picture
+
+The planned character-reference experiment has been replaced by a narrower implementation
+driven by the observed Amy wardrobe regression.
+
+- Trigger: a visible character has no generated clothing Picture yet, or the character's
+  canonical current wardrobe has changed since the last generated Picture.
+- Render: an isolated 1-second H3 clip using the same base workflow strategy as the
+  location-reference render, but with a static front-facing character instead of a 360
+  environment orbit.
+- Sample: frame at 0.5 seconds becomes the generated reference PNG.
+- Semantics: the added prompt line is clothing-only, e.g.
+  `<Picture 2> references only the clothing that Amy is currently wearing.` Identity
+  remains owned by the normal Subject/original Picture/video-continuation system.
+- Ordering: H3 Pictures are treated as dense positional inputs. Six template LoadImage
+  nodes do not reserve six positions. With only Picture 1 active, the first generated
+  clothing reference is Picture 2.
+- Capacity: existing LoadImage nodes are reused through active Picture 6; Picture 7+ causes
+  Python to create additional LoadImage nodes and autogrow reference inputs dynamically.
+- Stability: once a character receives a generated Picture number, later wardrobe changes
+  replace that Picture's versioned PNG instead of allocating a new number.
+- Persistence: generated reference metadata is kept in generation_state.json and copied
+  into each saved finalized prompt record.
+
+This adds ComfyUI work only when a character reference is first created or its current
+wardrobe changes. It adds no LLM request.
+
+## 2026-10-04 update — unified visual-state media storage
+
+Persistent generated state media is consolidated under `VIDEO_OUTPUT/state`
+(normally `<ComfyUI output>/video/state/`):
+
+- `location_reference*.mp4`
+- `character_reference*.mp4`
+- `minimax_character_ref_*.png`
+
+The state-directory PNG is authoritative and its absolute path is stored in character
+reference metadata/checkpoints. ComfyUI's LoadImage restriction is handled by staging a
+copy into `COMFY_INPUT` when the workflow is built; the input copy is not the persistent
+state source. New renders no longer write to the former `video/location_state` or
+`video/character_state` prefixes.
+
+## 2026-10-04 update — identity-conditioned clothing-reference generation
+
+The first generated clothing-reference test exposed cross-authority bleed: because the
+1-second outfit clip was rendered from text alone, it could invent a different face/body,
+and that invented appearance then influenced later story renders.
+
+Current fix:
+- use the Subject's original source Picture as the sole image reference while rendering the
+  1-second clothing clip;
+- inside that isolated render, source Picture 1 is identity-only authority and text is
+  clothing authority;
+- final story use remains unchanged: the sampled generated Picture is described as
+  clothing-only authority, so it should not redefine the character's identity;
+- dynamic/video-only Subjects without an original Picture remain a fallback case.
+
+This preserves the intended authority split:
+original Picture -> identity/body; generated current-clothing Picture -> wardrobe.
+
+## 2026-10-04 update — portrait person refs and source-authorized wardrobe regeneration
+
+Person/outfit reference clips are now rendered on a portrait 13:19 canvas. This is isolated
+to the one-second character/clothing reference path; the location-reference orbit remains
+on the existing landscape canvas.
+
+Clothing-reference versioning is also now event-authorized. Once a character has a clothing
+Picture, vision-observed outfit differences do not create a new version. Regeneration occurs
+only when the immediately preceding generated segment explicitly changes/removes/adds a
+garment or explicitly changes garment condition (for example torn, ripped, stained, muddy,
+soaked, singed, or burned). The previous intended clothing-reference state is the base for
+that update, rather than the rendered/vision wardrobe.
+
+### 2026-10-04 — dynamic identity Picture authority + transfer/static-setting fixes
+
+The latest tavern render exposed three distinct upstream failures rather than one general
+continuity regression:
+
+- generated Pictures for dynamic Subjects (Goblin1/Elf1/Dragon1) existed before their
+  story render but were labeled clothing-only, leaving H3 free to invent a different
+  creature identity on first appearance;
+- Director RAW could preserve transfer provenance while still redirecting the Beat's
+  semantic destination (for example, pouring a drink onto a recipient instead of into
+  the cup the Beat says is filled), and final End continuity could omit a just-transferred
+  prop;
+- Request 1 did not receive the already-extracted static setting facts, so RAW could
+  relocate a fixed fixture such as a hanging lantern onto a tabletop and then conflict
+  with the persistent location reference injected only at final H3 assembly.
+
+Current implementation on `location-state-test`:
+
+- a source-backed Subject keeps its generated current-clothing Picture as clothing-only
+  authority;
+- a dynamic Subject with no source identity Picture now uses its first generated Picture
+  as full identity + current-appearance authority and is explicitly bound to that Picture
+  in H3 subject definitions;
+- later intentional wardrobe/condition changes for such a dynamic Subject condition the
+  replacement render on its prior generated identity Picture rather than inventing a new
+  identity;
+- an unconditioned first character-reference render no longer refers to a nonexistent
+  `<Picture 1>`;
+- RAW rules and coherence validation now preserve CURRENT BEAT transfer roles/results,
+  reject source-less material motion or substitute spill/drool behavior for an assigned
+  drink/transfer, and require a materially changed/transferred final prop to survive into
+  End continuity state;
+- RAW staging now discourages disposable helper supports/containers/utensils that are
+  invented only to settle a prop after the required action;
+- Request 1 and the coherence validator now receive the compact extracted static-setting
+  description and treat explicitly described fixed fixtures/lighting placement as
+  authoritative without forcing off-camera elements into frame.
+
+Production verification is still required. Re-run the tavern case and inspect Segment 2
+direct barrel-to-mug staging, Dragon1's first appearance in Segment 4, cup/ale continuity
+through Segment 5, and lantern/Elf/table geometry in Segment 6. The broader per-segment
+quality-degradation question remains intentionally back-pocketed because this run predates
+the exact 13:19 person-reference and no-spurious-regeneration fixes.
+
+### 2026-10-04 — 16GB prompt-package reference planning
+
+A review of the one-GPU / 16GB path found that the split workflow had become
+incomplete after dynamic character and location references were added. Prompt-only
+generation skipped ComfyUI entirely, but dynamic reference creation and location-reference
+creation still happened only inside the live-render path. As a result, a saved
+`generated_prompts.txt` could describe story segments without containing enough information
+to recreate the reference assets those segments expected.
+
+The package is now a self-contained render plan:
+
+- `reference_jobs` records every ComfyUI-only reference generation step required by the
+  saved prompts;
+- the persistent location reference is planned during the LLM phase with its setting,
+  LoRAs, steps, megapixels, and frozen noise seed;
+- each dynamic/source-backed character reference is planned with its exact description,
+  Picture slot, immutable version, output PNG path, LoRAs, frozen noise seed, and identity
+  dependency;
+- later clothing/condition versions never replace the previous PNG. A dynamic Subject's
+  v002 job explicitly depends on/stages its v001 generated identity Picture;
+- every segment stores its own exact `character_reference_images` snapshot, so Segment N
+  cannot accidentally pick up a later clothing version planned for Segment N+K;
+- prompt-only H3 assembly now includes the location-reference authority clause even though
+  the location video does not exist yet;
+- render-only mode executes all saved reference jobs in package order before rendering the
+  saved story segments, then uses the per-segment frozen reference snapshots.
+
+This restores the intended 16GB contract: run all LLM work first, unload the LLM, start
+ComfyUI, and render the complete saved package without any LLM calls or mutable
+"current reference" assumptions.
+
+### 2026-10-04 — per-segment Subject/Picture bindings and sliding retention
+
+Dynamic Subject identity/reference assets are now separated from the Picture numbers exposed
+to any one H3 segment.
+
+- The persistent generated-reference registry remains keyed by Subject and keeps the actual
+  asset path, reference version, authority, and canonical creation slot. Removing a Subject
+  from a segment never deletes its Subject registry entry or reference media.
+- Every segment deterministically builds a frozen `reference_bindings` snapshot. Generated
+  references are densely assigned after the configured base Picture range, so a Subject can
+  legitimately be `<Picture 4>` in one segment and `<Picture 3>` later after another
+  generated Subject ages out.
+- The same segment-local character-reference map is used to generate H3 Subject/Picture text
+  and to wire ComfyUI, preventing prompt/workflow slot drift.
+- Configured/base Pictures belonging only to inactive Subjects are recorded as
+  `excluded_configured_picture_ids` and disconnected from that segment's workflow as well
+  as omitted from its H3 conditioning. Their files/registry identity remain available.
+- `generation_state.json` now contains a rich `reference_binding_state`: current bindings,
+  explicit/active/removed Subject IDs, configured Picture exclusions, removal policy, and
+  per-Subject first appearance, last explicit appearance, inactivity age, threshold,
+  binding reason, last bound segment, and full binding history.
+- Each completed segment also freezes its exact Subject definitions, segment-local character
+  references, and `reference_bindings`. `generated_prompts.txt` stores the same segment
+  snapshot plus Picture exclusions, so 16GB render-only replay uses exactly the mapping
+  chosen during the LLM phase.
+
+Default removal is deliberately conservative. After a Subject has explicitly appeared
+visually, it stays bound until it has gone `ceil(total_segments / 2)` segments without
+another explicit visual appearance. This protects passive/background continuity. Expiry is
+segment-local only; a later explicit re-entry immediately reuses the persistent identity
+asset and creates a new segment binding.
+
+`--disable-subject-removal` disables aging entirely. Once a Subject has appeared, it
+continues to remain bound in subsequent segments. The desktop UI exposes the same setting.
+
+
+### 2026-10-04 — 8/6 acceptance follow-up: transfer semantics, compressed travel, retained background Subjects
+
+The next 8-second / 6-segment tavern render exposed three upstream issues despite strong
+location continuity:
+
+- Segment 2 RAW was accepted with the impossible phrase that ale was poured "from" a
+  barrel lid. The Director and coherence validator now explicitly distinguish a fixed
+  container from its lid/cap/handle/rim/latch; contents must come from the actual container
+  or an established dispensing opening/tap.
+- Segment 4 again allowed Amy to interact with a shelf/bar-area prop without explicit travel
+  from her prior table position. Coherence validation now treats distinct named
+  fixture/interaction areas from STATIC SETTING AUTHORITY as established positions and
+  requires explicit movement between them.
+- The final closing Beat compressed unlatching, crossing the doorway, closing, and locking
+  into one timestamp. Timing validation now explicitly rejects sequential dependency chains
+  hidden inside a single timestamp when they cannot execute visibly as one continuous take.
+- Sliding Subject retention now derives explicit visual evidence from the complete accepted
+  RAW scene, including its End continuity state, instead of only the stripped timed
+  description. A patron that the accepted final frame says remains present therefore refreshes
+  its retention age rather than being dropped merely because it performs no new Beat action.
+
+The uploaded acceptance artifacts predate the new per-segment `reference_bindings` package:
+they contain generated character-reference records but no frozen binding snapshots. The next
+run must be made from current `location-state-test` and should show `reference_bindings` plus
+`excluded_picture_ids` in each generated prompt record before reference-slot behavior is
+judged.
+
+Next acceptance: rerun the same tavern case from current branch head. Verify Segment 2 uses
+the barrel/container as the ale source; Segment 4 visibly moves Amy to the shelf/bar and the
+Dragon reference is both generated and bound; the closing sequence visibly traverses the
+door before exterior framing; and background Goblin/Elf identity references remain bound
+when the RAW End state keeps them present.
+
+
+### 2026-10-05 — generated Picture authority preserved in continuation prompts
+
+A continuation-conditioning bug was replacing generated character Picture tags with
+"the supplied opening guide" before render. The append/refresh workflows prune blank
+configured reference slots before generated character references are attached, so those
+blank template slot numbers were incorrectly treated as removed Pictures even when a
+generated character reference was about to occupy that same segment-local Picture number.
+
+Fix:
+
+- segment-local generated character Picture numbers are now protected from configured-slot
+  exclusion/replacement and canonical Picture remapping at the H3 render boundary;
+- generated identity/clothing references therefore remain explicit `<Picture N>` references
+  in the actual H3 prompt;
+- the opening guide now anchors only a visible Subject's opening pose, position, and physical
+  state; it no longer claims wardrobe authority when a Picture reference owns clothing;
+- Picture-definition lines are no longer given duplicated opening-guide pose/state suffixes.
+
+Focused regression tests verify that a generated Picture survives blank template-slot
+conditioning and that Picture authority lines remain separate from opening-guide continuity.
+
+### 2026-10-05 — deterministic Director RAW structure normalization
+
+Three Request-1 formatting/timing failures are now Python-owned before semantic
+validation:
+
+- if RAW has no frame-zero micro-beat, Python inserts the canonical
+  `00:00.000` opening-state anchor;
+- if the final authored timestamp lands before 75% of the segment, Python moves
+  only that final timestamp to the 75% boundary, leaving earlier intervals
+  untouched so the semantic timing-feasibility validator still sees compressed
+  travel/action exactly as authored;
+- Python guarantees exactly one trailing `End continuity state:` marker,
+  collapsing duplicates and deriving a missing marker's state text from the
+  final timed action.
+
+The Director prompt no longer asks the local LLM to satisfy those exact
+structural constraints. The existing structure validator remains as a backstop.
+Physical/spatial timing feasibility and prop/state legality are unchanged and
+still use their existing semantic validation/retry behavior.
+
+### 2026-10-05 — deterministic run-level H3 visual style
+
+- Added the run-level CLI option `--visual-style "STYLE"`; default is `Live-Action cinematic`.
+- This is render/prompt metadata, not story semantics. It is deliberately excluded from the story/source fingerprint.
+- Final H3 assembly, not the formatter LLM, owns style placement. Python normalizes every final `detailed_description` to `[Shot 1] {visual_style}, ...`.
+- Legacy formatter output beginning `Live-action, cinematic` is removed at the final assembly boundary before the configured style is inserted, preventing duplicate style phrases.
+- `visual_style` is persisted in run config/generation state and generated-prompt package metadata. Resume and repair inherit the saved style when no explicit CLI override is supplied.
+- `normalize_command_line` preserves the value following `--visual-style` as one argument, including embedded commas. The desktop bridge already launches `minimax.py` with an argv list and now emits `["--visual-style", value]`, so Windows/Linux quoting differences do not leak into the app.
+- The desktop Generation settings UI exposes a Visual style text field; no additional text file is required.
+
+### 2026-10-05 — defined-Subject wardrobe authority now comes from expanded story
+
+Pre-defined Subjects now get canonical wardrobe in a dedicated pass after
+`expanded_story.txt` is available. Python iterates `subjects.txt` and makes one
+small deterministic LLM request per Subject rather than asking one call to classify
+multiple characters.
+
+The extractor's key phrase is **appropriate attire**. It preserves explicit outfit
+detail from the expanded story and fills only missing normal pieces according to the
+Subject's species/body, period, setting, culture, and occupation. It must not dress
+dragons/animals/other naturally unclothed beings merely to satisfy a clothing schema;
+those return `N/A` unless explicitly clothed. Conversely, an unstated modern human
+outfit can be completed with ordinary modern attire such as a T-shirt and blue jeans.
+
+The resulting natural-language outfit replaces `character_canon.json -> clothing`
+for that defined Subject and feeds canonical Subject prose plus structured wardrobe
+state used by character-reference generation. The original broad character-canon call
+is now prohibited from inventing missing clothing; it only copies explicit source
+clothing provisionally until this expanded-story extractor runs.
+
+This is intentionally separate from dynamic Subject wardrobe bootstrap. Dynamic
+Subjects still receive their one-time outfit from the existing post-RAW resolver.
+

@@ -1,11 +1,13 @@
+import os
 import unittest
+from unittest import mock
 
 import minimax
 
 
 class PostmortemRegressionTests(unittest.TestCase):
-    def test_director_coherence_requires_end_state_to_match_final_timed_action(self):
-        messages = minimax.build_director_raw_scene_coherence_messages(
+    def test_director_physical_requires_end_state_to_match_final_timed_action(self):
+        messages = minimax.build_director_raw_scene_physical_messages(
             "Amy steps into the courtyard.",
             (
                 "At 00:00.000, Amy stands at the counter.\n\n"
@@ -15,8 +17,7 @@ class PostmortemRegressionTests(unittest.TestCase):
             ),
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("MUST describe the state produced by the final timed action", prompt)
-        self.assertIn("explicitly compare", prompt)
+        self.assertIn("End continuity moves a subject after the final timed action", prompt)
 
     def test_subject_resolver_prefers_explicit_species_over_generic_creature(self):
         messages = minimax.build_director_raw_subject_resolution_messages(
@@ -109,7 +110,17 @@ class PostmortemRegressionTests(unittest.TestCase):
             validator_messages[-1]["content"],
         )
 
-    def test_director_rules_require_frame_zero_microbeat(self):
+    def test_story_setting_extractor_does_not_promote_relative_action_labels(self):
+        messages = minimax.build_story_setting_description_messages(
+            "Amy enters through the front door and later locks the back door.",
+            "tavern",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("Relative action wording is not proof of distinct static architecture", prompt)
+        self.assertIn("front/back/side door", prompt)
+        self.assertIn("entrance door rather than back door", prompt)
+
+    def test_director_prompt_separates_physical_prerequisites(self):
         rules = minimax.build_director_rules(
             total_length=48,
             segment_length=8,
@@ -118,14 +129,157 @@ class PostmortemRegressionTests(unittest.TestCase):
             segment_number=3,
             conditioning_mode="continuation",
         )
+        self.assertIn("Budget enough visible time for every physical step", rules)
+        self.assertIn("give that prerequisite its own earlier timed micro-beat", rules)
+        self.assertIn("instead of compressing both steps into one timestamp", rules)
+
+    def test_director_prompt_keeps_invented_staging_economical(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=4,
+            conditioning_mode="continuation",
+        )
+        self.assertIn("Keep invented staging economical", rules)
+        self.assertIn("Do not add optional secondary reactions", rules)
+        self.assertIn("extra object/substance motion", rules)
+
+    def test_director_transfer_rule_is_generic_and_tracks_source_destination(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=4,
+            conditioning_mode="continuation",
+        )
+        self.assertIn("For any transfer", rules)
+        self.assertIn("explicitly identify the source and destination", rules)
+        self.assertIn("what is transferred is at the source", rules)
+        self.assertNotIn("pouring or transferring between containers", rules)
+
+        messages = minimax.build_director_raw_scene_prop_state_messages(
+            "Amy transfers the drink to the guest.",
+            (
+                "At 00:00.000, Amy holds a cup.\n\n"
+                "At 00:06.500, Amy transfers the drink.\n\n"
+                "End continuity state: The guest has the drink."
+            ),
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("A prop introduced by CURRENT BEAT may first appear in this scene", prompt)
+        self.assertIn("a transfer lacks a source or destination", prompt)
+        self.assertIn("Ignore subject movement", prompt)
+
+    def test_director_prop_state_preserves_assigned_transfer_destination_and_final_prop(self):
+        messages = minimax.build_director_raw_scene_prop_state_messages(
+            "Amy pours a special brew into a crystal cup and hands it to Dragon1.",
+            (
+                "At 00:00.000, Amy stands by the shelf.\n\n"
+                "At 00:04.000, Amy lifts a crystal cup.\n\n"
+                "At 00:06.000, Amy pours the brew onto Dragon1's scales.\n\n"
+                "At 00:07.000, Amy hands the crystal cup to Dragon1.\n"
+                "End continuity state: Dragon1 sits on the stool."
+            ),
+            prop_ledger={},
+            static_setting_description="Lanterns hang above each table.",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("A prop introduced by CURRENT BEAT may first appear in this scene", prompt)
+        self.assertIn("End continuity contradicts the final prop state", prompt)
+        self.assertIn("STATIC SETTING AUTHORITY", prompt)
+        self.assertIn("Lanterns hang above each table.", prompt)
+
+    def test_director_rules_avoid_source_less_material_and_helper_props(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=5,
+            conditioning_mode="continuation",
+        )
+        self.assertIn("Do not invent source-less liquid", rules)
+        self.assertIn("must not redirect that transfer or result", rules)
         self.assertIn(
-            "first timed micro-beat MUST be at 00:00.000",
+            "Do not invent an extra support, container, utensil, or other helper prop",
             rules,
         )
-        self.assertIn("00:00.000 is an inherited-frame anchor", rules)
-        self.assertIn("guide—not PREVIOUS SHOT END—owns the visible frame-0 composition", rules)
+
+    def test_director_request_receives_static_setting_authority(self):
+        messages, _tokens, _recent = minimax.build_generation_messages(
+            director_rules="rules",
+            story="story",
+            beats=["Amy turns off a lantern.", "Amy leaves."],
+            completed_beat_ids=set(),
+            recent_results=[],
+            current_segment=1,
+            total_segments=2,
+            segment_length=8,
+            total_length=16,
+            static_setting_description="Lanterns hang above each table.",
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn("STATIC SETTING AUTHORITY", prompt)
+        self.assertIn("Lanterns hang above each table.", prompt)
+        self.assertIn("Do not relocate, duplicate, replace, or restyle", prompt)
+        self.assertIn("Do not force off-camera fixtures into the frame", prompt)
+
+    def test_raw_validator_split_keeps_domains_separate(self):
+        physical = "\n".join(
+            message["content"]
+            for message in minimax.build_director_raw_scene_physical_messages(
+                "Amy walks to the counter and pours a drink.",
+                "At 00:00.000, Amy stands by the table.\n"
+                "At 00:06.500, Amy pours a drink at the counter.\n"
+                "End continuity state: Amy stands at the counter.",
+            )
+        )
+        props = "\n".join(
+            message["content"]
+            for message in minimax.build_director_raw_scene_prop_state_messages(
+                "Amy pours a drink into a cup.",
+                "At 00:00.000, Amy holds a cup.\n"
+                "At 00:06.500, Amy pours liquid into it.\n"
+                "End continuity state: Amy holds the filled cup.",
+            )
+        )
+        self.assertIn("Ignore prop identity", physical)
+        self.assertNotIn("PROP LEDGER\n", physical)
+        self.assertIn("Ignore subject movement", props)
+        self.assertIn("PROP LEDGER\n", props)
+
+    def test_director_timing_validator_is_narrow_and_has_no_fixed_minimum(self):
+        messages = minimax.build_director_raw_scene_timing_messages(
+            (
+                "At 00:00.000, an elf enters through the doorway.\n\n"
+                "At 00:01.500, the elf sits at the far table.\n\n"
+                "End continuity state: the elf is seated."
+            )
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("can visibly occur within the time available", prompt)
+        self.assertIn("one continuous shot", prompt)
+        self.assertIn("Do not impose a fixed minimum interval", prompt)
+        self.assertIn("first clearly compressed transition", prompt)
+        self.assertIn("name its two timestamps", prompt)
+
+    def test_director_prompt_states_behavior_without_implementation_details(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=3,
+            conditioning_mode="continuation",
+        )
+        self.assertNotIn("Python owns", rules)
+        self.assertNotIn("Python normalizes", rules)
         self.assertIn("supplied opening guide is the visual authority", rules)
-        self.assertIn("Begin CURRENT BEAT at the next natural timestamp", rules)
+        self.assertIn("final timed micro-beat in the final quarter", rules)
+        self.assertIn('include exactly one short "End continuity state:"', rules)
         self.assertIn("one 8-second video segment", rules)
         self.assertNotIn("8.916", rules)
 
@@ -141,6 +295,64 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertTrue(errors)
         self.assertIn("00:00.000", errors[0])
 
+    def test_python_normalizes_frame_zero_final_quarter_and_missing_end_marker(self):
+        normalized = minimax._normalize_director_raw_scene_structure(
+            (
+                "At 00:01.500, Elf starts walking from the doorway.\n"
+                "At 00:03.000, Elf reaches the back table.\n"
+                "At 00:05.600, Elf lifts the crystal chalice."
+            ),
+            segment_seconds=8,
+        )
+        self.assertTrue(
+            normalized.startswith(
+                "At 00:00.000, The shot begins from the established opening state."
+            )
+        )
+        self.assertIn(
+            "At 00:01.500, Elf starts walking from the doorway.",
+            normalized,
+        )
+        self.assertIn(
+            "At 00:03.000, Elf reaches the back table.",
+            normalized,
+        )
+        self.assertIn(
+            "At 00:06.000, Elf lifts the crystal chalice.",
+            normalized,
+        )
+        self.assertEqual(normalized.count("End continuity state:"), 1)
+        self.assertTrue(
+            normalized.endswith(
+                "End continuity state: Elf lifts the crystal chalice."
+            )
+        )
+        self.assertEqual(
+            minimax._director_raw_scene_structure_errors(
+                normalized,
+                segment_seconds=8,
+            ),
+            [],
+        )
+
+    def test_python_collapses_duplicate_end_state_markers(self):
+        normalized = minimax._normalize_director_raw_scene_structure(
+            (
+                "At 00:00.000, Amy begins pouring.\n"
+                "At 00:06.500, Amy sets the mug down.\n"
+                "End continuity state: stale duplicate state.\n"
+                "End continuity state: Amy stands beside the mug."
+            ),
+            segment_seconds=8,
+        )
+        self.assertEqual(normalized.count("End continuity state:"), 1)
+        self.assertNotIn("stale duplicate state", normalized)
+        self.assertTrue(
+            normalized.endswith(
+                "End continuity state: Amy stands beside the mug."
+            )
+        )
+
     def test_frame_zero_state_anchor_is_allowed(self):
         errors = minimax._director_raw_scene_structure_errors(
             (
@@ -153,8 +365,8 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertEqual(errors, [])
 
-    def test_director_coherence_receives_previous_shot_end(self):
-        messages = minimax.build_director_raw_scene_coherence_messages(
+    def test_director_physical_receives_previous_shot_end(self):
+        messages = minimax.build_director_raw_scene_physical_messages(
             "Amy opens the tavern door.",
             (
                 "At 00:00.000, Amy opens the tavern door.\n\n"
@@ -165,15 +377,208 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("PREVIOUS SHOT END\nAmy stands at the oak counter.", prompt)
-        self.assertIn("inherited 00:00.000 frame must be reachable", prompt)
+        self.assertIn("new participant", prompt)
+        self.assertIn("revealed by the camera", prompt)
+
+    def test_prop_ledger_copies_forward_and_updates_only_observed_props(self):
+        committed = {
+            "mug_1": {
+                "kind": "mug",
+                "owner": "Goblin1",
+                "holder": "N/A",
+                "location": "on the table in front of Goblin1",
+                "contents": "empty",
+                "status": "present",
+            },
+            "basket_1": {
+                "kind": "basket",
+                "owner": "Amy",
+                "holder": "Amy",
+                "location": "N/A",
+                "contents": "N/A",
+                "status": "present",
+            },
+        }
+        observed = {
+            "mug_1": {
+                "kind": "mug",
+                "owner": "Goblin1",
+                "holder": "Goblin1",
+                "location": "N/A",
+                "contents": "beer",
+                "status": "present",
+            },
+        }
+        merged = minimax.merge_prop_ledger(committed, observed)
+        self.assertEqual(merged["mug_1"]["holder"], "Goblin1")
+        self.assertEqual(merged["mug_1"]["contents"], "beer")
+        self.assertEqual(merged["basket_1"], committed["basket_1"])
+
+    def test_prop_ledger_kind_collision_preserves_identity_and_allocates_new_id(self):
+        committed = {
+            "mug_1": {
+                "kind": "mug",
+                "owner": "Goblin1",
+                "holder": "Goblin1",
+                "location": "N/A",
+                "contents": "ale",
+                "status": "present",
+            }
+        }
+        observed = {
+            "mug_1": {
+                "kind": "cloth",
+                "owner": "Amy",
+                "holder": "Amy",
+                "location": "N/A",
+                "contents": "dampened ale-soaked cloth",
+                "status": "present",
+            }
+        }
+        merged = minimax.merge_prop_ledger(committed, observed)
+        self.assertEqual(merged["mug_1"]["kind"], "mug")
+        self.assertEqual(merged["mug_1"]["holder"], "Goblin1")
+        cloth_ids = [
+            prop_id
+            for prop_id, record in merged.items()
+            if record["kind"] == "cloth"
+        ]
+        self.assertEqual(len(cloth_ids), 1)
+        self.assertNotEqual(cloth_ids[0], "mug_1")
+        self.assertEqual(merged[cloth_ids[0]]["holder"], "Amy")
+
+    def test_combined_continuity_prop_prompt_is_delta_only(self):
+        prompt = minimax.COMBINED_CONTINUITY_SYSTEM
         self.assertIn(
-            "Do NOT require a participant introduced by CURRENT BEAT",
+            "props contains only NEW props or CHANGES to existing",
+            prompt,
+        )
+        self.assertIn("Omit unchanged props.", prompt)
+        self.assertNotIn("Python copies", prompt)
+        self.assertNotIn("Python owns Subject identity", prompt)
+        self.assertIn("Existing prop IDs are immutable", prompt)
+
+    def test_combined_continuity_schema_accepts_persistent_prop_ledger(self):
+        candidate = {
+            "props": {
+                "glass_1": {
+                    "kind": "glass",
+                    "owner": "Dragon1",
+                    "holder": "N/A",
+                    "location": "on the bar",
+                    "contents": "empty",
+                    "status": "present",
+                }
+            }
+        }
+        self.assertIs(
+            minimax._validate_combined_continuity_schema(candidate),
+            candidate,
+        )
+
+    def test_source_owned_item_state_overrides_prop_ledger(self):
+        ledger = {
+            "flashlight_1": {
+                "kind": "flashlight",
+                "owner": "Amy",
+                "holder": "N/A",
+                "location": "on the kitchen table",
+                "contents": "N/A",
+                "status": "present",
+            }
+        }
+        held = minimax.apply_authoritative_prop_state_effects(
+            ledger,
+            [{
+                "op": "set_item_state",
+                "entity": "flashlight",
+                "owner": "Amy",
+                "value": "held",
+            }],
+        )
+        self.assertEqual(held["flashlight_1"]["holder"], "Amy")
+        self.assertEqual(held["flashlight_1"]["location"], "N/A")
+        self.assertEqual(held["flashlight_1"]["status"], "present")
+
+        lost = minimax.apply_authoritative_prop_state_effects(
+            held,
+            [{
+                "op": "set_item_state",
+                "entity": "flashlight",
+                "owner": "Amy",
+                "value": "lost",
+            }],
+        )
+        self.assertEqual(lost["flashlight_1"]["holder"], "N/A")
+        self.assertEqual(lost["flashlight_1"]["location"], "N/A")
+        self.assertEqual(lost["flashlight_1"]["status"], "lost")
+
+    def test_prop_staging_micro_prompt_adds_only_missing_availability(self):
+        calls = []
+
+        def fake_llm(messages, **kwargs):
+            calls.append((messages, kwargs))
+            return {
+                "staging": (
+                    "A clean mug is already on the table in front of Goblin1."
+                )
+            }
+
+        staging = minimax.request_director_prop_staging(
+            "Amy pours beer into Goblin1's mug.",
+            {},
+            previous_shot_end="Goblin1 sits at the table.",
+            llm_request=fake_llm,
+        )
+        self.assertEqual(
+            staging,
+            "A clean mug is already on the table in front of Goblin1.",
+        )
+        self.assertEqual(
+            calls[0][1]["history_metadata"]["purpose"],
+            "director_prop_staging",
+        )
+        prompt = "\n".join(message["content"] for message in calls[0][0])
+        self.assertIn("PROP LEDGER", prompt)
+        self.assertIn("Do not rewrite the Beat", prompt)
+        self.assertIn("do not invent architecture/storage", prompt)
+        self.assertIn(
+            "owned by or held by another subject does NOT count as generic available",
             prompt,
         )
         self.assertIn(
-            "do not reject a new CURRENT BEAT participant merely because it enters after",
+            "Prefer a distinct ordinary instance over repurposing another subject's owned prop",
             prompt,
         )
+
+    def test_director_owned_prop_is_not_shared_inventory(self):
+        rules = minimax.build_director_rules(
+            total_length=48,
+            segment_length=8,
+            total_segments=6,
+            subject_definitions="",
+            segment_number=3,
+            conditioning_mode="continuation",
+        )
+        self.assertIn(
+            "do not treat it as shared inventory or repurpose it for another subject",
+            rules,
+        )
+        self.assertIn(
+            "unless CURRENT BEAT explicitly authorizes that use or transfer",
+            rules,
+        )
+
+    def test_prop_staging_skips_non_prop_beat_without_llm_call(self):
+        def fail_if_called(*_args, **_kwargs):
+            raise AssertionError("prop staging LLM should not run")
+
+        staging = minimax.request_director_prop_staging(
+            "Amy smiles at Goblin1 across the room.",
+            {},
+            llm_request=fail_if_called,
+        )
+        self.assertEqual(staging, "")
 
     def test_dynamic_subject_definition_survives_plain_name_in_malformed_prose(self):
         definitions = (
@@ -269,6 +674,58 @@ class PostmortemRegressionTests(unittest.TestCase):
             resolved,
         )
 
+    def test_final_timed_subject_is_carried_into_incomplete_end_state(self):
+        raw = (
+            "At 00:00.000, Amy stands behind the bar.\n\n"
+            "At 00:06.917, Goblin1 sets mug_1 on the counter, nods at Amy, "
+            "and steps back toward the hearth.\n"
+            "End continuity state: Amy stands behind the bar."
+        )
+        repaired, carried = minimax._director_carry_forward_final_subjects(
+            raw,
+            subject_definitions=(
+                "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+                "<Subject 2> is Goblin1 (S2). Goblin1 is a goblin."
+            ),
+        )
+        self.assertEqual(carried, ["Goblin1"])
+        self.assertIn(
+            "Goblin1 remains present in the state established by the final timed action",
+            repaired,
+        )
+        self.assertIn("steps back toward the hearth", repaired)
+        self.assertEqual(repaired.count("End continuity state:"), 1)
+
+    def test_final_timed_subject_explicit_exit_is_not_carried_forward(self):
+        raw = (
+            "At 00:00.000, Amy stands behind the bar.\n\n"
+            "At 00:06.917, Goblin1 exits through the tavern doorway.\n"
+            "End continuity state: Amy stands behind the bar."
+        )
+        repaired, carried = minimax._director_carry_forward_final_subjects(
+            raw,
+            subject_definitions=(
+                "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+                "<Subject 2> is Goblin1 (S2). Goblin1 is a goblin."
+            ),
+        )
+        self.assertEqual(carried, [])
+        self.assertEqual(repaired, raw)
+
+    def test_newly_resolved_subject_can_be_carried_before_registry_append(self):
+        raw = (
+            "At 00:00.000, Amy stands at the counter.\n\n"
+            "At 00:06.500, Elf1 sits at the back table.\n"
+            "End continuity state: Amy stands at the counter."
+        )
+        repaired, carried = minimax._director_carry_forward_final_subjects(
+            raw,
+            subject_definitions="<Subject 1> is Amy, referenced in <Picture 1>.",
+            resolved_subject_names=["Elf1"],
+        )
+        self.assertEqual(carried, ["Elf1"])
+        self.assertIn("Elf1 remains present", repaired)
+
     def test_story_to_beats_preserves_explicit_enumerations(self):
         messages = minimax.build_story_to_beats_messages(
             "A barkeep serves magical patrons.",
@@ -346,6 +803,1076 @@ class PostmortemRegressionTests(unittest.TestCase):
             prompt,
         )
         self.assertIn("reframe only through continuous camera movement", prompt)
+
+    def test_defined_subject_wardrobe_extractor_uses_one_call_per_subject(self):
+        calls = []
+        responses = iter([
+            {
+                "clothing": (
+                    "rough-spun tunic, brown work trousers, worn leather boots, "
+                    "and worn leather apron"
+                )
+            },
+            {"clothing": "N/A"},
+        ])
+
+        def fake_llm(messages, **kwargs):
+            calls.append((messages, kwargs))
+            return next(responses)
+
+        canon = {
+            "fields": ["age", "clothing", "gender"],
+            "characters": [
+                {
+                    "name": "Amy",
+                    "age": "35",
+                    "clothing": "tunic and apron",
+                    "gender": "female",
+                },
+                {
+                    "name": "Drake",
+                    "age": "adult",
+                    "clothing": "N/A",
+                    "gender": "unknown",
+                },
+            ],
+        }
+        subjects = (
+            "<Subject 1> is Amy, a medieval barkeep.\n"
+            "<Subject 2> is Drake, a dragon."
+        )
+        expanded = (
+            "Amy wears a rough-spun tunic and leather apron while tending the "
+            "medieval tavern. Drake is a dragon resting beside the hearth."
+        )
+
+        with mock.patch(
+            "minimax.save_character_canon",
+            side_effect=lambda value, *_args, **_kwargs: value,
+        ):
+            result = minimax.canonicalize_defined_subject_wardrobes(
+                canon,
+                expanded,
+                subjects,
+                llm_request=fake_llm,
+            )
+
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(
+            [call[1]["history_metadata"]["subject"] for call in calls],
+            ["Amy", "Drake"],
+        )
+        for messages, kwargs in calls:
+            prompt = "\n".join(message["content"] for message in messages)
+            self.assertIn("appropriate attire", prompt)
+            self.assertIn("EXPANDED STORY", prompt)
+            self.assertIn(expanded, prompt)
+            self.assertEqual(
+                kwargs["history_metadata"]["purpose"],
+                "story_subject_wardrobe_extract",
+            )
+            self.assertEqual(kwargs["max_tokens"], 128)
+
+        self.assertEqual(
+            result["characters"][0]["clothing"],
+            (
+                "rough-spun tunic, brown work trousers, worn leather boots, "
+                "and worn leather apron"
+            ),
+        )
+        self.assertEqual(result["characters"][1]["clothing"], "N/A")
+
+    def test_appropriate_attire_prompt_keeps_non_clothed_species_unclothed(self):
+        messages = minimax.build_story_subject_wardrobe_messages(
+            "A dragon rests beside a modern family.",
+            "Dragon1",
+            "<Subject 2> is Dragon1, a dragon.",
+            {"name": "Dragon1", "age": "adult", "gender": "unknown"},
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("Appropriate attire", prompt)
+        self.assertIn("dragons, animals", prompt)
+        self.assertIn("T-shirt and blue jeans", prompt)
+        self.assertIn("must return N/A", prompt)
+
+    def test_canonical_defined_subject_attire_seeds_complete_wardrobe(self):
+        subjects = "<Subject 1> is Amy, a medieval barkeep."
+        canon = {
+            "characters": [{
+                "name": "Amy",
+                "clothing": (
+                    "rough-spun tunic, brown work trousers, worn leather boots, "
+                    "and worn leather apron"
+                ),
+            }]
+        }
+        state = minimax.seed_character_canon_wardrobe(
+            subjects,
+            canon,
+            minimax.new_continuity_state(),
+        )
+        wardrobe = state["subjects"]["Amy"]["wardrobe"]
+        self.assertIn("rough-spun tunic", wardrobe["upper"])
+        self.assertIn("brown work trousers", wardrobe["lower"])
+        self.assertIn("worn leather boots", wardrobe["footwear"])
+        self.assertIn("worn leather apron", wardrobe["other"])
+
+    def test_no_clothing_canon_does_not_emit_wearing_clause(self):
+        sentence = minimax.format_canonical_character_sentence({
+            "name": "Drake",
+            "age": "adult",
+            "gender": "unknown",
+            "clothing": "N/A",
+        })
+        self.assertNotIn("wearing", sentence)
+
+    def test_final_h3_prompt_injects_configured_visual_style_after_shot_one(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000, a lantern glows on the counter."
+                ),
+                "overall_soundscape": "soft room tone",
+                "non_diegetic_music": "quiet strings",
+            },
+            "",
+            segment_number=1,
+            conditioning_mode="initial",
+            visual_style="stop-motion clay animation",
+        )
+        description = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:",
+            1,
+        )[0]
+        self.assertTrue(
+            description.startswith(
+                "[Shot 1] stop-motion clay animation, "
+            )
+        )
+
+    def test_final_h3_prompt_replaces_legacy_default_style_without_duplication(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] Live-action, cinematic, "
+                    "At 00:00.000, Amy waits by the door."
+                ),
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+            },
+            "",
+            segment_number=1,
+            conditioning_mode="initial",
+            visual_style="hand-painted storybook animation",
+        )
+        description = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:",
+            1,
+        )[0]
+        self.assertTrue(
+            description.startswith(
+                "[Shot 1] hand-painted storybook animation, "
+            )
+        )
+        self.assertNotIn("Live-action, cinematic", description)
+
+    def test_visual_style_cli_preserves_commas_inside_one_argument(self):
+        args = minimax.parse_args([
+            "8",
+            "2",
+            "0.5",
+            "--visual-style",
+            "live-action, cinematic",
+        ])
+        self.assertEqual(args.visual_style, "live-action, cinematic")
+
+    def test_character_reference_numbering_uses_active_picture_count(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Amy"] = minimax.new_subject_continuity_record({
+            "subject_id": 1,
+            "name": "Amy",
+            "picture_ids": [1],
+            "picture_id": 1,
+            "canonical_description": "Amy is an adult woman wearing a blue dress.",
+        })
+        state["subjects"]["Amy"]["wardrobe"]["upper"] = "a red blouse"
+        definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="amy_identity.png",
+        ), mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="/tmp/video/state/amy_clothing.png",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Amy stands behind the bar.",
+                definitions,
+                state,
+                {},
+                1,
+                0.5,
+                6,
+                subject_descriptions={
+                    "Amy": "Amy is an adult woman wearing a blue dress."
+                },
+            )
+
+        self.assertEqual(changed, ["Amy"])
+        self.assertEqual(refs["Amy"]["picture_number"], 2)
+        self.assertEqual(refs["Amy"]["image_name"], "amy_clothing.png")
+        self.assertEqual(
+            refs["Amy"]["image_path"],
+            "/tmp/video/state/amy_clothing.png",
+        )
+        self.assertIn(
+            "Amy is currently wearing a red blouse",
+            render.call_args.args[1],
+        )
+        self.assertEqual(
+            render.call_args.kwargs["identity_image_name"],
+            "amy_identity.png",
+        )
+        self.assertEqual(refs["Amy"]["authority"], "clothing_only")
+
+    def test_dynamic_character_reference_owns_identity_and_current_appearance(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Dragon1"] = minimax.new_subject_continuity_record({
+            "subject_id": 4,
+            "name": "Dragon1",
+            "canonical_description": "Dragon1 is a dragon.",
+        })
+
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="",
+        ), mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="/tmp/video/state/dragon_v001.png",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Dragon1 enters, scales glittering like obsidian.",
+                "<Subject 4> is Dragon1 (S4). Dragon1 is a dragon.",
+                state,
+                {},
+                1,
+                0.5,
+                6,
+            )
+
+        self.assertEqual(changed, ["Dragon1"])
+        self.assertEqual(refs["Dragon1"]["authority"], "identity_and_clothing")
+        self.assertEqual(render.call_args.kwargs["identity_image_name"], "")
+        definitions = minimax.append_character_reference_definitions(
+            "<Subject 4> is Dragon1 (S4). Dragon1 is a dragon.",
+            refs,
+        )
+        self.assertIn(
+            "Dragon1 is referenced in <Picture 2> for identity and current appearance.",
+            definitions,
+        )
+        self.assertIn(
+            "<Picture 2> defines Dragon1's identity, physical appearance",
+            definitions,
+        )
+
+    def test_dynamic_character_outfit_update_reuses_generated_identity_picture(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Traveler1"] = minimax.new_subject_continuity_record({
+            "subject_id": 2,
+            "name": "Traveler1",
+            "canonical_description": "Traveler1 is a traveler.",
+        })
+        existing = {
+            "Traveler1": {
+                "name": "Traveler1",
+                "picture_number": 2,
+                "image_name": "traveler_v001.png",
+                "image_path": "/tmp/video/state/traveler_v001.png",
+                "signature": "old",
+                "version": 1,
+                "description": "Traveler1 is a traveler wearing a brown coat.",
+                "wardrobe": {"upper": "a brown coat"},
+                "clothing_condition": "",
+                "authority": "identity_and_clothing",
+            }
+        }
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="",
+        ), mock.patch.object(
+            minimax,
+            "stage_character_reference_image",
+            return_value="traveler_v001.png",
+        ) as stage, mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="/tmp/video/state/traveler_v002.png",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Traveler1 keeps walking.",
+                "<Subject 2> is Traveler1 (S2). Traveler1 is a traveler.",
+                state,
+                existing,
+                1,
+                0.5,
+                6,
+                prior_detailed_description="Traveler1's brown coat is torn.",
+            )
+
+        self.assertEqual(changed, ["Traveler1"])
+        stage.assert_called_once()
+        self.assertEqual(
+            render.call_args.kwargs["identity_image_name"],
+            "traveler_v001.png",
+        )
+        self.assertEqual(refs["Traveler1"]["authority"], "identity_and_clothing")
+
+    def test_prompt_only_reference_planner_versions_without_rendering(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Traveler1"] = minimax.new_subject_continuity_record({
+            "subject_id": 2,
+            "name": "Traveler1",
+            "canonical_description": "Traveler1 is a traveler.",
+        })
+        jobs = []
+
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="",
+        ), mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+        ) as render:
+            refs, changed = minimax.plan_character_reference_images(
+                "Traveler1 enters the room.",
+                "<Subject 2> is Traveler1 (S2). Traveler1 is a traveler.",
+                state,
+                {},
+                1,
+                0.5,
+                6,
+                segment_number=1,
+                reference_jobs=jobs,
+                file_token="testrun",
+            )
+            refs, changed2 = minimax.plan_character_reference_images(
+                "Traveler1 keeps walking.",
+                "<Subject 2> is Traveler1 (S2). Traveler1 is a traveler.",
+                state,
+                refs,
+                1,
+                0.5,
+                6,
+                segment_number=2,
+                reference_jobs=jobs,
+                file_token="testrun",
+                prior_detailed_description="Traveler1's coat is torn.",
+            )
+
+        render.assert_not_called()
+        self.assertEqual(changed, ["Traveler1"])
+        self.assertEqual(changed2, ["Traveler1"])
+        self.assertEqual(len(jobs), 2)
+        self.assertEqual(jobs[0]["version"], 1)
+        self.assertEqual(jobs[1]["version"], 2)
+        self.assertNotEqual(
+            jobs[0]["output_reference"]["image_name"],
+            jobs[1]["output_reference"]["image_name"],
+        )
+        self.assertEqual(
+            jobs[1]["identity_source"]["kind"],
+            "generated_reference",
+        )
+        self.assertEqual(
+            jobs[1]["identity_source"]["reference"]["version"],
+            1,
+        )
+        self.assertEqual(refs["Traveler1"]["version"], 2)
+
+    def test_character_reference_picture_number_stays_stable_on_outfit_change(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Amy"] = minimax.new_subject_continuity_record({
+            "subject_id": 1,
+            "name": "Amy",
+            "picture_ids": [1],
+            "picture_id": 1,
+            "canonical_description": "Amy is an adult woman.",
+        })
+        state["subjects"]["Amy"]["wardrobe"]["upper"] = "a green tunic"
+        existing = {
+            "Amy": {
+                "name": "Amy",
+                "picture_number": 2,
+                "image_name": "amy_v001.png",
+                "signature": "old",
+                "version": 1,
+                "description": "old",
+            }
+        }
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="amy_identity.png",
+        ), mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="/tmp/video/state/amy_v002.png",
+        ):
+            refs, changed = minimax.ensure_character_reference_images(
+                "Amy enters the room.",
+                "<Subject 1> is Amy, referenced in <Picture 1>.",
+                state,
+                existing,
+                1,
+                0.5,
+                6,
+                prior_detailed_description="Amy changes into a green tunic.",
+            )
+        self.assertEqual(changed, ["Amy"])
+        self.assertEqual(refs["Amy"]["picture_number"], 2)
+        self.assertEqual(refs["Amy"]["version"], 2)
+
+    def test_visual_wardrobe_drift_does_not_regenerate_clothing_picture(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Amy"] = minimax.new_subject_continuity_record({
+            "subject_id": 1,
+            "name": "Amy",
+            "picture_ids": [1],
+            "picture_id": 1,
+            "canonical_description": "Amy is an adult woman.",
+        })
+        state["subjects"]["Amy"]["wardrobe"]["upper"] = "a denim corset"
+        state["subjects"]["Amy"]["wardrobe"]["lower"] = "dark jeans"
+        existing = {
+            "Amy": {
+                "name": "Amy",
+                "picture_number": 2,
+                "image_name": "amy_v001.png",
+                "image_path": "/tmp/video/state/amy_v001.png",
+                "signature": "stable",
+                "version": 1,
+                "description": (
+                    "Amy is an adult woman. Amy is currently wearing "
+                    "a medieval barmaid dress."
+                ),
+                "wardrobe": {"upper": "a medieval barmaid dress"},
+                "clothing_condition": "",
+            }
+        }
+        with mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Amy serves a drink.",
+                "<Subject 1> is Amy, referenced in <Picture 1>.",
+                state,
+                existing,
+                1,
+                0.5,
+                6,
+                prior_detailed_description="Amy served a drink at the bar.",
+            )
+        self.assertEqual(changed, [])
+        self.assertEqual(refs["Amy"]["version"], 1)
+        render.assert_not_called()
+
+    def test_explicit_clothing_damage_regenerates_from_intended_outfit(self):
+        state = minimax.new_continuity_state()
+        state["subjects"]["Amy"] = minimax.new_subject_continuity_record({
+            "subject_id": 1,
+            "name": "Amy",
+            "picture_ids": [1],
+            "picture_id": 1,
+            "canonical_description": "Amy is an adult woman.",
+        })
+        state["subjects"]["Amy"]["wardrobe"]["upper"] = "a denim corset"
+        existing = {
+            "Amy": {
+                "name": "Amy",
+                "picture_number": 2,
+                "image_name": "amy_v001.png",
+                "image_path": "/tmp/video/state/amy_v001.png",
+                "signature": "old",
+                "version": 1,
+                "description": (
+                    "Amy is an adult woman. Amy is currently wearing "
+                    "a medieval barmaid dress."
+                ),
+                "wardrobe": {"upper": "a medieval barmaid dress"},
+                "clothing_condition": "",
+            }
+        }
+        with mock.patch.object(
+            minimax,
+            "subject_identity_reference_image",
+            return_value="amy_identity.png",
+        ), mock.patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="/tmp/video/state/amy_v002.png",
+        ) as render:
+            refs, changed = minimax.ensure_character_reference_images(
+                "Amy keeps moving.",
+                "<Subject 1> is Amy, referenced in <Picture 1>.",
+                state,
+                existing,
+                1,
+                0.5,
+                6,
+                prior_detailed_description=(
+                    "Amy's medieval barmaid dress is torn and stained."
+                ),
+            )
+        self.assertEqual(changed, ["Amy"])
+        self.assertEqual(refs["Amy"]["version"], 2)
+        target = render.call_args.args[1]
+        self.assertIn("medieval barmaid dress", target)
+        self.assertIn("torn and stained", target)
+        self.assertNotIn("denim corset", target)
+
+    def test_character_reference_uses_13_by_19_portrait_resolution(self):
+        workflow = minimax.prepare_character_reference_workflow(
+            "Amy is an adult woman wearing a medieval barmaid dress.",
+            0.5,
+            steps=6,
+            picture_number=2,
+        )
+        _conditioning_id, conditioning = minimax.find_workflow_node(
+            workflow,
+            minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+            "test character reference workflow",
+            "MiniMaxH3ReferenceToVideo",
+        )
+        width = conditioning["inputs"]["width"]
+        height = conditioning["inputs"]["height"]
+        self.assertIsInstance(width, int)
+        self.assertIsInstance(height, int)
+        self.assertLess(width, height)
+        self.assertEqual(
+            width * minimax.CHARACTER_REFERENCE_ASPECT_HEIGHT,
+            height * minimax.CHARACTER_REFERENCE_ASPECT_WIDTH,
+        )
+
+        location = minimax.prepare_location_reference_workflow(
+            "A medieval tavern.",
+            0.5,
+            steps=6,
+        )
+        _location_id, location_conditioning = minimax.find_workflow_node(
+            location,
+            minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+            "test location reference workflow",
+            "MiniMaxH3ReferenceToVideo",
+        )
+        self.assertIsInstance(location_conditioning["inputs"]["width"], list)
+        self.assertIsInstance(location_conditioning["inputs"]["height"], list)
+
+    def test_character_reference_can_create_loadimage_above_six(self):
+        workflow = {
+            "1": {
+                "inputs": {},
+                "class_type": "MiniMaxH3ReferenceToVideo",
+                "_meta": {"title": minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME},
+            }
+        }
+        for number in range(1, 7):
+            workflow[str(number + 1)] = {
+                "inputs": {"image": "0.png"},
+                "class_type": "LoadImage",
+                "_meta": {"title": f"Reference Image {number}"},
+            }
+        with mock.patch.object(
+            minimax,
+            "stage_character_reference_image",
+            return_value="dragon.png",
+        ):
+            attached = minimax.attach_character_reference_images(
+                workflow,
+                "test workflow",
+                "initial",
+                {
+                    "Dragon": {
+                        "name": "Dragon",
+                        "picture_number": 7,
+                        "image_name": "dragon.png",
+                        "image_path": "/tmp/video/state/dragon.png",
+                        "signature": "x",
+                        "version": 1,
+                        "description": "Dragon is a dragon.",
+                    }
+                },
+            )
+        self.assertIn(7, attached)
+        generated_id = attached[7]
+        self.assertEqual(
+            workflow[generated_id]["_meta"]["title"],
+            "Generated Reference Image 7",
+        )
+        conditioner = workflow["1"]["inputs"]
+        self.assertEqual(
+            conditioner["ref_images.ref_image_6"],
+            [generated_id, 0],
+        )
+
+    def test_clothing_only_picture_definition_is_kept_for_visible_subject(self):
+        definitions = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "<Picture 2> references only the clothing that Amy is currently wearing."
+        )
+        filtered, _description = minimax._filter_h3_subject_definitions(
+            definitions,
+            {1},
+            "Amy stands behind the bar.",
+        )
+        self.assertIn("<Subject 1> is Amy", filtered)
+        self.assertIn(
+            "<Picture 2> references only the clothing that Amy is currently wearing.",
+            filtered,
+        )
+
+    def test_dynamic_identity_picture_definition_is_kept_for_visible_subject(self):
+        definitions = (
+            "<Subject 4> is Dragon1 (S4). Dragon1 is a dragon. "
+            "Dragon1 is referenced in <Picture 5> for identity and current appearance.\n"
+            "<Picture 5> defines Dragon1's identity, physical appearance, "
+            "species/distinguishing traits, and current clothing."
+        )
+        filtered, _description = minimax._filter_h3_subject_definitions(
+            definitions,
+            {4},
+            "At 00:01.000, Dragon1 enters through the doorway.",
+        )
+        self.assertIn("<Subject 4> is Dragon1", filtered)
+        self.assertIn(
+            "<Picture 5> defines Dragon1's identity, physical appearance",
+            filtered,
+        )
+
+    def test_state_media_paths_live_under_output_video_state(self):
+        self.assertEqual(
+            minimax.STATE_MEDIA_OUTPUT,
+            os.path.join(minimax.VIDEO_OUTPUT, "state"),
+        )
+        workflow = minimax.prepare_character_reference_workflow(
+            "Amy is an adult woman wearing a red blouse.",
+            0.5,
+            steps=6,
+            picture_number=2,
+        )
+        _node_id, save = minimax.find_workflow_node(
+            workflow,
+            minimax.SAVE_VIDEO_NODE_NAME,
+            "test character reference workflow",
+            "SaveVideo",
+        )
+        self.assertTrue(
+            save["inputs"]["filename_prefix"].startswith(
+                "video/state/character_reference"
+            )
+        )
+        location = minimax.prepare_location_reference_workflow(
+            "A stone tavern.",
+            0.5,
+            steps=6,
+        )
+        _location_id, location_save = minimax.find_workflow_node(
+            location,
+            minimax.SAVE_VIDEO_NODE_NAME,
+            "test location reference workflow",
+            "SaveVideo",
+        )
+        self.assertEqual(
+            location_save["inputs"]["filename_prefix"],
+            "video/state/location_reference",
+        )
+
+    def test_character_reference_workflow_conditions_on_identity_picture(self):
+        workflow = minimax.prepare_character_reference_workflow(
+            "Amy is an adult woman currently wearing a red blouse.",
+            0.5,
+            steps=6,
+            picture_number=2,
+            identity_image_name="amy_identity.png",
+        )
+        _conditioning_id, conditioning = minimax.find_workflow_node(
+            workflow,
+            minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+            "test character reference workflow",
+            "MiniMaxH3ReferenceToVideo",
+        )
+        identity_id, identity = minimax.find_workflow_node(
+            workflow,
+            minimax.REFERENCE_IMAGE_NODE_NAMES[0],
+            "test character reference workflow",
+            "LoadImage",
+        )
+        self.assertEqual(identity["inputs"]["image"], "amy_identity.png")
+        self.assertEqual(
+            conditioning["inputs"]["ref_images.ref_image_0"],
+            [identity_id, 0],
+        )
+        for key in conditioning["inputs"]:
+            if key.startswith("ref_images.ref_image_"):
+                self.assertEqual(key, "ref_images.ref_image_0")
+
+    def test_character_reference_prompt_separates_identity_from_clothing(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Amy is an adult woman currently wearing a red blouse."
+        )
+        self.assertIn(
+            "<Picture 1> references only the identity and physical appearance",
+            prompt,
+        )
+        self.assertIn("Do not copy clothing from <Picture 1>", prompt)
+        self.assertIn(
+            "clothing described in text is authoritative",
+            prompt,
+        )
+
+    def test_unconditioned_character_reference_prompt_does_not_claim_picture_one(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Dragon1 is a dragon with obsidian scales.",
+            has_identity_reference=False,
+        )
+        self.assertNotIn("<Picture 1>", prompt)
+        self.assertIn(
+            "The text description is authoritative for this character's identity",
+            prompt,
+        )
+        self.assertIn("generated Picture will own for later segments", prompt)
+
+    def test_character_reference_prompt_is_front_facing_one_second_not_orbit(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Amy is an adult woman wearing a red blouse."
+        )
+        self.assertIn("front-facing", prompt)
+        self.assertIn("exactly 1 second", prompt)
+        self.assertIn("Do not orbit", prompt)
+
+    def test_reference_binding_window_repacks_generated_pictures(self):
+        subjects = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "<Subject 2> is Goblin1 (S2).\n"
+            "<Subject 3> is Elf1 (S3)."
+        )
+        refs = {
+            "Goblin1": {
+                "name": "Goblin1", "picture_number": 2,
+                "image_name": "goblin.png", "image_path": "/tmp/goblin.png",
+                "signature": "g", "version": 1,
+                "description": "Goblin1 is a goblin.", "wardrobe": {},
+                "clothing_condition": "", "authority": "identity_and_clothing",
+            },
+            "Elf1": {
+                "name": "Elf1", "picture_number": 3,
+                "image_name": "elf.png", "image_path": "/tmp/elf.png",
+                "signature": "e", "version": 1,
+                "description": "Elf1 is an elf.", "wardrobe": {},
+                "clothing_condition": "", "authority": "identity_and_clothing",
+            },
+        }
+        state = {}
+        seg1_refs, _defs, state, snap1 = minimax.build_segment_reference_bindings(
+            segment_number=1, total_segments=4,
+            detailed_description="Goblin1 and Elf1 stand at the bar.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=1, binding_state=state,
+        )
+        self.assertEqual(seg1_refs["Goblin1"]["picture_number"], 2)
+        self.assertEqual(seg1_refs["Elf1"]["picture_number"], 3)
+        self.assertEqual(snap1["active_subject_ids"], [2, 3])
+
+        _seg2_refs, _defs, state, _snap2 = minimax.build_segment_reference_bindings(
+            segment_number=2, total_segments=4,
+            detailed_description="Elf1 sits quietly.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=1, binding_state=state,
+        )
+        seg3_refs, defs3, state, snap3 = minimax.build_segment_reference_bindings(
+            segment_number=3, total_segments=4,
+            detailed_description="Elf1 remains at the table.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=1, binding_state=state,
+        )
+        self.assertNotIn("Goblin1", seg3_refs)
+        self.assertEqual(seg3_refs["Elf1"]["picture_number"], 2)
+        self.assertEqual(snap3["removed_subject_ids"], [2])
+        self.assertIn("<Picture 2> defines Elf1", defs3)
+        self.assertNotIn("Goblin1", defs3)
+        self.assertTrue(state["subjects"]["Goblin1"]["eligible_for_removal"])
+        self.assertEqual(
+            state["subjects"]["Goblin1"]["removal_threshold_segment"], 3
+        )
+
+    def test_disable_subject_removal_keeps_seen_subjects_bound(self):
+        subjects = "<Subject 2> is Goblin1 (S2).\n<Subject 3> is Elf1 (S3)."
+        refs = {
+            name: {
+                "name": name, "picture_number": number,
+                "image_name": name.lower() + ".png",
+                "image_path": "/tmp/" + name.lower() + ".png",
+                "signature": name, "version": 1,
+                "description": name + " description", "wardrobe": {},
+                "clothing_condition": "", "authority": "identity_and_clothing",
+            }
+            for name, number in (("Goblin1", 1), ("Elf1", 2))
+        }
+        state = {}
+        _refs, _defs, state, _snap = minimax.build_segment_reference_bindings(
+            segment_number=1, total_segments=4,
+            detailed_description="Goblin1 and Elf1 are visible.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=0, binding_state=state,
+            disable_subject_removal=True,
+        )
+        seg4_refs, defs4, state, snap4 = minimax.build_segment_reference_bindings(
+            segment_number=4, total_segments=4,
+            detailed_description="Elf1 is visible.",
+            subject_definitions=subjects, character_references=refs,
+            base_reference_count=0, binding_state=state,
+            disable_subject_removal=True,
+        )
+        self.assertEqual(set(seg4_refs), {"Goblin1", "Elf1"})
+        self.assertEqual(snap4["removed_subject_ids"], [])
+        self.assertIn("Goblin1", defs4)
+        self.assertEqual(
+            state["subjects"]["Goblin1"]["binding_reason"],
+            "forced_persistent",
+        )
+
+    def test_retained_subject_definition_survives_without_current_action(self):
+        definitions = (
+            "<Subject 2> is Elf1 (S2).\n"
+            "<Picture 3> defines Elf1's identity, physical appearance, "
+            "species/distinguishing traits, and current clothing."
+        )
+        filtered, _ = minimax._filter_h3_subject_definitions(
+            definitions, set(), "Amy wipes the bar.", retained_subject_ids={2}
+        )
+        self.assertIn("<Subject 2> is Elf1", filtered)
+
+
+    def test_subject_resolver_promotes_metadata_name_even_if_model_leaves_generic_noun(self):
+        raw = (
+            "At 00:00.000, Amy stands at the counter.\n"
+            "At 00:02.000, a beautiful female elf steps in.\n"
+            "At 00:04.000, the elf sits at the back table.\n"
+            "End continuity state: the elf remains seated at the back table."
+        )
+
+        def fake_llm(_messages, **_kwargs):
+            return {
+                "raw_scene": (
+                    "At 00:00.000, Amy stands at the counter.\n"
+                    "At 00:02.000, a beautiful female elf steps in.\n"
+                    "At 00:04.000, the elf sits at the back table."
+                ),
+                "subject_names": ["Elf1"],
+                "subject_descriptions": {
+                    "Elf1": "silver-haired female elf"
+                },
+                "subject_wardrobes": {
+                    "Elf1": {
+                        "upper": "forest-green tunic",
+                        "lower": "brown trousers",
+                        "footwear": "leather boots",
+                        "other": "N/A",
+                    }
+                },
+            }
+
+        resolved, names, descriptions, wardrobes = (
+            minimax.resolve_director_raw_scene_subjects(
+                raw,
+                "<Subject 1> is Amy.",
+                llm_request=fake_llm,
+                segment_seconds=5,
+                return_subject_bootstrap=True,
+            )
+        )
+        self.assertIn("Elf1 steps in", resolved)
+        self.assertIn("Elf1 sits at the back table", resolved)
+        self.assertIn("Elf1 remains seated", resolved)
+        self.assertEqual(names, ["Elf1"])
+        self.assertEqual(descriptions["Elf1"], "silver-haired female elf")
+        self.assertEqual(wardrobes["Elf1"]["upper"], "forest-green tunic")
+
+    def test_physical_prompt_rejects_unsupported_support_changes_and_stale_end_position(self):
+        messages = minimax.build_director_raw_scene_physical_messages(
+            "Amy wipes the table.",
+            (
+                "At 00:00.000, Amy stands on the floor beside the table.\n"
+                "At 00:02.000, Amy steps down from the counter.\n"
+                "At 00:04.000, Amy walks to the back table.\n"
+                "End continuity state: Amy stands at the counter."
+            ),
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("changes support or elevation", prompt)
+        self.assertIn("different established location", prompt)
+        self.assertIn("End continuity moves a subject", prompt)
+
+    def test_final_h3_prompt_carries_distinct_prop_identity_contract(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000, Goblin1 holds one chipped mug. "
+                    "At 00:04.000, Amy pours ale into the mug."
+                ),
+                "overall_soundscape": "ale pours",
+                "non_diegetic_music": "N/A",
+            },
+            "<Subject 2> is Goblin1 (S2).",
+            segment_number=2,
+            conditioning_mode="continuation",
+        )
+        self.assertIn("one distinct physical object", prompt)
+        self.assertIn("must not duplicate, merge, or substitute", prompt)
+
+    def test_physical_validator_rejects_appears_without_llm_call(self):
+        llm = mock.Mock()
+        result = minimax.validate_director_raw_scene_physical(
+            "A goblin enters the tavern.",
+            (
+                "At 00:00.000, Amy stands at the counter.\n"
+                "At 00:02.000, a goblin appears beside the stool.\n"
+                "End continuity state: the goblin stands beside the stool."
+            ),
+            llm_request=llm,
+        )
+        self.assertFalse(result["valid"])
+        self.assertIn("enter or be revealed", result["issue"])
+        llm.assert_not_called()
+
+    def test_prop_validator_allows_current_beat_to_introduce_prop(self):
+        messages = minimax.build_director_raw_scene_prop_state_messages(
+            "Goblin1 enters clutching a chipped mug.",
+            (
+                "At 00:00.000, Goblin1 enters clutching a chipped mug.\n"
+                "At 00:06.000, Goblin1 holds the chipped mug at the counter.\n"
+                "End continuity state: Goblin1 holds the chipped mug."
+            ),
+            prop_ledger={},
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn(
+            "A prop introduced by CURRENT BEAT may first appear in this scene",
+            prompt,
+        )
+
+    def test_subject_resolver_receives_current_beat_appearance_facts(self):
+        messages = minimax.build_director_raw_subject_resolution_messages(
+            "At 00:01.000, an elf enters.",
+            current_beat="A beautiful female elf enters with silver hair.",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("CURRENT BEAT\nA beautiful female elf", prompt)
+        self.assertIn("in RAW or CURRENT BEAT", prompt)
+
+    def test_combined_continuity_sanitizes_held_prop_id_objects(self):
+        candidate = {
+            "version": 5,
+            "environment": {"location": "N/A", "persistent_state": "N/A"},
+            "camera": "N/A",
+            "ongoing_action": "N/A",
+            "ongoing_audio": "N/A",
+            "subjects": {
+                "Elf1": {
+                    "position": "back table",
+                    "pose_action": "seated",
+                    "wardrobe": {
+                        "upper": "N/A", "lower": "N/A",
+                        "footwear": "N/A", "other": "N/A",
+                    },
+                    "topology": "N/A",
+                    "body_state": "N/A",
+                    "physical_condition": "N/A",
+                    "attached_objects": [],
+                    "injuries": [],
+                    "substances": [],
+                    "spatial_relationships": [],
+                    "persistent_effects": [],
+                    "held_props": [{"id": "chalice_1"}],
+                }
+            },
+            "props": {},
+        }
+        cleaned = minimax._sanitize_combined_continuity_list_variants(candidate)
+        self.assertEqual(cleaned["subjects"]["Elf1"]["held_props"], ["chalice_1"])
+        minimax._validate_combined_continuity_schema(cleaned)
+
+    def test_subject_state_ledger_keeps_offscreen_subjects(self):
+        committed = {
+            "Goblin1": {
+                "name": "Goblin1",
+                "subject_id": 2,
+                "position": "beside counter",
+                "held_props": ["mug_1"],
+            }
+        }
+        observed = {
+            "subjects": {
+                "Elf1": {
+                    "name": "Elf1",
+                    "subject_id": 3,
+                    "position": "back table",
+                    "held_props": ["chalice_1"],
+                }
+            }
+        }
+        merged = minimax.merge_subject_state_ledger(
+            committed,
+            observed,
+            segment_number=3,
+        )
+        self.assertEqual(merged["Goblin1"]["position"], "beside counter")
+        self.assertEqual(merged["Goblin1"]["held_props"], ["mug_1"])
+        self.assertEqual(merged["Elf1"]["position"], "back table")
+        self.assertEqual(merged["Elf1"]["last_updated_segment"], 3)
+
+    def test_h3_carries_stationary_continuing_subject_not_in_action(self):
+        state = {
+            "subjects": {
+                "Goblin1": {
+                    "name": "Goblin1",
+                    "position": "beside the counter",
+                }
+            }
+        }
+        prompt = minimax.ensure_h3_continuing_subject_state(
+            "[Shot 1] At 00:00.000, Amy turns toward the doorway.",
+            state,
+        )
+        self.assertIn(
+            "Continuing Subjects: Goblin1 remains beside the counter.",
+            prompt,
+        )
+
+    def test_soundscape_prompt_preserves_source_count_and_intensity(self):
+        messages = minimax.build_h3_soundscape_messages(
+            "At 00:02.000, Goblin1 takes one step through the doorway."
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("Preserve the stated source", prompt)
+        self.assertIn("count, duration, and intensity", prompt)
+        self.assertIn("do not turn one step into generic/plural footsteps", prompt)
+
+    def test_unclothed_nonhuman_reference_keeps_species_anatomy_not_human_sex_anatomy(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Dragon1 is a humanoid dragon with obsidian scales, wings, and amber eyes.",
+            has_identity_reference=False,
+        )
+        self.assertIn("external anatomy species-appropriate", prompt)
+        self.assertIn("do not invent human sex-specific anatomy", prompt)
+        self.assertIn("If no clothing is described, do not invent clothing", prompt)
 
 
 if __name__ == "__main__":

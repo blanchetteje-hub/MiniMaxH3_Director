@@ -460,9 +460,10 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             checkpoint = minimax.load_beat_validation_state(str(state_path))
 
         self.assertEqual(len(states), 2)
+        self.assertNotIn("barriers", states[1]["environment"])
         self.assertEqual(
-            states[1]["environment"]["barriers"]["basement"],
-            {"status": "open"},
+            checkpoint["current_beat_state"]["environment"]["barriers"]["basement"]["status"],
+            "open",
         )
         self.assertEqual(
             checkpoint["current_beat_state"]["story_progress"]["persistent_state_effects"],
@@ -504,33 +505,17 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             validator_states[1]["characters"]["Will"]["location"],
             "basement",
         )
-        self.assertEqual(
-            validator_states[1]["characters"]["Will"]["containment"],
-            "contained",
-        )
-        self.assertEqual(
-            validator_states[1]["characters"]["Will"]["contained_in"],
-            "basement",
-        )
-        self.assertFalse(validator_states[1]["characters"]["Will"]["accessible"])
-
-        self.assertEqual(
-            validator_states[2]["environment"]["barriers"]["basement_door"]["status"],
-            "locked",
-        )
-        self.assertEqual(
-            validator_states[2]["characters"]["Will"]["contained_in"],
-            "basement",
-        )
+        self.assertNotIn("containment", validator_states[1]["characters"]["Will"])
+        self.assertNotIn("contained_in", validator_states[1]["characters"]["Will"])
+        self.assertNotIn("accessible", validator_states[1]["characters"]["Will"])
+        self.assertNotIn("barriers", validator_states[2]["environment"])
+        self.assertNotIn("contained_in", validator_states[2]["characters"]["Will"])
 
         self.assertEqual(
             validator_states[3]["characters"]["Amy"]["equipped_objects"],
             ["pistol"],
         )
-        self.assertEqual(
-            validator_states[3]["environment"]["barriers"]["basement_door"]["status"],
-            "locked",
-        )
+        self.assertNotIn("barriers", validator_states[3]["environment"])
 
         final_state = checkpoint["current_beat_state"]
         self.assertEqual(final_state["threats"]["threat_1"]["status"], "dead")
@@ -538,6 +523,15 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             final_state["story_progress"]["completed_required_event_ids"],
             ["E1", "E2", "E3", "E4"],
         )
+        self.assertEqual(final_state["characters"]["Will"]["location"], "basement")
+        self.assertEqual(final_state["characters"]["Will"]["containment"], "contained")
+        self.assertEqual(final_state["characters"]["Will"]["contained_in"], "basement")
+        self.assertFalse(final_state["characters"]["Will"]["accessible"])
+        self.assertEqual(
+            final_state["environment"]["barriers"]["basement_door"]["status"],
+            "locked",
+        )
+        self.assertEqual(final_state["characters"]["Amy"]["equipped_objects"], ["pistol"])
 
         changed = minimax.apply_state_patch(
             final_state,

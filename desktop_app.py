@@ -8,6 +8,7 @@ handling as the single source of truth.
 from __future__ import annotations
 
 import contextlib
+import base64
 import io
 import json
 import math
@@ -23,7 +24,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from minimax import LORA_DIRECTORY, parse_args, require_existing_beats
+from minimax import (
+    DEFAULT_REFRESH_INTERVAL,
+    DEFAULT_STORY_TEMPERATURE,
+    DEFAULT_VISUAL_STYLE,
+    LORA_DIRECTORY,
+    VIDEO_OUTPUT,
+    normalize_visual_style,
+    parse_args,
+    require_existing_beats,
+)
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -32,6 +42,7 @@ FRONTEND_INDEX = PROJECT_DIR / "frontend" / "dist" / "index.html"
 SETTINGS_FILE = PROJECT_DIR / "gui_settings.json"
 
 DEFAULT_SETTINGS = {
+    "settings_version": 2,
     "generation_mode": "new",
     "vram_mode": "32",
     "action": "generate",
@@ -51,12 +62,14 @@ DEFAULT_SETTINGS = {
     "resume": "1",
     "steps": "6",
     "trim_frames": "2",
-    "refresh": "6",
+    "refresh": str(DEFAULT_REFRESH_INTERVAL),
     "vision_continuity": "0",
     "retention": False,
+    "disable_subject_removal": False,
     "repair": "",
     "model": "gpt",
-    "temp": "0.8",
+    "temp": str(DEFAULT_STORY_TEMPERATURE),
+    "visual_style": DEFAULT_VISUAL_STYLE,
     "first_frame": False,
     "loras": [],
     "beat_count": "",
@@ -230,6 +243,25 @@ class MiniMaxBridge:
                             pass
                     saved.pop("total_length", None)
                     saved.pop("generate_all", None)
+                    try:
+                        settings_version = int(saved.get("settings_version", 1))
+                    except (TypeError, ValueError):
+                        settings_version = 1
+                    if settings_version < 2:
+                        # Migrate only the historical defaults once. After the
+                        # version bump, an explicit user-selected 6 / 0.8 is kept.
+                        if str(saved.get("refresh", "")).strip() == "6":
+                            saved["refresh"] = str(DEFAULT_REFRESH_INTERVAL)
+                        if str(saved.get("temp", "")).strip() == "0.8":
+                            saved["temp"] = str(DEFAULT_STORY_TEMPERATURE)
+                        saved["settings_version"] = 2
+                        try:
+                            SETTINGS_FILE.write_text(
+                                json.dumps({**DEFAULT_SETTINGS, **saved}, indent=2),
+                                encoding="utf-8",
+                            )
+                        except OSError:
+                            pass
                     return {**DEFAULT_SETTINGS, **saved}
             except (OSError, ValueError):
                 pass
@@ -297,12 +329,15 @@ class MiniMaxBridge:
                 settings.get("trim_frames", 2), "Trim frames"
             ),
             "refresh": _positive_int(
-                settings.get("refresh", 6), "Legacy refresh fallback"
+                settings.get("refresh", DEFAULT_REFRESH_INTERVAL), "Legacy refresh fallback"
             ),
             "vision_continuity": _non_negative_int(
                 settings.get("vision_continuity", 0), "Vision continuity"
             ),
             "retention": bool(settings.get("retention", False)),
+            "disable_subject_removal": bool(
+                settings.get("disable_subject_removal", False)
+            ),
             "resume": _positive_int(
                 settings.get("resume", 1), "Resume segment"
             ),
@@ -313,7 +348,10 @@ class MiniMaxBridge:
         if model not in {"gpt", "mistral", "qwen"}:
             raise ValueError("Model formatter must be 'gpt', 'mistral', or 'qwen'.")
         validated["model"] = model
-        validated["temp"] = _story_temperature(settings.get("temp", 0.8))
+        validated["temp"] = _story_temperature(settings.get("temp", DEFAULT_STORY_TEMPERATURE))
+        validated["visual_style"] = normalize_visual_style(
+            settings.get("visual_style", DEFAULT_VISUAL_STYLE)
+        )
 
         repair_value = settings.get("repair")
         if repair_value not in (None, ""):
@@ -388,7 +426,7 @@ class MiniMaxBridge:
                 "--model",
                 model,
                 "--temp",
-                _number_argument(_story_temperature(settings.get("temp", 0.8))),
+                _number_argument(_story_temperature(settings.get("temp", DEFAULT_STORY_TEMPERATURE))),
             ]
 
         if not isinstance(settings, dict):
@@ -421,9 +459,10 @@ class MiniMaxBridge:
         effective = dict(settings)
         if render:
             effective.update(segment_length=1, total_segments=1, megapixels=0.5,
-                             steps=6, trim_frames=2, refresh=6, vision_continuity=0,
+                             steps=6, trim_frames=2, refresh=DEFAULT_REFRESH_INTERVAL, vision_continuity=0,
                              model="gpt", resume=1, first_frame=False,
-                             retention=False, loras=[], temp=0.8)
+                             retention=False, disable_subject_removal=False,
+                             loras=[], temp=DEFAULT_STORY_TEMPERATURE)
         values = self._validate_settings(effective)
         command = [
             self.python_executable,
@@ -441,10 +480,14 @@ class MiniMaxBridge:
             "--refresh",
             str(values["refresh"]),
             *(("--retention",) if values["retention"] else ()),
+            *(("--disable-subject-removal",)
+              if values["disable_subject_removal"] else ()),
             "--vision-continuity",
             str(values["vision_continuity"]),
             "--model",
             values["model"],
+            "--visual-style",
+            values["visual_style"],
         ]
         if render:
             # Timing and rendering options come from the saved prompt package.
@@ -789,6 +832,42 @@ class MiniMaxBridge:
         with self._lock:
             self._logs.clear()
         return {"ok": True, "next_offset": 0}
+
+    def get_output_images(self) -> list[dict[str, Any]]:
+        """Return recent PNG/JPEG previews from the configured video output."""
+        root = Path(VIDEO_OUTPUT).resolve()
+        if not root.is_dir():
+            return []
+        candidates = []
+        try:
+            for path in root.rglob("*"):
+                if path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+                    continue
+                try:
+                    resolved = path.resolve()
+                    if not resolved.is_relative_to(root) or not resolved.is_file():
+                        continue
+                    stat = resolved.stat()
+                    if stat.st_size > 12 * 1024 * 1024:
+                        continue
+                    candidates.append((stat.st_mtime, resolved, stat.st_size))
+                except OSError:
+                    continue
+        except OSError:
+            return []
+        images = []
+        mime_types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+        for modified, path, _size in sorted(candidates, reverse=True)[:24]:
+            try:
+                encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+            except OSError:
+                continue
+            images.append({
+                "name": path.name,
+                "modified_at": datetime.fromtimestamp(modified, tz=timezone.utc).isoformat(),
+                "src": f"data:{mime_types[path.suffix.lower()]};base64,{encoded}",
+            })
+        return images
 
     def is_running(self) -> bool:
         with self._lock:

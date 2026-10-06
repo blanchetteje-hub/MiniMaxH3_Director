@@ -6,11 +6,11 @@ Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This fi
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
-Active experimental branch: `summary-to-story-test`
+Active experimental branch: `location-state-test`
 
 Runtime/bridge mailbox branch: `gpt-runtime`
 
-Baseline branch this experiment diverged from: `gpt-arc-refresh`
+Baseline branch this experiment diverged from: `main`
 
 Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/evaluation only and must not become a production dependency.
 
@@ -20,1015 +20,16 @@ Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/
 
 `story.txt` remains the sole narrative authority. Expansion may add concrete staging/detail where the source is silent, but it may not add, replace, contradict, skip, reorder, or materially alter source events/outcomes.
 
+### Primary goal achieved
+
+### Next goal
+
+Continuity
+
+Location continuity -> 3-second persistent 360-orbit room reference is accepted; covered geometry stayed ~99% consistent in the latest tavern run
+State/subject/action continuity -> active work
+
 Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture/prompt changes.
-
-## Current branch experiment: summary -> expanded story -> beats
-
-This branch is testing a simpler front end to Beat planning than the older source-span/chapter planner.
-
-Current `--generate-beats` flow:
-
-1. Read `story.txt`.
-2. Novelist call expands the short story/summary into a runtime-length working story.
-3. A second local-model call converts that expanded story into exactly N sequential beat events.
-4. Python creates a deterministic one-event-per-beat macro arc.
-5. Existing Beat CREATE -> VALIDATE -> REPAIR -> VALIDATE processing turns those events into accepted beats.
-6. Accepted-Beat state capture records persistent continuity after each accepted beat.
-
-The expanded story is an intermediate implementation artifact, not a new narrative authority. When it disagrees with `story.txt`, the expansion is wrong.
-
-### CLI contract
-
-`--generate-beats` now takes two required positive values:
-
-`--generate-beats <beat-count> <beat-length-seconds>`
-
-Both are needed so the novelist knows the target total runtime:
-
-`beat-count * beat-length-seconds`
-
-The desktop/UI command path passes both values as well.
-
-## Story expansion / novelist profile
-
-Current novelist settings on this branch:
-
-- temperature: `0.4` (lowered from `0.6` after observed drift)
-- reasoning effort: high
-- reasoning budget: 1024 tokens
-- prompt explicitly preserves every source event/outcome
-- explicit transitions must happen visibly rather than being compressed or implied
-- ending guard: preserve the source's stated final situation; do not invent a new escape, destination, surviving threat, or aftermath after the source's final event
-- target runtime and requested beat count are supplied
-
-The prompt should remain compact. Do not respond to every bad generation by stacking more prose onto it; promote only the smallest generic rule supported by repeated evidence.
-
-## Story-to-beats profile
-
-The second pass receives the full expanded story and must return exactly the requested number of sequential beats.
-
-Current settings:
-
-- temperature: `0`
-- reasoning effort: medium
-- reasoning budget: 1024 tokens
-
-Python strips story-style clock timestamps before the generated beat framework enters normal validation.
-
-The generated macro arc is intentionally simple:
-- one required event per requested beat;
-- sequential dependency chain;
-- no model-authored bookkeeping/state effects at this stage.
-
-## Beat validation/state behavior retained from baseline
-
-Normal Beat CREATE/VALIDATE/REPAIR remains in place after the new two-pass planner.
-
-Important retained rules:
-- Beat CREATE/REPAIR use temperature 0 / seed 42.
-- Python owns deterministic bookkeeping and canonical state.
-- accepted beats are observed for broad persistent state after validation.
-- broad state capture does not imply broad prompt injection later.
-- an unspecified observation must not erase a concrete established fact.
-- acceptance 2776 completed all 8 Beats successfully and the Beat text is now provisionally stable enough to move downstream.
-
-Accepted-Beat state capture remains useful, but further state-schema/bookkeeping cleanup is **not** the active optimization target. Do not delay Director work to perfect incidental state observations. Revisit state only when a concrete Director failure traces back to missing or incorrect canonical continuity.
-
-## Accepted-Beat state schema fixes on this branch
-
-Earlier accepted-state extraction showed two predictable 20B JSON-shape failures.
-
-1. Nested threat shorthand:
-   `{"threats":{"zombies":"active"}}`
-
-   Accepted-state-only normalization converts known threat-state enum strings into:
-   `{"threats":{"zombies":{"status":"active"}}}`
-
-   Ambiguous nested strings still fail.
-
-2. Root-level threat shape:
-   acceptance 2748 produced a non-object `state_patch.threats`, which the canonical state parser correctly rejected.
-
-   The response schema now requires each allowed root to be an object:
-   - `characters`
-   - `environment`
-   - `threats`
-   - `story`
-
-   This prevents ambiguous root-level shorthand instead of making Python guess its meaning.
-
-Relevant branch commits:
-- `8a611913770ac8d010a6df55ecec2ea7e479a7e3` — update novelist temperature regression to 0.4
-- `1b795fb5b3f85b3615f033c006748458d3665dcf` — constrain accepted-Beat state root shapes
-- `9b734d3770d12ebb67a2445ed19973c115d6e3de` — regression coverage
-
-## Terminology refactor
-
-User-facing/code terminology is being changed from **LM Studio** to **LLM host** because the runtime is not tied to LM Studio.
-
-The associated setting/variable naming is being migrated as well, including compatibility handling for the legacy key where needed.
-
-Do not reintroduce LM-Studio-specific naming for generic runtime behavior.
-
-## Latest verification
-
-### 2751 — story expansion prompt regression
-
-`tests-2751-clean-ending-prompt`
-
-Result: **6 passed, 4 subtests passed**.
-
-The newer location/barrier rule was removed from the novelist prompt. The replacement is one compact ending guard:
-- preserve the source's stated final situation;
-- do not invent a new escape, destination, surviving threat, or aftermath after the source's final event.
-
-### 2752 — full Amy planning run
-
-`generate-beats-2752-summary-to-story`
-
-The expanded story is materially better than 2750:
-- no zombies survive after the stated last zombie dies;
-- no new escape/aftermath is invented;
-- Amy returns to the safe location and retrieves Will and Amber.
-
-The run then fails after Beat 2 in accepted-state capture with:
-
-`State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.`
-
-This is not a novelist failure. It is a local-model JSON namespace-shape failure in the accepted-state extractor.
-
-Current fix:
-- accepted-state prompt now explicitly says `characters`, `environment`, `threats`, and `story` are sibling roots and must never be nested inside one another;
-- no Python guessing/normalization was added for ambiguous nested roots;
-- novelist prompt remains untouched.
-
-Relevant commits:
-- `eb207214079bcd001284196a458e015eff47cda6` — simplify novelist prompt and add ending guard
-- `fd354a9683df63fde86eb0ffa57286466ce64ed9` — update novelist regression
-- `9ee1c04e5fbe8f2c6916c0ca70c72397f350553a` — clarify accepted-state root namespaces
-- `a3da214bc1bc5a37af92015c86196362d63e005c` — regression coverage
-
-### 2754 — character canon source-contract failure
-
-`generate-beats-2754-summary-to-story`
-
-Result: failed before story expansion with:
-
-`ValueError: Duplicate canonical character: Unnamed`
-
-Root cause:
-- `canonical_data.txt` on this branch contains the configured field list `age, clothing, gender`;
-- the character-canon prompt was stale and still treated that file as if it contained character records;
-- it also told the local model not to use story/subject information, leaving no character names available;
-- GPT-OSS 20B emitted multiple `Unnamed` records and deterministic parsing rejected the duplicate.
-
-Fix:
-- `canonical_data.txt` is again treated as the field configuration;
-- character names/facts are grounded from `story.txt` + `subjects.txt`;
-- the canon cache hash includes configured fields, story, and subjects;
-- no special handling for `Unnamed` was added.
-
-Relevant commits:
-- `8c18a09ece41805be8d0f4f31f4cf907908622ab` — fix character-canon source contract
-- `53f532c6ddccfa35ec00d13f65bf8d4a18b37a4a` — align character-canon regressions
-
-### 2756 — accepted-state threat classification/shape failure
-
-`generate-beats-2756-summary-to-story`
-
-Preceded by `tests-2755-character-canon-fields`: **42 passed, 4 subtests passed**.
-
-2756 confirms the corrected character-canon source contract works and reaches normal story expansion/Beat processing.
-
-Earliest failure after Beat 2:
-
-`Beat state patch entity threats.children_in_kitchen must be an object.`
-
-Interpretation:
-- the accepted-state extractor placed a non-threat concept under `threats`;
-- it also emitted a scalar threat child even though canonical threat entries are object records.
-
-Fix:
-- extractor prompt now says `threats` is only for hostile/dangerous entities; ordinary people/victims/protected characters belong under `characters`;
-- response schema now requires every direct child of `threats` to be an object;
-- no arbitrary Python scalar normalization was added.
-
-Relevant commits:
-- `cd4ab71da690d8922a4dd464fbf6ccd50e406574`
-- `13f1c8be24cc1a853c4ea39c609302db925daf5f`
-
-### 2758 — reserved root reused as threat ID
-
-`tests-2757-threat-entry-shape`: **42 passed, 4 subtests passed**.
-
-`generate-beats-2758-summary-to-story` reaches Beat 6 before failing with:
-
-`State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.`
-
-The previous schema change successfully enforced object-shaped threat entries. The remaining failure is namespace-specific: GPT-OSS used the reserved canonical root name `story` as a threat ID despite the prompt already saying the roots are siblings.
-
-Fix:
-- reserve canonical root names structurally in the `threats` JSON schema using `propertyNames`;
-- threat records remain otherwise flexible;
-- no additional extractor prose rule and no Python guessing/normalization were added.
-
-Relevant commits:
-- `24715c6e83f6bee8c3b1b127f300865ae0ef6321`
-- `663a23c6b31e8e155e255cb94b4b0f1c466bd9b5`
-
-### 2760 — first full successful planning run after schema fixes
-
-`tests-2759-reserved-threat-keys`: **42 passed, 4 subtests passed**.
-
-`generate-beats-2760-summary-to-story`: **completed all 8 beats successfully**.
-
-The reserved canonical-root-name restriction held; accepted-state capture no longer crashed on `threats.story`.
-
-Remaining observation is semantic, not structural:
-- the source ending says Amy returns to the safe location and brings Will and Amber back out with her;
-- 2760 instead ends with the family stepping back into the hidden room;
-- it also invents an unnamed `toddler` and temporarily places Amber in the hallway rather than the shared safe location.
-
-Do not add more novelist prompt rules from this single sample. Earlier runs with the same current prompt preserved the ending better, so treat this as possible temperature/sampling variance first.
-
-### 2761 — repeat novelist sample + reserved character key
-
-`generate-beats-2761-summary-to-story-repeat`
-
-The repeat sample preserves the source ending better than 2760: after the last zombie dies, Amy retrieves Will and Amber from the closet and brings them out into the living room. This supports treating 2760's reversed ending as sampling variance at novelist temperature 0.4 rather than adding another short-story prompt rule.
-
-The run then fails after Beat 5 with:
-
-`State effects cannot nest canonical state root 'characters.environment'; roots must remain top-level.`
-
-This is the same structural class previously seen as `threats.story`: GPT-OSS reused a reserved canonical root name as a direct entity ID.
-
-Fix:
-- reserve canonical root names in direct `characters` keys, matching the existing `threats` restriction;
-- no new extractor prose rule;
-- novelist prompt/temperature remain unchanged.
-
-Relevant commits:
-- `05cc4ec427a1f3afdf931e9cda694eae04df592b`
-- `79b5fadc2bf06212a550aa35c0ffb48b2ea85340`
-
-### 2763 — successful planning run; summary-guided story-to-beats change
-
-`tests-2762-reserved-character-keys`: **42 passed, 4 subtests passed**.
-
-`generate-beats-2763-summary-to-story`: **completed all 8 beats successfully**.
-
-The run's staging split Will and Amber across different safe locations. That is acceptable as creative staging if both are still retrieved at the end. The larger issue is that the derived Beat framework can lose an explicit source-summary obligation even when the expanded story is otherwise plausible.
-
-Current experiment:
-- story-to-beats system prompt now begins: `You are a screenplay writer that converts stories into films using a summary as a final guide.`
-- user prompt now passes both the original `SUMMARY` and expanded `STORY`;
-- no additional adaptation rules were added.
-
-Relevant commits:
-- `6357e1d303c105e056f3c78b53abc3022c7e4a2e`
-- `7e8319d51c0d6bda12143ecf3e87154ac29183fd`
-
-### 2765 — blocked before SUMMARY+STORY beat conversion
-
-`tests-2764-summary-guided-story-to-beats`: **42 passed, 4 subtests passed**.
-
-`generate-beats-2765-summary-guided-story-to-beats` failed before story expansion / story-to-beats with:
-
-`Canonical fact has an invalid or duplicate field.`
-
-Cause:
-- character-canon JSON allows arbitrary `other_facts[].field` strings;
-- GPT-OSS emitted a field that normalized to an already-required core field (`age`, `clothing`, or `gender`);
-- deterministic parsing correctly rejected the duplicate.
-
-Fix:
-- reserve `age`, `clothing`, and `gender` in the character-canon JSON schema so they cannot be emitted through `other_facts`;
-- parser remains strict;
-- SUMMARY+STORY beat-conversion prompt remains unchanged and is still awaiting a clean acceptance sample.
-
-Relevant commits:
-- `80690ec5b4c948f7ba9f6089db3edb5997cd98a8`
-- `e942948a9a0850a3f3b6b0064d3f1eef7d40d8e0`
-
-### 2767 — first clean SUMMARY+STORY beat-conversion sample
-
-`tests-2766-character-canon-core-fields`: **42 passed, 4 subtests passed**.
-
-`generate-beats-2767-summary-guided-story-to-beats`: **completed all 8 beats successfully**.
-
-The new story-to-beats prompt preserved the source-level ending obligation better:
-- Beat 8 explicitly retrieves both Will and Amber;
-- both children are carried out together.
-
-Keep the SUMMARY+STORY prompt change.
-
-Separate continuity issue observed upstream in the expanded story:
-- Will and Amber are placed behind a closed hatch/safe location;
-- later the expanded story has zombies lunge at Will and Amber anyway;
-- the beat converter carries that contradiction forward.
-
-Do not blame or modify the SUMMARY+STORY beat prompt for that contradiction. One unchanged repeat is queued to determine whether the expanded-story barrier inconsistency repeats before changing the novelist prompt.
-
-### 2768 — repeat confirms prompts; story namespace schema failure
-
-`generate-beats-2768-summary-guided-repeat`
-
-The repeat did **not** reproduce the earlier barrier/safe-location contradiction:
-- both kids remain out of the fight;
-- Beat 8 retrieves both Will and Amber;
-- SUMMARY+STORY beat conversion remains useful and should stay.
-
-The run fails after Beat 3 in accepted-state capture with:
-
-`State effects cannot nest canonical state root 'story.persistent_facts.characters.Amy.location'; roots must remain top-level.`
-
-Cause:
-- `story.persistent_facts` was still schema-open enough for GPT-OSS to place character-state data under the story namespace.
-
-Fix:
-- accepted-state `story` is now limited to `terminal_states` and `persistent_facts`;
-- reserved canonical root names cannot be used directly inside `story.persistent_facts`;
-- no novelist or story-to-beats prompt changes were made.
-
-Relevant commits:
-- `887fbe8c5ac6f2a47459629eac27f8e38a272d1e`
-- `56f4ade89048730627e95eeef2a600b7adcc6852`
-
-### 2770 — prompts remain good; environment container shape failure
-
-`tests-2769-story-namespace-schema`: **42 passed, 4 subtests passed**.
-
-`generate-beats-2770-summary-guided-story-to-beats` again preserves both kids:
-- Will and Amber are placed together in the back bedroom closet;
-- Beat 8 retrieves both of them and brings them out together.
-
-Keep both current story prompts.
-
-The run fails after Beat 3 in accepted-state application with:
-
-`Canonical environment objects must be an object.`
-
-Cause:
-- accepted-state response schema still allowed arbitrary shapes under `environment`;
-- canonical state requires `doors`, `windows`, `barriers`, `objects`, and `paths` to be object maps, and `persistent_effects` / `hazards` to be arrays.
-
-Fix:
-- encode those known environment container types directly in the accepted-state response schema;
-- continue allowing additional environment facts;
-- no Python normalization or story-prompt changes.
-
-Relevant commits:
-- `8ea3885c4105aa16c1c0883b20a3d784e97013f6`
-- `008b884380503e0633bfa2a2734b373c2e41e9d5`
-
-### 2772 — malformed accepted-state keys; test strict structured output
-
-`tests-2771-environment-container-schema`: **42 passed, 4 subtests passed**.
-
-`generate-beats-2772-summary-guided-story-to-beats` again produced a coherent 8-beat framework ending with both Will and Amber retrieved. The failure remained downstream in accepted-state extraction.
-
-Observed extractor output contained syntactically valid but structurally nonsensical keys, including fragments resembling serialized JSON inside key names. Example failure:
-
-`State effects cannot nest canonical state root 'environment.objects":{"pantry_closet":{}}},.threats'; roots must remain top-level.`
-
-The accepted-state response format was still declared with `strict: False`. Rather than adding more semantic field rules, the current experiment changes only this response schema to `strict: True` so llama.cpp must adhere more closely to the JSON schema.
-
-This may reveal whether the flexible schema is compatible with strict structured output. If not, the next failure should be an immediate schema/grammar error rather than corrupted state.
-
-Relevant commits:
-- `610f8f3319d41e2b3fb92d61aceaf3e18de8b1f6`
-- `459316da5f333abb0f78cadf4c2d1a6c9993c250`
-
-### 2774 — strict output helps; threat-ID ordering bug found
-
-`tests-2773-strict-accepted-state-schema`: **42 passed, 4 subtests passed**.
-
-`generate-beats-2774-strict-accepted-state-schema` reaches Beat 7 with clean structured state before failing again on:
-
-`State effects cannot nest canonical state root 'threats.story'; roots must remain top-level.`
-
-Strict structured output improved the extractor substantially, but llama.cpp still did not reliably enforce the `propertyNames` reservation.
-
-Root cause in Python:
-- Python already owns stable threat IDs through `_normalize_threat_patch_ids()`;
-- however, `persistent_beat_state_patch()` validated the raw model patch namespace **before** threat IDs were canonicalized;
-- therefore a model-invented label such as `story` crashed before Python could rename it to `threat_N`.
-
-Fix:
-- canonicalize new threat IDs before `normalize_beat_state_patch()` namespace validation;
-- no semantic guessing, prompt changes, or broader normalization added;
-- strict accepted-state schema remains enabled.
-
-Relevant commits:
-- `30a35e53a940d63c171ea0d29d9421d293ecc52a`
-- `d3c0dda6599e2baa7a3287529bad763b6ff4b17b`
-
-### 2798 — malformed accepted-state observation no longer blocks Beat generation
-
-`generate-beats-2798-source-ending` reached Beat 6, then the accepted-state observer emitted an invalid nested canonical root (`environment.story`) and aborted the entire planning run.
-
-This is auxiliary bookkeeping, not Beat authority. The accepted Beat had already passed semantic validation and physical-coherence checks.
-
-Fix:
-- accepted-state extraction/application is now fail-soft for structural `ValueError` failures;
-- the malformed observation is logged and skipped;
-- the already-valid Beat continues normally;
-- no new schema rule, normalization guess, or novelist/Beat prompt prose was added.
-
-This deliberately stops state bookkeeping from becoming the optimization target again.
-
-### 2801–2802 — planning succeeds; first Request 2 loss found
-
-`generate-beats-2801-fail-soft-state` completed all 8 Beats successfully. This confirms malformed accepted-state bookkeeping no longer blocks the planning run.
-
-`director-2802-fail-soft-state` then reached Segment 2 with a usable RAW scene. The post-format preservation check caught Request 2 dropping the first material RAW micro-action.
-
-Fix:
-- Request 1 remains authoritative and is not regenerated;
-- Request 2 still formats normally;
-- if the final semantic preservation check fails, Python replaces only `detailed_description` with canonical timed RAW action text, excluding the trailing `End continuity state`;
-- soundscape/music and normal H3 assembly remain intact;
-- the rebuilt prompt is revalidated and still fails hard if preservation is somehow not restored.
-
-This keeps Request 2 a lossless formatter without adding prompt rules or another semantic repair loop.
-
-### 2805 — deterministic RAW fallback exposed validator false negative
-
-Segment 2 Request 2 lost two RAW actions, so the new Python fallback copied the canonical timed RAW actions into `detailed_description` exactly as intended. The subsequent local-LLM preservation check nevertheless labeled the first and last copied actions OMITTED.
-
-Conclusion: after canonical RAW text is inserted deterministically, preservation is true by construction. Re-asking the 20B to judge identical copied text adds uncertainty and can create false failures.
-
-Change:
-- keep the first semantic preservation check on normal Request 2 output;
-- on failure, substitute canonical timed RAW text deterministically;
-- do not perform a second semantic LLM preservation check on the deterministic fallback.
-
-### 2807 — full Director run completes; earliest real RAW failure identified
-
-`director-2807-trust-raw-fallback` completed all 8 prompt-generation segments and marked all 8 Beats complete. The deterministic RAW fallback now works end-to-end.
-
-However, Segment 2 RAW exposed the earliest real quality failure:
-- 00:04.500: Amy slams the closet door shut;
-- 00:06.000: Will and Amber then tumble into that already-closed closet.
-
-That is a concrete physical/action-order contradiction, so it is not harmless creative staging.
-
-Fix:
-- add one narrow Request-1 semantic coherence check before accepting RAW;
-- validate only physical/causal executability and required action order in timestamp order;
-- allow harmless invented staging;
-- on failure, retry Request 1 with the concrete issue;
-- do not add more deterministic special-case regex rules for semantic choreography.
-
-The post-RAW path remains deterministic where possible; this check exists before RAW is accepted because deciding physical/causal coherence is fuzzy semantic work.
-
-### 2809 — RAW coherence wiring bug
-
-The new RAW coherence gate did not actually run because its helper forwarded the entire beat-validator settings dictionary directly into `ask_llm`; that dictionary contains server/runtime-only keys such as `context`, which are not valid per-request arguments.
-
-Fix: the narrow RAW coherence call now uses only supported deterministic request parameters (temperature 0, top_p 1, seed 42, repeat_penalty 1.15, bounded output), matching the style of other narrow semantic checks.
-
-### 2811 — coherence works; add post-RAW pronoun specificity
-
-2811 completed the full prompt-generation run. The new RAW physical/order check triggered retries and produced an ordered Segment 2.
-
-The run also showed that RAW and Request 2 continue to carry person pronouns such as `she`, `her`, `them`, and `their`. MiniMax H3 benefits from explicit named references.
-
-Change:
-- keep Request 1 focused on staging the scene;
-- after RAW is accepted, run a tiny deterministic pronoun-resolution pass;
-- replace only unambiguous person pronouns with explicit names/named groups;
-- preserve all timestamps/actions/order/objects/audio/camera/dialogue/end-state meaning;
-- fail soft to original RAW if the cleanup changes timestamp/structure or is unusable.
-
-This moves H3-specific reference precision out of the creative RAW prompt instead of adding another Request-1 rule.
-
-### LLM logging convention
-
-All production LLM stages should emit their result or concise verdict through `print()` so bridge `run.log` is sufficient for diagnosis. The pronoun resolver now logs whether it made no replacements or prints each changed line as `Checking pronouns segment: replaced <before> -> <after>`.
-
-### RAW -> final H3 simplification
-
-The former Request 2 formatter no longer owns narrative conversion.
-
-Current post-RAW path:
-- pronoun-resolution LLM: explicit-name cleanup only;
-- deterministic soundscape extractor: returns only `overall_soundscape`;
-- narrow creative music generator: returns only `non_diegetic_music`;
-- Python: strips RAW end-state metadata, copies canonical timed RAW into `detailed_description`, uses subject metadata already sourced from text/registry state, and builds the final H3 prompt.
-
-The old final-H3 action-preservation LLM is skipped because copied RAW is preserved by construction.
-
-### 2815 — Python-owned H3 path works; capture/pronoun follow-up
-
-2814 regressions passed 5/5.
-
-2815 generated all 8 final H3 prompts and marked all 8 Beats complete. The bridge return code 2 came only from the acceptance parser still looking for the retired `DIRECTOR REQUEST 2: H3 prompt` start marker after runtime output was renamed to `FINAL H3 PROMPT`.
-
-The new RAW->H3 architecture itself ran end-to-end.
-
-Observed pronoun-cleanup issue:
-- several segments were rejected because the tiny resolver rewrote or dropped the trailing `End continuity state:` marker;
-- final H3 then retained pronouns from original RAW.
-
-Fix:
-- send only the timed RAW body to pronoun resolution;
-- preserve/re-attach the exact original End continuity state in Python;
-- tell the resolver to scan the entire timed scene and replace every unambiguous personal pronoun;
-- acceptance parser recognizes both old and new H3 start markers for compatibility.
-
-### 2816 — LLM settings are task-based, not model-based
-
-Audited the production request path and found remaining model-specific settings:
-`MISTRAL_24B_SETTINGS`, `QWEN38_27B_SETTINGS`,
-`QWEN_DIRECTOR_SAMPLING_PARAMETERS`, formatter `DEFAULT_LLM_SETTINGS`, and
-the `use_beat_validation_settings` transport switch.
-
-Refactor:
-- removed all of those model-specific request profiles/switches;
-- formatter choice now affects parsing/cleanup only;
-- `ask_llm()` selects one profile solely from the request purpose:
-  `STORY_EXPANSION_LLM_SETTINGS`,
-  `CREATIVE_GENERATION_LLM_SETTINGS`,
-  `BEAT_WRITING_LLM_SETTINGS`,
-  `STORY_TO_BEATS_LLM_SETTINGS`,
-  `MUSIC_GENERATION_LLM_SETTINGS`, or
-  `DETERMINISTIC_ANALYSIS_LLM_SETTINGS`;
-- Beat validation uses the same system/user prompt shape and deterministic
-  request profile regardless of GPT/Qwen/Mistral formatter selection;
-- stale per-call ARC/Beat sampler splats were removed so purpose routing is the
-  single authority.
-
-### 2834–2836 — H3 audio responsibility split
-
-`director-2834-audio-completeness` completed all 8 prompt-generation segments.
-`tests-2835-audio-underscore-normalization` passed.
-
-The remaining settings mismatch was architectural: one LLM call was being asked to
-perform deterministic sound extraction and creative music generation, so both fields
-were forced through the deterministic-analysis profile.
-
-Current change:
-- soundscape extraction is its own `director_h3_soundscape` task and stays on
-  `DETERMINISTIC_ANALYSIS_LLM_SETTINGS` (temperature 0, low/128 reasoning,
-  seed 42);
-- non-diegetic music is its own `director_h3_music` task using
-  `MUSIC_GENERATION_LLM_SETTINGS` (temperature 0.6, medium/256 reasoning,
-  randomized seed);
-- each call has a one-field strict schema and one semantic responsibility;
-- no per-call temperature/top-p/seed overrides remain on the H3 audio path;
-- underscore cleanup remains deterministic Python normalization after each field.
-
-### 2837 — split works; first real audio-specific failures
-
-`director-2837-h3-audio-task-split` completed all 8 segments.
-
-The responsibility split is stable, but the first real outputs exposed two narrow
-prompt defects:
-
-- soundscape extraction converted visual-only facts into sound (for example,
-  sunlight reflecting off cereal);
-- music generation became too verbose/action-synchronized and had no explicit
-  previous-score context, producing a tense final cue even when the RAW scene
-  resolved into relief.
-
-Fix:
-- soundscape prompt now permits only microphone-audible facts and explicitly
-  rejects lighting, visibility, expressions, stillness, positions, silent
-  gestures, and merely plausible optional sounds;
-- continuation music now receives the previous segment's
-  `non_diegetic_music`;
-- music output is one concise underscore cue describing the emotional arc,
-  not a narration or beat-by-beat synchronization of scene actions;
-- task profiles remain unchanged.
-
-### 2838 — audio-quality regressions pass; stale Director tests exposed
-
-The new soundscape/music prompt tests and task-routing tests passed. The broader
-`test_director_retry.py` slice exposed stale unit tests that still mocked the
-retired Request-2 formatter call shape. Those failures were test-harness drift,
-not production-path failures.
-
-Test cleanup:
-- RAW-focused tests now use an audio-aware responder so independent soundscape
-  and music calls do not consume unrelated mock responses;
-- retired formatter-retry tests were replaced with current RAW-copy and
-  independent audio fail-soft coverage;
-- the pronoun prompt assertion now matches the already-adopted narrowing rule.
-
-### 2839 — 102/103 pass; final failure is test injection drift
-
-The broad regression slice passed 102/103. The remaining failure was the physical/order
-retry unit test: it tried to feed coherence-validator replies through a patched
-`ask_llm`, but `validate_director_raw_scene_coherence()` owns that semantic boundary.
-The test now mocks the validator directly and leaves the Director request mock responsible
-only for RAW scene responses.
-
-### 2841 — audio quality improved, remaining contract failures isolated
-
-`director-2841-h3-audio-quality` completed all 8 segments.
-
-Observed:
-- microphone-only wording removed the Segment 1 visual-only sunlight sound from
-  2837;
-- previous-score handoff fixed the major Segment 8 musical direction: the score
-  now resolves from tension into warm relief;
-- music is still too verbose and action-synchronized despite the word
-  `concise`;
-- Segment 7 produced malformed soundscape text `:[`;
-- Segment 8 incorrectly inferred a gunshot from the state phrase
-  `pistol still fired`.
-
-Fix:
-- soundscape contract now requires each item to name an audible event/ambience
-  and forbids deriving sounds from persistent state descriptions;
-- punctuation-only/non-language soundscape output is rejected;
-- music is limited to one cue sentence, at most 24 words after the continuation
-  prefix, with no character/action/sound-effect narration;
-- malformed/overlong audio output gets one bounded retry;
-- task-based LLM profiles remain unchanged.
-
-### 2845 — hardened audio contract works; final soundscape-only issue
-
-`director-2845-h3-audio-contract` completed all 8 segments.
-
-Validated fixes:
-- malformed Segment 7 soundscape was rejected automatically and succeeded on
-  bounded retry;
-- Segment 8 no longer invents a gunshot from the persistent state phrase
-  `pistol still fired`;
-- music is now short enough to resemble the gold cue style while preserving
-  previous-score continuity;
-- Segment 8 correctly resolves to relieved/warm closing music.
-
-Remaining repeatable audio defect is isolated to soundscape extraction:
-- silent motion is still sometimes verbalized as sound (`arms swing`,
-  `hand slides`, `sword lifts`);
-- one segment with explicit echoed footsteps returned `N/A`.
-
-Final soundscape-only change:
-- explicitly distinguish stated audible events from visible motion verbs;
-- reject `N/A` when RAW contains deterministic lexical evidence of explicit
-  audio such as footsteps, echoes, laughter, groans, impacts, or gunshots;
-- leave music and all task-based LLM settings unchanged.
-
-### 2847 — audio locked; next gold mismatch is dynamic Subjects
-
-`director-2847-h3-audio-final` completed all 8 segments.
-
-Audio result:
-- explicit footsteps/groans/impacts no longer collapse to N/A;
-- malformed output remains protected by the bounded retry;
-- persistent state no longer creates fake gunshots;
-- silent motion over-conversion is materially reduced;
-- music remains short, continuous across append segments, and resolves with the
-  scene's emotional state.
-
-Decision: lock the H3 audio path. Do not keep tuning it against this benchmark
-unless a new story exposes a concrete regression.
-
-Next larger gold mismatch:
-- combat RAW contains visible zombie subjects in Segments 2-8;
-- final H3 `subject_definitions` contains only file-backed Amy/Will/Amber;
-- camera movement is also absent, but missing Subject identity is the larger
-  structural mismatch.
-
-Root cause: the simplified story->beats path builds its Python macro arc with
-`characters_introduced: []`, removing the input used by the existing pre-H3
-dynamic Subject registry.
-
-Fix in progress:
-- beat writing assigns stable numbered functional labels only to distinct
-  unnamed animate individuals that require separate identity;
-- Python extracts those labels deterministically into
-  `characters_introduced`;
-- existing Subject registration remains the only downstream identity mechanism;
-- no new LLM stage and no LLM settings change.
-
-### 2848 — functional-label architecture passes except ambiguous token syntax
-
-Focused tests passed 4/5. The only failure was deterministic Python treating
-`Room2` as a Subject because plain `Word+number` is not semantically unique.
-
-Fix:
-- beat writer now marks functional animate identities explicitly as
-  `@Guard1`, `@Creature1`, etc.;
-- Python extracts only those marked handles;
-- Python removes the `@` before validation and saving, leaving ordinary
-  `Guard1`/`Creature1` beat prose;
-- numbered locations and objects such as `Room2` are ignored by construction;
-- no new LLM stage or settings change.
-
-### 2851-2858 — Beat-owned Subject labels rejected
-
-Planning probes established that the marker plumbing itself worked, but the
-responsibility was in the wrong stage.
-
-Evidence:
-- 2851 produced several functional zombie handles successfully;
-- 2852/2853 collapsed later distinct attackers into one label or collective prose;
-- the strengthened rule passed focused regressions in 2855;
-- fresh production runs 2856/2857/2858 still produced only `Zombie1` while later
-  foreground attackers remained collective or reused that one identity.
-
-Decision:
-- stop asking story-to-beats to invent H3 Subject identities;
-- Beats return to natural story-event description only;
-- `characters_introduced` is no longer populated from temporary `@` markers.
-
-### Post-RAW dynamic Subject ownership
-
-Dynamic identity now begins after Request 1 RAW has been accepted and before final
-H3 assembly.
-
-Current design:
-- the accepted staged RAW is authoritative;
-- a narrow deterministic-analysis call sees RAW plus existing Subject definitions;
-- it labels distinct unnamed foreground animate participants with stable functional
-  names such as `Guard1` or `Creature1`;
-- it reuses an existing dynamic name only when RAW clearly continues the same
-  individual;
-- Python keeps ownership of numeric Subject IDs, speaker IDs, persistence, and
-  registration through the existing Subject registry;
-- malformed/timestamp-changing/structurally invalid Subject resolution fails soft
-  to the accepted RAW.
-
-Beat prompts and Beat repair no longer carry dynamic-Subject labeling rules.
-
-Relevant commits:
-- `b79c71e00e1ca8856e666547a70058aa3505db3b` — resolve dynamic Subjects from accepted RAW;
-- `ec53cdadcd1db9cc1f40520506f450ab39fa6715` — move Subject identity regressions out of Beats;
-- `35e47416b376515743b79a79d3803d17292e9edf` — cover post-RAW Subject resolution;
-- `a56e35fbf540f370828349cce86e947ade1e2067` — update project architecture notes.
-
-## Immediate next work
-
-Run focused regressions for:
-- story-to-beats no longer emitting/depending on functional Subject handles;
-- post-RAW Subject prompt shape;
-- stable functional naming from RAW;
-- timestamp/shot-structure protection.
-
-If green, run a fresh full Director acceptance and inspect whether final H3 prompts
-contain distinct dynamic Subject definitions for concretely staged unnamed actors.
-Do not tune camera choreography until this Subject ownership change is verified.
-
-Queued:
-- none yet
-
-## Public repository rule
-
-Committed repository content must remain SFW/generic.
-
-Runtime/user-provided stories may contain arbitrary content, but committed tests, examples, prompts, comments, fixtures, and docs should remain generic/SFW.
-
-## Handoff maintenance rule
-
-Keep this file current and concise while work continues on `summary-to-story-test`.
-
-When this experiment is merged, abandoned, or replaced:
-- preserve durable architectural decisions in `PROJECT_NOTES.md`;
-- move obsolete chronology to `HANDOFF_OLD.md`;
-- update the active branch and immediate-next-work sections rather than leaving stale queued-job references.
-
-
-## 2026-10-02 update — Subject determination locked
-Acceptance 2868 confirmed the post-RAW Subject architecture is viable and stable enough to lock. Segment 2 created `Zombie1`; Segment 6 created `Zombie2` and `Zombie3`; no `Will1`/`Amber1`/`Zombie2_1` alias drift remained. Existing accepted-RAW identifiers are now immutable across Subject resolution, while genuinely new unnamed foreground actors can still receive functional identities. Final H3 subject definitions remain scene-scoped. Next work: camera choreography, now the largest remaining gold mismatch.
-
-## 2026-10-02 update — canonical named characters now promote to H3 Subjects
-A gap introduced by the post-RAW Subject refactor left named canonical characters such as Will and Amber outside the Subject registry unless they were already file-backed or appeared in formatter subject metadata. The unnamed-actor resolver was working as designed and remains unchanged. Python now deterministically supplies canonical character names as Subject-registration hints, while the existing visual-presence check still requires the exact name to appear in finalized RAW before allocating a Subject ID. Canonical gender is preserved as authoritative during that promotion. This restores named-character Subject definitions without moving identity ownership back into Beats or broadening the unnamed Subject resolver.
-
-## 2026-10-02 update — canonical prose carried by named dynamic Subjects
-The first 40-second production render showed a major visual-consistency improvement after the rebuilt ComfyUI workflows, but named characters without reference images drifted after leaving and re-entering frame. Python now deterministically renders canonical age/gender/clothing into natural prose (for example, `Amber is a 5-year-old female wearing a pink dress.`). Structured clothing values are flattened and deduplicated without an LLM call. When a canonical named character is promoted into the Subject registry, that sentence is stored as Python-owned Subject metadata and emitted with the dynamic Subject definition on later appearances/resume. Unnamed dynamic Subjects remain unchanged.
-
-## 2026-10-02 update — full Python Subject state is text-renderable on re-entry
-Dynamic/reintroduced Subject definitions now append the deterministic prose representation of the Subject's last Python-owned continuity record, rather than carrying only canonical age/gender/clothing. The renderer reuses the existing H3 continuity text path, so position, pose/action, current wardrobe, topology, body state, physical condition, held props, attached objects, injuries, substances, spatial relationships, persistent effects, and terminal absence/destruction constraints are all recoverable as real text. Canonical identity prose remains separate and comes first. The JSON continuity record remains the single source of truth; no LLM call is used to translate state back into prompt prose.
-
-
-## 2026-10-02 update — story-level location extraction
-A new narrow deterministic-analysis call now reads the complete expanded_story.txt
-once before Segment 1 and extracts exactly two fields: overall_location and
-starting_location. Python persists those values under generation_state metadata.
-The Segment-1 Director receives the starting location as authoritative opening
-context, and final H3 assembly independently prepends the Python-owned sentence
-"[Shot 1] The scene starts in {starting_location}." so the location cannot be
-dropped by the formatter. The overall location is metadata only for now; it is
-intentionally not promoted into the unfinished room-geometry/topology system.
-
-
-## 2026-10-02 update — continuous camera choreography
-The official H3 prompt-writing guidance and production renders both point toward
-camera motion instead of editorial cutaways when the scene remains continuous.
-Director Request 1 now owns that behavior explicitly. Each segment is staged as
-one continuous camera take by default; cutaways, inserts, reverse-angle/reaction
-cuts, fades, wipes, and shot changes are forbidden unless CURRENT BEAT truly
-requires a discontinuous time/location change that cannot be shown continuously.
-When framing needs to change, the Director is told to use natural push/pull,
-pan, truck, tilt, pedestal, arc, tracking, or static camera behavior and to make
-movement follow/reveal/refocus story action rather than decorate it.
-
-To prevent the film from becoming compositionally static while still hiding
-segment seams, Segments 4, 7, 10, ... receive a deterministic reframe rule:
-begin from the inherited composition, then after about one second move
-continuously into a materially different angle/distance/height/framed subject/
-viewing side without cutting. Other continuation segments do not force a new
-composition. Request 2 remains a formatter and preserves Request 1 camera
-choreography rather than inventing its own.
-
-
-## 2026-10-02 update — generated-video postmortem hardening
-
-A 50-second fantasy-tavern production render exposed six concrete upstream failures.
-The fixes are intentionally narrow and preserve the current post-RAW architecture:
-
-1. Director RAW coherence now explicitly verifies that the trailing
-   `End continuity state` matches the state produced by the final timed action.
-   It must reject stale earlier-frame positions/props/barrier state.
-2. Post-RAW Subject resolution now uses the most specific explicit role/species
-   for functional names (`Dragon1`, `Griffin1`, etc.); `CreatureN` is reserved
-   for genuinely unknown types. Numbered dynamic Subjects also carry deterministic
-   semantic prose such as `Griffin1 is a griffin.`
-3. A deterministic Subject backstop collapses an accidental same-type alias such
-   as `Griffin` or `Griffin2` to the one established `Griffin1` unless RAW
-   explicitly introduces another/new/second individual.
-4. Beat validation no longer treats an ordinary story/staging prop as unavailable
-   merely because canonical state does not list it. Missing state is unknown;
-   only explicitly absent/destroyed/inaccessible props are unavailable.
-5. Finite-endpoint checks no longer invent terminal outcomes for story events whose
-   required event is the visible activity itself (for example reading, inspecting,
-   polishing, watching, walking, or working). Explicit arrivals, retrievals,
-   handoffs, destruction, capture, completion, and stated final conditions still
-   require observable endpoints.
-6. The Director's one-continuous-take rule is now copied deterministically into the
-   actual H3 detailed-description prompt: no cuts/cutaways, continuous camera
-   movement only for reframing.
-
-Focused regression coverage lives in `tests/test_postmortem_regressions.py`.
-No bridge job is queued; the next acceptance step is the user's fresh local run.
-
-
-## 2026-10-03 update — 8x6 render boundary hardening
-
-Postmortem of the 48-second, six-segment render produced four focused follow-ups:
-
-1. Director RAW now must begin at `00:00.000`. The system prompt states the
-   frame-0 requirement and deterministic RAW structure validation rejects any
-   first timed micro-beat later than zero.
-2. The existing RAW physical/coherence validator now receives
-   `PREVIOUS SHOT END` and checks that the first timed action is physically
-   reachable from it without omitted subject travel, teleportation, hidden
-   location changes, or unexplained prop/state changes.
-3. H3 Subject filtering now preserves a dynamic video-only Subject definition
-   whenever that Subject's canonical name appears in non-tagged-dialogue scene
-   prose. This protects identities such as `Creature1` from being dropped when
-   malformed quotation punctuation confuses the stricter visual-identity mask.
-4. The H3 no-dialogue constraint is now natural prose
-   (`No intelligible speech or singing is heard in this segment.`) rather than
-   a metadata-looking `SPOKEN DIALOGUE:` label. Continuity Phase 2 also returns
-   immediately without an LLM call when placeholder pruning leaves no facts
-   beyond `version`.
-
-Regression coverage was added to `tests/test_postmortem_regressions.py`.
-Bridge job `tests-20261003-boundary-v1` targets
-`summary-to-story-test` and the postmortem/requested-prompt regression suites.
-At documentation time the bridge result had not yet been published; do not mark
-this checkpoint test-green until that result exists.
-
-
-## 2026-10-03 update — local-only acceptance workflow
-
-The GitHub mailbox bridge is retired from the active development loop unless the
-user explicitly decides to resurrect it. Do not queue bridge jobs or wait for
-`gpt-runtime` results during normal iteration.
-
-Current acceptance loop:
-
-1. ChatGPT edits and commits focused changes to `summary-to-story-test`.
-2. The user pulls/runs the program locally.
-3. The user uploads the resulting video/log/state/prompt files directly into chat.
-4. ChatGPT analyzes those local-run artifacts and makes the next focused changes.
-
-Historical bridge code/results remain repository history/evidence only and are
-not the default execution path.
-
-
-## 2026-10-03 workflow update — bridge retired
-
-The GitHub mailbox/bridge is no longer part of the active development or
-acceptance workflow unless explicitly resurrected later.
-
-Current workflow:
-- ChatGPT edits and commits the active repository branch.
-- The user pulls/runs the program locally.
-- The user uploads generated prompts, state/history artifacts, videos, and other
-  local results directly into chat.
-- Those uploaded local-run artifacts are the acceptance/debugging source of
-  truth.
-
-Do not queue new `gpt-runtime` bridge jobs or wait for bridge results unless the
-user explicitly asks to restore the bridge workflow.
-
-
-## 2026-10-03 update — six continuity fixes from 8x6 acceptance render
-
-The 48-second / six-segment local acceptance render established that clean refresh is
-architecturally justified and should remain. The continuation chain showed the visible
-identity/seam accumulation; the Segment 5 -> 6 clean-refresh boundary was one of the
-cleanest transitions in the run. Refresh exists to reset generation quality rather than
-repeatedly conditioning on decoded/generated video indefinitely.
-
-Implemented six generic fixes:
-
-1. **Dynamic Subject Video-1 origin is now based on actual previous visibility.**
-   Final H3 subject definitions strip historical Video-1 markers first, then add exactly
-   one continuation marker only for Subjects visible in the immediately preceding video.
-   A Subject introduced in the current segment therefore does not claim to be continued
-   from <Video 1>. Dynamic Subject definitions without a Video-1 clause are now valid
-   registry syntax.
-2. **Continuation frame 0 is an inherited anchor.** When PREVIOUS SHOT END exists,
-   Request 1 must use 00:00.000 only to preserve the inherited subjects, positions,
-   props, and opening composition. CURRENT BEAT action and newly introduced Subjects
-   begin immediately after frame 0 rather than restaging the shot at the seam.
-3. **The RAW coherence validator no longer rejects legitimate new participants.**
-   A participant introduced by CURRENT BEAT need not exist in PREVIOUS SHOT END; only
-   already-established subjects/state must be physically reachable from the inherited
-   frame.
-4. **Functional Subject names propagate into End continuity state.** When a species/
-   role has one unambiguous canonical functional Subject (for example Centaur1), generic
-   end-state references are deterministically canonicalized. This prevents the continuity
-   guard from discarding correctly extracted dynamic Subject state merely because the
-   Director end-state reverted to an anonymous species noun.
-5. **Explicit source enumerations must survive Beat conversion/repair/validation.**
-   Story-to-Beats and Beat repair now explicitly preserve listed participants,
-   recipients, targets, or objects instead of collapsing a meaningful list into a generic
-   group label.
-6. **No-dialogue wording now forbids spoken dialogue only.** The final H3 fallback is
-   `No intelligible spoken dialogue is heard in this segment.`, so story-required
-   singing/chanting/background song is not contradicted.
-
-Focused regressions were added to `tests/test_postmortem_regressions.py`. Tests are
-committed but are not considered accepted until the user runs them locally.
-
-### Active development responsibility
-
-For overall continuity architecture, accumulated project rationale, cross-run postmortems,
-and continuity/state changes, this ChatGPT thread is the source-of-truth maintainer.
-Local Codex may be used for isolated feature additions (for example CLI flags), after
-which the latest merged branch must be re-read before continuity changes are made.
-
-
-### 2026-10-03 follow-up — frame-zero structural compatibility
-
-The timed-state padding guard now explicitly exempts only `00:00.000`, so an
-inherited frame-zero line may truthfully say a subject remains/stays beside an
-already-open/closed object without being rejected as padding. Every later timed
-micro-beat still must advance visible action. This completes the inherited-frame
-anchor contract without weakening later-shot pacing validation.
-
-
-## 2026-10-03 update — continuation reference window widened
-
-The latest 8x6 local render was substantially better overall, but exposed two
-off-camera continuity failures at append boundaries: a Picture-backed character
-reverted to the Picture outfit when absent from the preceding clip's final moment,
-and a later wide shot rebuilt subject placement after the preceding clip ended
-close on only two subjects.
-
-Root cause: append conditioning intentionally loaded only the final 22 frames
-(~0.92 seconds at 24 fps), even though H3 reference-video conditioning can use a
-longer video history.
-
-Change:
-- append and repair now pass the full previous clip when it is <=15 seconds;
-- longer previous clips use only the most recent 15 seconds;
-- an 8-second H3 clip therefore supplies all 192 aligned frames with no leading
-  skip;
-- clean refresh remains on the proven final-22-frame latent-context path;
-- Picture-backed continuation Subjects now say their `wardrobe`, position, pose,
-  and physical state come from `<Video 1>` rather than only their `clothing
-  condition`.
-
-Next local acceptance should specifically inspect boundaries where a character or
-room participant leaves frame before the cut, because those are the cases this
-change is intended to improve.
-
-
-## 2026-10-03 update — 56-frame reference tail + RAW wrapper rejection
-
-The full 8-second reference-video experiment was a mixed quality result and raised
-runtime/VRAM substantially. Append and repair now use the most recent 56 frames
-(~2.33 seconds) instead. For the normal 8-second/192-frame source this means
-`skip_first_frames=136`, `frame_load_cap=56`. Clean refresh stays at 22 frames.
-
-A separate Segment-3 prompt defect was traced upstream, not to H3 formatting:
-Request 1 returned `Frame 0 (At 00:00.000, ):` and bullet-listed the action below
-the timestamp. The old structure check found the embedded timestamp and accepted
-the malformed RAW, which Python later copied into final H3 output. Request-1
-structure validation now rejects timestamps wrapped by labels/prose and rejects
-timestamp-only lines whose action is moved to following bullets. The Director must
-retry with normal `At mm:ss.mmm, action` lines.
-
 
 ## 2026-10-03 handoff — native Guide overlap replaces append Ref2V
 
@@ -1090,3 +91,799 @@ Next action: rerun the same 48-second tavern test from Segment 1. Acceptance rem
 audio continuity and 3→4 / 4→5 visual seams.
 
 Follow-up: post-shift pronoun/timestamp validation now uses the raw H3 prompt duration (delivered duration + Guide offset), while Request 1 structure validation remains on delivered duration only.
+
+
+## 2026-10-04 handoff — location-state-test
+
+Created branch `location-state-test` from main commit
+`40f4727030507e116c1631367a80ba0711ca000e`.
+
+Goal: test whether one persistent three-second character-free panoramic location reference
+prevents H3 from rewriting off-camera environment (for example shelves becoming a torch)
+while preserving the validated seamless 22-frame AddGuide seam.
+
+Implementation:
+- extract static setting facts from expanded_story.txt with a narrow temperature-0 call;
+- fallback to overall_location when the story does not specify detail;
+- render one 3-second wide orbital environment clip before Segment 1, with all Picture
+  references disconnected;
+- save/checkpoint the location-reference path;
+- pass it as Ref2V Video 1 to initial and append segments, visual-only/no reference audio;
+- keep append AddGuide on its own loader and unchanged;
+- clean refresh receives four sampled frames from the same location clip through ref_images;
+- final H3 prompt explicitly says the location reference owns static spatial layout only,
+  never characters or current camera framing.
+
+Next acceptance should focus only on background geometry/fixtures when the camera reveals an
+area that was previously off-screen. Do not evaluate character persistence as part of this
+test.
+
+Refinement after diff review: the setting extractor now explicitly excludes furniture/props
+that appear only because a later story action uses or introduces them. This keeps the
+location reference honest: a vague "medieval tavern" is mostly designed by H3, then the
+experiment tests whether that invented room persists off camera instead of pre-seeding
+future beat objects into the panorama.
+
+
+## 2026-10-03 fix — refresh loader ambiguity exposed by location reference
+
+Segment 6 clean refresh failed before queueing with
+`WorkflowConfigurationError: ... contains multiple nodes named 'Load Video'`.
+
+Root cause: refresh still used the legacy logical name `"Load Video"`. The exported
+refresh workflow's actual previous-segment loader is titled
+`Load Video (Path) 🎥🅥🅗🅢`, so node lookup previously succeeded only through the
+fallback that selected the sole `VHS_LoadVideoPath` node. The location-state experiment
+adds a second `VHS_LoadVideoPath` node for the persistent location clip, making that
+fallback ambiguous.
+
+Fix: `REFRESH_LOAD_VIDEO_NODE_NAME` now aliases the workflow's exact
+`LOAD_VIDEO_NODE_NAME` title. The persistent location loader keeps its separate
+`Location Reference Video` title. Added a regression proving the refresh prior-video
+loader remains uniquely resolvable after a location-reference loader is added.
+
+Next acceptance: rerun/resume through the next clean refresh and verify Segment 6 renders;
+then evaluate the location-reference experiment on background geometry/fixtures as planned.
+
+
+## 2026-10-04 handoff — tavern location-reference acceptance and prompt/state fixes
+
+Latest 48-second tavern run established a useful split:
+
+- the persistent 3-second location-reference video is successful for environment
+  continuity; Segments 1-5 matched the covered room geometry extremely closely,
+  with invention limited mainly to the slice the orbit did not show reliably;
+- remaining failures were primarily prompt/state problems: ambiguous physical
+  prose, indirect speech conflicting with the no-dialogue constraint, spatially
+  impossible staging, dynamic Subject registration lag, and a Segment 6 clean
+  refresh discontinuity.
+
+Fixes now on `location-state-test`:
+
+- CLI/default automatic refresh is `999`, matching desktop/web defaults;
+- legacy GUI settings are migrated once: an old saved default `refresh: 6` becomes `999` and old default story temperature `0.8` becomes `0.4`; later explicit user choices are preserved;
+- an explicit refresh interval is authoritative and no longer loses to
+  source-span chapter-boundary refresh scheduling; `None` retains the legacy
+  source-span fallback for programmatic callers;
+- story-expansion default temperature is 0.4 and its prompt asks for film-ready,
+  literal, physically unambiguous prose rather than literary ambiguity;
+- an explicit Beat speech act (asks/orders/says/etc.) must become direct
+  `<d>...</d>` dialogue in RAW; after same-segment Subject registration the
+  final H3 identity repair emits the stable form such as
+  `Goblin1 (S3) said <d>Give me a pint.</d>`;
+- Director/RAW coherence now explicitly rejects hidden spatial teleportation such
+  as serving a distant bar/table while still established at the door;
+- post-RAW Subject resolution gets two attempts and is no longer allowed to fail
+  open. Every resolved dynamic Subject must be registered before that segment's
+  H3 prompt is assembled;
+- Subject-resolver responses are now retained in prompt history for diagnosis;
+- guided append postprocessing removes all 22 native Guide overlap frames and
+  guided clips receive no additional two-frame stitch trim.
+
+Next acceptance: rerun the tavern test as a new run with the revised humanoid-
+creature story. Verify Segment 6 stays on normal Guide continuation (not
+clean-refresh), new creatures are registered in the segment where they first
+appear, explicit speech is tagged, and door/bar movement is physically staged.
+Do not change the accepted location-reference architecture before this rerun.
+
+
+### 2026-10-04 — provenance fixes after second tavern acceptance
+
+The second tavern run kept room/location continuity strong but exposed four
+specific upstream failures:
+
+- reference-video audio could still be heard even though Ref2V audio inputs were
+  disconnected and the location prompt requested N/A audio;
+- a new goblin could "appear" in a chair without a physical entrance/reveal;
+- held/container props could silently change identity (bucket -> mug,
+  mug -> glass/chalice);
+- an established actor could interact with a distant object without explicit
+  travel (Amy at barrel -> crystal shelf/bar).
+
+Current fixes:
+
+- every rendered location-reference video is now atomically remuxed with ffmpeg
+  using video stream-copy plus `-an`; the file used by all later conditioning
+  therefore contains no audio stream regardless of what H3 generated;
+- Director generation and RAW coherence validation both require visible
+  provenance for a newly introduced foreground Subject: explicit physical entry
+  through a route/boundary or explicit continuous camera motion revealing an
+  already-present offscreen Subject; "appears" alone is insufficient;
+- Director/validator preserve prop identity and acquisition provenance. A prop
+  cannot silently become another prop, newly handled props need a stated source
+  and acquisition action unless already established, and every transfer keeps
+  an explicit, distinct, traceable source and destination;
+- spatial travel validation is generalized: interaction with any different
+  established position requires explicit actor movement there first. This is no
+  longer a door/bar-specific rule.
+
+These are prompt + low-temperature semantic-validator contracts, not
+tavern-specific deterministic rewrites. The ffmpeg audio removal is the only
+deterministic media transformation in this change.
+
+
+### 2026-10-04 — setting-label and RAW pacing follow-up
+
+Latest tavern acceptance was substantially improved but exposed two prompt-level
+issues plus one renderer/location conflict:
+
+- Segment 3 compressed prop acquisition and use into one late timestamp, making
+  the cup visually appear in Amy's hand even though RAW named a shelf origin.
+- Segment 4 invented a lid and immediately sealed the cup, again compressing an
+  invented prerequisite/action chain.
+- The persistent setting text called the only visible entrance a `back door`,
+  while the location-reference video established a single door; this may have
+  encouraged H3 to reinterpret the doorway geometry when the dragon entered.
+
+Implemented on `location-state-test`:
+
+- setting extraction no longer treats relative action labels
+  (front/back/side, left/right) as proof of distinct static architecture; a
+  single established instance is described generically;
+- RAW Director now explicitly gives physical prerequisites their own earlier
+  timed micro-beat instead of combining prerequisite + dependent action at one
+  timestamp;
+- RAW Director has a dedicated `DIRECTOR_RAW_SCENE_LLM_SETTINGS` profile at
+  temperature `0.2` with high reasoning/random seed; other creative generation
+  remains at `0.8`;
+- focused regressions cover the setting, pacing, transfer, and sampling contracts.
+
+Follow-up after the next tavern run:
+- the room geometry remained stable, so the location-reference architecture is
+  accepted for this test;
+- prompt-only pacing was not enough: Segment 3 compressed doorway-to-back-table
+  travel into about 1.5 seconds and H3 hid the missing travel with a cut; Segment
+  4 similarly omitted the dragon's route from the doorway to the bar stool;
+- a new narrow temperature-0 timing-feasibility validator now checks only whether
+  consecutive physical transitions can visibly fit between their timestamps,
+  with no hardcoded minimum duration;
+- RAW transfer wording is now generic and requires an explicit, distinct source
+  and destination plus source provenance for what is transferred;
+- RAW invention is now explicitly economical: useful staging is still allowed,
+  but optional secondary reactions/consequences and extra object/substance motion
+  should not be added once the Beat action is already readable.
+
+Next acceptance: rerun the same tavern story/Beats and inspect Segment 3/4 travel,
+Segment 4 transfer behavior, and Segment 5 reaction/fluid choreography.
+
+
+### 2026-10-04 — spatial acceptance; movable-prop bookkeeping is next
+
+The newest tavern render no longer showed the prior spatial/teleportation failures. Treat
+the location-reference + travel/timing architecture as provisionally accepted. The visible
+remaining failures were ordinary props: glasses and the basket could still appear or
+disappear.
+
+Implemented on `location-state-test`:
+
+- generation state now carries a separate persistent movable-prop ledger with stable IDs;
+- the existing combined-continuity call maintains that ledger while H3 renders, so there
+  is no additional always-on LLM request;
+- ledger records track kind, owner, holder, location, contents, and
+  present/lost/destroyed status and copy unchanged props forward while offscreen;
+- source-authorized typed item state remains higher authority: held/equipped/stored/
+  dropped/lost effects deterministically update the matching ledger record, so the new
+  movable-prop ledger does not compete with existing canonical inventory truth;
+- Request 1 receives the ledger as authoritative movable-prop state;
+- strong prop-interaction Beats may trigger one tiny pre-RAW temperature-0 staging call;
+  it returns either nothing or one minimal staging sentence when a required prop is not
+  currently available;
+- this is proactive repair before RAW generation, not a validator-driven
+  generate/reject/regenerate loop;
+- checkpoint/resume state and Director prefetch fingerprints include the prop ledger;
+- focused regressions cover copy-forward/update, schema acceptance, conditional staging,
+  test-mock routing, and resume slicing.
+
+Next acceptance: reuse the tavern story/Beats and inspect mug/glass/basket identity,
+location/possession, transfer contents, and whether the pre-RAW staging call fires only when
+needed. No spatial/location changes should be made unless that regression reappears.
+
+### 2026-10-04 — prop persistence accepted; Segment 2→3 ownership/state fix
+
+Latest tavern acceptance materially improved movable-object continuity:
+
+- the prior appearing/disappearing glasses and basket were gone;
+- fluid/container behavior was acceptable overall;
+- location geometry and earlier spatial/travel fixes remained stable.
+
+The remaining Segment 3 failure was not renderer-only. Logs showed two upstream causes:
+
+1. Segment 2's final timed action still had Goblin1 present, putting his mug on the counter
+   and stepping back toward the hearth, but the End continuity state omitted Goblin1.
+   Combined continuity therefore preserved the Subject identity but lost his position.
+2. The prop ledger correctly tracked `mug_1` as owned by Goblin1 and sitting on the
+   counter, but Segment 3 Director repurposed that mug as the source for Elf1's drink.
+
+Implemented on `location-state-test`:
+
+- post-RAW Subject resolution is followed by deterministic final-participant carry-forward:
+  if a stable named Subject is present in the final timed micro-action but omitted by End
+  continuity state, Python copies that exact final-action evidence into End state;
+- explicit leave/exit/fully-occluded final actions are excluded from carry-forward;
+- this adds no LLM call and does not alter the H3 timed action itself; it repairs semantic
+  bookkeeping used by the next segment;
+- Director now treats ledger `owner` / `holder` as exclusive continuity facts rather
+  than generic inventory;
+- the existing conditional prop pre-staging micro-call treats a matching prop owned/held
+  by another Subject as unavailable unless CURRENT BEAT explicitly authorizes taking,
+  reuse, or transfer, and should stage a distinct ordinary instance instead;
+- Request 1 receives the same ownership rule in the injected prop-state block.
+
+Focused regressions were added for omitted final Subjects, explicit exits, newly resolved
+Subjects before registry append, and owned-prop prompt policy.
+
+Next acceptance: rerun the same tavern case. Segment 2→3 is the key checkpoint:
+Goblin1 should retain his semantic position near the hearth, should not drift into Elf1's
+seat, and `mug_1` should remain Goblin1's instead of being reused to serve Elf1.
+
+### 2026-10-04 — generated current-clothing Picture references
+
+The tavern acceptance showed that Amy's correct rendered wardrobe survived only Segment 1;
+later segments fell back toward the clothing in her original identity Picture. A separate
+current-clothing visual authority is now implemented on `location-state-test`.
+
+Implementation:
+
+- when a visible character has no generated clothing reference yet, or the character's
+  canonical current wardrobe changes, Python renders an isolated 1-second H3 character
+  reference using the same base render path as the location reference;
+- the character is front-facing in a neutral pose with the current outfit visible; there is
+  no 360 orbit, camera move, cut, or story action;
+- Python samples the 0.5-second frame and places that PNG in the ComfyUI input directory;
+- the generated Picture is added to H3 subject definitions as clothing-only authority, e.g.
+  `<Picture 2> references only the clothing that Amy is currently wearing.`;
+- Picture numbering is dense and positional. Empty template `LoadImage` nodes do not
+  reserve Picture numbers: if only Picture 1 is active, the first generated reference is
+  Picture 2;
+- Pictures 1-6 reuse the existing template LoadImage nodes when available. Once all active
+  positions through 6 are occupied, Python dynamically creates `LoadImage` nodes for
+  Picture 7, Picture 8, and so on; six is not a hard maximum;
+- each character keeps the same generated Picture number after assignment. A later wardrobe
+  change creates a versioned replacement PNG for that Picture instead of shifting every
+  later Picture number;
+- generated reference metadata is checkpointed and stored with each finalized H3 prompt so
+  resume and saved-prompt rendering retain the exact image version used by that segment;
+- no extra LLM call is added. The trigger/description comes from the existing canonical
+  Subject/wardrobe state.
+
+Focused regressions assert the dense Picture-2 case, stable numbering across an outfit
+change, dynamic creation above Picture 6, clothing-only definition filtering, and the
+front-facing one-second/no-orbit prompt contract.
+
+Next acceptance: rerun the tavern story. Amy should use Picture 1 for identity and the new
+generated Picture for her current clothing, so the post-Segment-1 renders should stop
+reverting to the outfit in the original identity reference.
+
+### 2026-10-04 — state media directory consolidation
+
+All generated visual-state media now uses one persistent directory:
+`<ComfyUI output>/video/state/`.
+
+- location-reference video prefix moved from `video/location_state/location_reference`
+  to `video/state/location_reference`;
+- character-reference 1-second videos moved from `video/character_state/` to
+  `video/state/`;
+- sampled character-reference PNGs are now written persistently to the same
+  `output/video/state/` directory instead of being authored in ComfyUI/input;
+- because ComfyUI `LoadImage` reads from its input directory, Python stages a copy of the
+  authoritative state PNG into ComfyUI/input only when preparing a workflow. The persisted
+  checkpoint path points to the state-directory original.
+
+The old `location_state` and `character_state` output prefixes are no longer used by new
+renders.
+
+### 2026-10-04 — outfit-reference identity conditioning
+
+Production test showed that the generated clothing Picture could bleed its newly invented
+face/body back into Amy's appearance. The isolated 1-second clothing render now conditions
+on the target character's existing source Picture when available.
+
+- the target Subject's original `picture_id` is resolved to its configured LoadImage;
+- that source image is connected as the only Picture in the isolated outfit-reference
+  workflow, so it is locally `<Picture 1>`;
+- the outfit-reference prompt explicitly states that Picture 1 owns only identity/physical
+  appearance (face, hair, age, build, species, body), while current clothing text owns the
+  outfit and must not be copied from the identity Picture;
+- the resulting sampled Picture remains clothing-only authority in the final story prompt;
+- video-only/dynamic Subjects with no source Picture currently fall back to unconditioned
+  outfit-reference generation and log a warning.
+
+A possible future alternative—standalone reusable outfit assets that can be applied to
+multiple characters—is documented in `docs/FUTURE_NOTES.md`.
+
+### 2026-10-04 — clothing-reference persistence + portrait reference canvas
+
+Two production fixes are now active on `location-state-test`:
+
+- Person/outfit reference renders use a portrait 13:19 canvas. Python computes width/height
+  from the requested megapixel budget and writes those dimensions directly into the isolated
+  character-reference conditioner. The 3-second location orbit keeps the normal landscape
+  workflow unchanged.
+- Generated clothing Pictures no longer regenerate because the vision observer describes
+  the rendered wardrobe differently. Each clothing Picture persists its intended wardrobe
+  and condition. A new version is authorized only when the immediately preceding segment
+  explicitly changes/removes/adds clothing or explicitly damages/soils/wets/burns it.
+- Authorized changes are applied to the prior intended clothing-reference state, not to
+  vision-observed wardrobe, preventing renderer drift from becoming canonical.
+
+### 2026-10-04 — newest tavern postmortem: dynamic identity, transfer semantics, fixed fixtures
+
+Newest production evidence separated four visible symptoms into three upstream causes:
+
+1. Segment 2's extra plate was actually RAW's invented `small wooden tray`; the apparent
+   extra cup is consistent with H3 compensating for RAW telling Amy to tilt a barrel as if
+   it were a handheld pouring vessel.
+2. Segment 4's generated Dragon1 state Picture existed before the render, but final H3
+   labeled it clothing-only while the Subject definition said only `Dragon1 is a dragon`.
+   H3 therefore had no Picture-owned dragon identity on first appearance. RAW also
+   explicitly misdirected the brew onto Dragon1's scales instead of filling the cup.
+3. Segment 5 used source-less liquid on Dragon1's tongue because the prior End continuity
+   omitted the just-handed crystal cup, so the prop ledger did not carry that drink source
+   forward. Segment 6 then conflicted with location authority by moving an established
+   hanging lantern onto a table.
+
+Implemented:
+
+- dynamic Subjects with no external Picture now promote their generated state Picture to
+  identity + current-appearance authority; source-backed characters retain the separate
+  identity-Picture + clothing-Picture model;
+- later outfit changes for dynamic Subjects reuse the previous generated Picture as identity
+  conditioning;
+- first unconditioned dynamic-reference generation no longer mentions nonexistent
+  `<Picture 1>`;
+- RAW generation/validation preserves the Beat's transfer destination/recipient/container,
+  binds drinks/material to a real established source, and rejects final End states that drop
+  a just-transferred/materially changed prop;
+- RAW avoids unnecessary helper supports/containers/utensils used only to settle props;
+- the existing extracted static-setting sentence is now supplied to Request 1 and coherence
+  validation, preventing RAW from relocating explicit fixed fixtures before final H3
+  location-reference injection.
+
+Next production acceptance: rerun the same tavern case. Check Segment 2 for direct,
+provenanced barrel -> Goblin1 mug transfer without a surprise helper prop; Segment 4 must
+use the generated Dragon1 identity on its first appearance and fill/hand over the crystal
+cup rather than pour onto the dragon; Segment 5 must sip from that carried cup; Segment 6
+must preserve the established lantern placement and Elf1's table. Do not chase the apparent
+overall quality degradation yet: this analyzed run predates the 13:19 character-reference
+and clothing-reference persistence fixes.
+
+### 2026-10-04 — 16GB split-mode reference assets fixed
+
+The 16GB path was audited after noticing that versioned/torn-clothing references cannot be
+created during the LLM-only phase. The issue was real: prompt-only mode skipped ComfyUI,
+therefore it also skipped location-reference and dynamic character/clothing-reference
+creation, while render-only mode assumed those files already existed.
+
+Current behavior:
+
+- `generated_prompts.txt` now contains ordered `reference_jobs` in addition to segment
+  prompts;
+- location and character reference jobs freeze all generation inputs needed by ComfyUI;
+- character outputs are immutable/versioned PNGs, with a run token in prompt-only mode;
+- a later dynamic-character clothing state references the prior generated Picture as its
+  identity dependency instead of overwriting it;
+- each segment retains the exact reference-version metadata that was current when its H3
+  prompt was finalized;
+- the render-only phase generates all saved references first in dependency order, then
+  renders the saved segments in order;
+- prompt-only H3 text receives the same persistent-location authority clause as normal mode.
+
+Acceptance target: run the desktop 16GB flow end-to-end with at least one dynamic character
+and one explicit clothing-condition change, inspect `generated_prompts.txt` before starting
+ComfyUI, then verify v001 and v002 both remain under `output/video/state` and the appropriate
+segment uses each version.
+
+### 2026-10-04 — sliding dynamic-Subject references + per-segment Picture map
+
+Implemented the requested conservative dynamic-reference lifecycle:
+
+- persistent Subject/reference records are never deleted or renumbered;
+- each segment gets a frozen `reference_bindings` map that records both the persistent
+  canonical Picture number and the segment-local Picture number;
+- H3 Subject definitions and ComfyUI reference wiring use the same segment-local generated
+  reference map;
+- a Subject remains retained for `ceil(total_segments / 2)` segments since its last
+  explicit visual appearance, so a potentially passive/background Subject is not dropped
+  immediately;
+- after expiry, its Subject definition and configured/generated reference conditioning are
+  removed only for the current segment; a later explicit re-entry restores the same
+  persistent identity/reference version;
+- `--disable-subject-removal` (also exposed in the desktop UI) keeps every previously seen
+  Subject bound indefinitely;
+- `generation_state.json` keeps the full tracking/binding history, and each completed
+  segment plus `generated_prompts.txt` freezes the exact map/exclusions needed for 16GB
+  replay.
+
+Production acceptance: use a run with several dynamic Subjects entering/leaving. Verify an
+inactive Subject remains bound through the sliding window, ages out at the threshold, its
+configured/generated Picture is disconnected, another generated Subject can pack into the
+vacated dynamic slot, and later re-entry restores the original identity asset even if the
+H3 Picture number differs from its earlier segment.
+
+
+### 2026-10-04 — 8/6 acceptance follow-up: transfer semantics, compressed travel, retained background Subjects
+
+The next 8-second / 6-segment tavern render exposed three upstream issues despite strong
+location continuity:
+
+- Segment 2 RAW was accepted with the impossible phrase that ale was poured "from" a
+  barrel lid. The Director and coherence validator now explicitly distinguish a fixed
+  container from its lid/cap/handle/rim/latch; contents must come from the actual container
+  or an established dispensing opening/tap.
+- Segment 4 again allowed Amy to interact with a shelf/bar-area prop without explicit travel
+  from her prior table position. Coherence validation now treats distinct named
+  fixture/interaction areas from STATIC SETTING AUTHORITY as established positions and
+  requires explicit movement between them.
+- The final closing Beat compressed unlatching, crossing the doorway, closing, and locking
+  into one timestamp. Timing validation now explicitly rejects sequential dependency chains
+  hidden inside a single timestamp when they cannot execute visibly as one continuous take.
+- Sliding Subject retention now derives explicit visual evidence from the complete accepted
+  RAW scene, including its End continuity state, instead of only the stripped timed
+  description. A patron that the accepted final frame says remains present therefore refreshes
+  its retention age rather than being dropped merely because it performs no new Beat action.
+
+The uploaded acceptance artifacts predate the new per-segment `reference_bindings` package:
+they contain generated character-reference records but no frozen binding snapshots. The next
+run must be made from current `location-state-test` and should show `reference_bindings` plus
+`excluded_picture_ids` in each generated prompt record before reference-slot behavior is
+judged.
+
+Next acceptance: rerun the same tavern case from current branch head. Verify Segment 2 uses
+the barrel/container as the ale source; Segment 4 visibly moves Amy to the shelf/bar and the
+Dragon reference is both generated and bound; the closing sequence visibly traverses the
+door before exterior framing; and background Goblin/Elf identity references remain bound
+when the RAW End state keeps them present.
+
+
+### 2026-10-05 — RAW validator split
+
+The former combined RAW coherence validator is now split for the local ~20B runtime:
+
+- `director_raw_scene_physical` checks subject movement/spatial continuity, entry/reveal,
+  travel between established positions, barriers/seats/supports, fixed architecture, and
+  final subject/barrier state.
+- `director_raw_scene_prop_state` checks prop identity/provenance, ledger holder/owner/contents,
+  source/destination transfers, CURRENT BEAT object/recipient/container/result fidelity,
+  material sources, and final prop state.
+- `director_raw_scene_timing` remains a third independent check.
+
+Request 1 now evaluates physical/spatial -> prop/state -> timing, with a category-specific
+retry message for each failure. Compatibility wrappers remain for old callers, but production
+runtime no longer asks one large coherence prompt to reason about every domain at once.
+The RAW Director prompt itself was intentionally left alone because it is being revised separately.
+
+
+### 2026-10-05 — continuation Picture authority fix
+
+Generated character references were being lost at the final H3 render boundary because
+blank configured Picture slots were pruned before generated refs were attached. Their slot
+numbers were then replaced in prompt text with "the supplied opening guide," even though a
+generated character Picture would occupy that same segment-local number.
+
+Current behavior:
+
+- generated segment-local Picture IDs are protected from configured-slot exclusion and
+  canonical remapping in append/refresh prompt conditioning;
+- explicit generated `<Picture N>` identity/clothing authority survives into the actual H3
+  prompt;
+- the opening guide anchors only frame-0 pose/position/physical state for visible Subjects;
+- Picture-definition lines no longer receive duplicated opening-guide state language.
+
+Focused tests passed for generated-Picture preservation and non-duplication of guide authority.
+
+
+### 2026-10-05 — dynamic reference identity descriptions + species-neutral reference portraits
+
+The latest tavern acceptance confirmed that generated character Pictures now reach H3
+correctly, but exposed an upstream identity-flattening bug for newly resolved dynamic
+Subjects. RAW retained useful explicit appearance facts (for example a female silver-haired
+elf and a humanoid dragon with obsidian scales/wings/amber eyes), while Python registered
+only the functional fallback `Elf1 is an elf.` / `Dragon1 is a dragon.`. The first
+generated identity Picture therefore had too little authority and could contradict the Beat.
+
+Current fix on `location-state-test`:
+
+- the existing post-RAW Subject-resolution call now also returns one concise
+  `subject_descriptions` entry for each newly named dynamic Subject;
+- those descriptions may use only explicit visual identity facts already present in RAW
+  (species/type, sex/gender wording, age, hair, skin/scales/fur, build, anatomy/body, and
+  distinguishing features), excluding action, pose, location, props, camera, mood, and
+  invented details;
+- Python persists that description as the dynamic Subject's canonical description during
+  registration instead of falling back to species-only text;
+- canonical source-character descriptions still override resolver descriptions for planned
+  named characters;
+- the resolver API remains backward compatible for older tests/callers, while production
+  requests the new description map;
+- the isolated one-second character-reference prompt is now species-neutral: it asks for a
+  single subject's complete physical appearance and species/anatomy traits, and only shows
+  clothing/accessories when explicitly described. It no longer assumes every Subject is a
+  clothed humanoid.
+
+Focused tests cover returned dynamic identity descriptions and the species-neutral
+character-reference prompt contract.
+
+Next acceptance: rerun the same tavern case and inspect the generated PNGs before judging
+the final video. Elf1 should preserve the explicit female/silver-haired identity and
+Dragon1 should preserve the humanoid-dragon/obsidian-scale/wing/amber-eye identity. After
+that, investigate the two remaining spatial failures separately rather than changing the
+reference architecture.
+
+
+### 2026-10-05 — one-source dynamic wardrobe bootstrap
+
+The dynamic-reference identity fix is now consolidated with initial wardrobe assignment so
+clothing has one authoritative source before a new dynamic Subject's generated Picture is
+rendered.
+
+Current architecture on `location-state-test`:
+
+- the existing post-RAW Subject-resolution call now bootstraps both non-clothing identity
+  and initial wardrobe for each newly named foreground dynamic Subject;
+- `subject_descriptions` contains only stable non-clothing identity facts already present
+  in RAW (species/type, sex/gender wording, age, hair, skin/scales/fur, build, anatomy/body,
+  distinguishing features);
+- `subject_wardrobes` contains exactly `upper`, `lower`, `footwear`, and `other`;
+- explicit RAW clothing is preserved; when a human/normally clothed humanoid has no clothing
+  specified, the same LLM call assigns one simple setting-appropriate outfit exactly once;
+- animals/creatures that normally do not wear clothing receive N/A wardrobe fields unless
+  RAW explicitly provides clothing; explicit garment/footwear absence uses `absent` and
+  overrides invention;
+- Python stores that wardrobe directly in the new Subject continuity record before any
+  character-reference media is generated;
+- identity prose is deterministically stripped of any accidental wearing-clause so wardrobe
+  is not duplicated in two canonical fields;
+- the character-reference renderer is now a consumer only: it visualizes the persisted
+  identity + wardrobe and is explicitly forbidden from adding/removing/redesigning clothing;
+- later clothing changes continue through the existing persistent wardrobe continuity path;
+  there is no second first-appearance clothing decision downstream.
+
+Compatibility: older direct callers/tests of the Subject resolver may still request only
+names or names+descriptions; production requests the full bootstrap tuple.
+
+Acceptance target: rerun the tavern. Before video evaluation, inspect Elf1/Dragon1 generated
+state metadata and PNGs. Elf1 should have both the RAW-derived female/silver-haired identity
+and one persisted setting-appropriate outfit; Dragon1 should retain the RAW-derived dragon
+identity and should not acquire humanoid clothing unless RAW explicitly says so. The same
+persisted wardrobe must be what the story H3 prompt references.
+
+
+### 2026-10-05 — expanded-story context for dynamic wardrobe bootstrap
+
+The consolidated dynamic Subject bootstrap now receives the complete
+`expanded_story.txt` as read-only wardrobe context.
+
+- The existing post-RAW Subject-resolution call gets a `STORY CONTEXT` block containing
+  the expanded story.
+- RAW remains authoritative for actions and explicit appearance/clothing.
+- STORY CONTEXT is used only when RAW leaves clothing unspecified, so the one-time
+  canonical wardrobe can match the established setting, period, culture, and visual world.
+- The expanded story is loaded once for the video run and reused both for existing
+  story-location extraction and dynamic Subject bootstrap, including resumed runs.
+- No extra LLM stage was added; this only enriches the existing identity+wardrobe bootstrap.
+- Focused regression coverage confirms the story context reaches that prompt.
+
+Acceptance target remains the tavern run: Goblin1/Elf1 clothing should now reflect the
+expanded story's visual world while Dragon1 should stay unclothed unless the story/RAW
+establishes clothing.
+
+
+### 2026-10-05 — cumulative Director Request 1 retry blockers
+
+Observed Segment 3 repeatedly bounced between independent blockers: final timestamp too
+early, prop-transfer incoherence, then missing 00:00.000 staging. The retry path was resetting
+to the clean base prompt after every failure and passing only the latest issue, so a later
+retry could reintroduce a defect already corrected on an earlier attempt.
+
+Fix on `location-state-test`:
+
+- Request 1 now keeps a short unique list of every blocking failure observed during the
+  current segment attempt loop.
+- Every retry is still rebuilt from the clean base prompt, but appends one compact
+  `RETRY REQUIREMENTS` block containing ALL blockers seen so far.
+- Structure retries now include the exact structure error returned by Python instead of only
+  a generic "begin at 00:00.000" reminder.
+- Physical/spatial, prop/state, timing, dialogue, and empty-scene blockers all use the same
+  cumulative mechanism.
+- This does not add an LLM stage or preserve/re-feed the rejected RAW; it only prevents the
+  model from forgetting already-discovered constraints while keeping retry prompts small.
+- Regression coverage reproduces a structure failure followed by a prop/state failure and
+  verifies the third Request 1 prompt contains both requirements.
+
+Acceptance target: rerun the failed tavern Segment 3. Once a retry learns that the final
+micro-beat must be >= 6s and frame zero must be 00:00.000, those constraints should remain
+present while it also repairs the mug transfer instead of oscillating between validators.
+
+### 2026-10-05 — Python now owns three Director RAW structure repairs
+
+Request 1 is normalized before semantic validators run. Python now inserts a
+missing `00:00.000` anchor, moves only a too-early final timestamp to the 75%
+segment boundary, and guarantees exactly one trailing
+`End continuity state:` marker. These cases no longer need Director
+regeneration. Earlier timestamps are deliberately unchanged, so compressed
+travel (for example doorway -> back table in 1.5s) still reaches the existing
+timing-feasibility LLM unchanged. Prop/state semantic retries are also
+unchanged.
+
+### 2026-10-05 — run-level H3 visual style
+
+- Added `--visual-style "STYLE"` with default `Live-Action cinematic`.
+- Python now owns the global visual-style prefix at the final H3 assembly boundary. Every final `detailed_description` begins `[Shot 1] {visual_style}, ...`; Request 2 is told not to invent or repeat a global style phrase.
+- The historical `Live-action, cinematic` formatter prefix is stripped if it still appears, then the configured style is inserted once.
+- The style is saved in generation-state/run config and `generated_prompts.txt` metadata. Resume/repair reuse the saved style unless `--visual-style` explicitly overrides it.
+- The desktop UI exposes Visual style and passes it to `minimax.py` as one subprocess argv element, so spaces require no platform-specific quoting inside the app.
+
+### 2026-10-05 — per-defined-Subject canonical appropriate attire
+
+The Amy reference test exposed a wardrobe-authority loss: the expanded story said
+`rough-spun tunic and leather apron`, but the earlier broad character-canon pass
+collapsed that to `tunic and apron`, producing an incomplete clothing reference.
+
+Current fix on `location-state-test`:
+
+- after `expanded_story.txt` exists, every pre-defined Subject from `subjects.txt`
+  gets its own independent `story_subject_wardrobe_extract` LLM request;
+- the call is deterministic/low-budget (temperature 0, low reasoning, 128 thinking
+  budget through the normal analysis profile; output capped at 128 tokens);
+- each call receives the full expanded story but reasons about exactly one Subject;
+- the prompt explicitly asks for the Subject's **appropriate attire**: preserve all
+  explicit material/texture/color/wear/layer details, then fill only missing normal
+  outfit pieces so a normally clothed Subject has a complete coherent outfit;
+- "appropriate attire" is species/body/setting aware. Dragons, animals, and other
+  beings that appropriately do not wear clothes return `N/A` unless the story
+  explicitly clothes them; a normally clothed modern person may receive ordinary
+  attire such as a T-shirt and blue jeans when the story is silent;
+- the earlier broad character-canon pass no longer invents clothing when source
+  clothing is absent; it returns `N/A` and leaves final wardrobe ownership to this
+  expanded-story per-Subject extractor;
+- each extracted outfit overwrites that Subject's `character_canon.json`
+  `clothing` value and is therefore the canonical defined-Subject outfit used by
+  Director/H3/reference generation;
+- canonical attire is seeded into structured wardrobe state before fallback story
+  parsing, and `apron` is now recognized as an `other` wardrobe component;
+- explicit no-clothing values do not generate a bogus `wearing ...` sentence.
+
+Dynamic/video-created Subjects keep the existing one-source post-RAW wardrobe bootstrap;
+this new extractor applies only to pre-defined Subjects.
+
+### 2026-10-05 — latest tavern postmortem: Elf promotion, support routes, prop render identity, audio specificity
+
+The 18:16 tavern run showed that the accepted location/Guide architecture remained stable, but
+five upstream/render-boundary gaps were still visible:
+
+- Segment 3's Subject resolver correctly returned both `Goblin1` and `Elf1`, including an
+  Elf identity description and wardrobe, but its rewritten RAW still said generic `the elf`.
+  Python required the literal functional name to appear in RAW and silently filtered `Elf1`,
+  so no Elf generated reference was created.
+- Segment 1 RAW contained an unsupported support transition (Amy was established on the floor,
+  then "steps down from the counter"), and Segment 6 again chose gratuitous tabletop traversal.
+- Segment 3's final timed action left Amy at the back table while End continuity state incorrectly
+  relocated her near the counter; Segment 4 therefore began with bad semantic position authority.
+- H3 visually duplicated/merged distinct drink containers even though the prop ledger itself was
+  correct (Goblin mug duplication; Segment 4 glass/cup merging/substitution).
+- Segment 2 soundscape reduced the Goblin entry to a generic `footstep`, leaving H3 room to
+  exaggerate it into heavy/repeated footsteps.
+- Dragon1's generated identity Picture was finally used, but the unclothed nonhuman reference
+  acquired inappropriate human sex anatomy. This is not a defined-Subject attire-extractor issue:
+  Dragon1 is dynamic and is intentionally allowed to remain unclothed.
+
+Implemented on `location-state-test`:
+
+- dynamic Subject resolution now explicitly requires every returned `subject_names` label to be
+  applied in returned RAW; Python also deterministically canonicalizes unambiguous generic
+  role/species nouns in timed RAW using the resolved functional name before promotion. A resolved
+  name that still cannot be found now raises instead of silently disappearing;
+- Director creation and the physical validator now preserve body support/elevation literally:
+  no stepping down/off/over or climbing onto counters/tables/bars/etc. without an established or
+  Beat-required reason, and ordinary floor routes are preferred;
+- the physical validator now explicitly rejects End continuity state that relocates a Subject away
+  from its final timed position without a later timed move;
+- every final H3 prompt now carries one compact render-boundary prop rule: established handheld/
+  movable props remain one distinct physical object and may not duplicate, merge, or substitute;
+- soundscape extraction now preserves source/count/duration/intensity when RAW establishes them and
+  specifically avoids turning one step into generic/plural or exaggerated footsteps;
+- generated nonhuman identity references keep external anatomy species-appropriate and do not
+  invent human sex-specific anatomy unless explicitly established; no clothing is added merely to
+  cover anatomy.
+
+Focused regressions were added for the exact Elf metadata-with-generic-RAW failure, unsupported
+support transitions/stale End position, final H3 prop identity contract, sound source/count
+specificity, and unclothed nonhuman reference anatomy.
+
+Commits:
+- `8dc31b5efe8fc3f0e4375edfe3cd598b17fa5f7b` — implementation
+- `43227243a157e2679695e0c80f7c7095e087c70f` — focused regressions
+
+Next acceptance: rerun the same tavern case from current `location-state-test`. Before judging
+video, confirm Segment 3 logs register `Elf1` and create/bind its generated Picture. Then inspect:
+Segment 1 stays on an ordinary floor-side wiping route; Segment 2 keeps one Goblin mug and does not
+invent heavy/repeated footsteps; Segment 4 starts Amy from the back-table state and keeps the
+existing chalice/new Dragon cup distinct; Segment 6 uses a visible ordinary floor route rather than
+a tabletop shortcut or teleport.
+
+
+
+### 2026-10-05 — resolver restart-loop hotfix
+- Fixed a regression from the stricter dynamic Subject resolver enforcement.
+- If returned Subject metadata is valid but the resolver fails to rewrite its functional name into RAW, Python first retries the naming deterministically against the already-accepted Director RAW.
+- If no safe deterministic mapping exists, that resolver entry is warned/dropped instead of restarting the entire segment.
+- Raised the per-defined-Subject wardrobe extractor output cap from 128 to 256 tokens after local GPT-OSS repeatedly truncated the JSON response at 128.
+- No LLM prompt wording changed in this hotfix.
+- Commit: `5f6668bba909898984b374c14cfae4ed6aef7f7e`.
+
+
+### 2026-10-05 — prop ledger identity lock + delta-only continuity props
+- Fixed deterministic prop-ledger corruption where the combined continuity observer could overwrite an existing prop ID with a different object kind (for example `mug_1` becoming a cloth).
+- `merge_prop_ledger()` now treats `prop_id -> kind` as immutable identity. Same-kind observations may update mutable state; a conflicting different-kind observation is assigned a fresh unique prop ID instead of rewriting the existing object.
+- Simplified the `COMBINED_CONTINUITY_SYSTEM` prop instructions so the LLM reports only NEW props or CHANGES. Unchanged props are omitted because Python copies the committed ledger forward.
+- Removed the redundant instruction telling the LLM to copy unchanged/offscreen props forward.
+- Kept the rest of the Combined Continuity wording unchanged because it still defines semantic final-frame facts the LLM must observe.
+- Added regressions for a `mug_1 -> cloth` collision and for delta-only prop prompt wording.
+- Commits: `79474334b75f3625d3b467f8da1ccd6e19c5b7e7`, `4c8f927c58c28bfbde65e4319cb467db5b63ed1f`.
+- Tests were added but not executed through this chat environment.
+
+
+### 2026-10-05 — tavern regression: simplify validators, retire prop staging, add persistent Subject ledger
+Latest rendered tavern run regressed despite character references working. Root causes were primarily upstream scene/continuity handling rather than missing Pictures:
+- Segment 2's first RAW used a camera reveal for the goblin, but the prop validator rejected the goblin's chipped mug because it was not already in the ledger even though CURRENT BEAT introduced it. Retry accumulation degraded this into literal `appears` wording.
+- Segment 3/4 showed the same over-validation pattern for newly introduced cups/chalices. Segment 3 also accepted impossible cross-room interaction and a malformed `held_props` shape caused a useful continuity response (including the chalice) to be discarded.
+- Elf1 lost the explicit female fact because the post-RAW Subject resolver was restricted to appearance facts present in RAW even though CURRENT BEAT said female.
+- Goblin1 remained referenced/registered but Segment 4's timed H3 action omitted him while Dragon1 entered the same visual area.
+
+Changes:
+- Retired the proactive `director_prop_staging` LLM path completely, including its dead schema/trigger/helpers/purpose entry.
+- Simplified `director_raw_scene_prop_state`: a prop explicitly introduced by CURRENT BEAT may first appear in the scene; existing ledger props remain identity/state constrained; source/destination and real source-container checks remain.
+- Simplified `director_raw_scene_physical` to only entry/reveal, travel between established positions, support/elevation changes, and final End-position consistency.
+- Added deterministic RAW rejection for `appears` / `suddenly appears` / `pops into view` introduction wording before the physical LLM validator.
+- Subject resolver now receives CURRENT BEAT and may use explicit non-clothing appearance facts from RAW or CURRENT BEAT. Explicit female/male wording in the resolved canonical description is deterministically copied into Subject registration.
+- Combined Continuity sanitizes harmless `held_props:[{"id":"..."}]` variants into string IDs before strict schema validation, preventing an unrelated list-shape error from discarding otherwise useful prop observations.
+- Removed implementation-language from modified prompts: no `Python owns...`, `Python copies...`, or prop-ledger copy-forward explanation. Combined Continuity user input now labels the database simply `COMMITTED PROP LEDGER:`.
+- Director Request 1 likewise states required timestamp/end-state behavior directly rather than explaining Python normalization.
+- Added deterministic final-H3 continuing-Subject state insertion for continuation clips. A known Subject with a concrete opening position that is absent from current timed action gets a concise line such as `Continuing Subjects: Goblin1 remains beside the counter.`
+- Added `subject_state_ledger`, a Python-owned durable all-Subjects database parallel to the prop ledger. It is seeded from configured `subjects.txt`, persists dynamic Subjects and last-known state across offscreen segments, is checkpointed run-level and per-segment, and is intentionally not yet used as a new semantic/render authority. `last_updated_segment` means ledger update, not rendered observation.
+- Future design note: the Subject ledger currently treats N/A/empty continuity values as unknown and therefore does not clear prior nonempty state from an empty observation. Before it becomes authoritative for every-world-state use, explicit clear/change semantics should be defined rather than inferring clears from absence.
+
+Prompt changes made in this batch:
+- `director_raw_scene_prop_state` now begins: `Validate only prop continuity in RAW. A prop introduced by CURRENT BEAT may first appear in this scene.`
+- `director_raw_scene_physical` now begins: `Validate only subject movement in RAW.` and enumerates only the four narrow rejection cases above.
+- `director_raw_scene_subject_resolution` receives a `CURRENT BEAT` block and the description rule now says appearance facts may come from `RAW or CURRENT BEAT`.
+- `COMBINED_CONTINUITY_SYSTEM`: `Omit unchanged props.`; removed architecture explanations about Python.
+- Director Request 1: direct behavior only for 00:00.000, final-quarter timing, and exactly one End continuity state.
+
+Implementation commits:
+- `90c96a26be5949910759356585b90da3e78276c6` — simplify validators/continuity and add Subject state ledger
+- `a28c323e2941a72390cd4c885aa648ce082227a6` — finish stationary Subject carry-forward and state seeding
+- `a102960ab54f06c6a45a06262c27a07dae3fb048` — remove retired prop-staging code and clarify Subject ledger timestamp
+Regression commits:
+- `347fe1efabf4b65e7319728fe2ea314fc693cdf7`
+- `cd3bb16e907264d6e4f50dba9e3b6b7dac96dd7b`
+- `6cc56dbc4fceece85030858b835a796d1935b0c8`
+
+Regressions cover CURRENT-BEAT prop introduction, deterministic pop-in rejection without an LLM call, CURRENT-BEAT gender/appearance input to Subject resolution, held-prop schema sanitization, offscreen Subject persistence, and deterministic stationary-Subject H3 carry-forward.
+Tests were updated but not executed through this chat/GitHub connector environment.
+
+Next local acceptance run:
+- Segment 2 should no longer burn retries merely because CURRENT BEAT introduces Goblin1's chipped mug, and accepted RAW must not contain pop-in `appears` wording.
+- Segment 3 Elf1 reference/registry should retain explicit female identity; Amy must visibly travel before interacting at the back table; mug/chalice identities should remain separate; a harmless held_props shape slip must not erase the chalice.
+- Segment 4 should retain Goblin1 through deterministic continuing-Subject text when he remains in the location, and pouring must have a real source container. Watch specifically for cup floating/duplication even with correct prompt state.
+- Inspect `generation_state.json.subject_state_ledger`: configured Subjects should exist from run start, dynamic Subjects should be added, and offscreen Subjects should retain last-known state.

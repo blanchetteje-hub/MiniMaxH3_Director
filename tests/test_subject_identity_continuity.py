@@ -28,6 +28,54 @@ def visual_subject(name, clothing, visible=True):
 
 
 class SubjectIdentityContinuityTests(unittest.TestCase):
+    def test_character_reference_prompt_is_species_neutral(self):
+        prompt = minimax.build_character_reference_h3_prompt(
+            "Dragon1 is a humanoid dragon with obsidian scales, wings, and amber eyes.",
+            has_identity_reference=False,
+        )
+
+        self.assertIn("A single subject is centered", prompt)
+        self.assertIn("complete current physical appearance", prompt)
+        self.assertIn("body/anatomy, species traits", prompt)
+        self.assertIn("Clothing in the supplied description is authoritative", prompt)
+        self.assertIn("If no clothing is described, do not invent clothing", prompt)
+        self.assertNotIn("complete current outfit", prompt)
+
+    def test_dynamic_subject_registration_persists_bootstrap_wardrobe(self):
+        state, added = minimax.register_named_subject_hints(
+            minimax.new_continuity_state(),
+            "",
+            "At 00:01.000, Elf1 enters the tavern.",
+            ["Elf1"],
+            origin_segment=3,
+            subject_descriptions={
+                "Elf1": "Elf1 is a beautiful female elf with long silver hair."
+            },
+            subject_wardrobes={
+                "Elf1": {
+                    "upper": "forest-green fitted tunic",
+                    "lower": "brown trousers",
+                    "footwear": "soft leather boots",
+                    "other": "N/A",
+                }
+            },
+        )
+
+        self.assertEqual(added, ["Elf1"])
+        self.assertEqual(
+            state["subjects"]["Elf1"]["canonical_description"],
+            "Elf1 is a beautiful female elf with long silver hair.",
+        )
+        self.assertEqual(
+            state["subjects"]["Elf1"]["wardrobe"],
+            {
+                "upper": "forest-green fitted tunic",
+                "lower": "brown trousers",
+                "footwear": "soft leather boots",
+                "other": "N/A",
+            },
+        )
+
     def test_registry_assigns_stable_werewolf_subject_id_and_picture_metadata(self):
         registry = minimax.parse_subject_registry(SUBJECTS)
 
@@ -172,15 +220,58 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             "\n\n", 1
         )[0]
         self.assertIn(
-            "Elias's opening pose, wardrobe, position, and physical state are "
+            "Elias's opening pose, position, and physical state are "
             "anchored by the supplied opening guide.",
             subject_text,
         )
         self.assertIn(
             "<Subject 2> is Stranger, male (S2), created in generated video "
-            "segment 1. continued from <Video 1>.",
+            "segment 1. The subject's opening appearance and position are "
+            "anchored by the supplied opening guide.",
             subject_text,
         )
+
+    def test_generated_picture_tag_survives_blank_template_slot_conditioning(self):
+        prompt = (
+            "subject_definitions: <Subject 2> is Goblin1, referenced in <Picture 3>.\n"
+            "<Picture 3> defines Goblin1's identity and current clothing."
+        )
+        conditioned = minimax._condition_append_prompt_for_h3(
+            prompt,
+            excluded_picture_ids={2, 3, 4, 5, 6},
+            picture_slot_map={1: 1, 2: 2},
+            protected_picture_ids={3},
+        )
+
+        self.assertIn("<Picture 3>", conditioned)
+        self.assertNotIn(
+            "the supplied opening guide defines Goblin1's identity",
+            conditioned,
+        )
+
+    def test_picture_authority_line_does_not_get_opening_guide_pose_suffix(self):
+        definitions = (
+            "<Subject 2> is Goblin1 (S2). Goblin1 is a goblin. "
+            "Goblin1 is referenced in <Picture 3> for identity and current appearance.\n"
+            "<Picture 3> defines Goblin1's identity, physical appearance, "
+            "species/distinguishing traits, and current clothing."
+        )
+        conditioned = minimax._append_video_origin_to_h3_subject_definitions(
+            definitions,
+            previous_visible_subject_ids={2},
+        )
+
+        self.assertEqual(conditioned.count("opening pose, position, and physical state"), 1)
+        self.assertIn(
+            "<Picture 3> defines Goblin1's identity, physical appearance, "
+            "species/distinguishing traits, and current clothing.",
+            conditioned,
+        )
+        picture_line = next(
+            line for line in conditioned.splitlines()
+            if line.startswith("<Picture 3>")
+        )
+        self.assertNotIn("opening guide", picture_line)
 
     def test_continuation_does_not_add_video_origin_to_absent_subjects(self):
         definitions = (

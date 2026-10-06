@@ -1,3 +1,4 @@
+import inspect
 import json
 import os
 import tempfile
@@ -128,6 +129,192 @@ class RequestedPromptRegressionTests(unittest.TestCase):
                 2,
             )
             stitch.assert_called_once()
+
+    def test_resume_package_preserves_prior_reference_jobs_and_token(self):
+        source = inspect.getsource(minimax._run_main)
+        self.assertIn("saved_reference_jobs = []", source)
+        self.assertIn("saved_reference_file_token = \"\"", source)
+        self.assertIn(
+            "\"reference_jobs\": saved_reference_jobs",
+            source,
+        )
+        self.assertIn(
+            "saved_reference_file_token\\n                or run_id.replace",
+            source,
+        )
+        self.assertIn("job.get(\"job_id\") == \"location:primary\"", source)
+
+    def test_render_from_prompts_executes_saved_reference_jobs_before_segments(self):
+        with tempfile.TemporaryDirectory() as directory:
+            first_ref = os.path.join(directory, "dragon_v001.png")
+            second_ref = os.path.join(directory, "dragon_v002.png")
+            payload = {
+                "version": 1,
+                "config": {
+                    "segment_length": 8.0,
+                    "total_length": 8.0,
+                    "megapixels": 0.5,
+                    "steps": 6,
+                    "trim_frames": 2,
+                    "refresh_interval": None,
+                    "total_segments": 1,
+                },
+                "macro_arc": {},
+                "reference_jobs": [
+                    {
+                        "job_id": "location:primary",
+                        "kind": "location_reference",
+                        "before_segment": 1,
+                        "setting_description": "A stone tavern.",
+                        "megapixels": 0.5,
+                        "steps": 6,
+                        "loras": [],
+                        "noise_seed": 11,
+                    },
+                    {
+                        "job_id": "character:dragon:v001",
+                        "kind": "character_reference",
+                        "before_segment": 1,
+                        "character_name": "Dragon1",
+                        "character_description": "Dragon1 is a small dragon.",
+                        "picture_number": 2,
+                        "version": 1,
+                        "megapixels": 0.5,
+                        "steps": 6,
+                        "loras": [],
+                        "noise_seed": 12,
+                        "file_token": "run",
+                        "identity_source": {"kind": "none"},
+                        "output_reference": {
+                            "name": "Dragon1",
+                            "picture_number": 2,
+                            "image_name": os.path.basename(first_ref),
+                            "image_path": first_ref,
+                            "signature": "one",
+                            "version": 1,
+                            "description": "Dragon1 is a small dragon.",
+                            "wardrobe": {},
+                            "clothing_condition": "",
+                            "authority": "identity_and_clothing",
+                        },
+                    },
+                    {
+                        "job_id": "character:dragon:v002",
+                        "kind": "character_reference",
+                        "before_segment": 1,
+                        "character_name": "Dragon1",
+                        "character_description": "Dragon1 is a small dragon.",
+                        "picture_number": 2,
+                        "version": 2,
+                        "megapixels": 0.5,
+                        "steps": 6,
+                        "loras": [],
+                        "noise_seed": 13,
+                        "file_token": "run",
+                        "identity_source": {
+                            "kind": "generated_reference",
+                            "reference": {
+                                "name": "Dragon1",
+                                "picture_number": 2,
+                                "image_name": os.path.basename(first_ref),
+                                "image_path": first_ref,
+                                "signature": "one",
+                                "version": 1,
+                                "description": "Dragon1 is a small dragon.",
+                                "wardrobe": {},
+                                "clothing_condition": "",
+                                "authority": "identity_and_clothing",
+                            },
+                        },
+                        "output_reference": {
+                            "name": "Dragon1",
+                            "picture_number": 2,
+                            "image_name": os.path.basename(second_ref),
+                            "image_path": second_ref,
+                            "signature": "two",
+                            "version": 2,
+                            "description": "Dragon1 is a small dragon.",
+                            "wardrobe": {},
+                            "clothing_condition": "torn",
+                            "authority": "identity_and_clothing",
+                        },
+                    },
+                ],
+                "prompts": [{
+                    "segment": 1,
+                    "duration": 8.0,
+                    "conditioning_mode": "initial",
+                    "h3_prompt": "subject_definitions: Dragon1",
+                    "subject_definitions": "<Subject 2> is Dragon1.",
+                    "character_reference_images": {
+                        "Dragon1": {
+                            "name": "Dragon1",
+                            "picture_number": 2,
+                            "image_name": os.path.basename(second_ref),
+                            "image_path": second_ref,
+                            "signature": "two",
+                            "version": 2,
+                            "description": "Dragon1 is a small dragon.",
+                            "wardrobe": {},
+                            "clothing_condition": "torn",
+                            "authority": "identity_and_clothing",
+                        }
+                    },
+                    "continuity_state": {},
+                    "continuity_summary": "",
+                    "loras": [],
+                }],
+            }
+            path = os.path.join(directory, "generated_prompts.txt")
+            minimax.save_generated_prompts_file(payload, path)
+            events = []
+
+            def character_render(*args, **kwargs):
+                version = int(args[3])
+                output = first_ref if version == 1 else second_ref
+                open(output, "wb").write(b"x")
+                events.append(f"ref{version}")
+                return output
+
+            with (
+                patch.object(minimax, "validate_runtime_environment"),
+                patch.object(
+                    minimax,
+                    "render_location_reference_video",
+                    side_effect=lambda *a, **k: events.append("location")
+                    or os.path.join(directory, "location.mp4"),
+                ),
+                patch.object(
+                    minimax,
+                    "render_character_reference_image",
+                    side_effect=character_render,
+                ),
+                patch.object(
+                    minimax,
+                    "stage_character_reference_image",
+                    side_effect=lambda ref: events.append(
+                        f"stage{ref['version']}"
+                    ) or ref["image_name"],
+                ),
+                patch.object(
+                    minimax,
+                    "render_segment_with_retries",
+                    side_effect=lambda *a, **k: (
+                        events.append("segment")
+                        or ({}, os.path.join(directory, "one.mp4"), 1280, 720, 0.5)
+                    ),
+                ),
+                patch.object(minimax, "stitch_videos"),
+            ):
+                minimax.render_generated_prompts(
+                    SimpleNamespace(steps=6),
+                    path,
+                )
+
+            self.assertEqual(
+                events[:5],
+                ["location", "ref1", "stage1", "ref2", "segment"],
+            )
 
     def test_continuity_updates_registered_subjects_only(self):
         subjects = "<Subject 1> is Amy, referenced in <Picture 1>."

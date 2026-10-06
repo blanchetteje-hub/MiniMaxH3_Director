@@ -8,7 +8,7 @@ import minimax
 
 @pytest.mark.parametrize('mode', [[], ['--generate-prompts', '5']])
 def test_temperature_default_and_override(mode):
-    assert minimax.parse_args(['8', '5', *mode]).temp == .8
+    assert minimax.parse_args(['8', '5', *mode]).temp == .4
     assert minimax.parse_args(['8', '5', '--temp', '1.2', *mode]).temp == 1.2
     assert minimax.parse_args(['--generate-beats', '5', '8', '--temp', '0']).temp == 0
 
@@ -25,10 +25,11 @@ def test_only_story_request_uses_dynamic_temperature():
     response.json.return_value = {
         'choices': [{'message': {'content': '{"ok": true}'}, 'finish_reason': 'stop'}]
     }
+    assert minimax.DIRECTOR_RAW_SCENE_LLM_SETTINGS['temperature'] == 0.2
     profiles = {
         'story_to_beats': minimax.STORY_TO_BEATS_LLM_SETTINGS,
         'character_canon': minimax.CREATIVE_GENERATION_LLM_SETTINGS,
-        'director_raw_scene': minimax.CREATIVE_GENERATION_LLM_SETTINGS,
+        'director_raw_scene': minimax.DIRECTOR_RAW_SCENE_LLM_SETTINGS,
         'director_h3_music': minimax.MUSIC_GENERATION_LLM_SETTINGS,
         'beat_generation': minimax.BEAT_WRITING_LLM_SETTINGS,
         'continuity_state_validation': minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS,
@@ -45,7 +46,7 @@ def test_only_story_request_uses_dynamic_temperature():
             expected = 1.25 if purpose == 'story_expansion' else profiles[purpose]['temperature']
             assert post.call_args.kwargs['json']['temperature'] == expected
         minimax.configure_story_temperature()
-        assert minimax.STORY_EXPANSION_LLM_SETTINGS['temperature'] == .8
+        assert minimax.STORY_EXPANSION_LLM_SETTINGS['temperature'] == .4
 
 
 def test_run_configures_story_temperature_before_llm_calls():
@@ -70,7 +71,7 @@ def test_gui_temperature_is_passed_for_full_prompts_and_beats():
     assert args.temp == 1.15
     command = bridge.build_command(dict(settings, generation_mode='render_only', temp='invalid'))
     assert '--temp' not in command
-    assert desktop_app.DEFAULT_SETTINGS['temp'] == '0.8'
+    assert desktop_app.DEFAULT_SETTINGS['temp'] == '0.4'
 
 
 @pytest.mark.parametrize('value', ['-1', 'nan', 'inf', 'wrong', ''])

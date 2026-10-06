@@ -45,7 +45,6 @@ from gpt_formatter import (
     extract_inline_dialogue_subjects,
     normalize_summary_subject_references,
     remove_non_speaking_speaker_ids,
-    validate_h3_dialogue_format,
 )
 from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
@@ -171,6 +170,11 @@ VIDEO_OUTPUT = os.path.abspath(
     )
 )
 
+# Persistent visual-state media belongs together under output/video/state.
+# ComfyUI LoadImage still requires a staged copy in its input directory, but
+# the authoritative/checkpointed PNG and all reference videos live here.
+STATE_MEDIA_OUTPUT = os.path.join(VIDEO_OUTPUT, "state")
+
 CONTINUATION_FRAME_OUTPUT = os.path.join(VIDEO_OUTPUT, "continuation_frames")
 
 INITIAL_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_API.json")
@@ -243,6 +247,20 @@ REFERENCE_VIDEO_CONTEXT_FRAMES = 56
 APPEND_GUIDE_CONTEXT_FRAMES = 22
 APPEND_GUIDE_CONTEXT_SECONDS = APPEND_GUIDE_CONTEXT_FRAMES / FRAME_RATE
 
+# One short static-environment reference is rendered before story Segment 1 and
+# reused for the complete run. It is never stitched into the story video.
+LOCATION_REFERENCE_DURATION_SECONDS = 3.0
+LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES = 4
+
+# Character wardrobe references use the same isolated H3 render path as the
+# location reference, but produce one front-facing second and sample its
+# midpoint into an ordinary Picture reference.
+CHARACTER_REFERENCE_DURATION_SECONDS = 1.0
+CHARACTER_REFERENCE_SAMPLE_SECONDS = 0.5
+CHARACTER_REFERENCE_ASPECT_WIDTH = 13
+CHARACTER_REFERENCE_ASPECT_HEIGHT = 19
+CHARACTER_REFERENCE_RATIO_SCALE_MULTIPLE = 16
+
 # Clean refresh is intentionally different: it keeps the proven short latent
 # context window so the refresh boundary can reset accumulated generation drift.
 REFRESH_CONTEXT_FRAMES = 22
@@ -304,6 +322,21 @@ CONTINUITY_ENVIRONMENT_FIELDS = (
     "location",
     "persistent_state",
 )
+
+PROP_LEDGER_FIELDS = (
+    "kind",
+    "owner",
+    "holder",
+    "location",
+    "contents",
+    "status",
+)
+
+PROP_LEDGER_STATUSES = frozenset({
+    "present",
+    "lost",
+    "destroyed",
+})
 
 CURRENT_SUBJECT_SCALAR_FIELDS = (
     "position",
@@ -369,10 +402,28 @@ BEAT_VALIDATION_STATE_VERSION = 3
 # Model/formatter choice must never change sampling, reasoning, prompt transport,
 # or validator behavior.
 BENCHMARK_SEED = 42
+DEFAULT_STORY_TEMPERATURE = 0.4
+DEFAULT_VISUAL_STYLE = "Live-action cinematic"
+DEFAULT_REFRESH_INTERVAL = 999
 REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
 
 CREATIVE_GENERATION_LLM_SETTINGS = {
     "temperature": 0.8,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0.05,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "repeat_penalty": 1.15,
+    "seed": None,
+    "reasoning_effort": "high",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
+}
+
+DIRECTOR_RAW_SCENE_LLM_SETTINGS = {
+    "temperature": 0.2,
     "top_p": 0.95,
     "top_k": 0,
     "min_p": 0.05,
@@ -402,7 +453,7 @@ BEAT_WRITING_LLM_SETTINGS = {
 }
 
 STORY_EXPANSION_LLM_SETTINGS = {
-    "temperature": 0.8,
+    "temperature": DEFAULT_STORY_TEMPERATURE,
     "top_p": 0.95,
     "top_k": 0,
     "min_p": 0.05,
@@ -471,6 +522,9 @@ CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
     "macro_arc_create",
     "macro_arc_repair",
     "macro_arc_majority_tail_repair",
+})
+
+DIRECTOR_RAW_SCENE_LLM_PURPOSES = frozenset({
     "director_raw_scene",
 })
 
@@ -492,6 +546,9 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "director_h3_soundscape",
     "director_h3_formatter",
     "director_raw_scene_coherence",
+    "director_raw_scene_physical",
+    "director_raw_scene_prop_state",
+    "director_raw_scene_timing",
     "director_raw_scene_pronoun_resolution",
     "director_raw_scene_subject_resolution",
     "final_h3_action_preservation",
@@ -500,6 +557,8 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "macro_arc_validate",
     "source_unit_state_effects",
     "story_location_extract",
+    "story_setting_extract",
+    "story_subject_wardrobe_extract",
     "subject_continuity",
     "visual_end_state",
 })
@@ -535,8 +594,9 @@ SCHEDULER_NODE_NAME = "BasicScheduler"
 MATH_NODE_NAME = "Math Expression"
 
 LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
+LOCATION_REFERENCE_VIDEO_NODE_NAME = "Location Reference Video"
 
-REFRESH_LOAD_VIDEO_NODE_NAME = "Load Video"
+REFRESH_LOAD_VIDEO_NODE_NAME = LOAD_VIDEO_NODE_NAME
 
 CONDITIONER_NODE_NAME = "Conditioner"
 H3_GUIDE_NODE_NAME = "Add Guide for MiniMax H3"
@@ -733,13 +793,35 @@ DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
                     "type": "array",
                     "items": {"type": "string", "minLength": 1},
                 },
+                "subject_descriptions": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                },
+                "subject_wardrobes": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "upper": {"type": "string"},
+                            "lower": {"type": "string"},
+                            "footwear": {"type": "string"},
+                            "other": {"type": "string"},
+                        },
+                        "required": ["upper", "lower", "footwear", "other"],
+                        "additionalProperties": False,
+                    },
+                },
             },
-            "required": ["raw_scene", "subject_names"],
+            "required": [
+                "raw_scene",
+                "subject_names",
+                "subject_descriptions",
+                "subject_wardrobes",
+            ],
             "additionalProperties": False,
         },
     },
 }
-
 
 H3_FORMATTER_REQUIRED_FIELDS = frozenset({
     "subject_genders",
@@ -1055,24 +1137,26 @@ _BEAT_ABBREVIATIONS = {
 DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the creative director for one {segment_seconds}-second video segment.
 
 JOB
-- ASSIGNED SOURCE is the story authority for what happens now.
-- CURRENT BEAT is the scene to stage in this clip.
+- CURRENT BEAT is the story authority for what happens now and the scene to stage in this clip.
 - PREVIOUS SHOT END is frame-0 context for continuation shots. Start there without replaying it; if it conflicts with CURRENT BEAT, CURRENT BEAT wins.
 - CANONICAL STARTING CHARACTER FACTS, when provided, are authoritative identity/appearance facts. Establish applicable visible facts for characters already present in CURRENT BEAT or ASSIGNED SOURCE; never introduce a character only to show a canonical fact.
-- NEXT BEAT is boundary context only. Do not begin it.
 
 WRITE THE SCENE
 - Show CURRENT BEAT clearly with concrete visible/audible action.
-- Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the End continuity state.
-- Use natural physical staging. Harmless local route or prop details are allowed when needed to make the action readable.
-- Prefer names when a pronoun could be ambiguous.
-- Short dialogue is allowed when it naturally supports CURRENT BEAT.
+- Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the final continuity state.
+- Add only details needed to physically connect or clearly show CURRENT BEAT.
+- Preserve spatial continuity. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
+- Preserve body support/elevation literally. Do not put a subject onto, over, across, or down from a counter, table, bar, shelf, stool, or other support unless the prior state establishes that route/position or CURRENT BEAT requires it. Prefer ordinary floor routes over gratuitous climbing.
+- Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
+- Preserve prop identity.
+
+CAMERA CHOREOGRAPHY
 {camera_choreography_rules}
+- CONTINUATION: the supplied opening guide is the visual authority for frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. Describe only the inherited continuation frame before CURRENT BEAT; do not reconstruct every known subject into view.
 - Keep all timed action inside the {segment_seconds}-second clip.
-- The first timed micro-beat MUST be at 00:00.000. When PREVIOUS SHOT END is supplied, 00:00.000 is an inherited-frame anchor. PREVIOUS SHOT END is semantic physical state and may include subjects that are off camera; never infer that every listed subject must be visible at frame 0. When a continuation guide is supplied, the guide—not PREVIOUS SHOT END—owns the visible frame-0 composition. Do not introduce a new subject, begin a new CURRENT BEAT action, or change camera composition at 00:00.000. Start CURRENT BEAT at the next timestamp. A subject introduced by CURRENT BEAT may enter or be revealed only after that handoff. For the opening segment, stage frame 0 normally.
-- Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
-- Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
-- After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Preserve only cut-relevant positions/containment, held props, door/barrier state, and unresolved active threats needed to start the next shot. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state or add a new event.
+- Spread CURRENT BEAT naturally across the clip with at least {segment_min_beats} timed micro-beats, with the final timed micro-beat in the final quarter.
+- Use timestamp lines in the form "At 00:ss.mmm," and begin at 00:00.000.
+- After the timed action, include exactly one short "End continuity state:" sentence describing the actual last visible frame. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state.
 
 {story_segment_ending_rules}
 
@@ -1096,9 +1180,9 @@ Rules:
 - Preserve every visible action and its order, every timestamp, and every
   camera movement explicitly supplied by RAW SCENE. Make the segment's action
   the main content of detailed_description.
-- Preserve dialogue verbatim. Put spoken dialogue in the existing form `(S1)
-  <d>[English] exact words</d>` with the established stable speaker ID when
-  applicable. Do not put spoken dialogue outside <d>, invent dialogue, or put
+- Preserve dialogue verbatim. Put spoken dialogue in the form `(S1) said
+  <d>exact words</d>` with the established stable speaker ID when applicable.
+  Do not put spoken dialogue outside <d>, invent dialogue, or put
   speaker IDs on ordinary visual prose when names are used.
 - Use AUTHORITATIVE OPENING STATE only to establish the minimum facts needed
   for the image at frame 0. Do not copy unrelated continuity facts, repeat the
@@ -1106,9 +1190,10 @@ Rules:
 - Do not invent actions, props, people, injuries, locations, sounds, camera
   movements, reactions, visual details, or consequences. Do not advance the
   next beat. Make only the grammatical changes needed for a coherent prompt.
-- Use one [Shot 1]. Keep `Live-action, cinematic` as the default only when no
-  other style is supplied, and use it no more than once. For continuation
-  segments, do not re-narrate the previous final frame or duplicate its opener.
+- Use one [Shot 1]. Do not add a global visual style phrase; Python inserts
+  the configured run-level visual style immediately after [Shot 1]. For
+  continuation segments, do not re-narrate the previous final frame or
+  duplicate its opener.
 - overall_soundscape may contain only sounds supported by RAW SCENE or directly
   relevant visible actions. Do not perpetuate unrelated opening-state sounds.
 - non_diegetic_music is the formatter's one allowed creative finishing choice.
@@ -1172,7 +1257,7 @@ _WARDROBE_COMPONENT_PATTERNS = {
     ),
     "other": re.compile(
         r"(?i)\b(?:dress|gown|robe|jumpsuit|coveralls|overalls|hat|cap|"
-        r"scarf|tie|belt|gloves?|necklace|bracelet|watch|glasses|"
+        r"scarf|tie|belt|apron|gloves?|necklace|bracelet|watch|glasses|"
         r"accessor(?:y|ies))\b"
     ),
 }
@@ -1218,7 +1303,8 @@ _WARDROBE_ACTION_BOUNDARY_RE = re.compile(
 _WARDROBE_CONDITION_CHANGE_RE = re.compile(
     r"(?i)\b(?:becomes?|become|gets?|get|turns?|turn|now|is\s+now|"
     r"covered|soaked|drenched|stained|muddy|mud[- ]streaked|"
-    r"dusty|dirty|torn|ripped|tattered|singed|burned|burnt)\b"
+    r"dusty|dirty|torn|ripped|tattered|singed|burned|burnt|"
+    r"tears?|tearing|rips?|ripping|stains?|staining)\b"
 )
 
 _CONTINUITY_FACT_STOPWORDS = frozenset({
@@ -1262,16 +1348,24 @@ _LOCATION_TRANSITION_RE = re.compile(
 COMBINED_CONTINUITY_SYSTEM = (
     "Extract continuity that is true at the FINAL FRAME. Return one JSON object.\n\n"
     "TOP-LEVEL KEYS ONLY: version, environment, camera, ongoing_action, "
-    "ongoing_audio, subjects.\n"
+    "ongoing_audio, subjects, props.\n"
     "environment KEYS ONLY: location, persistent_state.\n"
     "Subjects MUST be keyed by an already-registered Subject name. Do not create "
     "Subjects. Do not output identity metadata, IDs, Picture references, speaker "
-    "IDs, gender, origin metadata, or structural-change metadata. Python owns "
-    "Subject identity.\n"
+    "IDs, gender, origin metadata, or structural-change metadata.\n"
     "Each Subject may contain ONLY: position, pose_action, wardrobe, topology, "
     "body_state, physical_condition, attached_objects, injuries, substances, "
     "spatial_relationships, persistent_effects, held_props.\n"
-    "wardrobe KEYS ONLY: upper, lower, footwear, other.\n\n"
+    "wardrobe KEYS ONLY: upper, lower, footwear, other.\n"
+    "props contains only NEW props or CHANGES to existing movable/interactable "
+    "props. Omit unchanged props. Existing prop IDs are "
+    "immutable: never change what an existing prop ID represents. If a new distinct "
+    "prop appears, give it a new unique ID. Do not list architecture, doors, fixed "
+    "fixtures, furniture, ambient clutter, or clothing. Each prop may contain ONLY "
+    "kind, owner, holder, location, contents, status. All six values are strings. "
+    "Use N/A when unknown. status is present, lost, or destroyed. holder names the "
+    "Subject physically holding it; location names where it is when not held. contents "
+    "tracks meaningful container contents such as beer or empty.\n\n"
     "Use FINAL FRAME AUTHORITY for current position, pose/action, held props, "
     "spatial relationships, ongoing action, and ongoing audio. FULL SEGMENT "
     "CONTEXT is supporting evidence only for persistent facts that remain true "
@@ -1295,6 +1389,12 @@ COMBINED_CONTINUITY_SYSTEM = (
     "      \"physical_condition\": \"N/A\", \"attached_objects\": [],\n"
     "      \"injuries\": [], \"substances\": [], \"spatial_relationships\": [],\n"
     "      \"persistent_effects\": [], \"held_props\": []\n"
+    "    }\n"
+    "  },\n"
+    "  \"props\": {\n"
+    "    \"<stable prop id>\": {\n"
+    "      \"kind\": \"N/A\", \"owner\": \"N/A\", \"holder\": \"N/A\",\n"
+    "      \"location\": \"N/A\", \"contents\": \"N/A\", \"status\": \"present\"\n"
     "    }\n"
     "  }\n"
     "}\n\n"
@@ -1423,11 +1523,11 @@ _H3_CONTINUATION_PREFIX_TEXT = (
 )
 
 _H3_APPEND_DESCRIPTION_PREFIX = (
-    "[Shot 1] Live-action, cinematic, seamless continuation."
+    "[Shot 1] seamless continuation."
 )
 
 _H3_CONTINUATION_STYLE_PREFIX_RE = re.compile(
-    r"^\s*(?:live-action\s*,\s*cinematic\s*(?:,|\.)\s*)+",
+    r"^\s*(?:live-action\s*,?\s*cinematic\s*(?:,|\.)?\s*)+",
     re.IGNORECASE,
 )
 
@@ -1690,7 +1790,7 @@ def get_formatter(model):
 
 
 # Select the formatter used by the existing generation pipeline.
-def configure_story_temperature(value=0.8):
+def configure_story_temperature(value=DEFAULT_STORY_TEMPERATURE):
     """Set temperature only for the initial summary-to-story writing stage."""
     value = float(value)
     if not math.isfinite(value) or value < 0:
@@ -1964,29 +2064,6 @@ def h3_frame_count_for_duration(duration):
     return base_frames + (5 - (base_frames % 17)) % 17
 
 
-# Return how many leading frames to skip to keep only the final context tail.
-def h3_context_tail_skip_frames(duration, context_frames=REFRESH_CONTEXT_FRAMES):
-    """Return the leading-frame skip required for a final context tail."""
-
-    return max(
-        0,
-        h3_frame_count_for_duration(duration) - int(context_frames),
-    )
-
-
-# Return the frame window used by H3 reference-video conditioning.
-def h3_reference_video_window(
-    duration,
-    context_frames=REFERENCE_VIDEO_CONTEXT_FRAMES,
-):
-    """Use the most recent bounded reference-video tail."""
-
-    total_frames = h3_frame_count_for_duration(duration)
-    frame_load_cap = min(total_frames, max(5, int(context_frames)))
-    skip_first_frames = max(0, total_frames - frame_load_cap)
-    return skip_first_frames, frame_load_cap
-
-
 def _align_h3_frame_count(frame_count):
     """Snap a requested frame count upward to H3's 17k+5 temporal grid."""
     frame_count = max(5, int(math.ceil(float(frame_count))))
@@ -2046,10 +2123,24 @@ def h3_guide_tail_window(
 # Normalize command line.
 def normalize_command_line(arguments):
     normalized = []
+    preserve_next = False
     for argument in arguments:
+        text = str(argument)
+        if preserve_next:
+            if text.strip():
+                normalized.append(text.strip())
+            preserve_next = False
+            continue
+        if text == "--visual-style":
+            normalized.append(text)
+            preserve_next = True
+            continue
+        if text.startswith("--visual-style="):
+            normalized.append(text)
+            continue
         normalized.extend(
             piece.strip()
-            for piece in argument.split(",")
+            for piece in text.split(",")
             if piece.strip()
         )
     return normalized
@@ -2073,8 +2164,20 @@ def parse_args(arguments=None):
         help="resolution target (default: 0.5)",
     )
     parser.add_argument(
-        "--temp", type=float, default=0.8, metavar="N",
-        help="temperature for the initial story-writing LLM call only (default: 0.8)",
+        "--temp", type=float, default=DEFAULT_STORY_TEMPERATURE, metavar="N",
+        help=(
+            "temperature for the initial story-writing LLM call only "
+            f"(default: {DEFAULT_STORY_TEMPERATURE:g})"
+        ),
+    )
+    parser.add_argument(
+        "--visual-style",
+        default=None,
+        metavar="STYLE",
+        help=(
+            "global visual rendering style inserted immediately after [Shot 1] "
+            f"in every H3 prompt (default: {DEFAULT_VISUAL_STYLE})"
+        ),
     )
     parser.add_argument(
         "--no-music", action="store_true",
@@ -2116,11 +2219,12 @@ def parse_args(arguments=None):
     parser.add_argument(
         "--refresh",
         type=int,
-        default=6,
+        default=DEFAULT_REFRESH_INTERVAL,
         metavar="SEGMENTS",
         help=(
             "regenerate from the preceding segment's last frame on every "
-            "SEGMENTS-th segment (default: 6)"
+            "SEGMENTS-th segment "
+            f"(default: {DEFAULT_REFRESH_INTERVAL})"
         ),
     )
     parser.add_argument(
@@ -2130,6 +2234,15 @@ def parse_args(arguments=None):
         help=(
             "append retention_analysis to every non-initial segment "
             "(default: disabled)"
+        ),
+    )
+    parser.add_argument(
+        "--disable-subject-removal",
+        action="store_true",
+        default=False,
+        help=(
+            "keep every previously seen Subject/reference bound in later segments "
+            "instead of aging inactive Subjects out after half the story"
         ),
     )
     parser.add_argument(
@@ -2574,19 +2687,19 @@ def source_span_refresh_segments(macro_arc):
 def is_refresh_segment(segment_number, refresh_interval=None, macro_arc=None):
     """Return whether this non-opening segment uses the refresh workflow.
 
-    Source-span chapter openings are authoritative when present. The legacy
-    numeric refresh interval remains only for runs without source-span chapters.
+    An explicitly supplied numeric interval is authoritative. Source-span chapter
+    openings remain only as the compatibility fallback when no interval is supplied.
     """
     segment_number = int(segment_number)
     if segment_number <= 1:
         return False
+    if refresh_interval is not None:
+        return bool(
+            refresh_interval
+            and segment_number % int(refresh_interval) == 0
+        )
     chapter_refreshes = source_span_refresh_segments(macro_arc)
-    if chapter_refreshes:
-        return segment_number in chapter_refreshes
-    return bool(
-        refresh_interval
-        and segment_number % int(refresh_interval) == 0
-    )
+    return segment_number in chapter_refreshes
 
 
 # Return whether the rendered-frame visual continuity gate should run.
@@ -3281,7 +3394,10 @@ def build_run_config(
     retention=False,
     test_prompt_generation=False,
     no_music=False,
+    disable_subject_removal=False,
+    visual_style=DEFAULT_VISUAL_STYLE,
 ):
+    visual_style = normalize_visual_style(visual_style)
     # Auto-discovered video subjects are durable continuity metadata, not a
     # user edit to the creative source. Excluding those appended lines keeps a
     # resumable run's source fingerprint stable as its registry grows.
@@ -3319,6 +3435,8 @@ def build_run_config(
         "retention": bool(retention),
         "test_prompt_generation": bool(test_prompt_generation),
         "no_music": bool(no_music),
+        "disable_subject_removal": bool(disable_subject_removal),
+        "visual_style": visual_style,
         "source_sha256": hashlib.sha256(source_payload).hexdigest(),
     }
 
@@ -4270,7 +4388,6 @@ def parse_subject_registry(subject_definitions):
         if line.strip() and not line.strip().startswith("#")
     ]
     for line in raw_lines:
-        video_origin = False
         match = re.match(
             r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+"
             r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*?)"
@@ -4299,12 +4416,6 @@ def parse_subject_registry(subject_definitions):
                 for value in re.findall(r"(?i)<Picture\s+(\d+)>", line)
             ]
             picture_ids = list(dict.fromkeys(picture_ids))
-            video_origin = bool(re.search(
-                r"(?i)(?:\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
-                r"in\s+generated\s+video\s+segment\s+\d+)|"
-                r"\bcontinued\s+from\s+<Video\s+1>)",
-                line,
-            ))
             speaker_id = (
                 f"S{speaker}"
                 if (speaker := next(iter(re.findall(r"(?i)\(S(\d+)\)", line)), None))
@@ -5954,10 +6065,6 @@ def derive_additional_subject_definitions(
         speaker_id = _subject_speaker_token(
             record.get("speaker_id") or f"S{subject_id}"
         )
-        try:
-            origin_segment = int(record.get("origin_segment"))
-        except (TypeError, ValueError):
-            origin_segment = 1
         definition = (
             f"<Subject {subject_id}> is {name}{gender_clause} ({speaker_id}), "
             "continued from <Video 1>."
@@ -6105,11 +6212,13 @@ def build_character_canon_messages(canonical_data, story, subject_definitions=""
                 "CANONICAL DATA is optional additional character information. "
                 "When it is empty, establish character facts from STORY and SUBJECTS. "
                 "Use STORY and SUBJECTS to identify the named characters and copy "
-                "any explicit values for those fields. If a configured value is "
-                "missing, invent one reasonable value once. Return name, age, "
-                "clothing, and gender for every named character. Clothing means "
-                "baseline clothing. Do not invent characters. Put only additional "
-                "explicitly stated character facts in other_facts; never replace "
+                "any explicit values for those fields. If age or gender is missing, "
+                "invent one reasonable value once. For clothing, copy explicit source "
+                "clothing when present; otherwise return N/A. Do not invent clothing "
+                "in this call: the later per-Subject expanded-story appropriate attire "
+                "extractor owns final canonical wardrobe. Return name, age, clothing, "
+                "and gender for every named character. Do not invent characters. Put "
+                "only additionally stated character facts in other_facts; never replace "
                 "an explicit fact.\n\n"
                 "CANONICAL DATA\n" + str(canonical_data).strip()
                 + "\n\nSTORY\n" + str(story or "").strip()
@@ -6298,6 +6407,195 @@ def load_or_generate_character_canon(
     return save_character_canon(
         canon,
         expected_hash,
+        path=path,
+    )
+
+
+def build_story_subject_wardrobe_messages(
+    expanded_story,
+    subject_name,
+    subject_definition="",
+    canonical_record=None,
+):
+    """Build one small wardrobe extraction request for one defined Subject."""
+    non_clothing = {}
+    if isinstance(canonical_record, dict):
+        non_clothing = {
+            key: value
+            for key, value in canonical_record.items()
+            if key not in {"name", "clothing"}
+        }
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Determine one defined subject's canonical appropriate attire from "
+                "the expanded story. Preserve every explicit clothing detail for "
+                "this subject, including material, texture, color, wear, layers, "
+                "and role-specific garments. Then fill only missing normal outfit "
+                "pieces with simple appropriate attire for the subject's species, "
+                "body, setting, period, culture, and occupation so the visual "
+                "reference shows a complete coherent outfit. Appropriate attire "
+                "does not mean every subject wears clothes: dragons, animals, and "
+                "other beings that appropriately do not wear clothing must return "
+                "N/A unless the story explicitly gives them clothing. For normally "
+                "clothed people whose outfit is unstated, choose ordinary appropriate "
+                "attire for the setting (for example, a T-shirt and blue jeans in a "
+                "modern casual setting). Do not change identity, anatomy, story "
+                "events, or explicit clothing facts. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"SUBJECT\n{str(subject_name or '').strip()}\n\n"
+                f"DEFINED SUBJECT\n{str(subject_definition or '').strip() or 'N/A'}\n\n"
+                "KNOWN NON-CLOTHING FACTS\n"
+                + (
+                    json.dumps(non_clothing, ensure_ascii=False, separators=(",", ":"))
+                    if non_clothing else "N/A"
+                )
+                + "\n\nEXPANDED STORY\n"
+                + str(expanded_story or "").strip()
+                + "\n\nReturn exactly clothing."
+            ),
+        },
+    ]
+
+
+def build_story_subject_wardrobe_response_format():
+    """Return the strict one-field wardrobe extractor schema."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_subject_wardrobe_extract",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "clothing": {"type": "string", "minLength": 1},
+                },
+                "required": ["clothing"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_story_subject_wardrobe_result(raw_result, llm_request=None):
+    """Normalize one subject's extracted canonical attire."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(
+            candidate,
+            llm_request=llm_request,
+            repair_on_failure=False,
+        )
+    if not isinstance(candidate, dict) or set(candidate) != {"clothing"}:
+        raise ValueError(
+            "Subject wardrobe extraction must contain only clothing."
+        )
+    clothing = " ".join(str(candidate.get("clothing") or "").split()).strip(" ,.;")
+    if not clothing:
+        raise ValueError("Subject wardrobe extraction returned empty clothing.")
+    if clothing.casefold() in {
+        "none", "no clothes", "no clothing", "unclothed",
+        "naturally unclothed", "not applicable", "n/a", "na",
+    }:
+        return "N/A"
+    return clothing
+
+
+def canonicalize_defined_subject_wardrobes(
+    character_canon,
+    expanded_story,
+    subject_definitions,
+    *,
+    canonical_data="",
+    path=CHARACTER_CANON_FILE,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Extract one canonical outfit per pre-defined Subject using separate calls."""
+    if llm_request is None:
+        llm_request = ask_llm
+    expanded_story = str(expanded_story or "").strip()
+    if not expanded_story:
+        return character_canon
+    if not isinstance(character_canon, dict):
+        raise ValueError("Character canon is required for wardrobe extraction.")
+
+    registry = parse_subject_registry(subject_definitions)
+    if not registry:
+        return character_canon
+
+    canon = copy.deepcopy(character_canon)
+    records = [
+        record
+        for record in canon.get("characters", [])
+        if isinstance(record, dict)
+    ]
+    by_name = {
+        " ".join(str(record.get("name") or "").split()).strip().casefold(): record
+        for record in records
+        if str(record.get("name") or "").strip()
+    }
+    definition_lines = {
+        int(match.group("subject")): line.strip()
+        for line in str(subject_definitions or "").splitlines()
+        if (
+            match := re.match(
+                r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+",
+                line,
+            )
+        )
+    }
+
+    for subject_id, subject in sorted(registry.items()):
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        record = by_name.get(name.casefold())
+        if record is None:
+            raise ValueError(
+                f"Defined Subject {name!r} has no canonical character record."
+            )
+        raw = llm_request(
+            build_story_subject_wardrobe_messages(
+                expanded_story,
+                name,
+                definition_lines.get(subject_id, ""),
+                record,
+            ),
+            response_format=build_story_subject_wardrobe_response_format(),
+            max_tokens=256,
+            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "purpose": "story_subject_wardrobe_extract",
+                "subject": name,
+                "subject_id": int(subject_id),
+            },
+        )
+        clothing = parse_story_subject_wardrobe_result(
+            raw,
+            llm_request=llm_request,
+        )
+        record["clothing"] = clothing
+        console_log(
+            f"Canonical appropriate attire for {name}: {clothing}",
+            flush=True,
+        )
+
+    canon["fields"] = list(dict.fromkeys([
+        *(canon.get("fields") or []),
+        "clothing",
+    ]))
+    return save_character_canon(
+        canon,
+        _character_canon_source_hash(
+            canonical_data,
+            expanded_story,
+            subject_definitions,
+        ),
         path=path,
     )
 
@@ -6511,6 +6809,27 @@ def new_generation_state(run_config):
         "visual_raw_end_state": {},
         "visual_end_state": {},
         "visual_end_frame_paths": [],
+        "prop_ledger": {},
+        "subject_state_ledger": {},
+        "character_reference_images": {},
+        "base_reference_image_count": None,
+        "reference_binding_state": {
+            "version": 1,
+            "disable_subject_removal": bool(
+                run_config.get("disable_subject_removal", False)
+            ),
+            "subject_removal_window_segments": max(
+                1,
+                int(math.ceil(float(run_config.get("total_segments") or 1) / 2.0)),
+            ),
+            "current_segment_number": None,
+            "current_bindings": [],
+            "current_active_subject_ids": [],
+            "current_explicit_subject_ids": [],
+            "current_removed_subject_ids": [],
+            "current_excluded_configured_picture_ids": [],
+            "subjects": {},
+        },
         "subject_registry_state": new_continuity_state(),
         # This is the append-only identity contract for the run. Subject
         # continuity facts may change, but this lock may only gain a brand-new
@@ -6525,13 +6844,19 @@ def new_generation_state(run_config):
     }
     configured_subjects = run_config.get("subject_definitions")
     if configured_subjects is not None:
+        configured_snapshot = subject_identity_snapshot_for_definitions(
+            configured_subjects
+        )
         state["subject_identity_lock"] = {
-            "subjects": subject_identity_snapshot_for_definitions(
-                configured_subjects
-            ),
+            "subjects": configured_snapshot,
             "subjects_txt_sha256": hashlib.sha256(
                 str(configured_subjects or "").strip().encode("utf-8")
             ).hexdigest(),
+        }
+        state["subject_state_ledger"] = {
+            record["name"]: copy.deepcopy(record)
+            for record in configured_snapshot.values()
+            if isinstance(record, dict) and record.get("name")
         }
     return state
 
@@ -6555,6 +6880,8 @@ def load_generation_state(path=GENERATION_STATE_FILE):
         raise RuntimeError("Generation checkpoint must contain a JSON object.")
     _canonicalize_generation_state_continuity(state)
     _canonicalize_generation_state_subjects(state)
+    _canonicalize_generation_state_props(state)
+    _canonicalize_generation_state_subject_ledger(state)
     # Validate the internal append-only identity chain even when callers only
     # load the checkpoint. Resume adds the subjects.txt comparison separately.
     validate_subject_identity_state(state)
@@ -6618,6 +6945,8 @@ def wait_for_resume_checkpoint(
 def save_generation_state(state, path=GENERATION_STATE_FILE):
     _canonicalize_generation_state_continuity(state)
     _canonicalize_generation_state_subjects(state)
+    _canonicalize_generation_state_props(state)
+    _canonicalize_generation_state_subject_ledger(state)
     validate_subject_identity_state(state)
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
@@ -6637,6 +6966,39 @@ def save_generation_state(state, path=GENERATION_STATE_FILE):
     finally:
         if os.path.exists(temporary_path):
             os.remove(temporary_path)
+
+
+# Canonicalize persistent movable-prop bookkeeping in checkpoints.
+def _canonicalize_generation_state_subject_ledger(state):
+    """Normalize the run-level and per-segment all-Subjects state ledger."""
+    if not isinstance(state, dict):
+        return state
+    state["subject_state_ledger"] = normalize_subject_state_ledger(
+        state.get("subject_state_ledger", {})
+    )
+    records = state.get("segments")
+    if isinstance(records, list):
+        for record in records:
+            if isinstance(record, dict):
+                record["subject_state_ledger"] = normalize_subject_state_ledger(
+                    record.get("subject_state_ledger", {})
+                )
+    return state
+
+
+def _canonicalize_generation_state_props(state):
+    """Normalize the run-level and per-segment prop ledger."""
+    if not isinstance(state, dict):
+        return state
+    state["prop_ledger"] = normalize_prop_ledger(state.get("prop_ledger", {}))
+    records = state.get("segments")
+    if isinstance(records, list):
+        for record in records:
+            if isinstance(record, dict):
+                record["prop_ledger"] = normalize_prop_ledger(
+                    record.get("prop_ledger", {})
+                )
+    return state
 
 
 # Migrate the legacy opening-state field to the summary field.
@@ -7144,12 +7506,19 @@ def restore_generation_state(
         state["continuity_summary_pending"] = bool(
             last_record.get("continuity_summary_pending", False)
         )
+        state["prop_ledger"] = normalize_prop_ledger(
+            last_record.get("prop_ledger", {})
+        )
     else:
         state["continuity_prompt_state"] = {}
         state["continuity_state"] = {}
         state["continuity_summary"] = ""
         state["subject_registry_state"] = new_continuity_state()
         state["continuity_summary_pending"] = False
+        state["prop_ledger"] = {}
+        state["subject_state_ledger"] = {}
+    if not isinstance(state.get("subject_state_ledger"), dict):
+        state["subject_state_ledger"] = {}
     state.pop("additional_subject_definitions", None)
     restored_dynamic_subject_definitions = derive_additional_subject_definitions(
         base_subject_definitions,
@@ -7166,6 +7535,15 @@ def restore_generation_state(
             state.get("continuity_prompt_state", state.get("continuity_state", {}))
         ),
         "continuity_state": copy.deepcopy(state.get("continuity_state", {})),
+        "prop_ledger": copy.deepcopy(state.get("prop_ledger", {})),
+        "subject_state_ledger": copy.deepcopy(state.get("subject_state_ledger", {})),
+        "character_reference_images": normalize_character_reference_images(
+            state.get("character_reference_images", {})
+        ),
+        "base_reference_image_count": state.get("base_reference_image_count"),
+        "reference_binding_state": copy.deepcopy(
+            state.get("reference_binding_state", {})
+        ),
         "subject_registry_state": migrate_continuity_state(
             state.get("subject_registry_state")
         ),
@@ -7195,6 +7573,8 @@ def record_completed_segment(
     completed_beat_ids,
     continuity_summary="",
     continuity_state=None,
+    prop_ledger=None,
+    subject_state_ledger=None,
     continuity_summary_pending=False,
     additional_subject_definitions=None,
     subject_registry_state=None,
@@ -7204,11 +7584,21 @@ def record_completed_segment(
         continuity_state = state.get("continuity_state", {})
     if not continuity_summary:
         continuity_summary = state.get("continuity_summary", "")
+    if prop_ledger is None:
+        prop_ledger = state.get("prop_ledger", {})
+    prop_ledger = normalize_prop_ledger(prop_ledger)
     if subject_registry_state is None:
         subject_registry_state = state.get(
             "subject_registry_state",
             new_continuity_state(),
         )
+    if subject_state_ledger is None:
+        subject_state_ledger = state.get("subject_state_ledger", {})
+    subject_state_ledger = merge_subject_state_ledger(
+        subject_state_ledger,
+        subject_registry_state,
+        segment_number=segment_number,
+    )
     del additional_subject_definitions
     validate_subject_identity_state(
         state,
@@ -7241,6 +7631,8 @@ def record_completed_segment(
         "completed_beat_ids": sorted(completed_beat_ids),
         "continuity_summary": continuity_summary,
         "continuity_state": copy.deepcopy(continuity_state),
+        "prop_ledger": copy.deepcopy(prop_ledger),
+        "subject_state_ledger": copy.deepcopy(subject_state_ledger),
         "subject_registry_state": migrate_continuity_state(subject_registry_state),
         "subject_identity_snapshot": subject_identity_snapshot(
             subject_registry_state
@@ -7257,6 +7649,8 @@ def record_completed_segment(
     }
     state["continuity_summary"] = continuity_summary
     state["continuity_state"] = copy.deepcopy(continuity_state)
+    state["prop_ledger"] = copy.deepcopy(prop_ledger)
+    state["subject_state_ledger"] = copy.deepcopy(subject_state_ledger)
     state["subject_registry_state"] = migrate_continuity_state(
         subject_registry_state
     )
@@ -7438,6 +7832,180 @@ def connect_named_connection(
 
 
 # Restore the complete append video-to-conditioning graph by node title.
+def build_location_reference_h3_prompt(setting_description):
+    """Build the character-free three-second persistent location reference prompt."""
+    setting = " ".join(str(setting_description or "").split()).strip(" .")
+    if not setting:
+        raise ValueError("Location reference requires a setting description.")
+    return (
+        f"detailed_description: [Shot 1] The camera is positioned at a high, low-angle shot of the location. "
+        f"It is a static, fast, 3-second, full 360 orbital camera shot of the following setting: {setting}."
+        "The space contains no people, characters, creatures, or story action. "
+        "Maintain spatial relationships of major architecture, fixed fixtures, entrances, "
+        "surfaces, persistent furniture, landmarks, and lighting sources that are "
+        "actually present. Keep the view broad and readable; do not cut, zoom into "
+        "an object, or invent a plot event. Unspecified environmental details may be "
+        "designed coherently by the video model and should remain internally consistent.\n\n"
+        "overall_soundscape: N/A\n"
+        "non_diegetic_music: N/A\n"
+    )
+
+
+def inject_location_reference_into_h3_prompt(
+    h3_prompt,
+    setting_description,
+    *,
+    conditioning_mode,
+):
+    """Tell H3 which conditioning source owns persistent static world layout."""
+    prompt = str(h3_prompt or "")
+    setting = " ".join(str(setting_description or "").split()).strip(" .")
+    if not prompt or not setting:
+        return prompt
+    if str(conditioning_mode or "").strip().lower() == "clean_refresh":
+        clause = (
+            "The supplied location-reference frames define the persistent static "
+            f"environment and spatial layout ({setting}). Preserve architecture, fixed "
+            "fixtures, entrances, surfaces, persistent furniture, landmarks, and "
+            "background placement when those areas enter frame. They do not define "
+            "characters or the current camera composition. "
+        )
+    else:
+        clause = (
+            "<Video 1> is the persistent LOCATION REFERENCE for the static environment "
+            f"and spatial layout ({setting}). Preserve its architecture, fixed fixtures, "
+            "entrances, surfaces, persistent furniture, landmarks, and background "
+            "placement when those areas enter frame. Do not use <Video 1> for characters "
+            "or current camera framing. "
+        )
+    marker = "detailed_description:"
+    if marker not in prompt:
+        return clause + prompt
+    return prompt.replace(marker, marker + " " + clause, 1)
+
+
+def _new_location_reference_loader(workflow, video_path, *, sample_for_refresh=False):
+    node_id = _next_workflow_node_id(workflow)
+    inputs = {
+        "video": os.path.abspath(os.fspath(video_path)),
+        "force_rate": 0,
+        "custom_width": 0,
+        "custom_height": 0,
+        "frame_load_cap": (
+            LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES
+            if sample_for_refresh else 0
+        ),
+        "skip_first_frames": 0,
+        "select_every_nth": (
+            max(
+                1,
+                int(round(
+                    FRAME_RATE * LOCATION_REFERENCE_DURATION_SECONDS
+                    / LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES
+                )),
+            )
+            if sample_for_refresh else 1
+        ),
+        "format": "H3",
+    }
+    workflow[node_id] = {
+        "inputs": inputs,
+        "class_type": "VHS_LoadVideoPath",
+        "_meta": {"title": LOCATION_REFERENCE_VIDEO_NODE_NAME},
+    }
+    return node_id
+
+
+def _validate_location_reference_path(video_path):
+    path = os.path.abspath(os.fspath(video_path))
+    if not os.path.isfile(path) or os.path.getsize(path) == 0:
+        raise FileNotFoundError(
+            f"Location reference video is missing or empty: {path}"
+        )
+    return path
+
+
+def connect_location_reference_video(
+    workflow,
+    workflow_label,
+    video_path,
+    *,
+    reuse_existing_loader=False,
+):
+    """Attach persistent spatial memory to a ReferenceToVideo conditioner."""
+    path = _validate_location_reference_path(video_path)
+    if reuse_existing_loader:
+        loader_id, loader = find_workflow_node(
+            workflow,
+            LOAD_VIDEO_NODE_NAME,
+            workflow_label,
+            "VHS_LoadVideoPath",
+        )
+        loader["inputs"].update({
+            "video": path,
+            "format": "H3",
+            "skip_first_frames": 0,
+            "frame_load_cap": 0,
+            "select_every_nth": 1,
+        })
+    else:
+        loader_id = _new_location_reference_loader(workflow, path)
+
+    _, conditioning = find_workflow_node(
+        workflow,
+        INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3ReferenceToVideo",
+    )
+    inputs = conditioning.setdefault("inputs", {})
+    inputs["ref_videos.ref_video_0"] = [loader_id, 0]
+    # Spatial memory only: do not let the location clip's generated soundtrack
+    # influence story audio.
+    inputs.pop("ref_video_audios.ref_video_audio_0", None)
+    if isinstance(inputs.get("ref_video_audios"), dict):
+        inputs["ref_video_audios"].pop("ref_video_audio_0", None)
+    return loader_id
+
+
+def attach_location_reference_frames_to_refresh(
+    workflow,
+    workflow_label,
+    video_path,
+):
+    """Use sampled location frames when the clean-refresh node has no Ref2V input."""
+    path = _validate_location_reference_path(video_path)
+    location_loader_id = _new_location_reference_loader(
+        workflow,
+        path,
+        sample_for_refresh=True,
+    )
+    extend_id, extend = find_workflow_node(
+        workflow,
+        REFRESH_EXTEND_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3VideoExtendPatched",
+    )
+    batch_id, batch = find_workflow_node(
+        workflow,
+        REFRESH_REFERENCE_BATCH_NODE_NAME,
+        workflow_label,
+        "ImageBatchMulti",
+    )
+    image_slots = []
+    for key in batch.get("inputs", {}):
+        match = re.fullmatch(r"image_(\d+)", str(key))
+        if match:
+            image_slots.append(int(match.group(1)))
+    next_slot = max(image_slots, default=0) + 1
+    batch["inputs"][f"image_{next_slot}"] = [location_loader_id, 0]
+    batch["inputs"]["inputcount"] = max(
+        int(batch["inputs"].get("inputcount") or 0),
+        next_slot,
+    )
+    extend["inputs"]["ref_images"] = [batch_id, 0]
+    return location_loader_id
+
+
 def _ensure_append_guide_node(workflow, workflow_label):
     """Return one native MiniMaxH3AddGuide node, adding it when absent."""
     matches = []
@@ -8873,6 +9441,8 @@ def ask_llm(
         llm_settings = MUSIC_GENERATION_LLM_SETTINGS
     elif history_purpose in BEAT_WRITING_LLM_PURPOSES:
         llm_settings = BEAT_WRITING_LLM_SETTINGS
+    elif history_purpose in DIRECTOR_RAW_SCENE_LLM_PURPOSES:
+        llm_settings = DIRECTOR_RAW_SCENE_LLM_SETTINGS
     elif history_purpose in CREATIVE_GENERATION_LLM_PURPOSES:
         llm_settings = CREATIVE_GENERATION_LLM_SETTINGS
     else:
@@ -8891,10 +9461,6 @@ def ask_llm(
     thinking_budget_tokens = llm_settings["thinking_budget_tokens"]
     reasoning_budget_message = llm_settings["reasoning_budget_message"]
     enable_thinking = llm_settings["enable_thinking"]
-    thinking = None
-    chat_template = None
-    jinja = None
-
     beat_history_purposes = {
         "macro_arc_create",
         "macro_arc_validate",
@@ -8908,6 +9474,7 @@ def ask_llm(
     response_history_purposes = beat_history_purposes | {
         "director_raw_scene",
         "director_h3_formatter",
+        "director_raw_scene_subject_resolution",
         "continuity_combined_reduced_state",
         "continuity_phase_2_h3_opening",
     }
@@ -13437,7 +14004,6 @@ def build_beat_arc_plan_messages(
     beat_instructions="",
 ):
     """Build the compact ARC creation prompt for a small local model."""
-    subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
     canonical_character_facts = (
         _canonical_character_facts_from_subject_information(subject_information)
         or "N/A"
@@ -17338,7 +17904,7 @@ def strip_story_beat_timestamps(text):
 
 
 def build_story_expansion_messages(summary, duration_seconds, total_segments=None):
-    """Build the novelist pass that expands story.txt into continuous prose."""
+    """Build the film-ready prose pass that expands story.txt into continuous prose."""
     duration_seconds = float(duration_seconds)
     beat_support_rule = (
         f"Write enough concrete sequential action to support {int(total_segments)} distinct film beats."
@@ -17354,9 +17920,9 @@ def build_story_expansion_messages(summary, duration_seconds, total_segments=Non
         {
             "role": "system",
             "content": (
-                "You are a novelist. Write a short story based on the following "
-                "summary. Take the genre of the summary into account when "
-                "deciding what to focus on for the majority of the story."
+                "Write a short, film-ready story from the supplied summary. "
+                "Use concrete, literal, physically unambiguous prose while preserving "
+                "the summary's genre and tone."
             ),
         },
         {
@@ -17370,7 +17936,9 @@ Preserve every explicit event and outcome in the summary in the same order.
 Every explicit event in the summary must happen visibly in the story. Do not
 compress, imply, or skip an explicit transition. If a character moves from one
 location to another, write the movement clearly enough that the character's
-location is unambiguous.
+location is unambiguous. Describe physical actions literally: make attachment,
+movement, action targets, containers, and destinations explicit. Avoid poetic or
+figurative wording when it could change how an action or object is visualized.
 {beat_support_rule}
 You may add connective staging and concrete detail, but do not add a new major
 plot event, outcome, or named character.
@@ -17554,6 +18122,131 @@ def extract_story_locations(
         "Could not extract story locations: "
         + str(last_error or "unknown location extraction error")
     )
+
+
+def build_story_setting_description_messages(
+    expanded_story,
+    overall_location,
+    visual_style=DEFAULT_VISUAL_STYLE,
+):
+    """Build a narrow extractor for persistent static environment facts."""
+    visual_style = normalize_visual_style(visual_style)
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract a concise static setting description for a video location "
+                "reference. Use only facts the story actually presents as description "
+                "of the place itself: architecture, terrain, broad room layout, fixed "
+                "fixtures, entrances, surfaces, and persistent lighting sources. Exclude "
+                "characters, creatures, character actions, dialogue, plot events, held "
+                "props, and objects/furniture mentioned only because a later action "
+                "uses or introduces them. Do not promote every story prop into the "
+                "global setting. Relative action wording is not proof of distinct static "
+                "architecture: labels such as front/back/side door or left/right table "
+                "should be kept only when the story clearly establishes multiple distinct "
+                "instances or that relative identity is itself a persistent architectural "
+                "fact. When only one instance is established, describe it generically "
+                "(for example, entrance door rather than back door). Do not invent details. "
+                "Respect the supplied visual style when choosing concise appearance "
+                "language, but do not let style add or alter setting facts. If the story "
+                "gives only a broad setting, return only that broad setting and let the "
+                "video model design unspecified details. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "VISUAL STYLE\n"
+                f"{visual_style}\n\n"
+                "OVERALL LOCATION\n"
+                f"{str(overall_location or '').strip()}\n\n"
+                "EXPANDED STORY\n"
+                f"{str(expanded_story or '').strip()}\n\n"
+                "Return exactly setting_description."
+            ),
+        },
+    ]
+
+
+def build_story_setting_description_response_format():
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_setting_extract",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "setting_description": {"type": "string", "minLength": 1},
+                },
+                "required": ["setting_description"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_story_setting_description(raw_result, fallback=""):
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"setting_description"}:
+        raise ValueError(
+            "Story setting extraction must contain only setting_description."
+        )
+    value = " ".join(str(candidate.get("setting_description") or "").split()).strip(" .")
+    if not value or value.casefold() in {"n/a", "na", "none", "null", "unknown"}:
+        value = " ".join(str(fallback or "").split()).strip(" .")
+    if not value:
+        raise ValueError("Story setting extraction returned no usable description.")
+    return value
+
+
+def extract_story_setting_description(
+    expanded_story,
+    overall_location,
+    *,
+    visual_style=DEFAULT_VISUAL_STYLE,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Extract only persistent spatial/environment facts from the expanded story."""
+    if llm_request is None:
+        llm_request = ask_llm
+    fallback = " ".join(str(overall_location or "").split()).strip(" .")
+    try:
+        raw = llm_request(
+            build_story_setting_description_messages(
+                expanded_story,
+                overall_location,
+                visual_style=visual_style,
+            ),
+            response_format=build_story_setting_description_response_format(),
+            parse_json_response=False,
+            max_tokens=512,
+            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "purpose": "story_setting_extract",
+                "attempt": 1,
+            },
+            temperature=0,
+            top_p=1,
+            seed=42,
+        )
+        return parse_story_setting_description(raw, fallback=fallback)
+    except LLMConnectionError:
+        raise
+    except (TypeError, ValueError) as error:
+        if fallback:
+            console_log(
+                f"WARNING: setting-detail extraction failed ({error}); "
+                f"using overall location {fallback!r}.",
+                flush=True,
+            )
+            return fallback
+        raise
 
 
 def format_story_starting_location(starting_location):
@@ -19263,59 +19956,21 @@ def build_story_segment_ending_rules(is_final_story_segment):
     )
 
 
-# Return the Director camera rule for one segment.
+# Return the Director camera choreography rules.
 def build_director_camera_choreography_rules(segment_number, conditioning_mode=None):
-    """Prefer continuous camera choreography over seam-exposing cuts."""
-    try:
-        segment_number = int(segment_number)
-    except (TypeError, ValueError):
-        segment_number = 1
-
+    """Return the shared camera rules used by every Director segment."""
+    del segment_number, conditioning_mode
     lines = [
-        "CAMERA CHOREOGRAPHY",
         "- Stage the entire segment as one continuous camera take. Do not use "
-        "cuts, cutaways, insert shots, reverse-angle cuts, reaction cuts, fades, "
-        "wipes, or shot changes unless CURRENT BEAT explicitly requires a "
-        "discontinuous time or location change that cannot be shown continuously.",
+        "cuts unless CURRENT BEAT explicitly requires a location change that "
+        "cannot be shown continuously.",
         "- When framing, angle, distance, height, or viewed subject must change, "
         "move the camera instead of cutting. Use natural English camera actions "
         "such as pushes in, pulls out, pans left/right, trucks left/right, tilts "
         "up/down, pedestals up/down, arcs around, or tracks with a moving subject. "
         "A static shot is valid when movement would not help.",
-        "- Camera movement must follow, reveal, or refocus important story action. "
-        "Do not add decorative movement, and keep the active subject/action readable "
-        "through the move.",
+        "- Camera movement must follow, reveal, or refocus important story action.",
     ]
-
-    if str(conditioning_mode or "").strip().lower() == "continuation":
-        lines.append(
-            "- CONTINUATION: the supplied opening guide is the visual authority for "
-            "frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. "
-            "At 00:00.000 describe only the inherited continuation frame; do not "
-            "reconstruct every known subject into view. Begin CURRENT BEAT at the "
-            "next natural timestamp and keep camera motion continuous."
-        )
-
-    # Every third segment after Segment 1 deliberately changes composition
-    # without adding an editorial cut: 4, 7, 10, ...
-    if segment_number > 1 and (segment_number - 1) % 3 == 0:
-        lines.append(
-            "- REFRAME THIS SEGMENT: Begin from the inherited opening composition. "
-            "After about 1 second, move continuously into a materially different "
-            "composition by changing angle, distance, height, framed subject, or "
-            "viewing side. Do not cut."
-        )
-    elif segment_number == 1:
-        lines.append(
-            "- Establish a useful opening composition. Use camera movement when it "
-            "helps follow or reveal CURRENT BEAT; do not force a decorative reframe."
-        )
-    else:
-        lines.append(
-            "- Begin from the established opening composition. Do not force a new "
-            "composition; use camera movement when it naturally follows or reveals "
-            "CURRENT BEAT."
-        )
     return "\n".join(lines)
 
 
@@ -19339,7 +19994,6 @@ def build_director_rules(
     """
     del total_length, subject_definitions, beats_enabled
     delivered_seconds = float(segment_length)
-    continuation = str(conditioning_mode or "").strip().lower() == "continuation"
     director_seconds = delivered_seconds
     if is_final_story_segment is None:
         # Compatibility for direct callers that predate the explicit runtime
@@ -19680,6 +20334,145 @@ def _director_unassigned_release_from_storage_errors(raw_scene, assigned_source)
             "action not assigned by SOURCE; use an ordinary physical retrieval verb."
         ]
     return []
+
+
+def _director_raw_scene_last_timed_action(raw_scene):
+    """Return the final timed action text without its timestamp."""
+    text = str(raw_scene or "")
+    matches = list(_DIRECTOR_TIMESTAMP_RE.finditer(text))
+    if not matches:
+        return ""
+    match = matches[-1]
+    line_end = text.find("\n", match.end())
+    if line_end < 0:
+        line_end = len(text)
+    action = text[match.end():line_end].strip(" \t,-–—")
+    return action.strip()
+
+
+def _normalize_director_end_continuity_marker(raw_scene):
+    """Guarantee one trailing End continuity state marker without an LLM retry."""
+    text = str(raw_scene or "").strip()
+    if not text:
+        return text
+
+    markers = list(
+        re.finditer(
+            r"(?i)\bEnd\s+continuity\s+state\s*:\s*",
+            text,
+        )
+    )
+    ending_state = ""
+    if markers:
+        first_marker = markers[0]
+        last_marker = markers[-1]
+        timed_scene = text[:first_marker.start()].rstrip()
+        ending_state = text[last_marker.end():].strip()
+        # The Director contract asks for one short final-state sentence. If the
+        # model duplicated the marker, keep only the final marker's payload.
+        if "\n" in ending_state:
+            ending_state = ending_state.splitlines()[0].strip()
+    else:
+        timed_scene = text
+
+    if not ending_state:
+        ending_state = _director_raw_scene_last_timed_action(timed_scene)
+    if not ending_state:
+        ending_state = "The final visible frame matches the last described scene state."
+
+    return (
+        timed_scene.rstrip()
+        + "\nEnd continuity state: "
+        + ending_state.strip()
+    ).strip()
+
+
+def _format_director_timestamp_ms(absolute_ms):
+    """Return one canonical Director timestamp token for absolute milliseconds."""
+    absolute_ms = max(0, int(round(absolute_ms)))
+    minutes, remainder = divmod(absolute_ms, 60_000)
+    seconds, milliseconds = divmod(remainder, 1000)
+    return f"At {minutes:02d}:{seconds:02d}.{milliseconds:03d},"
+
+
+def _normalize_director_frame_zero(raw_scene):
+    """Insert Python-owned frame-zero staging when Request 1 starts later."""
+    text = str(raw_scene or "").strip()
+    marker = re.search(
+        r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
+        text,
+    )
+    if marker is None:
+        return text
+    timed_scene = text[:marker.start()].rstrip()
+    ending = text[marker.start():].lstrip()
+    timestamps = _director_timestamps(timed_scene)
+    if not timestamps or timestamps[0] == (0, 0):
+        return text
+
+    anchor = (
+        "At 00:00.000, The shot begins from the established opening state."
+    )
+    return f"{anchor}\n{timed_scene}\n{ending}".strip()
+
+
+def _normalize_director_final_quarter_timing(raw_scene, segment_seconds=None):
+    """Move only the final timestamp into the final quarter when needed."""
+    text = str(raw_scene or "").strip()
+    try:
+        duration = float(segment_seconds) if segment_seconds is not None else None
+    except (TypeError, ValueError):
+        duration = None
+    if duration is None or not math.isfinite(duration) or duration <= 0:
+        return text
+
+    marker = re.search(
+        r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
+        text,
+    )
+    if marker is None:
+        return text
+    timed_scene = text[:marker.start()].rstrip()
+    ending = text[marker.start():].lstrip()
+    matches = list(_DIRECTOR_CANONICAL_TIMESTAMP_RE.finditer(timed_scene))
+    timestamps = _director_timestamps(timed_scene)
+    if not matches or not timestamps:
+        return text
+
+    last_seconds, last_milliseconds = timestamps[-1]
+    last_ms = last_seconds * 1000 + last_milliseconds
+    target_ms = int(round(duration * 0.75 * 1000.0))
+    if last_ms >= target_ms:
+        return text
+
+    if last_ms <= 0:
+        hold = (
+            _format_director_timestamp_ms(target_ms)
+            + " The camera holds on the final visible result of the completed action."
+        )
+        return f"{timed_scene}\n{hold}\n{ending}".strip()
+
+    last_match = matches[-1]
+    retimed = (
+        timed_scene[:last_match.start()]
+        + _format_director_timestamp_ms(target_ms)
+        + timed_scene[last_match.end():]
+    )
+    return f"{retimed.rstrip()}\n{ending}".strip()
+
+
+def _normalize_director_raw_scene_structure(raw_scene, segment_seconds=None):
+    """Repair deterministic RAW structure before semantic validation."""
+    text = _canonicalize_director_timestamps(raw_scene).strip()
+    if not text or text == "N/A":
+        return text
+    text = _normalize_director_end_continuity_marker(text)
+    text = _normalize_director_frame_zero(text)
+    text = _normalize_director_final_quarter_timing(
+        text,
+        segment_seconds=segment_seconds,
+    )
+    return text
 
 
 def _director_raw_scene_structure_errors(
@@ -20150,7 +20943,6 @@ def _director_placed_object_keys(previous):
     text = str(previous or "")
     for match in _DIRECTOR_OBJECT_PLACEMENT_RE.finditer(text):
         phrase = match.group("object").strip()
-        phrase_folded = phrase.casefold()
         if re.search(r"(?i)\b(?:it|them)\b", phrase):
             # Resolve only explicit same-action pronouns to nouns named before
             # the placement verb; never scoop up destination/context nouns after it.
@@ -20755,7 +21547,10 @@ def build_h3_soundscape_messages(raw_scene):
                 "microphone could hear. Include sounds explicitly stated by RAW and "
                 "sounds necessarily produced by an audible depicted event such as a "
                 "slam, crash, gunshot, spoken line, explicitly described footsteps, "
-                "laughter, groans, or other stated audio. Each listed item must itself "
+                "laughter, groans, or other stated audio. Preserve the stated source, "
+                "count, duration, and intensity when RAW makes them clear; do not turn one "
+                "step into generic/plural footsteps or amplify an ordinary cue into a heavy "
+                "or prolonged sound. Each listed item must itself "
                 "name an audible event or audible ambience, not a silent action. Do "
                 "not turn motion verbs into sounds: sliding a hand, swinging an arm or "
                 "blade, lifting, reaching, turning, emerging, surging, or rising steam "
@@ -20978,9 +21773,9 @@ def build_h3_formatter_messages(
             "pose. Do not invent or add a redundant opening-camera setup. Preserve "
             "every camera movement explicitly present in RAW SCENE at its original "
             "timestamp. The pinned guide owns the opening airlock; do not describe a "
-            "different composition during that interval. Do not repeat the words "
-            "'Live-action, cinematic' in the description; the final H3 prompt supplies "
-            "that opener.\n\n"
+            "different composition during that interval. Do not add a global visual "
+            "style phrase; Python inserts the configured run-level visual style "
+            "immediately after [Shot 1].\n\n"
         )
     else:
         continuation_opening_rule = ""
@@ -21309,7 +22104,7 @@ def _repair_named_dialogue_speaker_ids(description, subject_definitions):
             speakers.append((name, speaker))
 
     speech_re = re.compile(
-        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"(?i)\b(?:says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|"
         r"calls?(?:\s+out)?|cries|screams?|murmurs?|mutters?|growls?)\b"
     )
     blocks = list(re.finditer(r"<d>.*?</d>", text, re.I | re.S))
@@ -21590,7 +22385,6 @@ def request_five_bullet_summary(
     if llm_request is None:
         llm_request = ask_llm
     base_messages = build_summary_messages(recent_results)
-    last_summary = None
     for attempt in range(1, max(1, int(content_attempts)) + 1):
         messages = [dict(message) for message in base_messages]
         if attempt > 1:
@@ -21613,7 +22407,6 @@ def request_five_bullet_summary(
             summary,
             subject_definitions,
         )
-        last_summary = summary
         normalized = normalize_previous_state(summary)
         if normalized is not None:
             return normalized
@@ -22042,7 +22835,7 @@ def extract_dialogue_subject_declarations(detailed_description):
         r"(?:<Subject\s+(?P<subject>\d+)>\s+)?"
         r"(?P<name>[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*){0,4})\s+"
         r"\((?P<speaker>S\d+)\)\s+"
-        r"(?:says in an off-screen voiceover|says?|asks?|answers?|replies|"
+        r"(?:says in an off-screen voiceover|says?|said|asks?|answers?|replies|"
         r"shouts?|whispers?|yells?|tells?|exclaims?|narrates?|yelps?|cries|"
         r"calls?(?:\s+out)?|murmurs?|mutters?|growls?|screams?)"
         r"[^<>.!?]{0,120}:?\s*$",
@@ -22153,7 +22946,10 @@ def _canonical_clothing_items(value):
             raw_items.extend(_canonical_clothing_items(item))
     else:
         text = " ".join(str(value or "").split()).strip(" ,.;")
-        if text and text.casefold() not in {"n/a", "unknown", "unspecified", "none"}:
+        if text and text.casefold() not in {
+            "n/a", "unknown", "unspecified", "none", "no clothing",
+            "unclothed", "naturally unclothed", "not applicable",
+        }:
             raw_items.append(text)
 
     deduped = []
@@ -22285,6 +23081,7 @@ def register_named_subject_hints(
     origin_segment=None,
     subject_genders=None,
     subject_descriptions=None,
+    subject_wardrobes=None,
 ):
     """Register planned named characters only when they visibly appear now."""
     state = continuity_state_for_registry(
@@ -22333,6 +23130,16 @@ def register_named_subject_hints(
             "origin_segment": origin_segment,
             "canonical_description": canonical_description,
         })
+        initial_wardrobe = (
+            subject_wardrobes.get(name, {})
+            if isinstance(subject_wardrobes, dict)
+            else {}
+        )
+        if isinstance(initial_wardrobe, dict):
+            state["subjects"][name]["wardrobe"] = {
+                field: str(initial_wardrobe.get(field) or "N/A").strip() or "N/A"
+                for field in _WARDROBE_FIELDS
+            }
         added_names.append(name)
     return state, added_names
 
@@ -22784,6 +23591,65 @@ def seed_story_wardrobe(subject_definitions, story, state=None):
             ) is None:
                 wardrobe[field] = value
     return seeded
+
+
+def seed_character_canon_wardrobe(
+    subject_definitions,
+    character_canon,
+    state=None,
+):
+    """Fill unknown wardrobe slots from canonical defined-Subject attire."""
+    seeded = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(state) if isinstance(state, dict) else state,
+    )
+    if not isinstance(character_canon, dict):
+        return seeded
+
+    records = {
+        " ".join(str(record.get("name") or "").split()).strip().casefold(): record
+        for record in character_canon.get("characters", [])
+        if isinstance(record, dict) and str(record.get("name") or "").strip()
+    }
+    for name, subject_state in seeded.get("subjects", {}).items():
+        if not isinstance(subject_state, dict):
+            continue
+        record = records.get(str(name).casefold())
+        if not isinstance(record, dict):
+            continue
+        clothing = " ".join(str(record.get("clothing") or "").split()).strip()
+        if not _canonical_clothing_items(clothing):
+            continue
+        wardrobe = subject_state.setdefault("wardrobe", {})
+        grouped = {}
+        for field, value in _split_wardrobe_components(clothing):
+            grouped.setdefault(field, []).append(value)
+        for field, values in grouped.items():
+            if _known_replacement_value(
+                wardrobe.get(field),
+                f"wardrobe.{field}",
+            ) is None:
+                wardrobe[field] = _join_wardrobe_components(values)
+    return seeded
+
+
+def seed_canonical_opening_wardrobe(
+    subject_definitions,
+    story,
+    character_canon,
+    state=None,
+):
+    """Seed canonical attire first, then fill remaining explicit story slots."""
+    seeded = seed_character_canon_wardrobe(
+        subject_definitions,
+        character_canon,
+        state,
+    )
+    return seed_story_wardrobe(
+        subject_definitions,
+        story,
+        seeded,
+    )
 
 
 # Find wardrobe slots whose absence is explicitly established.
@@ -23898,10 +24764,37 @@ def _strip_combined_continuity_identity_metadata(candidate):
     return stripped
 
 
+def _sanitize_combined_continuity_list_variants(candidate):
+    """Normalize harmless local-model list-item schema slips before validation."""
+    if not isinstance(candidate, dict):
+        return candidate
+    cleaned = copy.deepcopy(candidate)
+    subjects = cleaned.get("subjects")
+    records = list(subjects.values()) if isinstance(subjects, dict) else subjects
+    if isinstance(records, list):
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            held = record.get("held_props")
+            if isinstance(held, list):
+                normalized = []
+                for item in held:
+                    if isinstance(item, str):
+                        value = item.strip()
+                    elif isinstance(item, dict) and set(item) == {"id"}:
+                        value = str(item.get("id") or "").strip()
+                    else:
+                        value = ""
+                    if value:
+                        normalized.append(value)
+                record["held_props"] = normalized
+    return cleaned
+
+
 def _validate_combined_continuity_schema(candidate):
     """Validate the structural schema emitted by combined continuity Phase 1."""
     errors = []
-    top_level = set(CONTINUITY_TOP_LEVEL_FIELDS)
+    top_level = set(CONTINUITY_TOP_LEVEL_FIELDS) | {"props"}
     subject_fields = set(
         (
             *CURRENT_SUBJECT_SCALAR_FIELDS,
@@ -23989,6 +24882,23 @@ def _validate_combined_continuity_schema(candidate):
                 validate_subject(f"subjects[{index}]", record)
         else:
             errors.append("subjects (must be an object or array)")
+
+    props = candidate.get("props")
+    if props is not None:
+        if not isinstance(props, dict):
+            errors.append("props (must be an object)")
+        else:
+            for prop_id, record in props.items():
+                path = f"props.{prop_id}"
+                if not isinstance(record, dict):
+                    errors.append(f"{path} (must be an object)")
+                    continue
+                for key in record:
+                    if key not in PROP_LEDGER_FIELDS:
+                        errors.append(f"{path}.{key}")
+                for key in PROP_LEDGER_FIELDS:
+                    if key in record and not isinstance(record[key], str):
+                        errors.append(f"{path}.{key} (must be a string)")
 
     if errors:
         unique_errors = list(dict.fromkeys(errors))
@@ -24163,6 +25073,7 @@ def _parse_continuity_json_result(
         candidate.pop("characters", None)
     if strict_schema:
         candidate = _strip_combined_continuity_identity_metadata(candidate)
+        candidate = _sanitize_combined_continuity_list_variants(candidate)
         _validate_combined_continuity_schema(candidate)
     return sanitize_prompt_derived_continuity_state(candidate)
 
@@ -24513,6 +25424,7 @@ def request_combined_continuity(
     ending_scene="",
     assigned_state_effects=None,
     barrier_binding=None,
+    committed_prop_ledger=None,
 ):
     """Run the single combined continuity extraction/reduction call.
 
@@ -24525,6 +25437,8 @@ def request_combined_continuity(
     if llm_request is None:
         llm_request = ask_llm
     attempts = max(1, int(content_attempts))
+    committed_prop_ledger = normalize_prop_ledger(committed_prop_ledger)
+    prop_ledger = copy.deepcopy(committed_prop_ledger)
 
     final_frame_authority = (
         _extract_end_continuity_state(ending_scene)
@@ -24543,6 +25457,10 @@ def request_combined_continuity(
         )
     else:
         combined_user_content = str(h3_prompt or "").strip()
+    combined_user_content += (
+        "\n\nCOMMITTED PROP LEDGER:\n"
+        + format_prop_ledger_for_prompt(committed_prop_ledger)
+    )
     additional_states = load_additional_states() or "N/A"
     combined_messages = [
         {
@@ -24594,6 +25512,15 @@ def request_combined_continuity(
                 "Continuity",
                 llm_request=llm_request,
                 strict_schema=True,
+            )
+            observed_props = reduced_state.pop("props", {})
+            prop_ledger = merge_prop_ledger(
+                committed_prop_ledger,
+                observed_props,
+            )
+            prop_ledger = apply_authoritative_prop_state_effects(
+                prop_ledger,
+                assigned_state_effects,
             )
             if str(subject_definitions or "").strip() or isinstance(
                 committed_state,
@@ -24670,12 +25597,18 @@ def request_combined_continuity(
         barrier_binding=barrier_binding,
         committed_state=committed_state,
     )
+    prop_ledger = apply_authoritative_prop_state_effects(
+        prop_ledger,
+        assigned_state_effects,
+    )
     _print_continuity_phase_result(1, "COMBINED CONTINUITY", reduced_state)
+    console_log("[Props] persistent ledger: " + format_prop_ledger_for_prompt(prop_ledger))
 
     if defer_opening:
         return {
             "reduced_state": reduced_state,
             "opening_state": "",
+            "prop_ledger": prop_ledger,
         }
 
     opening_state = request_continuity_opening_state(
@@ -24689,6 +25622,7 @@ def request_combined_continuity(
     return {
         "reduced_state": reduced_state,
         "opening_state": opening_state,
+        "prop_ledger": prop_ledger,
     }
 
 
@@ -24972,10 +25906,12 @@ def build_generation_messages(
     phrase_exclusions=(),
     canonical_character_facts="",
     canonical_data="",
+    static_setting_description="",
+    persistent_movable_prop_state=None,
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
-    del conditioning_mode
+    del conditioning_mode, dialogue_exclusions
 
     del story
     current_beat_text, next_beat_text = _phase_beats_text(
@@ -24989,51 +25925,67 @@ def build_generation_messages(
         else "N/A"
     ) or "N/A"
 
-    subject_text = str(subject_definitions or "").strip() or "N/A"
-    canonical_starting_block = ""
+    subject_text = str(subject_definitions or "").strip()
     starting_facts = str(canonical_character_facts or canonical_data or "").strip()
-    if int(current_segment) == 1 and starting_facts:
-        canonical_starting_block = (
-            "\n\nCANONICAL STARTING CHARACTER FACTS — ESTABLISH THESE "
-            "FOR CHARACTERS PRESENT IN THIS SEGMENT:\n"
-            + starting_facts
+    if (
+        int(current_segment) == 1
+        and starting_facts
+        and starting_facts not in subject_text
+    ):
+        subject_text = (
+            f"{subject_text}\n{starting_facts}"
+            if subject_text
+            else starting_facts
         )
-    dialogue_exclusion_text = format_dialogue_exclusion_instruction(
-        dialogue_exclusions
-    )
-    dialogue_block = (
-        f"\n\n{dialogue_exclusion_text}"
-        if dialogue_exclusion_text
-        else ""
-    )
+    subject_text = subject_text or "N/A"
     phrase_exclusion_text = format_phrase_exclusions_section(
         phrase_exclusions
     ).strip()
-    phrase_exclusion_block = (
-        f"\n\n{phrase_exclusion_text}"
-        if phrase_exclusion_text
-        else ""
+    static_setting = " ".join(
+        str(static_setting_description or "").split()
+    ).strip()
+    sections = [f"SUBJECT DEFINITIONS:\n{subject_text}"]
+    if static_setting:
+        sections.append(
+            "STATIC SETTING AUTHORITY — preserve these established static "
+            "environment facts:\n"
+            + static_setting
+            + "\nThese facts constrain static architecture, fixed fixtures, persistent "
+            "furniture, entrances, surfaces, and lighting sources only. Do not relocate, "
+            "duplicate, replace, or restyle an explicitly described fixed element unless "
+            "CURRENT BEAT explicitly changes it. When CURRENT BEAT interacts with one, "
+            "use its established placement/form. Do not force off-camera fixtures into "
+            "the frame."
+        )
+
+    try:
+        previous_beat_id = int(current_segment) - 1
+    except (TypeError, ValueError):
+        previous_beat_id = 0
+    previous_beat_text = (
+        f"{previous_beat_id}. {str(beats[previous_beat_id - 1]).strip()}"
+        if beats and 1 <= previous_beat_id <= len(beats)
+        else "N/A"
     )
-
-    assigned_source = director_assigned_source(current_phase, current_segment)
-    source_block = (
-        "ASSIGNED SOURCE — authoritative work for this segment:\n"
-        + assigned_source + "\n\n"
-        if assigned_source else ""
+    sections.extend([
+        "PREVIOUS BEAT - BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n"
+        + previous_beat_text,
+        "CURRENT BEAT — EXECUTE ONLY THIS:\n" + current_beat_text,
+        "NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n"
+        + next_beat_text,
+        "PREVIOUS SHOT END — START HERE, DO NOT REPLAY:\n" + continuity_text,
+    ])
+    if phrase_exclusion_text:
+        sections.append(phrase_exclusion_text)
+    sections.append(
+        "PERSISTENT MOVABLE PROP STATE — authoritative physical state. "
+        "Owner/holder fields are exclusive continuity facts: do not treat another "
+        "subject's owned or held prop as shared inventory unless CURRENT BEAT "
+        "explicitly authorizes that use or transfer:\n"
+        + format_prop_ledger_for_prompt(persistent_movable_prop_state)
     )
-    user_content = f"""SUBJECT DEFINITIONS:
-{subject_text}{canonical_starting_block}
-
-{source_block}CURRENT BEAT — EXECUTE ONLY THIS:
-{current_beat_text}
-
-NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:
-{next_beat_text}
-
-PREVIOUS SHOT END — START HERE, DO NOT REPLAY:
-{continuity_text}
-{phrase_exclusion_block}
-{dialogue_block}"""
+    sections.append("RETURN only JSON.")
+    user_content = "\n\n".join(sections)
 
     messages = [
         {"role": "system", "content": director_rules},
@@ -25280,7 +26232,6 @@ def build_hard_cut_subject_continuity(
     llm_request=None,
 ):
     subjects = parse_defined_subjects(subject_definitions)
-    registry = parse_subject_registry(subject_definitions)
     if not subjects:
         return ""
 
@@ -25693,10 +26644,6 @@ def repair_h3_subject_identity(prompt, subject_definitions, continuity_state=Non
         return text
 
     names = _h3_identity_names(identities)
-    names_by_id = {
-        subject_id: identity["name"]
-        for subject_id, identity in identities.items()
-    }
     speaker_to_id = {
         identity["speaker_id"].casefold(): subject_id
         for subject_id, identity in identities.items()
@@ -25707,7 +26654,7 @@ def repair_h3_subject_identity(prompt, subject_definitions, continuity_state=Non
     # attributed dialogue but Request 1/2 omitted the token. This runs after
     # dynamic Subject registration, so Python never guesses an S-number.
     speech_verbs = (
-        r"says?|asks?|answers?|replies|shouts?|whispers?|yells?|tells?|"
+        r"says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|tells?|"
         r"exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|mutters?|"
         r"growls?|screams?"
     )
@@ -25718,14 +26665,13 @@ def repair_h3_subject_identity(prompt, subject_definitions, continuity_state=Non
             continue
         pattern = re.compile(
             rf"(?i)(?<!\w)(?P<name>{re.escape(name)})(?!\w)"
-            rf"(?P<space>\s+)(?P<verb>{speech_verbs})(?P<tail>\s+)(?=<d>)"
+            rf"(?:\s+\(S\d+\))?"
+            rf"\s+(?P<verb>{speech_verbs})"
+            rf"(?:\s+\(S\d+\))?\s+(?=<d>)"
         )
         repaired_name = identity["name"]
         text = pattern.sub(
-            lambda match: (
-                f"{repaired_name} ({speaker_id}) "
-                f"{match.group('verb')} "
-            ),
+            lambda _match: f"{repaired_name} ({speaker_id}) said ",
             text,
         )
 
@@ -26127,17 +27073,36 @@ def _condition_append_prompt_for_h3(
     h3_prompt,
     excluded_picture_ids,
     picture_slot_map,
+    protected_picture_ids=None,
 ):
     """Apply append-only Picture exclusion and packing at the H3 boundary."""
 
+    protected = {
+        int(value)
+        for value in (protected_picture_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    }
+    excluded = {
+        int(value)
+        for value in (excluded_picture_ids or ())
+        if (isinstance(value, int) or str(value).isdigit())
+        and int(value) not in protected
+    }
+    remap = {
+        int(canonical_id): int(packed_slot)
+        for canonical_id, packed_slot in (picture_slot_map or {}).items()
+        if (isinstance(canonical_id, int) or str(canonical_id).isdigit())
+        and (isinstance(packed_slot, int) or str(packed_slot).isdigit())
+        and int(canonical_id) not in protected
+    }
     conditioned = _replace_excluded_picture_tags_for_h3(
         h3_prompt,
         "continuation",
-        excluded_picture_ids,
+        excluded,
     )
     return _remap_append_picture_tags_for_h3(
         conditioned,
-        picture_slot_map,
+        remap,
     )
 
 
@@ -26146,17 +27111,36 @@ def _condition_refresh_prompt_for_h3(
     h3_prompt,
     excluded_picture_ids,
     picture_slot_map,
+    protected_picture_ids=None,
 ):
     """Apply refresh Picture exclusion and dense batch packing at H3 boundary."""
 
+    protected = {
+        int(value)
+        for value in (protected_picture_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    }
+    excluded = {
+        int(value)
+        for value in (excluded_picture_ids or ())
+        if (isinstance(value, int) or str(value).isdigit())
+        and int(value) not in protected
+    }
+    remap = {
+        int(canonical_id): int(packed_slot)
+        for canonical_id, packed_slot in (picture_slot_map or {}).items()
+        if (isinstance(canonical_id, int) or str(canonical_id).isdigit())
+        and (isinstance(packed_slot, int) or str(packed_slot).isdigit())
+        and int(canonical_id) not in protected
+    }
     conditioned = _replace_excluded_picture_tags_for_h3(
         h3_prompt,
         "clean_refresh",
-        excluded_picture_ids,
+        excluded,
     )
     return _remap_append_picture_tags_for_h3(
         conditioned,
-        picture_slot_map,
+        remap,
     )
 
 
@@ -26300,7 +27284,7 @@ def _h3_visual_identity_text(detailed_description):
         blank(match.start(), match.end())
 
     speech_pattern = re.compile(
-        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"(?i)\b(?:says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|"
         r"tells?|exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|"
         r"mutters?|growls?|screams?)\b"
     )
@@ -26349,7 +27333,10 @@ def _subject_ids_referenced_by_description(
 
 # Keep identity/reference definitions only for target-visible Subjects.
 def _filter_h3_subject_definitions(
-    subject_definitions, visible_subject_ids, detailed_description=None
+    subject_definitions,
+    visible_subject_ids,
+    detailed_description=None,
+    retained_subject_ids=None,
 ):
     """Keep identity/reference definitions only for target-visible Subjects.
 
@@ -26363,6 +27350,11 @@ def _filter_h3_subject_definitions(
         for value in (visible_subject_ids or ())
         if isinstance(value, int) or str(value).isdigit()
     }
+    visible.update(
+        int(value)
+        for value in (retained_subject_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    )
 
     text = str(subject_definitions or "")
     # Map subject id -> original definition line (preserve order)
@@ -26427,8 +27419,33 @@ def _filter_h3_subject_definitions(
             r"(?i)^\s*(?:<\s*)?Picture\s+(\d+)\s*(?:>\s*)?",
             line,
         )
+        clothing_reference_match = re.match(
+            r"(?i)^\s*<Picture\s+(\d+)>\s+references\s+only\s+the\s+"
+            r"clothing\s+that\s+(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)"
+            r"\s+is\s+currently\s+wearing\.?\s*$",
+            line,
+        )
+        identity_reference_match = re.match(
+            r"(?i)^\s*<Picture\s+(\d+)>\s+defines\s+"
+            r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)(?:'s|’s)\s+"
+            r"identity\b.*$",
+            line,
+        )
         match = subject_match or legacy_match
         if match is not None and int(match.group(1)) in visible:
+            rendered.append(line)
+            continue
+        generated_reference_match = (
+            clothing_reference_match or identity_reference_match
+        )
+        if (
+            generated_reference_match is not None
+            and isinstance(modified_description, str)
+            and re.search(
+                rf"(?i)(?<!\w){re.escape(generated_reference_match.group('name'))}(?!\w)",
+                _h3_visual_identity_text(modified_description),
+            )
+        ):
             rendered.append(line)
 
     # Add synthesized lines for visible subjects missing from original defs
@@ -26493,7 +27510,7 @@ def _append_video_origin_to_h3_subject_definitions(
         registry = {}
 
     suffix_template = (
-        "{name}'s opening pose, wardrobe, position, and physical state are "
+        "{name}'s opening pose, position, and physical state are "
         "anchored by the supplied opening guide."
     )
     rendered = []
@@ -26503,13 +27520,19 @@ def _append_video_origin_to_h3_subject_definitions(
             r"(?i)^\s*(?:<\s*)?Picture\s+(\d+)\s*(?:>\s*)?",
             line,
         )
-        match = subject_match or legacy_match
-        subject = registry.get(int(match.group(1))) if match is not None else None
+        # Picture-definition lines describe reference authority only. Never
+        # append opening-guide pose/state language to them; that belongs on the
+        # Subject line and otherwise duplicates/confuses reference authority.
+        if subject_match is None:
+            rendered.append(line)
+            continue
+
+        subject = registry.get(int(subject_match.group(1)))
         if subject is None:
             rendered.append(line)
             continue
 
-        subject_id = int(match.group(1))
+        subject_id = int(subject_match.group(1))
         # Dynamic registry lines may carry a historical Video-1 marker because
         # they are also reused by the Director on later segments. Final H3
         # conditioning must derive that marker from actual previous-video
@@ -26772,7 +27795,7 @@ def _h3_contains_spoken_dialogue(detailed_description):
 
     quote_pattern = r"(?:\"[^\"\r\n]+\"|'[^'\r\n]+'|“[^”\r\n]+”|‘[^’\r\n]+’)"
     speech_pattern = (
-        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"(?i)\b(?:says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|"
         r"tells?|exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|"
         r"mutters?|growls?|screams?)\b"
     )
@@ -26795,6 +27818,28 @@ def format_h3_spoken_dialogue_constraint(detailed_description):
     if _h3_contains_spoken_dialogue(detailed_description):
         return ""
     return "No intelligible spoken dialogue is heard in this segment."
+
+
+_DIRECTOR_REQUIRED_SPEECH_RE = re.compile(
+    r"(?i)\b(?:says?|said|asks?|asked|orders?|ordered|tells?|told|"
+    r"repl(?:y|ies|ied)|answers?|answered|shouts?|shouted|whispers?|whispered|"
+    r"yells?|yelled|calls?\s+out|called\s+out|cries?|cried|murmurs?|murmured|"
+    r"mutters?|muttered|growls?|growled|screams?|screamed)\b"
+)
+
+
+def director_required_dialogue_issue(current_beat, raw_scene):
+    """Require direct tagged dialogue when the assigned Beat explicitly contains speech."""
+    beat = str(current_beat or "")
+    if not _DIRECTOR_REQUIRED_SPEECH_RE.search(beat):
+        return ""
+    if _DIALOGUE_BLOCK_PATTERN.search(str(raw_scene or "")):
+        return ""
+    return (
+        "CURRENT BEAT explicitly requires intelligible speech, but RAW SCENE "
+        "contains no <d>...</d> dialogue. Render the speech directly, for example "
+        "Speaker said <d>Give me a pint.</d>, while preserving the Beat's meaning."
+    )
 
 
 # Open a continuation description as the canonical ``[Shot 1]`` form.
@@ -26859,6 +27904,33 @@ _H3_CONTINUOUS_TAKE_SENTENCE = (
 )
 
 
+_H3_PROP_IDENTITY_SENTENCE = (
+    "Preserve each established handheld or movable prop as one distinct physical object; "
+    "interactions must not duplicate, merge, or substitute containers or other props."
+)
+
+
+def ensure_h3_prop_identity_instruction(description):
+    """Carry persistent movable-prop identity into the actual H3 render prompt."""
+    text = str(description or "").strip()
+    if not text:
+        return _H3_PROP_IDENTITY_SENTENCE
+    if "must not duplicate, merge, or substitute" in text:
+        return text
+    timestamp = _DIRECTOR_CANONICAL_TIMESTAMP_RE.search(text)
+    if timestamp is None:
+        return text.rstrip() + " " + _H3_PROP_IDENTITY_SENTENCE
+    prefix = text[:timestamp.start()].rstrip()
+    suffix = text[timestamp.start():].lstrip()
+    return (
+        prefix
+        + (" " if prefix else "")
+        + _H3_PROP_IDENTITY_SENTENCE
+        + "\n\n"
+        + suffix
+    ).strip()
+
+
 def ensure_h3_continuous_take_instruction(description):
     """Carry the Director one-take contract into the actual H3 prompt."""
     text = str(description or "").strip()
@@ -26883,6 +27955,89 @@ def ensure_h3_continuous_take_instruction(description):
     ).strip()
 
 
+def ensure_h3_continuing_subject_state(description, continuity_state):
+    """Keep stationary continuing Subjects from silently disappearing."""
+    text = str(description or "").strip()
+    if not text or not isinstance(continuity_state, dict):
+        return text
+    subjects = continuity_state.get("subjects", {})
+    if isinstance(subjects, list):
+        subjects = {
+            str(record.get("name") or "").strip(): record
+            for record in subjects
+            if isinstance(record, dict) and str(record.get("name") or "").strip()
+        }
+    if not isinstance(subjects, dict):
+        return text
+
+    carry = []
+    for raw_name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        name = str(record.get("name") or raw_name or "").strip()
+        position = str(record.get("position") or "").strip()
+        if (
+            not name
+            or not position
+            or position.upper() == "N/A"
+            or re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", text, re.I)
+        ):
+            continue
+        carry.append(f"{name} remains {position}")
+    if not carry:
+        return text
+
+    sentence = "Continuing Subjects: " + "; ".join(carry) + "."
+    timestamp = _DIRECTOR_CANONICAL_TIMESTAMP_RE.search(text)
+    if timestamp is None:
+        return text.rstrip() + " " + sentence
+    prefix = text[:timestamp.start()].rstrip()
+    suffix = text[timestamp.start():].lstrip()
+    return (
+        prefix
+        + (" " if prefix else "")
+        + sentence
+        + "\n\n"
+        + suffix
+    ).strip()
+
+
+# Normalize the run-level visual style into one concise phrase.
+def normalize_visual_style(value):
+    style = " ".join(str(value or "").split()).strip(" ,.;:")
+    return style or DEFAULT_VISUAL_STYLE
+
+
+# Insert the configured style immediately after the canonical Shot 1 label.
+def inject_h3_visual_style(description, visual_style=DEFAULT_VISUAL_STYLE):
+    text = str(description or "").strip()
+    style = normalize_visual_style(visual_style)
+    if not text:
+        return f"[Shot 1] {style}"
+
+    match = re.match(
+        r"^\s*\[\s*Shot\s+1\s*\]\s*",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if match is None:
+        return f"[Shot 1] {style}, {text}"
+
+    body = text[match.end():].lstrip()
+    # Strip the historical hard-coded default if an older formatter still
+    # emits it. Python is now the sole owner of the run-level visual style.
+    body = _H3_CONTINUATION_STYLE_PREFIX_RE.sub("", body, count=1).strip()
+
+    style_prefix = re.compile(
+        rf"^{re.escape(style)}\s*[,.;:]?\s*",
+        re.IGNORECASE,
+    )
+    body = style_prefix.sub("", body, count=1).lstrip(" ,.;:")
+    if body:
+        return f"[Shot 1] {style}, {body}"
+    return f"[Shot 1] {style}"
+
+
 # Build h3 prompt.
 def build_h3_prompt(
     llm_result,
@@ -26899,6 +28054,8 @@ def build_h3_prompt(
     retention_json=None,
     character_canon=None,
     starting_location="",
+    retained_subject_ids=None,
+    visual_style=DEFAULT_VISUAL_STYLE,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -27008,6 +28165,7 @@ def build_h3_prompt(
         subject_text,
         current_visible_subject_ids,
         integrated,
+        retained_subject_ids=retained_subject_ids,
     )
     if isinstance(maybe_modified_description, str) and maybe_modified_description:
         integrated = maybe_modified_description
@@ -27142,7 +28300,14 @@ def build_h3_prompt(
                 )
                 if part
             )
+    if conditioning_mode == "continuation":
+        integrated = ensure_h3_continuing_subject_state(
+            integrated,
+            continuity_state,
+        )
     integrated = ensure_h3_continuous_take_instruction(integrated)
+    integrated = ensure_h3_prop_identity_instruction(integrated)
+    integrated = inject_h3_visual_style(integrated, visual_style)
     canonical_prompt_text = ""
     if segment_number is not None and int(segment_number) == 1:
         canonical_prompt_text = "\n".join(
@@ -27599,7 +28764,7 @@ def extract_final_frame(video_path, output_path):
     ]
     try:
         try:
-            result = subprocess.run(
+            subprocess.run(
                 command,
                 capture_output=True,
                 text=True,
@@ -28605,7 +29770,1544 @@ def capture_h3_fixture(
     console_log(f"Saved H3 experiment fixture to {output_path}", flush=True)
 
 
+# Normalize the run-local generated character-reference registry.
+def normalize_character_reference_images(value):
+    """Return canonical generated Picture metadata keyed by character name."""
+    if not isinstance(value, dict):
+        return {}
+    normalized = {}
+    for raw_name, raw_record in value.items():
+        if not isinstance(raw_record, dict):
+            continue
+        name = " ".join(str(raw_name or raw_record.get("name") or "").split()).strip()
+        try:
+            picture_number = int(raw_record.get("picture_number"))
+        except (TypeError, ValueError):
+            continue
+        image_path = str(raw_record.get("image_path") or "").strip()
+        image_name = str(raw_record.get("image_name") or "").strip()
+        if image_path:
+            image_path = os.path.abspath(os.path.expanduser(image_path))
+            if not image_name:
+                image_name = os.path.basename(image_path)
+        elif image_name:
+            # Backward compatibility for checkpoints produced before state
+            # media moved out of ComfyUI/input.
+            legacy_path = os.path.join(COMFY_INPUT, image_name)
+            if os.path.isfile(legacy_path):
+                image_path = os.path.abspath(legacy_path)
+        signature = str(raw_record.get("signature") or "").strip()
+        try:
+            version = max(1, int(raw_record.get("version") or 1))
+        except (TypeError, ValueError):
+            version = 1
+        if not name or picture_number <= 0 or not image_name:
+            continue
+        description = " ".join(
+            str(raw_record.get("description") or "").split()
+        )
+        raw_wardrobe = raw_record.get("wardrobe")
+        if not isinstance(raw_wardrobe, dict):
+            raw_wardrobe = {}
+        wardrobe = {
+            field: str(raw_wardrobe.get(field) or "").strip()
+            for field in _WARDROBE_FIELDS
+            if str(raw_wardrobe.get(field) or "").strip()
+        }
+        if not wardrobe and description:
+            wardrobe = _explicit_wardrobe_from_description(description, name)
+        authority = str(raw_record.get("authority") or "").strip().casefold()
+        if authority not in {"clothing_only", "identity_and_clothing"}:
+            authority = ""
+        normalized[name] = {
+            "name": name,
+            "picture_number": picture_number,
+            "image_name": image_name,
+            "image_path": image_path,
+            "signature": signature,
+            "version": version,
+            "description": description,
+            "wardrobe": wardrobe,
+            "clothing_condition": " ".join(
+                str(raw_record.get("clothing_condition") or "").split()
+            ),
+            "authority": authority,
+        }
+    return normalized
+
+
+def subject_removal_window_segments(total_segments):
+    """Return the inactivity window used for per-segment Subject bindings."""
+    try:
+        total = int(total_segments)
+    except (TypeError, ValueError):
+        total = 1
+    return max(1, int(math.ceil(max(1, total) / 2.0)))
+
+
+def _reference_binding_registry(subject_definitions):
+    """Return parsed Subject registry for reference-binding decisions."""
+    try:
+        return parse_subject_registry(str(subject_definitions or ""))
+    except (TypeError, ValueError):
+        return {}
+
+
+def _reference_binding_subject_name(registry, subject_id):
+    record = registry.get(int(subject_id), {}) if isinstance(registry, dict) else {}
+    if not isinstance(record, dict):
+        return ""
+    return " ".join(str(record.get("name") or "").split()).strip()
+
+
+def build_segment_reference_bindings(
+    *,
+    segment_number,
+    total_segments,
+    detailed_description,
+    subject_definitions,
+    character_references,
+    base_reference_count,
+    binding_state=None,
+    disable_subject_removal=False,
+):
+    """Build one frozen segment-local Subject/Picture map."""
+    segment_number = int(segment_number)
+    total_segments = max(1, int(total_segments))
+    base_reference_count = max(0, int(base_reference_count or 0))
+    window = subject_removal_window_segments(total_segments)
+    registry = _reference_binding_registry(subject_definitions)
+    explicit_ids = set(
+        _subject_ids_referenced_by_description(
+            detailed_description,
+            subject_definitions,
+        )
+    )
+    state = copy.deepcopy(binding_state) if isinstance(binding_state, dict) else {}
+    subjects = state.get("subjects")
+    if not isinstance(subjects, dict):
+        subjects = {}
+
+    for subject_id in sorted(explicit_ids):
+        name = _reference_binding_subject_name(registry, subject_id)
+        if not name:
+            continue
+        prior = subjects.get(name)
+        if not isinstance(prior, dict):
+            prior = {}
+        try:
+            first_seen = int(prior.get("first_segment_seen"))
+        except (TypeError, ValueError):
+            first_seen = segment_number
+        history = prior.get("binding_history")
+        if not isinstance(history, list):
+            history = []
+        subjects[name] = {
+            **prior,
+            "subject_id": int(subject_id),
+            "first_segment_seen": first_seen,
+            "last_explicit_segment": segment_number,
+            "binding_history": history,
+        }
+
+    active_ids = set()
+    removed_ids = set()
+    binding_reason_by_name = {}
+    for name, tracking in list(subjects.items()):
+        if not isinstance(tracking, dict):
+            continue
+        try:
+            subject_id = int(tracking.get("subject_id"))
+            last_explicit = int(tracking.get("last_explicit_segment"))
+        except (TypeError, ValueError):
+            continue
+        segments_since = max(0, segment_number - last_explicit)
+        currently_bound = bool(
+            disable_subject_removal
+            or segments_since < window
+            or subject_id in explicit_ids
+        )
+        reason = (
+            "explicit_current_segment"
+            if subject_id in explicit_ids
+            else (
+                "forced_persistent"
+                if disable_subject_removal
+                else "within_sliding_window"
+            )
+        )
+        threshold = last_explicit + window
+        tracking.update({
+            "segments_since_explicit": segments_since,
+            "currently_bound": currently_bound,
+            "eligible_for_removal": not currently_bound,
+            "removal_threshold_segment": threshold,
+            "binding_reason": reason if currently_bound else "expired_sliding_window",
+        })
+        if currently_bound:
+            active_ids.add(subject_id)
+            binding_reason_by_name[name] = reason
+            tracking["last_bound_segment"] = segment_number
+        else:
+            removed_ids.add(subject_id)
+
+    active_subject_definitions, _ = _filter_h3_subject_definitions(
+        subject_definitions,
+        active_ids,
+        "",
+        retained_subject_ids=active_ids,
+    )
+
+    configured_picture_ids = set()
+    active_configured_picture_ids = set()
+    for subject_id, _name, record in _subject_registry_records(registry):
+        subject_pictures = set()
+        for raw_id in record.get("picture_ids", []) or []:
+            try:
+                subject_pictures.add(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+        raw_picture_id = record.get("picture_id")
+        if raw_picture_id is not None:
+            try:
+                subject_pictures.add(int(raw_picture_id))
+            except (TypeError, ValueError):
+                pass
+        configured_picture_ids.update(subject_pictures)
+        if int(subject_id) in active_ids:
+            active_configured_picture_ids.update(subject_pictures)
+    excluded_configured_picture_ids = sorted(
+        picture_id
+        for picture_id in configured_picture_ids - active_configured_picture_ids
+        if picture_id > 0
+    )
+
+    persistent_refs = normalize_character_reference_images(character_references)
+    active_names = {
+        _reference_binding_subject_name(registry, subject_id)
+        for subject_id in active_ids
+    }
+    active_names.discard("")
+    ordered_refs = sorted(
+        (
+            record
+            for name, record in persistent_refs.items()
+            if name in active_names
+        ),
+        key=lambda item: (
+            int(item.get("picture_number") or 0),
+            str(item.get("name") or ""),
+        ),
+    )
+
+    segment_refs = {}
+    bindings = []
+
+    for subject_id in sorted(active_ids):
+        record = registry.get(subject_id, {})
+        if not isinstance(record, dict):
+            continue
+        name = _reference_binding_subject_name(registry, subject_id)
+        picture_ids = []
+        for raw_id in record.get("picture_ids", []) or []:
+            try:
+                picture_ids.append(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+        if not picture_ids and record.get("picture_id") is not None:
+            try:
+                picture_ids.append(int(record.get("picture_id")))
+            except (TypeError, ValueError):
+                pass
+        for picture_number in dict.fromkeys(picture_ids):
+            if picture_number <= 0:
+                continue
+            bindings.append({
+                "picture_number": picture_number,
+                "canonical_picture_number": picture_number,
+                "subject_name": name,
+                "subject_id": subject_id,
+                "source_kind": "configured_picture",
+                "reference_version": None,
+                "image_name": "",
+                "image_path": "",
+                "authority": "identity",
+                "binding_reason": binding_reason_by_name.get(name, ""),
+            })
+
+    next_picture_number = base_reference_count + 1
+    for persistent in ordered_refs:
+        name = str(persistent.get("name") or "").strip()
+        subject_id = next(
+            (
+                int(sid)
+                for sid in active_ids
+                if _reference_binding_subject_name(registry, sid) == name
+            ),
+            None,
+        )
+        if subject_id is None:
+            continue
+        remapped = copy.deepcopy(persistent)
+        canonical_picture_number = int(persistent["picture_number"])
+        remapped["canonical_picture_number"] = canonical_picture_number
+        remapped["picture_number"] = next_picture_number
+        segment_refs[name] = remapped
+        tracking = subjects.get(name, {})
+        binding = {
+            "picture_number": next_picture_number,
+            "canonical_picture_number": canonical_picture_number,
+            "subject_name": name,
+            "subject_id": subject_id,
+            "source_kind": "generated_reference",
+            "reference_version": int(persistent.get("version") or 1),
+            "image_name": str(persistent.get("image_name") or ""),
+            "image_path": str(persistent.get("image_path") or ""),
+            "authority": str(persistent.get("authority") or ""),
+            "binding_reason": binding_reason_by_name.get(name, ""),
+            "first_segment_seen": tracking.get("first_segment_seen"),
+            "last_explicit_segment": tracking.get("last_explicit_segment"),
+            "segments_since_explicit": tracking.get("segments_since_explicit"),
+            "removal_threshold_segment": tracking.get("removal_threshold_segment"),
+        }
+        bindings.append(binding)
+        history = tracking.get("binding_history")
+        if not isinstance(history, list):
+            history = []
+        history.append({
+            "segment_number": segment_number,
+            "picture_number": next_picture_number,
+            "canonical_picture_number": canonical_picture_number,
+            "reference_version": int(persistent.get("version") or 1),
+            "image_name": str(persistent.get("image_name") or ""),
+            "binding_reason": binding_reason_by_name.get(name, ""),
+        })
+        tracking["binding_history"] = history
+        subjects[name] = tracking
+        next_picture_number += 1
+
+    segment_subject_definitions = append_character_reference_definitions(
+        active_subject_definitions,
+        segment_refs,
+    )
+    state.update({
+        "version": 1,
+        "disable_subject_removal": bool(disable_subject_removal),
+        "subject_removal_window_segments": window,
+        "current_segment_number": segment_number,
+        "current_bindings": copy.deepcopy(bindings),
+        "current_active_subject_ids": sorted(active_ids),
+        "current_explicit_subject_ids": sorted(explicit_ids),
+        "current_removed_subject_ids": sorted(removed_ids),
+        "current_excluded_configured_picture_ids": list(
+            excluded_configured_picture_ids
+        ),
+        "subjects": subjects,
+    })
+    snapshot = {
+        "segment_number": segment_number,
+        "disable_subject_removal": bool(disable_subject_removal),
+        "subject_removal_window_segments": window,
+        "explicit_subject_ids": sorted(explicit_ids),
+        "active_subject_ids": sorted(active_ids),
+        "removed_subject_ids": sorted(removed_ids),
+        "excluded_configured_picture_ids": list(
+            excluded_configured_picture_ids
+        ),
+        "bindings": copy.deepcopy(bindings),
+    }
+    return segment_refs, segment_subject_definitions, state, snapshot
+
+
+def active_configured_reference_count(input_directory=None):
+    """Count actual connected/decodable template Pictures, ignoring empty slots."""
+    workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
+    _removed, picture_slot_map = prune_missing_reference_images(
+        workflow,
+        label,
+        "initial",
+        input_directory=input_directory,
+        return_picture_slot_map=True,
+    )
+    return len(picture_slot_map)
+
+
+def _character_reference_wardrobe_text(record):
+    """Render known current wardrobe without N/A/absent placeholders."""
+    wardrobe = record.get("wardrobe") if isinstance(record, dict) else {}
+    if not isinstance(wardrobe, dict):
+        return ""
+    values = []
+    for field in _WARDROBE_FIELDS:
+        value = _known_continuity_value(wardrobe.get(field))
+        if not value or value.casefold() == "absent":
+            continue
+        if value not in values:
+            values.append(value)
+    return _english_join(values)
+
+
+def _strip_character_description_clothing(description):
+    """Remove one static wearing-clause so current wardrobe can replace it."""
+    text = " ".join(str(description or "").split()).strip()
+    if not text:
+        return ""
+    # Canonical character prose is intentionally simple ("X is ... wearing Y.").
+    # Remove only the terminal static clothing clause; never touch action prose.
+    text = re.sub(
+        r"(?i)\s+\b(?:wearing|wears|dressed\s+in|clad\s+in|has\s+on|sports)\b"
+        r"\s+[^.]+(?=\.)",
+        "",
+        text,
+        count=1,
+    )
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def build_character_reference_description(
+    subject_name,
+    subject_record,
+    detailed_description="",
+    subject_descriptions=None,
+):
+    """Build one appearance description with current wardrobe as authority."""
+    name = " ".join(str(subject_name or "").split()).strip()
+    record = subject_record if isinstance(subject_record, dict) else {}
+    canonical = (
+        subject_descriptions.get(name, "")
+        if isinstance(subject_descriptions, dict)
+        else ""
+    )
+    if not canonical:
+        canonical = str(record.get("canonical_description") or "").strip()
+    if not canonical:
+        role = _functional_subject_role_description(name)
+        canonical = role or f"{name} is a person."
+
+    wardrobe = _character_reference_wardrobe_text(record)
+    if not wardrobe:
+        explicitly_stated = _explicit_wardrobe_from_description(
+            detailed_description,
+            name,
+        )
+        if explicitly_stated:
+            wardrobe = _english_join(
+                value
+                for field in _WARDROBE_FIELDS
+                if (value := _known_continuity_value(
+                    explicitly_stated.get(field)
+                ))
+                and value.casefold() != "absent"
+            )
+
+    if wardrobe:
+        canonical = _strip_character_description_clothing(canonical)
+        canonical = canonical.rstrip(" .") + "."
+        canonical += f" {name} is currently wearing {wardrobe}."
+    return " ".join(canonical.split()).strip()
+
+
+def _wardrobe_reference_change_authorized(description, subject_name):
+    """Return whether prior story prose explicitly changes this wardrobe."""
+    text = str(description or "")
+    name = str(subject_name or "").strip()
+    if not text.strip() or not name:
+        return False
+    context = _subject_description_context(text, name)
+    if not context.strip():
+        return False
+    if _wardrobe_action_updates(text, name):
+        return True
+    if _wardrobe_absence_fields(text, name):
+        return True
+    return bool(
+        _WARDROBE_CONDITION_CHANGE_RE.search(context)
+        and _CLOTHING_NOUN.search(context)
+    )
+
+
+def _character_reference_clothing_condition(description, subject_name):
+    """Return an explicit persistent clothing-condition change, if present."""
+    state = extract_subject_clothing_state(subject_name, [description])
+    if state:
+        return state
+    context = _subject_description_context(description, subject_name)
+    if not _CLOTHING_NOUN.search(context):
+        return ""
+    if re.search(r"(?i)\b(?:tears?|tearing)\b", context):
+        return "torn"
+    if re.search(r"(?i)\b(?:rips?|ripping)\b", context):
+        return "ripped"
+    if re.search(r"(?i)\b(?:stains?|staining)\b", context):
+        return "stained"
+    return ""
+
+
+def build_character_reference_target_description(
+    subject_name,
+    subject_record,
+    *,
+    existing_reference=None,
+    prior_change_description="",
+    subject_descriptions=None,
+    current_description="",
+):
+    """Build the intended clothing reference without learning visual drift."""
+    name = " ".join(str(subject_name or "").split()).strip()
+    record = subject_record if isinstance(subject_record, dict) else {}
+    existing = existing_reference if isinstance(existing_reference, dict) else {}
+
+    if existing:
+        wardrobe = {
+            field: str((existing.get("wardrobe") or {}).get(field) or "").strip()
+            for field in _WARDROBE_FIELDS
+        }
+        wardrobe = {field: value for field, value in wardrobe.items() if value}
+        if not wardrobe:
+            wardrobe = _explicit_wardrobe_from_description(
+                existing.get("description", ""),
+                name,
+            )
+        for field, value in _explicit_wardrobe_from_description(
+            prior_change_description,
+            name,
+        ).items():
+            wardrobe[field] = value
+        for field, value in _wardrobe_action_updates(
+            prior_change_description,
+            name,
+        ).items():
+            if value == "absent":
+                wardrobe.pop(field, None)
+            else:
+                wardrobe[field] = value
+        for field in _wardrobe_absence_fields(prior_change_description, name):
+            wardrobe.pop(field, None)
+        condition = str(existing.get("clothing_condition") or "").strip()
+        changed_condition = _character_reference_clothing_condition(
+            prior_change_description,
+            name,
+        )
+        if changed_condition:
+            condition = changed_condition
+    else:
+        wardrobe = {}
+        for field in _WARDROBE_FIELDS:
+            value = _known_continuity_value(
+                (record.get("wardrobe") or {}).get(field)
+            )
+            if value and value.casefold() != "absent":
+                wardrobe[field] = value
+        condition = ""
+
+    canonical = (
+        subject_descriptions.get(name, "")
+        if isinstance(subject_descriptions, dict)
+        else ""
+    )
+    if not canonical:
+        canonical = str(record.get("canonical_description") or "").strip()
+    if not canonical:
+        canonical = _functional_subject_role_description(name) or f"{name} is a person."
+    canonical = _strip_character_description_clothing(canonical).rstrip(" .") + "."
+
+    wardrobe_text = _english_join(wardrobe.values())
+    if not wardrobe_text and not existing:
+        fallback = build_character_reference_description(
+            name,
+            record,
+            detailed_description=current_description,
+            subject_descriptions=subject_descriptions,
+        )
+        wardrobe = _explicit_wardrobe_from_description(fallback, name)
+        return fallback, wardrobe, condition
+
+    if wardrobe_text:
+        canonical += f" {name} is currently wearing {wardrobe_text}."
+    if condition:
+        canonical += f" The current clothing condition is {condition}."
+    return " ".join(canonical.split()).strip(), wardrobe, condition
+
+
+def build_character_reference_h3_prompt(
+    character_description,
+    *,
+    has_identity_reference=True,
+    visual_style=DEFAULT_VISUAL_STYLE,
+):
+    """Build a one-second front-facing character/current-appearance reference prompt."""
+    description = " ".join(str(character_description or "").split()).strip(" .")
+    if not description:
+        raise ValueError("Character reference requires a character description.")
+    visual_style = normalize_visual_style(visual_style)
+    identity_clause = (
+        "<Picture 1> references only the identity and physical appearance of this "
+        "character; preserve that same face/head, hair, age, build, species, body, "
+        "and distinguishing traits. Do not copy clothing from <Picture 1>; the "
+        "clothing described in text is authoritative for this reference render. "
+        if has_identity_reference
+        else (
+            "No prior identity Picture is supplied. The text description is authoritative "
+            "for this character's identity and current physical appearance; establish one "
+            "stable face/head, hair, age, build, species, body, and distinguishing traits "
+            "that this generated Picture will own for later segments. "
+        )
+    )
+    return (
+        f"detailed_description: [Shot 1] {visual_style}. "
+        "A single subject is centered and "
+        "front-facing in a neutral natural full-body pose, with the complete current physical "
+        "appearance clearly visible. Use one continuous static shot for exactly 1 second. "
+        + identity_clause
+        + f"{description}. Keep the face/head, body/anatomy, species traits, and "
+        "distinguishing features clear and unobstructed. For a nonhuman creature, keep "
+        "external anatomy species-appropriate and do not invent human sex-specific anatomy "
+        "unless the description explicitly establishes it. Clothing in the supplied "
+        "description is authoritative. Do not add, remove, substitute, or redesign "
+        "garments, footwear, or accessories. If no clothing is described, do not invent "
+        "clothing. Use a plain unobtrusive background. Do not orbit, "
+        "pan, zoom, cut, add another character, or invent story action.\n\n"
+        "overall_soundscape: N/A\n"
+        "non_diegetic_music: N/A\n"
+    )
+
+
+def character_reference_definition_lines(character_references):
+    """Describe generated Picture authority for H3."""
+    records = normalize_character_reference_images(character_references)
+    ordered = sorted(
+        records.values(),
+        key=lambda item: int(item["picture_number"]),
+    )
+    lines = []
+    for record in ordered:
+        picture_number = int(record["picture_number"])
+        name = record["name"]
+        if record.get("authority") == "identity_and_clothing":
+            lines.append(
+                f"<Picture {picture_number}> defines {name}'s identity, physical "
+                "appearance, species/distinguishing traits, and current clothing."
+            )
+        else:
+            lines.append(
+                f"<Picture {picture_number}> references only the clothing "
+                f"that {name} is currently wearing."
+            )
+    return lines
+
+
+def append_character_reference_definitions(
+    subject_definitions,
+    character_references,
+):
+    """Append generated Picture semantics and bind full-identity Pictures to Subjects."""
+    records = normalize_character_reference_images(character_references)
+    definitions = str(subject_definitions or "").strip()
+    for record in records.values():
+        if record.get("authority") != "identity_and_clothing":
+            continue
+        name = str(record.get("name") or "").strip()
+        picture_number = int(record["picture_number"])
+        if not name:
+            continue
+        pattern = re.compile(
+            rf"(?im)^(\s*<Subject\s+\d+>\s+is\s+{re.escape(name)}\b[^\n]*)$"
+        )
+        match = pattern.search(definitions)
+        if match is None or f"<Picture {picture_number}>" in match.group(1):
+            continue
+        replacement = (
+            match.group(1).rstrip()
+            + f" {name} is referenced in <Picture {picture_number}> for identity "
+            "and current appearance."
+        )
+        definitions = (
+            definitions[:match.start(1)]
+            + replacement
+            + definitions[match.end(1):]
+        )
+
+    parts = [definitions]
+    parts.extend(character_reference_definition_lines(records))
+    return "\n".join(part for part in parts if part)
+
+
+def stage_character_reference_image(reference_record):
+    """Stage one authoritative state PNG into ComfyUI/input for LoadImage."""
+    if not isinstance(reference_record, dict):
+        raise ValueError("Character reference metadata must be an object.")
+    image_path = str(reference_record.get("image_path") or "").strip()
+    image_name = str(reference_record.get("image_name") or "").strip()
+    if not image_path:
+        # Legacy checkpoints may still point directly at an input image.
+        legacy_path = os.path.join(COMFY_INPUT, image_name)
+        if os.path.isfile(legacy_path):
+            return image_name
+        raise FileNotFoundError(
+            f"Character reference state image is missing a persistent path: "
+            f"{image_name!r}"
+        )
+    image_path = os.path.abspath(os.path.expanduser(image_path))
+    if not os.path.isfile(image_path) or os.path.getsize(image_path) == 0:
+        raise FileNotFoundError(
+            f"Character reference state image is missing or empty: {image_path}"
+        )
+    os.makedirs(COMFY_INPUT, exist_ok=True)
+    staged_name = image_name or os.path.basename(image_path)
+    staged_path = os.path.join(COMFY_INPUT, staged_name)
+    if os.path.abspath(staged_path) != image_path:
+        shutil.copy2(image_path, staged_path)
+    return staged_name
+
+
+def _ensure_character_reference_load_image(
+    workflow,
+    workflow_label,
+    picture_number,
+    image_name,
+):
+    """Reuse template LoadImage nodes through Picture 6, then create more."""
+    picture_number = int(picture_number)
+    if picture_number <= len(REFERENCE_IMAGE_NODE_NAMES):
+        node_name = REFERENCE_IMAGE_NODE_NAMES[picture_number - 1]
+        node_id, node = find_workflow_node(
+            workflow,
+            node_name,
+            workflow_label,
+            "LoadImage",
+        )
+    else:
+        node_name = f"Generated Reference Image {picture_number}"
+        matches = [
+            (str(node_id), node)
+            for node_id, node in workflow.items()
+            if isinstance(node, dict)
+            and node.get("class_type") == "LoadImage"
+            and node.get("_meta", {}).get("title") == node_name
+        ]
+        if len(matches) > 1:
+            raise WorkflowConfigurationError(
+                f"{workflow_label} contains multiple nodes named {node_name!r}."
+            )
+        if matches:
+            node_id, node = matches[0]
+        else:
+            node_id = _next_workflow_node_id(workflow)
+            node = {
+                "inputs": {"image": ""},
+                "class_type": "LoadImage",
+                "_meta": {"title": node_name},
+            }
+            workflow[node_id] = node
+    node.setdefault("inputs", {})["image"] = str(image_name)
+    return str(node_id), node
+
+
+def attach_character_reference_images(
+    workflow,
+    workflow_label,
+    workflow_kind,
+    character_references,
+):
+    """Attach generated Pictures in dense positional order, with no six-slot cap."""
+    records = normalize_character_reference_images(character_references)
+    if not records:
+        return {}
+    ordered = sorted(
+        records.values(),
+        key=lambda item: int(item["picture_number"]),
+    )
+    attached = {}
+    if workflow_kind in {"initial", "append"}:
+        _name, destination, _input_names = _reference_destination(
+            workflow,
+            workflow_label,
+            "initial",
+        )
+        for record in ordered:
+            picture_number = int(record["picture_number"])
+            staged_name = stage_character_reference_image(record)
+            node_id, _node = _ensure_character_reference_load_image(
+                workflow,
+                workflow_label,
+                picture_number,
+                staged_name,
+            )
+            input_name = f"ref_images.ref_image_{picture_number - 1}"
+            container, leaf_name = _reference_input_container(
+                destination,
+                input_name,
+            )
+            container[leaf_name] = [node_id, 0]
+            attached[picture_number] = node_id
+        return attached
+
+    if workflow_kind == "refresh":
+        batch_id, batch = find_workflow_node(
+            workflow,
+            REFRESH_REFERENCE_BATCH_NODE_NAME,
+            workflow_label,
+            "ImageBatchMulti",
+        )
+        for record in ordered:
+            picture_number = int(record["picture_number"])
+            staged_name = stage_character_reference_image(record)
+            node_id, _node = _ensure_character_reference_load_image(
+                workflow,
+                workflow_label,
+                picture_number,
+                staged_name,
+            )
+            batch["inputs"][f"image_{picture_number}"] = [node_id, 0]
+            attached[picture_number] = node_id
+        batch["inputs"]["inputcount"] = max(
+            int(batch["inputs"].get("inputcount") or 0),
+            max(attached),
+        )
+        _extend_id, extend = find_workflow_node(
+            workflow,
+            REFRESH_EXTEND_NODE_NAME,
+            workflow_label,
+            "MiniMaxH3VideoExtendPatched",
+        )
+        if len([
+            key for key in batch["inputs"]
+            if re.fullmatch(r"image_\d+", str(key))
+        ]) == 1:
+            only_node = next(iter(attached.values()))
+            extend["inputs"]["ref_images"] = [only_node, 0]
+        else:
+            extend["inputs"]["ref_images"] = [batch_id, 0]
+        return attached
+
+    if workflow_kind == "repair":
+        _name, destination, _input_names = _reference_destination(
+            workflow,
+            workflow_label,
+            "repair",
+        )
+        for record in ordered:
+            picture_number = int(record["picture_number"])
+            staged_name = stage_character_reference_image(record)
+            node_id, _node = _ensure_character_reference_load_image(
+                workflow,
+                workflow_label,
+                picture_number,
+                staged_name,
+            )
+            input_name = f"ref_images.ref_image_{picture_number - 1}"
+            container, leaf_name = _reference_input_container(
+                destination,
+                input_name,
+            )
+            container[leaf_name] = [node_id, 0]
+            attached[picture_number] = node_id
+        return attached
+    raise ValueError(f"Unknown workflow kind: {workflow_kind!r}")
+
+
+def subject_identity_reference_image(subject_record):
+    """Return the configured source Picture image for one character identity."""
+    if not isinstance(subject_record, dict):
+        return ""
+    picture_id = subject_record.get("picture_id")
+    try:
+        picture_id = int(picture_id)
+    except (TypeError, ValueError):
+        return ""
+    if picture_id <= 0 or picture_id > len(REFERENCE_IMAGE_NODE_NAMES):
+        return ""
+
+    workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    label = f"identity source workflow '{INITIAL_WORKFLOW_FILE}'"
+    node_name = REFERENCE_IMAGE_NODE_NAMES[picture_id - 1]
+    _node_id, image_node = find_workflow_node(
+        workflow,
+        node_name,
+        label,
+        "LoadImage",
+    )
+    image_name = str(image_node.get("inputs", {}).get("image") or "").strip()
+    if not image_name or _is_reference_placeholder(image_name):
+        return ""
+    image_path, decode_error = _validate_comfy_input_image(
+        image_name,
+        COMFY_INPUT,
+    )
+    if decode_error is not None:
+        raise FileNotFoundError(
+            f"Identity reference <Picture {picture_id}> for "
+            f"{subject_record.get('name')!r} is invalid ({decode_error}): "
+            f"{image_path}"
+        )
+    return image_name
+
+
+def character_reference_resolution(
+    megapixels,
+    *,
+    aspect_width=CHARACTER_REFERENCE_ASPECT_WIDTH,
+    aspect_height=CHARACTER_REFERENCE_ASPECT_HEIGHT,
+    scale_multiple=CHARACTER_REFERENCE_RATIO_SCALE_MULTIPLE,
+):
+    """Return an exact-ratio portrait resolution for person/outfit references."""
+    megapixels = float(megapixels)
+    if not math.isfinite(megapixels) or megapixels <= 0:
+        raise ValueError("Character-reference megapixels must be positive and finite.")
+    aspect_width = int(aspect_width)
+    aspect_height = int(aspect_height)
+    scale_multiple = int(scale_multiple)
+    if aspect_width <= 0 or aspect_height <= 0 or scale_multiple <= 0:
+        raise ValueError(
+            "Character-reference aspect terms and scale multiple must be positive."
+        )
+    total_pixels = megapixels * 1024 * 1024
+    ideal_scale = math.sqrt(total_pixels / (aspect_width * aspect_height))
+    scale = max(
+        scale_multiple,
+        round(ideal_scale / scale_multiple) * scale_multiple,
+    )
+    return int(aspect_width * scale), int(aspect_height * scale)
+
+
+def prepare_character_reference_workflow(
+    character_description,
+    megapixels,
+    steps=6,
+    loras=None,
+    noise_seed=None,
+    picture_number=None,
+    identity_image_name="",
+    visual_style=DEFAULT_VISUAL_STYLE,
+):
+    """Prepare the isolated one-second character/clothing reference render."""
+    workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    label = f"character reference workflow '{INITIAL_WORKFLOW_FILE}'"
+    validate_workflow(workflow, label, is_append=False)
+    _, conditioning = find_workflow_node(
+        workflow,
+        INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+        label,
+        "MiniMaxH3ReferenceToVideo",
+    )
+    inputs = conditioning.setdefault("inputs", {})
+    for key in list(inputs):
+        if (
+            str(key).startswith("ref_images.")
+            or str(key).startswith("ref_videos.")
+            or str(key).startswith("ref_video_audios.")
+        ):
+            inputs.pop(key, None)
+    inputs.pop("ref_images", None)
+    inputs.pop("ref_videos", None)
+    inputs.pop("ref_video_audios", None)
+
+    identity_image_name = str(identity_image_name or "").strip()
+    if identity_image_name:
+        identity_node_id, identity_node = find_workflow_node(
+            workflow,
+            REFERENCE_IMAGE_NODE_NAMES[0],
+            label,
+            "LoadImage",
+        )
+        identity_node.setdefault("inputs", {})["image"] = identity_image_name
+        inputs["ref_images.ref_image_0"] = [identity_node_id, 0]
+
+    set_duration_input(workflow, label, CHARACTER_REFERENCE_DURATION_SECONDS)
+    set_node_input(
+        workflow,
+        PROMPT_NODE_NAME,
+        "text",
+        build_character_reference_h3_prompt(
+            character_description,
+            has_identity_reference=bool(identity_image_name),
+            visual_style=visual_style,
+        ),
+        label,
+        "DPRandomGenerator",
+    )
+    set_node_input(
+        workflow, STEPS_NODE_NAME, "value", steps, label, "INTConstant",
+    )
+    set_node_input(
+        workflow,
+        NOISE_NODE_NAME,
+        "noise_seed",
+        generate_random_seed() if noise_seed is None else int(noise_seed),
+        label,
+        "RandomNoise",
+    )
+    set_node_input(
+        workflow, QUALITY_NODE_NAME, "value", megapixels, label, "FloatConstant",
+    )
+    character_width, character_height = character_reference_resolution(megapixels)
+    conditioning["inputs"]["width"] = character_width
+    conditioning["inputs"]["height"] = character_height
+    suffix = (
+        f"_picture_{int(picture_number):03d}"
+        if picture_number is not None else ""
+    )
+    set_node_input(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        "filename_prefix",
+        f"video/state/character_reference{suffix}",
+        label,
+        "SaveVideo",
+    )
+    configure_lora_chain(workflow, normalize_lora_list(loras), label)
+    return workflow
+
+
+def _character_reference_filename_token(name):
+    token = re.sub(r"[^A-Za-z0-9_-]+", "_", str(name or "").strip()).strip("_")
+    return token[:48] or "character"
+
+
+def character_reference_frame_name(
+    character_name,
+    picture_number,
+    version,
+    *,
+    file_token="",
+):
+    """Return the immutable state-PNG filename for one reference version."""
+    token = re.sub(
+        r"[^A-Za-z0-9_-]+",
+        "_",
+        str(file_token or "").strip(),
+    ).strip("_")
+    token_part = f"{token}_" if token else ""
+    return (
+        f"minimax_character_ref_{token_part}{int(picture_number):03d}_"
+        f"{_character_reference_filename_token(character_name)}_"
+        f"v{int(version):03d}.png"
+    )
+
+
+def render_character_reference_image(
+    character_name,
+    character_description,
+    picture_number,
+    version,
+    requested_megapixels,
+    steps,
+    *,
+    loras=None,
+    identity_image_name="",
+    noise_seed=None,
+    file_token="",
+    visual_style=DEFAULT_VISUAL_STYLE,
+):
+    """Render one second, then sample exactly the 0.5-second reference frame."""
+    for retry_number in range(COMFY_RENDER_RETRIES + 1):
+        current_megapixels = max(
+            0.01,
+            requested_megapixels - retry_number * COMFY_RETRY_MEGAPIXEL_STEP,
+        )
+        workflow = prepare_character_reference_workflow(
+            character_description,
+            current_megapixels,
+            steps=steps,
+            loras=loras,
+            picture_number=picture_number,
+            identity_image_name=identity_image_name,
+            noise_seed=noise_seed,
+            visual_style=visual_style,
+        )
+        try:
+            prompt_id = queue_workflow(workflow)
+            console_log(
+                f"Character-reference ComfyUI prompt ID for {character_name}: "
+                f"{prompt_id}",
+                flush=True,
+            )
+            result = wait_for_completion(prompt_id)
+            video_path = get_video_path(result, workflow)
+            frame_count = get_video_frame_count(video_path)
+            frame_index = min(
+                frame_count - 1,
+                int(round(CHARACTER_REFERENCE_SAMPLE_SECONDS * FRAME_RATE)),
+            )
+            frame_name = character_reference_frame_name(
+                character_name,
+                picture_number,
+                version,
+                file_token=file_token,
+            )
+            extract_video_frame(
+                video_path,
+                frame_name,
+                input_directory=STATE_MEDIA_OUTPUT,
+                frame_index=frame_index,
+                temporary_prefix=f".character_ref_{int(picture_number):03d}_",
+                error_label=f"character reference for {character_name}",
+            )
+            frame_path = os.path.join(STATE_MEDIA_OUTPUT, frame_name)
+            console_log(
+                f"Character reference created: {character_name} -> "
+                f"<Picture {picture_number}> at {CHARACTER_REFERENCE_SAMPLE_SECONDS:g}s "
+                f"({frame_path})",
+                flush=True,
+            )
+            return frame_path
+        except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
+            if retry_number == COMFY_RENDER_RETRIES:
+                raise ComfyUIExecutionError(
+                    f"Character-reference render for {character_name} failed "
+                    f"after {COMFY_RENDER_RETRIES} retries."
+                ) from error
+    raise AssertionError("Character-reference render loop did not return or raise.")
+
+
+def ensure_character_reference_images(
+    detailed_description,
+    subject_definitions,
+    continuity_state,
+    character_references,
+    base_reference_count,
+    requested_megapixels,
+    steps,
+    *,
+    subject_descriptions=None,
+    loras=None,
+    prior_detailed_description="",
+    visual_style=DEFAULT_VISUAL_STYLE,
+):
+    """Create/update clothing Pictures for visible Subjects before H3 rendering."""
+    references = normalize_character_reference_images(character_references)
+    state = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(continuity_state),
+    )
+    visual_text = _h3_visual_identity_text(detailed_description)
+    changed = []
+    for name, record in state.get("subjects", {}).items():
+        if not isinstance(record, dict):
+            continue
+        if re.search(
+            rf"(?i)(?<!\w){re.escape(str(name).strip())}(?!\w)",
+            visual_text,
+        ) is None:
+            continue
+        existing = references.get(name)
+        source_identity_image_name = subject_identity_reference_image(record)
+        if existing and not existing.get("authority"):
+            existing["authority"] = (
+                "clothing_only"
+                if source_identity_image_name
+                else "identity_and_clothing"
+            )
+        if existing and not _wardrobe_reference_change_authorized(
+            prior_detailed_description,
+            name,
+        ):
+            # Vision may describe a rendered outfit differently, but that is
+            # observational continuity rather than permission to replace the
+            # intended character/current-clothing reference.
+            continue
+
+        description, intended_wardrobe, clothing_condition = (
+            build_character_reference_target_description(
+                name,
+                record,
+                existing_reference=existing,
+                prior_change_description=prior_detailed_description,
+                subject_descriptions=subject_descriptions,
+                current_description=detailed_description,
+            )
+        )
+        if not description:
+            continue
+        normalized_visual_style = normalize_visual_style(visual_style)
+        signature = hashlib.sha256(
+            f"{normalized_visual_style}\n{description}".casefold().encode("utf-8")
+        ).hexdigest()
+        if existing and existing.get("signature") == signature:
+            continue
+
+        if existing:
+            picture_number = int(existing["picture_number"])
+            version = int(existing.get("version") or 1) + 1
+        else:
+            # Picture numbering is dense/positional. Six template LoadImage
+            # nodes do not reserve six Pictures; the next generated reference
+            # follows the number of references actually in use.
+            picture_number = int(base_reference_count) + len(references) + 1
+            version = 1
+
+        authority = (
+            str(existing.get("authority") or "").strip()
+            if existing
+            else (
+                "clothing_only"
+                if source_identity_image_name
+                else "identity_and_clothing"
+            )
+        )
+        identity_image_name = source_identity_image_name
+        if (
+            not identity_image_name
+            and existing
+            and authority == "identity_and_clothing"
+        ):
+            # Dynamic Subjects have no external identity Picture. Once the first
+            # generated Picture establishes identity, use it to preserve identity
+            # while intentionally updating wardrobe/condition later.
+            identity_image_name = stage_character_reference_image(existing)
+        if not identity_image_name and not existing:
+            console_log(
+                f"No source identity Picture is available for {name!r}; "
+                "the first generated character reference will establish persistent "
+                "identity and current appearance.",
+                flush=True,
+            )
+        image_path = render_character_reference_image(
+            name,
+            description,
+            picture_number,
+            version,
+            requested_megapixels,
+            steps,
+            loras=loras,
+            identity_image_name=identity_image_name,
+            visual_style=normalized_visual_style,
+        )
+        references[name] = {
+            "name": name,
+            "picture_number": picture_number,
+            "image_name": os.path.basename(image_path),
+            "image_path": os.path.abspath(image_path),
+            "signature": signature,
+            "version": version,
+            "description": description,
+            "wardrobe": copy.deepcopy(intended_wardrobe),
+            "clothing_condition": clothing_condition,
+            "authority": authority,
+        }
+        changed.append(name)
+    return references, changed
+
+
+def plan_character_reference_images(
+    detailed_description,
+    subject_definitions,
+    continuity_state,
+    character_references,
+    base_reference_count,
+    requested_megapixels,
+    steps,
+    *,
+    segment_number,
+    reference_jobs,
+    file_token="",
+    subject_descriptions=None,
+    loras=None,
+    prior_detailed_description="",
+    visual_style=DEFAULT_VISUAL_STYLE,
+):
+    """Plan immutable character-reference renders without contacting ComfyUI."""
+    references = normalize_character_reference_images(character_references)
+    jobs = reference_jobs if isinstance(reference_jobs, list) else []
+    state = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(continuity_state),
+    )
+    visual_text = _h3_visual_identity_text(detailed_description)
+    changed = []
+    for name, record in state.get("subjects", {}).items():
+        if not isinstance(record, dict):
+            continue
+        if re.search(
+            rf"(?i)(?<!\w){re.escape(str(name).strip())}(?!\w)",
+            visual_text,
+        ) is None:
+            continue
+
+        existing = references.get(name)
+        source_identity_image_name = subject_identity_reference_image(record)
+        if existing and not existing.get("authority"):
+            existing["authority"] = (
+                "clothing_only"
+                if source_identity_image_name
+                else "identity_and_clothing"
+            )
+        if existing and not _wardrobe_reference_change_authorized(
+            prior_detailed_description,
+            name,
+        ):
+            continue
+
+        description, intended_wardrobe, clothing_condition = (
+            build_character_reference_target_description(
+                name,
+                record,
+                existing_reference=existing,
+                prior_change_description=prior_detailed_description,
+                subject_descriptions=subject_descriptions,
+                current_description=detailed_description,
+            )
+        )
+        if not description:
+            continue
+        normalized_visual_style = normalize_visual_style(visual_style)
+        signature = hashlib.sha256(
+            f"{normalized_visual_style}\n{description}".casefold().encode("utf-8")
+        ).hexdigest()
+        if existing and existing.get("signature") == signature:
+            continue
+
+        if existing:
+            picture_number = int(existing["picture_number"])
+            version = int(existing.get("version") or 1) + 1
+        else:
+            picture_number = int(base_reference_count) + len(references) + 1
+            version = 1
+
+        authority = (
+            str(existing.get("authority") or "").strip()
+            if existing
+            else (
+                "clothing_only"
+                if source_identity_image_name
+                else "identity_and_clothing"
+            )
+        )
+        if source_identity_image_name:
+            identity_source = {
+                "kind": "configured_picture",
+                "image_name": source_identity_image_name,
+            }
+        elif existing and authority == "identity_and_clothing":
+            identity_source = {
+                "kind": "generated_reference",
+                "reference": copy.deepcopy(existing),
+            }
+        else:
+            identity_source = {"kind": "none"}
+
+        frame_name = character_reference_frame_name(
+            name,
+            picture_number,
+            version,
+            file_token=file_token,
+        )
+        frame_path = os.path.abspath(
+            os.path.join(STATE_MEDIA_OUTPUT, frame_name)
+        )
+        planned = {
+            "name": name,
+            "picture_number": picture_number,
+            "image_name": frame_name,
+            "image_path": frame_path,
+            "signature": signature,
+            "version": version,
+            "description": description,
+            "wardrobe": copy.deepcopy(intended_wardrobe),
+            "clothing_condition": clothing_condition,
+            "authority": authority,
+        }
+        jobs.append({
+            "job_id": (
+                f"character:{_character_reference_filename_token(name)}:"
+                f"picture-{picture_number}:v{version:03d}"
+            ),
+            "kind": "character_reference",
+            "before_segment": int(segment_number),
+            "character_name": name,
+            "character_description": description,
+            "visual_style": normalized_visual_style,
+            "picture_number": picture_number,
+            "version": version,
+            "megapixels": float(requested_megapixels),
+            "steps": int(steps),
+            "loras": [
+                list(item)
+                for item in normalize_lora_list(loras)
+            ],
+            "noise_seed": generate_random_seed(),
+            "file_token": str(file_token or ""),
+            "identity_source": identity_source,
+            "output_reference": copy.deepcopy(planned),
+        })
+        references[name] = planned
+        changed.append(name)
+    return references, changed
+
+
 # Render one segment, retrying only recoverable ComfyUI failures.
+def prepare_location_reference_workflow(
+    setting_description,
+    megapixels,
+    steps=6,
+    loras=None,
+    noise_seed=None,
+):
+    """Prepare a character-free three-second static-environment reference render."""
+    workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    label = f"location reference workflow '{INITIAL_WORKFLOW_FILE}'"
+    validate_workflow(workflow, label, is_append=False)
+    _, conditioning = find_workflow_node(
+        workflow,
+        INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+        label,
+        "MiniMaxH3ReferenceToVideo",
+    )
+    inputs = conditioning.setdefault("inputs", {})
+    for key in list(inputs):
+        if (
+            str(key).startswith("ref_images.")
+            or str(key).startswith("ref_videos.")
+            or str(key).startswith("ref_video_audios.")
+        ):
+            inputs.pop(key, None)
+    inputs.pop("ref_images", None)
+    inputs.pop("ref_videos", None)
+    inputs.pop("ref_video_audios", None)
+
+    set_duration_input(
+        workflow,
+        label,
+        LOCATION_REFERENCE_DURATION_SECONDS,
+    )
+    set_node_input(
+        workflow,
+        PROMPT_NODE_NAME,
+        "text",
+        build_location_reference_h3_prompt(setting_description),
+        label,
+        "DPRandomGenerator",
+    )
+    set_node_input(
+        workflow, STEPS_NODE_NAME, "value", steps, label, "INTConstant",
+    )
+    set_node_input(
+        workflow,
+        NOISE_NODE_NAME,
+        "noise_seed",
+        generate_random_seed() if noise_seed is None else int(noise_seed),
+        label,
+        "RandomNoise",
+    )
+    set_node_input(
+        workflow, QUALITY_NODE_NAME, "value", megapixels, label, "FloatConstant",
+    )
+    set_node_input(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        "filename_prefix",
+        "video/state/location_reference",
+        label,
+        "SaveVideo",
+    )
+    configure_lora_chain(workflow, normalize_lora_list(loras), label)
+    return workflow
+
+
+def strip_video_audio(video_path):
+    """Atomically remove every audio stream without re-encoding video."""
+    source_path = _validate_location_reference_path(video_path)
+    directory = os.path.dirname(source_path)
+    suffix = os.path.splitext(source_path)[1] or ".mp4"
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=".silent_location_reference_",
+        suffix=suffix,
+        dir=directory,
+    )
+    os.close(descriptor)
+    try:
+        command = [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            source_path,
+            "-map",
+            "0:v:0",
+            "-c:v",
+            "copy",
+            "-an",
+            temporary_path,
+        ]
+        try:
+            subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as error:
+            detail = getattr(error, "stderr", "") or str(error)
+            raise RuntimeError(
+                f"Failed to strip audio from location reference {source_path}: "
+                f"{str(detail).strip()}"
+            ) from error
+        _validate_location_reference_path(temporary_path)
+        os.replace(temporary_path, source_path)
+        return source_path
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+
+def render_location_reference_video(
+    setting_description,
+    requested_megapixels,
+    steps,
+    *,
+    loras=None,
+    noise_seed=None,
+):
+    """Render the one persistent location-memory video for the run."""
+    for retry_number in range(COMFY_RENDER_RETRIES + 1):
+        current_megapixels = max(
+            0.01,
+            requested_megapixels - retry_number * COMFY_RETRY_MEGAPIXEL_STEP,
+        )
+        if retry_number:
+            console_log(
+                f"Retrying location-reference render "
+                f"({retry_number}/{COMFY_RENDER_RETRIES}) at "
+                f"{current_megapixels:.2f} MP.",
+                flush=True,
+            )
+        workflow = prepare_location_reference_workflow(
+            setting_description,
+            current_megapixels,
+            steps=steps,
+            loras=loras,
+            noise_seed=noise_seed,
+        )
+        try:
+            prompt_id = queue_workflow(workflow)
+            console_log(
+                f"Location-reference ComfyUI prompt ID: {prompt_id}",
+                flush=True,
+            )
+            result = wait_for_completion(prompt_id)
+            path = get_video_path(result, workflow)
+            path = _validate_location_reference_path(path)
+            path = strip_video_audio(path)
+            width, height = get_video_resolution(path)
+            console_log(
+                f"Location reference created: {path}\n"
+                f"Resolution: {width} x {height}; "
+                f"duration={LOCATION_REFERENCE_DURATION_SECONDS:g}s; audio=removed",
+                flush=True,
+            )
+            return path
+        except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
+            if retry_number == COMFY_RENDER_RETRIES:
+                raise ComfyUIExecutionError(
+                    "Location-reference render failed after "
+                    f"{COMFY_RENDER_RETRIES} retries."
+                ) from error
+    raise AssertionError("Location-reference render loop did not return or raise.")
+
+
 def _render_segment_with_retries(
     segment,
     current_duration,
@@ -28625,6 +31327,9 @@ def _render_segment_with_retries(
     h3_fixture_context=None,
     h3_fixture_path=None,
     macro_arc=None,
+    location_reference_video_path=None,
+    character_reference_images=None,
+    excluded_picture_ids=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     h3_prompt = _assert_h3_subject_identity(
@@ -28684,6 +31389,9 @@ def _render_segment_with_retries(
                 segment,
                 steps,
                 **lora_kwargs,
+                location_reference_video_path=location_reference_video_path,
+                character_reference_images=character_reference_images,
+                excluded_picture_ids=excluded_picture_ids,
             )
         elif refresh_segment:
             workflow_type = "clean_refresh"
@@ -28696,7 +31404,10 @@ def _render_segment_with_retries(
                 steps,
                 **lora_kwargs,
                 continuity_state=continuity_state,
+                excluded_picture_ids=excluded_picture_ids,
                 segment_length=segment_length,
+                location_reference_video_path=location_reference_video_path,
+                character_reference_images=character_reference_images,
             )
         else:
             workflow_type = "append"
@@ -28708,7 +31419,10 @@ def _render_segment_with_retries(
                 steps,
                 **lora_kwargs,
                 continuity_state=continuity_state,
+                excluded_picture_ids=excluded_picture_ids,
                 segment_length=segment_length,
+                location_reference_video_path=location_reference_video_path,
+                character_reference_images=character_reference_images,
             )
 
         try:
@@ -28874,6 +31588,9 @@ def prepare_initial_workflow(
     lora_override=None,
     noise_seed=None,
     output_prefix=None,
+    location_reference_video_path=None,
+    character_reference_images=None,
+    excluded_picture_ids=None,
 ):
     if lora_override is not None:
         if loras:
@@ -28882,7 +31599,25 @@ def prepare_initial_workflow(
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=False)
-    prune_missing_reference_images(workflow, label, "initial")
+    prune_missing_reference_images(
+        workflow,
+        label,
+        "initial",
+        excluded_picture_ids=excluded_picture_ids,
+    )
+    attach_character_reference_images(
+        workflow,
+        label,
+        "initial",
+        character_reference_images,
+    )
+    if location_reference_video_path:
+        connect_location_reference_video(
+            workflow,
+            label,
+            location_reference_video_path,
+            reuse_existing_loader=True,
+        )
 
     set_duration_input(workflow, label, duration)
     set_node_input(
@@ -28927,6 +31662,8 @@ def prepare_refresh_workflow(
     segment_length=None,
     noise_seed=None,
     output_prefix=None,
+    location_reference_video_path=None,
+    character_reference_images=None,
 ):
     """Prepare the Extend Backport context-latent refresh graph."""
 
@@ -28961,10 +31698,17 @@ def prepare_refresh_workflow(
         excluded_picture_ids=incompatible_picture_ids,
         return_picture_slot_map=True,
     )
+    generated_picture_ids = {
+        int(record["picture_number"])
+        for record in normalize_character_reference_images(
+            character_reference_images
+        ).values()
+    }
     h3_prompt = _condition_refresh_prompt_for_h3(
         h3_prompt,
         removed_picture_ids,
         picture_slot_map,
+        protected_picture_ids=generated_picture_ids,
     )
 
     _, extend = find_workflow_node(
@@ -28991,6 +31735,23 @@ def prepare_refresh_workflow(
         )
     else:
         extend["inputs"].pop("ref_images", None)
+
+    # Generated character Pictures are appended only after the template
+    # references have been compacted. Their Picture numbers are already dense
+    # positional numbers, so a Picture 2 truly becomes the second IMAGE input.
+    attach_character_reference_images(
+        workflow,
+        label,
+        "refresh",
+        character_reference_images,
+    )
+
+    if location_reference_video_path:
+        attach_location_reference_frames_to_refresh(
+            workflow,
+            label,
+            location_reference_video_path,
+        )
 
     set_duration_input(workflow, label, duration)
     set_node_input(
@@ -29326,6 +32087,8 @@ def prepare_append_workflow(
     segment_length=None,
     noise_seed=None,
     output_prefix=None,
+    location_reference_video_path=None,
+    character_reference_images=None,
 ):
     if lora_override is not None:
         if loras:
@@ -29345,10 +32108,23 @@ def prepare_append_workflow(
         excluded_picture_ids=incompatible_picture_ids,
         return_picture_slot_map=True,
     )
+    generated_picture_ids = {
+        int(record["picture_number"])
+        for record in normalize_character_reference_images(
+            character_reference_images
+        ).values()
+    }
     h3_prompt = _condition_append_prompt_for_h3(
         h3_prompt,
         removed_picture_ids,
         picture_slot_map,
+        protected_picture_ids=generated_picture_ids,
+    )
+    attach_character_reference_images(
+        workflow,
+        label,
+        "append",
+        character_reference_images,
     )
 
     previous_video_path = os.path.abspath(os.fspath(previous_video_path))
@@ -29435,6 +32211,13 @@ def prepare_append_workflow(
         label, "RandomNoise"
     )
     connect_append_workflow_inputs(workflow, label)
+    if location_reference_video_path:
+        connect_location_reference_video(
+            workflow,
+            label,
+            location_reference_video_path,
+            reuse_existing_loader=False,
+        )
     configure_lora_chain(workflow, loras, label)
     return workflow
 
@@ -29476,22 +32259,17 @@ def postprocess_guided_append_video(
     segment_number,
     delivered_duration,
 ):
-    """Remove 20/22 guide frames now; normal stitching removes the final two."""
-    if TRIM_FRAMES_AFTER_FIRST > APPEND_GUIDE_CONTEXT_FRAMES:
-        raise RuntimeError(
-            "Final stitch trim cannot exceed native guide overlap."
-        )
-    pretrim_frames = APPEND_GUIDE_CONTEXT_FRAMES - TRIM_FRAMES_AFTER_FIRST
+    """Remove the full native Guide overlap before stitching."""
+    pretrim_frames = APPEND_GUIDE_CONTEXT_FRAMES
     output_path = os.path.join(
         os.path.dirname(video_path),
         f"guided_{os.path.basename(video_path)}",
     )
-    retained_seconds = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
     trim_video_start(
         video_path,
         output_path,
         pretrim_frames / FRAME_RATE,
-        duration_seconds=float(delivered_duration) + retained_seconds,
+        duration_seconds=float(delivered_duration),
         crf=0,
         preset="ultrafast",
     )
@@ -29501,9 +32279,8 @@ def postprocess_guided_append_video(
             f"{output_path}"
         )
     console_log(
-        f"Native Guide overlap: removed {pretrim_frames}/"
-        f"{APPEND_GUIDE_CONTEXT_FRAMES} frames after render; normal stitching "
-        f"removes the remaining {TRIM_FRAMES_AFTER_FIRST}."
+        f"Native Guide overlap: removed all {APPEND_GUIDE_CONTEXT_FRAMES} "
+        "frames after render; guided segments require no additional seam trim."
     )
     return output_path
 
@@ -29529,6 +32306,33 @@ def _append_unique_video_path(video_paths, video_path, lock=None):
             append_if_missing()
     return normalized_path
 
+
+
+# Delete raw ComfyUI segment renders only after the final stitch succeeds.
+def cleanup_raw_segment_videos(video_directory=VIDEO_OUTPUT):
+    """Delete redundant raw segment_* videos after Segment 1, preserving guided outputs."""
+    directory = os.path.abspath(os.fspath(video_directory))
+    if not os.path.isdir(directory):
+        return []
+    deleted = []
+    for name in os.listdir(directory):
+        if not name.startswith("segment_"):
+            continue
+        match = re.match(r"^segment_(\d+)", name)
+        if match is None or int(match.group(1)) <= 1:
+            continue
+        if not name.lower().endswith((".mp4", ".mov", ".mkv", ".webm")):
+            continue
+        path = os.path.join(directory, name)
+        try:
+            if os.path.isfile(path) or os.path.islink(path):
+                os.remove(path)
+                deleted.append(path)
+        except OSError as error:
+            console_log(
+                f"Warning: could not delete raw segment video {path}: {error}"
+            )
+    return deleted
 
 # Stitch videos.
 def stitch_videos(
@@ -29593,6 +32397,18 @@ def stitch_videos(
                 f"Trimming segment {index + 1} to "
                 f"{target_duration:g} seconds."
             )
+        elif os.path.basename(video_path).startswith("guided_segment_"):
+            if target_duration is None:
+                console_log(
+                    f"Guided segment {index + 1} already has its full Guide overlap "
+                    "removed; no additional seam trim is applied."
+                )
+            else:
+                console_log(
+                    f"Guided segment {index + 1} already has its full Guide overlap "
+                    f"removed; limiting it to {target_duration:g} seconds without "
+                    "additional seam trim."
+                )
         elif target_duration is None:
             console_log(
                 f"Trimming first {trim_frames} frames from "
@@ -29604,10 +32420,12 @@ def stitch_videos(
                 f"segment {index + 1} and limiting it to "
                 f"{target_duration:g} seconds."
             )
+        is_guided_segment = os.path.basename(video_path).startswith("guided_segment_")
+        trim_seconds = 0 if index == 0 or is_guided_segment else trim_seconds_after_first
         trim_arguments = (
             video_path,
             trimmed_path,
-            trim_seconds_after_first if index else 0,
+            trim_seconds,
         )
         if target_duration is None:
             trim_video_start(*trim_arguments)
@@ -29664,6 +32482,14 @@ def stitch_videos(
         except OSError as error:
             console_log(f"Warning: could not delete trimmed video {trimmed_path}: {error}")
 
+    deleted_raw_segments = cleanup_raw_segment_videos(VIDEO_OUTPUT)
+    if deleted_raw_segments:
+        console_log(
+            f"Successful-run cleanup: deleted {len(deleted_raw_segments)} redundant "
+            "raw segment video(s) after Segment 1; Segment 1 and guided_segment "
+            "videos were preserved."
+        )
+
     console_log(f"Stitching complete: {FINAL_VIDEO}")
 
 
@@ -29679,6 +32505,7 @@ def repair_existing_segment(
     story_path=STORY_FILE,
     input_directory=None,
     no_music=False,
+    visual_style=None,
 ):
     """Rerender one checkpointed middle segment without changing semantic state."""
 
@@ -29690,6 +32517,11 @@ def repair_existing_segment(
             f"{generation_state_path}"
         ) from None
     repair = validate_repair_checkpoint(generation_state, segment_number)
+    repair_visual_style = normalize_visual_style(
+        visual_style
+        if visual_style is not None
+        else repair["config"].get("visual_style", DEFAULT_VISUAL_STYLE)
+    )
     duration, megapixels = get_repair_render_settings(
         repair["config"],
         segment_number,
@@ -29799,6 +32631,9 @@ def repair_existing_segment(
         dialogue_exclusions=dialogue_exclusions,
         current_phase=current_phase,
         phrase_exclusions=phrase_exclusions,
+        persistent_movable_prop_state=repair.get("state", {}).get(
+            "prop_ledger", {}
+        ),
     )
     director_bundle = {
         "segment": segment_number,
@@ -29875,6 +32710,7 @@ def repair_existing_segment(
         conditioning_mode=conditioning_mode,
         excluded_picture_ids=excluded_picture_ids,
         continuity_state=opening_state,
+        visual_style=repair_visual_style,
     )
 
     console_log()
@@ -31086,6 +33922,8 @@ def resolve_director_raw_scene_pronouns(
 def build_director_raw_subject_resolution_messages(
     raw_scene,
     subject_definitions="",
+    story_context="",
+    current_beat="",
 ):
     """Build the narrow post-RAW dynamic Subject identity pass."""
     return [
@@ -31097,7 +33935,9 @@ def build_director_raw_subject_resolution_messages(
                 "location, sound, camera instruction, dialogue, and punctuation meaning "
                 "unchanged. Keep already-named Subjects unchanged. For each distinct "
                 "unnamed foreground animate participant who acts or is acted on, replace "
-                "its references with one stable functional name made from its most specific "
+                "EVERY reference to that participant in returned raw_scene with one stable "
+                "functional name; every name listed in subject_names must literally appear "
+                "in returned raw_scene. Make the functional name from its most specific "
                 "explicit role/species plus an integer. If RAW says dragon, use Dragon1; "
                 "if RAW says griffin, use Griffin1. Use CreatureN only when the type is "
                 "truly unknown. Capitalization alone does not make a role/species noun an "
@@ -31105,18 +33945,42 @@ def build_director_raw_subject_resolution_messages(
                 "individual; when exactly one KNOWN SUBJECT has the same role/species stem, "
                 "reuse it unless RAW explicitly says another/new/second individual appears. "
                 "Use the next unused suffix only for a genuinely new identity. Do not label "
-                "interchangeable background crowds/groups. Return JSON only."
+                "interchangeable background crowds/groups. For each newly named Subject, "
+                "also return subject_descriptions with one short stable visual identity "
+                "sentence using only explicit non-clothing appearance facts already present "
+                "in RAW or CURRENT BEAT (species/type, sex/gender wording, age, hair, skin/scales/fur, build, "
+                "body/anatomy, and distinguishing features). Never put clothing in "
+                "subject_descriptions. Also return subject_wardrobes for each newly named "
+                "Subject using exactly upper, lower, footwear, and other. Preserve clothing "
+                "explicitly stated in RAW. If RAW does not state clothing and the Subject is "
+                "a human or normally clothed humanoid, choose one simple setting-appropriate "
+                "outfit now; this becomes canonical and must not be re-invented later. "
+                "Use STORY CONTEXT only when RAW does not specify clothing, so the chosen "
+                "outfit matches the established setting, period, culture, and visual world. "
+                "Do not use STORY CONTEXT to change RAW actions or explicit appearance facts. "
+                "For animals or creatures that normally do not wear clothing, use N/A for all "
+                "four wardrobe fields unless RAW explicitly gives clothing. Use absent for "
+                "an explicitly absent garment/footwear slot; explicit nudity, barefoot state, "
+                "or garment absence wins over invention. Exclude action, pose, "
+                "location, held props, camera, and mood. Return JSON only."
             ),
         },
         {
             "role": "user",
             "content": (
+                "CURRENT BEAT\n"
+                f"{str(current_beat or '').strip() or 'N/A'}\n\n"
+                "STORY CONTEXT\n"
+                f"{str(story_context or '').strip() or 'N/A'}\n\n"
                 "KNOWN SUBJECTS\n"
                 f"{str(subject_definitions or '').strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
                 "Return raw_scene plus subject_names containing only the functional "
-                "Subject names used in the returned RAW scene."
+                "Subject names used in the returned RAW scene, subject_descriptions mapping "
+                "each newly named Subject to its concise non-clothing visual identity "
+                "sentence, and subject_wardrobes mapping each newly named Subject to its "
+                "canonical upper/lower/footwear/other wardrobe."
             ),
         },
     ]
@@ -31165,6 +34029,112 @@ def _canonicalize_end_continuity_functional_subjects(
     return text
 
 
+def _director_subject_explicitly_leaves_final_frame(subject_name, final_action):
+    """Return whether the final action explicitly removes one Subject from view."""
+    name = " ".join(str(subject_name or "").split()).strip()
+    action = " ".join(str(final_action or "").split()).strip()
+    if not name or not action:
+        return False
+    escaped = re.escape(name)
+    pattern = re.compile(
+        rf"(?i)(?<![\w]){escaped}(?![\w])[^.!?;]{{0,120}}?"
+        r"(?:\b(?:leave|leaves|left|leaving|exit|exits|exited|exiting|"
+        r"depart|departs|departed|departing)\b|"
+        r"\b(?:walk|walks|walked|walking|step|steps|stepped|stepping|"
+        r"run|runs|ran|running|move|moves|moved|moving|go|goes|went|going|"
+        r"pass|passes|passed|passing)\s+"
+        r"(?:out(?:\s+of\s+(?:the\s+)?(?:room|scene|frame))?|"
+        r"off(?:screen|-screen)?|away\s+out\s+of\s+frame)\b|"
+        r"\b(?:is|becomes?)\s+(?:fully\s+)?(?:occluded|hidden)\b)"
+    )
+    return pattern.search(action) is not None
+
+
+def _director_carry_forward_final_subjects(
+    raw_scene,
+    subject_definitions="",
+    resolved_subject_names=None,
+):
+    """Deterministically preserve final-timed Subjects omitted by End state.
+
+    Dynamic Subject names are stable only after the post-RAW resolver. Once they
+    are stable, the final timed micro-action is stronger evidence of presence
+    than an accidentally incomplete End continuity sentence. Copy that exact
+    final-action evidence into the End state for Subjects still present there;
+    never ask another LLM to repair the scene.
+    """
+    original = _canonicalize_director_timestamps(raw_scene).strip()
+    end_match = _DIRECTOR_END_CONTINUITY_RE.search(original)
+    if not original or end_match is None:
+        return original, []
+
+    timed = original[:end_match.start()].rstrip()
+    actions = _director_timed_action_map(timed)
+    if not actions:
+        return original, []
+    final_action = " ".join(list(actions.values())[-1].split()).strip()
+    if not final_action:
+        return original, []
+
+    candidates = [
+        name for _subject_number, name in parse_defined_subjects(subject_definitions)
+    ]
+    candidates.extend(
+        " ".join(str(name or "").split()).strip()
+        for name in (resolved_subject_names or [])
+    )
+    unique_candidates = []
+    seen = set()
+    for name in candidates:
+        key = _subject_identity_key(name)
+        if not name or not key or key in seen:
+            continue
+        seen.add(key)
+        unique_candidates.append(name)
+
+    end_state = str(end_match.group("state") or "").strip()
+    carried = []
+    for name in unique_candidates:
+        subject_pattern = rf"(?i)(?<![\w]){re.escape(name)}(?![\w])"
+        if re.search(subject_pattern, final_action) is None:
+            continue
+        if re.search(subject_pattern, end_state) is not None:
+            continue
+        if _director_subject_explicitly_leaves_final_frame(name, final_action):
+            continue
+        carried.append(name)
+
+    if not carried:
+        return original, []
+
+    if len(carried) == 1:
+        subject_phrase = carried[0]
+        verb = "remains"
+    elif len(carried) == 2:
+        subject_phrase = f"{carried[0]} and {carried[1]}"
+        verb = "remain"
+    else:
+        subject_phrase = ", ".join(carried[:-1]) + f", and {carried[-1]}"
+        verb = "remain"
+
+    carry_sentence = (
+        f"{subject_phrase} {verb} present in the state established by the final "
+        f"timed action: {final_action.rstrip(' .')}."
+    )
+    base_state = end_state.rstrip()
+    if base_state and base_state[-1] not in ".!?":
+        base_state += "."
+    if base_state:
+        base_state += " "
+    repaired = (
+        timed
+        + "\nEnd continuity state: "
+        + base_state
+        + carry_sentence
+    ).strip()
+    return repaired, carried
+
+
 def resolve_director_raw_scene_subjects(
     raw_scene,
     subject_definitions="",
@@ -31172,10 +34142,18 @@ def resolve_director_raw_scene_subjects(
     llm_request=ask_llm,
     history_metadata=None,
     segment_seconds=None,
+    return_subject_descriptions=False,
+    return_subject_bootstrap=False,
+    story_context="",
+    current_beat="",
 ):
     """Name distinct unnamed foreground animate actors after RAW is finalized."""
     original = _canonicalize_director_timestamps(raw_scene).strip()
     if not original:
+        if return_subject_bootstrap:
+            return original, [], {}, {}
+        if return_subject_descriptions:
+            return original, [], {}
         return original, []
 
     end_match = _DIRECTOR_END_CONTINUITY_RE.search(original)
@@ -31188,6 +34166,8 @@ def resolve_director_raw_scene_subjects(
         build_director_raw_subject_resolution_messages(
             timed_original,
             subject_definitions=subject_definitions,
+            story_context=story_context,
+            current_beat=current_beat,
         ),
         response_format=DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT,
         history_metadata={
@@ -31198,10 +34178,27 @@ def resolve_director_raw_scene_subjects(
     )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
-    if not isinstance(result, dict) or set(result) != {"raw_scene", "subject_names"}:
+    allowed_result_keys = (
+        {"raw_scene", "subject_names"},
+        {"raw_scene", "subject_names", "subject_descriptions"},
+        {
+            "raw_scene",
+            "subject_names",
+            "subject_descriptions",
+            "subject_wardrobes",
+        },
+    )
+    if not isinstance(result, dict) or set(result) not in allowed_result_keys:
         raise ValueError(
-            "RAW Subject resolver must return only raw_scene and subject_names."
+            "RAW Subject resolver must return raw_scene and subject_names, with "
+            "optional subject_descriptions and subject_wardrobes."
         )
+    raw_subject_descriptions = result.get("subject_descriptions", {})
+    if not isinstance(raw_subject_descriptions, dict):
+        raise ValueError("RAW Subject resolver subject_descriptions must be an object.")
+    raw_subject_wardrobes = result.get("subject_wardrobes", {})
+    if not isinstance(raw_subject_wardrobes, dict):
+        raise ValueError("RAW Subject resolver subject_wardrobes must be an object.")
 
     resolved_timed = _canonicalize_director_timestamps(
         result.get("raw_scene", "")
@@ -31264,6 +34261,50 @@ def resolve_director_raw_scene_subjects(
             flags=re.I,
         )
         resolved_subject_names[index] = canonical_name
+        if proposed_name in raw_subject_descriptions:
+            description = raw_subject_descriptions.pop(proposed_name)
+            raw_subject_descriptions.setdefault(canonical_name, description)
+        if proposed_name in raw_subject_wardrobes:
+            wardrobe = raw_subject_wardrobes.pop(proposed_name)
+            raw_subject_wardrobes.setdefault(canonical_name, wardrobe)
+
+    # The resolver can return correct Subject metadata while leaving generic
+    # role/species nouns in RAW. Canonicalize unambiguous references here so
+    # resolved Subjects cannot disappear before reference generation.
+    resolved_timed = _canonicalize_end_continuity_functional_subjects(
+        resolved_timed,
+        subject_definitions,
+        resolved_subject_names,
+    )
+    # If the resolver returned useful Subject metadata but failed to rewrite
+    # the participant label in its raw_scene, recover from the already-accepted
+    # Director RAW instead of making the whole segment retry. This keeps the
+    # semantic scene untouched and applies only deterministic functional-name
+    # canonicalization.
+    fallback_timed = _canonicalize_end_continuity_functional_subjects(
+        timed_original,
+        subject_definitions,
+        resolved_subject_names,
+    )
+    missing_resolved_names = [
+        " ".join(str(name or "").split()).strip(" ,.;:-")
+        for name in resolved_subject_names
+        if str(name or "").strip()
+        and re.search(
+            rf"(?<![\w]){re.escape(' '.join(str(name or '').split()).strip(' ,.;:-'))}(?![\w])",
+            _h3_visual_identity_text(resolved_timed),
+            re.I,
+        ) is None
+    ]
+    if missing_resolved_names and all(
+        re.search(
+            rf"(?<![\w]){re.escape(name)}(?![\w])",
+            _h3_visual_identity_text(fallback_timed),
+            re.I,
+        ) is not None
+        for name in missing_resolved_names
+    ):
+        resolved_timed = fallback_timed
 
     resolved_end_state = _canonicalize_end_continuity_functional_subjects(
         end_state_original,
@@ -31282,6 +34323,8 @@ def resolve_director_raw_scene_subjects(
         )
 
     names = []
+    descriptions = {}
+    wardrobes = {}
     seen = set()
     known_keys = {name.casefold() for name in protected_names}
     for raw_name in resolved_subject_names:
@@ -31307,63 +34350,68 @@ def resolve_director_raw_scene_subjects(
             _h3_visual_identity_text(resolved_timed),
             re.I,
         ) is None:
+            console_log(
+                f"WARNING: RAW Subject resolver returned {name!r} in subject_names "
+                "but no safe deterministic mapping exists in accepted RAW; ignoring "
+                "that resolver entry instead of restarting the segment.",
+                flush=True,
+            )
             continue
         seen.add(key)
         names.append(name)
+        description = " ".join(
+            str(raw_subject_descriptions.get(raw_name)
+                or raw_subject_descriptions.get(name)
+                or "").split()
+        ).strip()
+        if description:
+            # Clothing has exactly one canonical owner: subject_wardrobes.
+            # Do not allow a duplicate wearing-clause to survive in identity prose.
+            descriptions[name] = _strip_character_description_clothing(description)
+        raw_wardrobe = (
+            raw_subject_wardrobes.get(raw_name)
+            or raw_subject_wardrobes.get(name)
+            or {}
+        )
+        if isinstance(raw_wardrobe, dict):
+            wardrobes[name] = {
+                field: str(raw_wardrobe.get(field) or "N/A").strip() or "N/A"
+                for field in _WARDROBE_FIELDS
+            }
 
     console_log(
         "Checking RAW Subjects segment: "
         + (", ".join(names) if names else "no dynamic Subjects"),
         flush=True,
     )
+    if return_subject_bootstrap:
+        return resolved, names, descriptions, wardrobes
+    if return_subject_descriptions:
+        return resolved, names, descriptions
     return resolved, names
 
 
-def build_director_raw_scene_coherence_messages(
+def build_director_raw_scene_physical_messages(
     current_beat,
     raw_scene,
     previous_shot_end="",
+    *,
+    static_setting_description="",
 ):
-    """Build a narrow semantic check for Request 1 physical/order coherence."""
+    """Check only subject movement, spatial continuity, and physical action order."""
     return [
         {
             "role": "system",
             "content": (
-                "Validate only whether one timed RAW SCENE is physically and causally "
-                "coherent in timestamp order while staging CURRENT BEAT. Harmless "
-                "invented staging is allowed. Reject only concrete impossibilities or "
-                "material action-order contradictions, such as closing a barrier before "
-                "someone passes through it, using an occupied hand without releasing "
-                "what it holds, moving or repositioning a chair/stool/seat while a "
-                "person or creature is still sitting or standing on it without stated "
-                "movement off that support, or showing a required result before its "
-                "prerequisite action. Do not infer that two differently worded references to an "
-                "unnamed person, creature, object, or body must be different entities; "
-                "require explicit evidence of distinct identities or counts before "
-                "calling that a contradiction. PREVIOUS SHOT END, when supplied, is the "
-                "physical frame-0 starting state. The inherited 00:00.000 frame must be reachable "
-                "from it without an omitted move, teleport, unexplained prop/state change, "
-                "or hidden location transition. Do NOT require a participant introduced "
-                "by CURRENT BEAT to already exist in PREVIOUS SHOT END. A genuinely new "
-                "participant may enter or be revealed after the inherited frame-0 anchor; "
-                "do not reject the scene solely because that participant was absent from "
-                "the previous shot. Ordinary continuous camera motion may reveal another "
-                "part of the same established space, but an already-established subject "
-                "must not jump to a new location without stated movement. The trailing "
-                "End continuity state is part "
-                "of this check and MUST describe the state produced by the final timed "
-                "action. Any foreground participant visibly present in the final timed "
-                "action remains present at the final frame unless that final action "
-                "explicitly shows the participant leaving, becoming fully occluded, or "
-                "otherwise no longer visible; reject an End continuity state that simply "
-                "omits such a participant. Reject an End continuity state that moves a "
-                "subject/object back to an earlier location, restores an earlier held "
-                "prop or pose, reverses "
-                "a barrier/door result, or otherwise contradicts the final timed frame. "
-                "Do not accept an End continuity state merely because it matches an "
-                "earlier frame. Do not judge style, prose quality, camera taste, or "
-                "incidental details. Return exactly one JSON object with boolean valid "
-                "and string issue."
+                "Validate only subject movement in RAW. Reject if: 1) a new participant "
+                "is not shown entering or revealed by the camera; 2) a subject interacts at "
+                "a different established location without visibly moving there first; 3) a "
+                "subject changes support or elevation without showing that movement; 4) End "
+                "continuity moves a subject after the final timed action. Ordinary furniture "
+                "required by CURRENT BEAT is allowed. Ignore prop identity, contents, "
+                "ownership, transfers, prose, camera taste, and timing. Return exactly one "
+                "JSON object with boolean valid and string issue. Report only the first "
+                "concrete problem."
             ),
         },
         {
@@ -31373,20 +34421,491 @@ def build_director_raw_scene_coherence_messages(
                 f"{str(current_beat or '').strip()}\n\n"
                 "PREVIOUS SHOT END\n"
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
+                "STATIC SETTING AUTHORITY\n"
+                f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
-                "First compare PREVIOUS SHOT END with the inherited 00:00.000 anchor and reject "
-                "any omitted transition for already-established subjects/state. Do not "
-                "reject a new CURRENT BEAT participant merely because it enters after "
-                "frame 0. Then read the timed actions literally "
-                "in order and explicitly compare the final timed action/result with "
-                "End continuity state.\n"
-                "If coherent: {\"valid\": true, \"issue\": \"\"}\n"
-                "If incoherent: {\"valid\": false, \"issue\": "
-                "\"short concrete explanation\"}"
+                "If physical/spatial continuity is valid: "
+                "{\"valid\": true, \"issue\": \"\"}\n"
+                "If invalid: {\"valid\": false, \"issue\": "
+                "\"short concrete physical/spatial explanation\"}"
             ),
         },
     ]
+
+
+def build_director_raw_scene_prop_state_messages(
+    current_beat,
+    raw_scene,
+    previous_shot_end="",
+    *,
+    prop_ledger=None,
+    static_setting_description="",
+):
+    """Check only prop identity, transfers, beat-role fidelity, and final prop state."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Validate only prop continuity in RAW. A prop introduced by CURRENT BEAT may "
+                "first appear in this scene. For props already in PROP LEDGER, preserve "
+                "identity, holder, location, and contents until a visible action changes "
+                "them. Reject if a prop changes identity or holder/location without a visible "
+                "action, a transfer lacks a source or destination, pouring/filling lacks a "
+                "real source container, or End continuity contradicts the final prop state. "
+                "Ignore subject movement, entry staging, camera movement, prose, and timing. "
+                "Return exactly one JSON object with boolean valid and string issue. Report "
+                "only the first concrete problem."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "CURRENT BEAT\n"
+                f"{str(current_beat or '').strip()}\n\n"
+                "PREVIOUS SHOT END\n"
+                f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
+                "PROP LEDGER\n"
+                f"{format_prop_ledger_for_prompt(prop_ledger)}\n\n"
+                "STATIC SETTING AUTHORITY\n"
+                f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
+                "RAW SCENE\n"
+                f"{str(raw_scene or '').strip()}\n\n"
+                "If prop/result continuity is valid: "
+                "{\"valid\": true, \"issue\": \"\"}\n"
+                "If invalid: {\"valid\": false, \"issue\": "
+                "\"short concrete prop/state explanation\"}"
+            ),
+        },
+    ]
+
+
+def build_director_raw_scene_coherence_messages(
+    current_beat,
+    raw_scene,
+    previous_shot_end="",
+    *,
+    prop_ledger=None,
+    static_setting_description="",
+):
+    """Compatibility alias for the old combined validator prompt."""
+    return build_director_raw_scene_physical_messages(
+        current_beat,
+        raw_scene,
+        previous_shot_end=previous_shot_end,
+        static_setting_description=static_setting_description,
+    )
+
+
+def normalize_prop_ledger(value):
+    """Return the canonical persistent movable-prop ledger."""
+    if not isinstance(value, dict):
+        return {}
+    cleaned = {}
+    for raw_id, raw_record in value.items():
+        if not isinstance(raw_record, dict):
+            continue
+        prop_id = str(raw_id or "").strip()
+        kind = str(raw_record.get("kind") or "").strip()
+        if not prop_id or not kind:
+            continue
+        status = str(raw_record.get("status") or "present").strip().casefold()
+        if status not in PROP_LEDGER_STATUSES:
+            status = "present"
+        record = {
+            "kind": kind,
+            "owner": str(raw_record.get("owner") or "N/A").strip() or "N/A",
+            "holder": str(raw_record.get("holder") or "N/A").strip() or "N/A",
+            "location": str(raw_record.get("location") or "N/A").strip() or "N/A",
+            "contents": str(raw_record.get("contents") or "N/A").strip() or "N/A",
+            "status": status,
+        }
+        cleaned[prop_id] = record
+    return cleaned
+
+
+def merge_prop_ledger(committed, observed):
+    """Copy persistent props forward and apply only safe observed changes."""
+    merged = copy.deepcopy(normalize_prop_ledger(committed))
+    observations = normalize_prop_ledger(observed)
+
+    for observed_id, observed_record in observations.items():
+        if observed_id not in merged:
+            merged[observed_id] = copy.deepcopy(observed_record)
+            continue
+
+        existing_record = merged[observed_id]
+        existing_kind = str(existing_record.get("kind") or "").strip()
+        observed_kind = str(observed_record.get("kind") or "").strip()
+
+        if existing_kind.casefold() == observed_kind.casefold():
+            updated = copy.deepcopy(existing_record)
+            updated.update(copy.deepcopy(observed_record))
+            updated["kind"] = existing_kind
+            merged[observed_id] = updated
+            continue
+
+        # A prop ID is an identity lock. If the continuity observer reuses an
+        # existing ID for a different kind of object, preserve the original
+        # object and assign the observation a fresh unique ID instead.
+        base = _prop_id_slug(observed_kind)
+        index = 1
+        replacement_id = f"{base}_{index}"
+        while replacement_id in merged or replacement_id in observations:
+            index += 1
+            replacement_id = f"{base}_{index}"
+        merged[replacement_id] = copy.deepcopy(observed_record)
+        console_log(
+            f"WARNING: continuity tried to change {observed_id!r} from "
+            f"{existing_kind!r} to {observed_kind!r}; preserved the original "
+            f"identity and stored the new observation as {replacement_id!r}.",
+            flush=True,
+        )
+
+    return merged
+
+
+
+SUBJECT_STATE_LEDGER_FIELDS = (
+    "name", "id", "speaker_id", "subject_id", "gender", "origin_segment",
+    "picture_ids", "picture_id", "persistent_structural_change",
+    "canonical_description", "position", "pose_action", "wardrobe", "topology",
+    "body_state", "physical_condition", "attached_objects", "injuries",
+    "substances", "spatial_relationships", "persistent_effects", "held_props",
+    "last_updated_segment",
+)
+
+
+def normalize_subject_state_ledger(value):
+    """Return a durable all-Subjects state ledger keyed by stable Subject name."""
+    if not isinstance(value, dict):
+        return {}
+    cleaned = {}
+    for raw_name, raw_record in value.items():
+        if not isinstance(raw_record, dict):
+            continue
+        name = str(raw_record.get("name") or raw_name or "").strip()
+        if not name:
+            continue
+        record = {}
+        for field in SUBJECT_STATE_LEDGER_FIELDS:
+            if field in raw_record:
+                record[field] = copy.deepcopy(raw_record[field])
+        record["name"] = name
+        cleaned[name] = record
+    return cleaned
+
+
+def merge_subject_state_ledger(committed, observed_state, segment_number=None):
+    """Copy every known Subject forward and apply only concrete new observations."""
+    merged = normalize_subject_state_ledger(committed)
+    observed_subjects = (
+        observed_state.get("subjects", {})
+        if isinstance(observed_state, dict)
+        else {}
+    )
+    if isinstance(observed_subjects, list):
+        observed_subjects = {
+            str(record.get("name") or "").strip(): record
+            for record in observed_subjects
+            if isinstance(record, dict) and str(record.get("name") or "").strip()
+        }
+    if not isinstance(observed_subjects, dict):
+        return merged
+
+    for raw_name, raw_record in observed_subjects.items():
+        if not isinstance(raw_record, dict):
+            continue
+        name = str(raw_record.get("name") or raw_name or "").strip()
+        if not name:
+            continue
+        target = copy.deepcopy(merged.get(name, {"name": name}))
+        observed_any = False
+        for field, value in raw_record.items():
+            if field not in SUBJECT_STATE_LEDGER_FIELDS or field == "last_updated_segment":
+                continue
+            if field == "wardrobe" and isinstance(value, dict):
+                wardrobe = copy.deepcopy(target.get("wardrobe") or {})
+                for slot in _WARDROBE_FIELDS:
+                    slot_value = value.get(slot)
+                    if isinstance(slot_value, str) and slot_value.strip() and slot_value.strip().upper() != "N/A":
+                        wardrobe[slot] = slot_value.strip()
+                        observed_any = True
+                if wardrobe:
+                    target["wardrobe"] = wardrobe
+                continue
+            if isinstance(value, str):
+                stripped = value.strip()
+                if not stripped or stripped.upper() == "N/A":
+                    continue
+                target[field] = stripped
+                observed_any = True
+            elif isinstance(value, list):
+                if value:
+                    target[field] = copy.deepcopy(value)
+                    observed_any = True
+            elif value is not None:
+                target[field] = copy.deepcopy(value)
+                observed_any = True
+        target["name"] = name
+        if observed_any and segment_number is not None:
+            target["last_updated_segment"] = int(segment_number)
+        merged[name] = target
+    return merged
+
+def _prop_id_slug(value):
+    slug = re.sub(r"[^a-z0-9]+", "_", str(value or "").casefold()).strip("_")
+    return slug or "prop"
+
+
+def _find_or_create_authoritative_prop(ledger, kind, owner=""):
+    """Resolve one typed source item to a stable prop-ledger record."""
+    normalized_kind = " ".join(str(kind or "").split()).strip()
+    owner_text = " ".join(str(owner or "").split()).strip()
+    kind_key = normalized_kind.casefold()
+    owner_key = owner_text.casefold()
+    matches = [
+        prop_id
+        for prop_id, record in ledger.items()
+        if str(record.get("kind") or "").casefold() == kind_key
+    ]
+    owner_matches = [
+        prop_id
+        for prop_id in matches
+        if str(ledger[prop_id].get("owner") or "").casefold() == owner_key
+    ]
+    if len(owner_matches) == 1:
+        return owner_matches[0]
+    if len(matches) == 1:
+        return matches[0]
+
+    base = _prop_id_slug(normalized_kind)
+    index = 1
+    prop_id = f"{base}_{index}"
+    while prop_id in ledger:
+        index += 1
+        prop_id = f"{base}_{index}"
+    ledger[prop_id] = {
+        "kind": normalized_kind,
+        "owner": owner_text or "N/A",
+        "holder": "N/A",
+        "location": "N/A",
+        "contents": "N/A",
+        "status": "present",
+    }
+    return prop_id
+
+
+def apply_authoritative_prop_state_effects(prop_ledger, effects):
+    """Overlay source-owned item/object effects onto prompt-derived prop state."""
+    ledger = copy.deepcopy(normalize_prop_ledger(prop_ledger))
+    try:
+        normalized_effects = _validate_state_effects(list(effects or []))
+    except (TypeError, ValueError):
+        return ledger
+
+    for effect in normalized_effects:
+        op = effect.get("op")
+        if op == "set_item_state":
+            kind = effect["entity"]
+            owner = effect["owner"]
+            prop_id = _find_or_create_authoritative_prop(ledger, kind, owner)
+            record = ledger[prop_id]
+            record["kind"] = kind
+            record["owner"] = owner
+            value = effect["value"]
+            if value == "held":
+                record["holder"] = owner
+                record["location"] = "N/A"
+                record["status"] = "present"
+            elif value == "equipped":
+                record["holder"] = "N/A"
+                if record.get("location") in {"", "N/A"}:
+                    record["location"] = f"equipped on {owner}"
+                record["status"] = "present"
+            elif value == "stored":
+                record["holder"] = "N/A"
+                if record.get("location") in {"", "N/A"}:
+                    record["location"] = f"stored by {owner}"
+                record["status"] = "present"
+            elif value == "dropped":
+                record["holder"] = "N/A"
+                if record.get("location") in {"", "N/A"}:
+                    record["location"] = f"dropped near {owner}"
+                record["status"] = "present"
+            elif value == "lost":
+                record["holder"] = "N/A"
+                record["location"] = "N/A"
+                record["status"] = "lost"
+        elif op == "set_object_state" and effect.get("value") == "destroyed":
+            kind_key = str(effect.get("entity") or "").casefold()
+            matches = [
+                prop_id
+                for prop_id, record in ledger.items()
+                if (
+                    prop_id.casefold() == kind_key
+                    or str(record.get("kind") or "").casefold() == kind_key
+                )
+            ]
+            if len(matches) == 1:
+                record = ledger[matches[0]]
+                record["holder"] = "N/A"
+                record["location"] = "N/A"
+                record["status"] = "destroyed"
+    return ledger
+
+
+def format_prop_ledger_for_prompt(prop_ledger):
+    """Return compact deterministic JSON for Director prop context."""
+    return json.dumps(
+        normalize_prop_ledger(prop_ledger),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def build_director_raw_scene_timing_messages(raw_scene):
+    """Build a narrow semantic check for whether RAW timing is visibly executable."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Validate only whether the sequential physical actions in one timed RAW "
+                "SCENE can visibly occur within the time available between its timestamps "
+                "as one continuous shot. Read each consecutive timed micro-beat literally. "
+                "Reject only obvious time compression that would force a hidden cut, "
+                "teleport, skipped prerequisite, or instantaneous relocation/manipulation. "
+                "Pay special attention when a subject or object must enter, cross meaningful "
+                "space, reach a new established position, sit or stand, acquire or position "
+                "a prop, or complete multiple dependent physical steps before the next "
+                "timestamp. Also inspect multiple verbs inside one timestamp: simultaneous "
+                "motions may share a timestamp, but a sequential dependency chain such as "
+                "opening/unlatching a barrier, crossing it, closing it, and securing it cannot "
+                "be treated as one instantaneous action. Reject when that chain would require "
+                "hidden time or a cut instead of being split across executable timestamps. "
+                "Do not impose a fixed minimum interval: simple gestures may be "
+                "quick and nearby actions may need little time. Camera movement does not "
+                "erase the time required for subjects or objects to move. Judge only timing "
+                "feasibility, not prose style, camera taste, story choices, or whether an "
+                "invented detail was necessary. Return exactly one JSON object with boolean "
+                "valid and string issue. When invalid, report only the first clearly "
+                "compressed transition and name its two timestamps."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "RAW SCENE\n"
+                f"{str(raw_scene or '').strip()}\n\n"
+                "If every consecutive physical transition has enough visible time: "
+                "{\"valid\": true, \"issue\": \"\"}\n"
+                "If one is clearly too compressed: {\"valid\": false, \"issue\": "
+                "\"short concrete explanation with both timestamps\"}"
+            ),
+        },
+    ]
+
+
+def validate_director_raw_scene_timing(
+    raw_scene,
+    *,
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Return a narrow semantic timing-feasibility verdict for one RAW scene."""
+    if not str(raw_scene or "").strip():
+        return {"valid": True, "issue": ""}
+    result = llm_request(
+        build_director_raw_scene_timing_messages(raw_scene),
+        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+        parse_json_response=False,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_raw_scene_timing",
+        },
+        temperature=0,
+        top_p=1,
+        max_tokens=384,
+        seed=42,
+        repeat_penalty=1.15,
+    )
+    return parse_beat_validation_result(result)
+
+
+def validate_director_raw_scene_physical(
+    current_beat,
+    raw_scene,
+    *,
+    previous_shot_end="",
+    static_setting_description="",
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Return a narrow subject-movement/spatial verdict for one RAW scene."""
+    if not str(current_beat or "").strip():
+        return {"valid": True, "issue": ""}
+    if re.search(r"(?i)\b(?:suddenly\s+appears?|appears?|pops?\s+into\s+view)\b", str(raw_scene or "")):
+        return {
+            "valid": False,
+            "issue": "New participants must enter or be revealed by the camera; do not use pop-in/appears wording.",
+        }
+    result = llm_request(
+        build_director_raw_scene_physical_messages(
+            current_beat,
+            raw_scene,
+            previous_shot_end=previous_shot_end,
+            static_setting_description=static_setting_description,
+        ),
+        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+        parse_json_response=False,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_raw_scene_physical",
+        },
+        temperature=0,
+        top_p=1,
+        max_tokens=384,
+        seed=42,
+        repeat_penalty=1.15,
+    )
+    return parse_beat_validation_result(result)
+
+
+def validate_director_raw_scene_prop_state(
+    current_beat,
+    raw_scene,
+    *,
+    previous_shot_end="",
+    prop_ledger=None,
+    static_setting_description="",
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Return a narrow prop/transfer/final-state verdict for one RAW scene."""
+    if not str(current_beat or "").strip():
+        return {"valid": True, "issue": ""}
+    result = llm_request(
+        build_director_raw_scene_prop_state_messages(
+            current_beat,
+            raw_scene,
+            previous_shot_end=previous_shot_end,
+            prop_ledger=prop_ledger,
+            static_setting_description=static_setting_description,
+        ),
+        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+        parse_json_response=False,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_raw_scene_prop_state",
+        },
+        temperature=0,
+        top_p=1,
+        max_tokens=384,
+        seed=42,
+        repeat_penalty=1.15,
+    )
+    return parse_beat_validation_result(result)
 
 
 def validate_director_raw_scene_coherence(
@@ -31394,31 +34913,31 @@ def validate_director_raw_scene_coherence(
     raw_scene,
     *,
     previous_shot_end="",
+    prop_ledger=None,
+    static_setting_description="",
     llm_request=ask_llm,
     history_metadata=None,
 ):
-    """Return a narrow semantic physical/order verdict for one RAW scene."""
-    if not str(current_beat or "").strip():
-        return {"valid": True, "issue": ""}
-    result = llm_request(
-        build_director_raw_scene_coherence_messages(
-            current_beat,
-            raw_scene,
-            previous_shot_end=previous_shot_end,
-        ),
-        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
-        parse_json_response=False,
-        history_metadata={
-            **dict(history_metadata or {}),
-            "purpose": "director_raw_scene_coherence",
-        },
-        temperature=0,
-        top_p=1,
-        max_tokens=512,
-        seed=42,
-        repeat_penalty=1.15,
+    """Compatibility wrapper for callers that still request combined coherence."""
+    physical = validate_director_raw_scene_physical(
+        current_beat,
+        raw_scene,
+        previous_shot_end=previous_shot_end,
+        static_setting_description=static_setting_description,
+        llm_request=llm_request,
+        history_metadata=history_metadata,
     )
-    return parse_beat_validation_result(result)
+    if not physical["valid"]:
+        return physical
+    return validate_director_raw_scene_prop_state(
+        current_beat,
+        raw_scene,
+        previous_shot_end=previous_shot_end,
+        prop_ledger=prop_ledger,
+        static_setting_description=static_setting_description,
+        llm_request=llm_request,
+        history_metadata=history_metadata,
+    )
 
 
 # Run the two-stage Director micro-prompt pipeline for one segment.
@@ -31457,11 +34976,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     )
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
-    # Keep typed state available for diagnostics, but do not inject Python-owned
-    # final-state/item contracts into the creative Director prompt. Gold prompts
-    # use ordinary visual staging rather than a normalized state ontology.
-    request1_base_messages = copy.deepcopy(bundle.get("messages", []))
     current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
+    prop_ledger = normalize_prop_ledger(bundle.get("prop_ledger", {}))
+
+    request1_base_messages = copy.deepcopy(bundle.get("messages", []))
     request1_topology_contracts = build_director_barrier_topology_contract(
         bundle.get("assigned_state_effects", []),
         bundle.get("subject_definitions", ""),
@@ -31475,6 +34993,27 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     request1_result = None
     raw_scene = ""
+    request1_retry_requirements = []
+
+    def build_request1_retry_messages(requirement):
+        """Retry from the clean base while retaining every observed blocker."""
+        requirement = " ".join(str(requirement or "").split()).strip()
+        if requirement and requirement not in request1_retry_requirements:
+            request1_retry_requirements.append(requirement)
+        messages = copy.deepcopy(request1_base_messages)
+        if messages and request1_retry_requirements:
+            messages[-1] = dict(messages[-1])
+            requirements = "\n".join(
+                f"- {item}" for item in request1_retry_requirements
+            )
+            messages[-1]["content"] = (
+                f"{messages[-1].get('content', '')}\n\n"
+                "RETRY REQUIREMENTS — satisfy ALL of these while preserving CURRENT "
+                "BEAT and its outcome and without beginning NEXT BEAT:\n"
+                f"{requirements}"
+            )
+        return messages
+
     request1_messages = request1_base_messages
     for request1_attempt in range(1, DIRECTOR_RAW_SCENE_ATTEMPTS + 1):
         request1_metadata = {
@@ -31492,8 +35031,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             history_metadata=request1_metadata,
         )
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
-        raw_scene = _canonicalize_director_timestamps(
-            request1_result.get("raw_scene", "")
+        raw_scene = _normalize_director_raw_scene_structure(
+            request1_result.get("raw_scene", ""),
+            segment_seconds=duration,
         ).strip()
         if raw_scene and raw_scene != "N/A":
             request1_result["raw_scene"] = raw_scene
@@ -31514,29 +35054,137 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     f"retrying: " + "; ".join(structure_errors),
                     flush=True,
                 )
-                request1_messages = copy.deepcopy(request1_base_messages)
-                if request1_messages:
-                    request1_messages[-1] = dict(request1_messages[-1])
-                    request1_messages[-1]["content"] = (
-                        f"{request1_messages[-1].get('content', '')}\n\n"
-                        "RETRY: Return the complete timed shot script beginning at "
-                        "00:00.000, with exactly one trailing End continuity state "
-                        "matching the final timed frame. Keep every timestamp inside "
-                        "the clip and do not begin NEXT BEAT."
-                    )
+                request1_messages = build_request1_retry_messages(
+                    "SHOT SCRIPT: " + "; ".join(structure_errors)
+                )
                 continue
 
             current_beat_text = str(bundle.get("current_beat_text") or "").strip()
+            dialogue_issue = director_required_dialogue_issue(
+                current_beat_text,
+                raw_scene,
+            )
+            if dialogue_issue:
+                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    raise BeatGenerationError(
+                        f"Director Request 1 never rendered required direct dialogue "
+                        f"for Segment {segment_number}: {dialogue_issue}"
+                    )
+                console_log(
+                    f"Director Request 1 dialogue contract failed "
+                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                    f"retrying: {dialogue_issue}",
+                    flush=True,
+                )
+                request1_messages = build_request1_retry_messages(
+                    "DIALOGUE: CURRENT BEAT requires intelligible speech. "
+                    + dialogue_issue
+                    + " Use one brief direct line in the form "
+                    "Speaker said <d>exact words</d>."
+                )
+                continue
+
             if current_beat_text:
+                validator_metadata = {
+                    "run_id": run_id,
+                    "source_sha256": (run_config or {}).get("source_sha256"),
+                    "segment": segment_number,
+                    "attempt": request1_attempt,
+                    "conditioning_mode": conditioning_mode,
+                }
+                previous_shot_end = (
+                    bundle.get("previous_final_frame", "")
+                    if segment_number > 1
+                    else ""
+                )
+                static_setting_description = bundle.get(
+                    "static_setting_description", ""
+                )
+
                 try:
-                    coherence = validate_director_raw_scene_coherence(
+                    physical = validate_director_raw_scene_physical(
                         current_beat_text,
                         raw_scene,
-                        previous_shot_end=(
-                            bundle.get("previous_final_frame", "")
-                            if segment_number > 1
-                            else ""
-                        ),
+                        previous_shot_end=previous_shot_end,
+                        static_setting_description=static_setting_description,
+                        history_metadata=validator_metadata,
+                    )
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    physical = {
+                        "valid": False,
+                        "issue": f"RAW physical validator failed: {error}",
+                    }
+
+                if not physical["valid"]:
+                    issue = physical["issue"] or (
+                        "RAW SCENE has an impossible subject movement or action order."
+                    )
+                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                        raise BeatGenerationError(
+                            f"Director Request 1 remained physically incoherent for "
+                            f"Segment {segment_number}: {issue}"
+                        )
+                    console_log(
+                        f"Director Request 1 physical/spatial validation failed "
+                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                        f"retrying: {issue}",
+                        flush=True,
+                    )
+                    request1_messages = build_request1_retry_messages(
+                        f"PHYSICAL/SPATIAL: Fix this physical/spatial problem: {issue}"
+                    )
+                    continue
+
+                try:
+                    prop_state = validate_director_raw_scene_prop_state(
+                        current_beat_text,
+                        raw_scene,
+                        previous_shot_end=previous_shot_end,
+                        prop_ledger=prop_ledger,
+                        static_setting_description=static_setting_description,
+                        history_metadata=validator_metadata,
+                    )
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    prop_state = {
+                        "valid": False,
+                        "issue": f"RAW prop/state validator failed: {error}",
+                    }
+
+                if not prop_state["valid"]:
+                    issue = prop_state["issue"] or (
+                        "RAW SCENE has inconsistent prop, transfer, or final object state."
+                    )
+                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                        raise BeatGenerationError(
+                            f"Director Request 1 remained prop/state incoherent for "
+                            f"Segment {segment_number}: {issue}"
+                        )
+                    console_log(
+                        f"Director Request 1 prop/state validation failed "
+                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                        f"retrying: {issue}",
+                        flush=True,
+                    )
+                    request1_messages = build_request1_retry_messages(
+                        f"PROP/STATE: Fix this prop/state problem: {issue}"
+                    )
+                    continue
+
+                try:
+                    timing = validate_director_raw_scene_timing(
+                        raw_scene,
                         history_metadata={
                             "run_id": run_id,
                             "source_sha256": (run_config or {}).get("source_sha256"),
@@ -31552,36 +35200,33 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     ValueError,
                     TypeError,
                 ) as error:
-                    coherence = {
+                    timing = {
                         "valid": False,
-                        "issue": f"RAW coherence validator failed: {error}",
+                        "issue": f"RAW timing validator failed: {error}",
                     }
 
-                if not coherence["valid"]:
+                if not timing["valid"]:
                     issue = (
-                        coherence["issue"]
-                        or "RAW SCENE has an impossible physical/action order."
+                        timing["issue"]
+                        or "RAW SCENE compresses a physical transition into too little visible time."
                     )
                     if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
                         raise BeatGenerationError(
-                            f"Director Request 1 remained physically incoherent for "
+                            f"Director Request 1 remained physically over-compressed for "
                             f"Segment {segment_number}: {issue}"
                         )
                     console_log(
-                        f"Director Request 1 physical/order coherence failed "
+                        f"Director Request 1 timing feasibility failed "
                         f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
                         f"retrying: {issue}",
                         flush=True,
                     )
-                    request1_messages = copy.deepcopy(request1_base_messages)
-                    if request1_messages:
-                        request1_messages[-1] = dict(request1_messages[-1])
-                        request1_messages[-1]["content"] = (
-                            f"{request1_messages[-1].get('content', '')}\n\n"
-                            f"RETRY: Fix this physical/action-order problem: {issue} "
-                            "Keep CURRENT BEAT and its outcome unchanged. Do not begin "
-                            "NEXT BEAT."
-                        )
+                    request1_messages = build_request1_retry_messages(
+                        "TIMING: "
+                        + issue
+                        + " Give required travel and prerequisite actions enough visible "
+                        "time by simplifying optional staging and/or redistributing timestamps."
+                    )
                     continue
 
             # Baseline-reset rule: old deterministic Director guards report
@@ -31698,14 +35343,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             "retrying the same segment.",
             flush=True,
         )
-        request1_messages = copy.deepcopy(request1_base_messages)
-        if request1_messages:
-            request1_messages[-1] = dict(request1_messages[-1])
-            request1_messages[-1]["content"] = (
-                f"{request1_messages[-1].get('content', '')}\n\n"
-                "RETRY: Return a non-empty timed RAW SCENE for CURRENT BEAT. "
-                "Do not begin NEXT BEAT."
-            )
+        request1_messages = build_request1_retry_messages(
+            "SHOT SCRIPT: Return a non-empty timed RAW SCENE for CURRENT BEAT."
+        )
 
     if request1_result is None or not raw_scene:
         raise BeatGenerationError(
@@ -31966,8 +35606,26 @@ def load_generated_prompts_file(path=GENERATED_PROMPTS_FILE):
         raise ValueError("generated_prompts.txt has an unsupported format.")
     config = payload.get("config")
     prompts = payload.get("prompts")
+    reference_jobs = payload.get("reference_jobs", [])
     if not isinstance(config, dict) or not isinstance(prompts, list) or not prompts:
         raise ValueError("generated_prompts.txt is missing config or prompts.")
+    if not isinstance(reference_jobs, list):
+        raise ValueError("generated_prompts.txt reference_jobs must be a list.")
+    for job in reference_jobs:
+        if (
+            not isinstance(job, dict)
+            or job.get("kind") not in {
+                "location_reference",
+                "character_reference",
+            }
+            or not isinstance(job.get("job_id"), str)
+            or not job["job_id"].strip()
+            or not isinstance(job.get("before_segment"), int)
+            or job["before_segment"] < 1
+        ):
+            raise ValueError(
+                "generated_prompts.txt contains an invalid reference job."
+            )
     for expected_segment, record in enumerate(prompts, start=1):
         if (
             not isinstance(record, dict)
@@ -31980,6 +35638,100 @@ def load_generated_prompts_file(path=GENERATED_PROMPTS_FILE):
                 f"record at segment {expected_segment}."
             )
     return payload
+
+
+def _saved_reference_job_identity_image(identity_source):
+    """Resolve one saved character-reference dependency at ComfyUI render time."""
+    source = identity_source if isinstance(identity_source, dict) else {}
+    kind = str(source.get("kind") or "none").strip()
+    if kind == "none":
+        return ""
+    if kind == "configured_picture":
+        image_name = str(source.get("image_name") or "").strip()
+        if not image_name:
+            raise ValueError(
+                "Saved configured-picture identity source has no image_name."
+            )
+        return image_name
+    if kind == "generated_reference":
+        reference = source.get("reference")
+        if not isinstance(reference, dict):
+            raise ValueError(
+                "Saved generated-reference identity source has no reference metadata."
+            )
+        return stage_character_reference_image(reference)
+    raise ValueError(f"Unknown saved identity source kind: {kind!r}")
+
+
+def render_saved_reference_jobs(
+    reference_jobs,
+    visual_style=DEFAULT_VISUAL_STYLE,
+):
+    """Execute immutable saved reference jobs in package order."""
+    location_reference_video_path = ""
+    completed = set()
+    for job in reference_jobs or []:
+        job_id = str(job.get("job_id") or "").strip()
+        if not job_id or job_id in completed:
+            raise ValueError(
+                f"Duplicate or empty saved reference job id: {job_id!r}."
+            )
+        kind = str(job.get("kind") or "").strip()
+        if kind == "location_reference":
+            location_reference_video_path = render_location_reference_video(
+                job["setting_description"],
+                float(job["megapixels"]),
+                int(job["steps"]),
+                loras=normalize_lora_list(job.get("loras", [])),
+                noise_seed=int(job["noise_seed"]),
+            )
+        elif kind == "character_reference":
+            output_reference = job.get("output_reference")
+            if not isinstance(output_reference, dict):
+                raise ValueError(
+                    f"Saved character reference job {job_id!r} has no output_reference."
+                )
+            expected_path = os.path.abspath(
+                str(output_reference.get("image_path") or "")
+            )
+            if (
+                expected_path
+                and os.path.isfile(expected_path)
+                and os.path.getsize(expected_path) > 0
+            ):
+                console_log(
+                    f"Reusing completed saved character reference: {expected_path}",
+                    flush=True,
+                )
+                completed.add(job_id)
+                continue
+            identity_image_name = _saved_reference_job_identity_image(
+                job.get("identity_source")
+            )
+            actual_path = render_character_reference_image(
+                job["character_name"],
+                job["character_description"],
+                int(job["picture_number"]),
+                int(job["version"]),
+                float(job["megapixels"]),
+                int(job["steps"]),
+                loras=normalize_lora_list(job.get("loras", [])),
+                identity_image_name=identity_image_name,
+                noise_seed=int(job["noise_seed"]),
+                file_token=str(job.get("file_token") or ""),
+                visual_style=job.get("visual_style", visual_style),
+            )
+            if expected_path and os.path.abspath(actual_path) != expected_path:
+                raise RuntimeError(
+                    f"Saved character reference job {job_id!r} produced "
+                    f"{actual_path!r}; expected {expected_path!r}."
+                )
+        else:
+            raise ValueError(
+                f"Unknown saved reference job kind: {kind!r}."
+            )
+        completed.add(job_id)
+    return location_reference_video_path
 
 
 def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
@@ -32012,8 +35764,24 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
     refresh_interval = config.get("refresh_interval")
     macro_arc = payload.get("macro_arc")
     total_segments = len(prompts)
+    reference_jobs = payload.get("reference_jobs", [])
+    location_reference_video_path = str(
+        config.get("location_reference_video") or ""
+    ).strip()
 
     validate_runtime_environment()
+    if reference_jobs:
+        console_log(
+            f"Rendering {len(reference_jobs)} saved reference job(s) before "
+            "story segments.",
+            flush=True,
+        )
+        planned_location_path = render_saved_reference_jobs(
+            reference_jobs,
+            visual_style=config.get("visual_style", DEFAULT_VISUAL_STYLE),
+        )
+        if planned_location_path:
+            location_reference_video_path = planned_location_path
     generated_video_paths = []
     previous_video_path = None
     console_log(
@@ -32044,6 +35812,9 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
         if not isinstance(continuity_state, dict):
             continuity_state = {}
         continuity_summary = str(record.get("continuity_summary") or "")
+        character_reference_images = normalize_character_reference_images(
+            record.get("character_reference_images", {})
+        )
         (
             _workflow,
             video_path,
@@ -32064,6 +35835,9 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
             continuity_summary=continuity_summary,
             subject_definitions=subject_definitions,
             segment_length=segment_length,
+            location_reference_video_path=location_reference_video_path,
+            character_reference_images=character_reference_images,
+            excluded_picture_ids=record.get("excluded_picture_ids", []),
         )
         previous_video_path = _append_unique_video_path(
             generated_video_paths,
@@ -32106,6 +35880,26 @@ def prepare_new_generation():
         except FileNotFoundError:
             pass
     console_log("New run: cleared beats and generated planning checkpoints.", flush=True)
+
+
+def clear_state_media_output():
+    """Remove all prior generated files and directories from video/state."""
+    state_directory = os.path.abspath(STATE_MEDIA_OUTPUT)
+    os.makedirs(state_directory, exist_ok=True)
+    for name in os.listdir(state_directory):
+        path = os.path.join(state_directory, name)
+        try:
+            if os.path.islink(path) or not os.path.isdir(path):
+                os.remove(path)
+            else:
+                shutil.rmtree(path)
+        except FileNotFoundError:
+            pass
+        except OSError as error:
+            raise RuntimeError(
+                f"Could not clear prior run state from {path}: {error}"
+            ) from error
+    console_log("Run start: cleared files and folders in the video state directory.", flush=True)
 
 
 def require_existing_beats(path, total_segments):
@@ -32164,8 +35958,12 @@ def _run_main(
             "arc/beat generation is disabled.",
             flush=True,
         )
-    configure_story_temperature(getattr(args, "temp", 0.8))
+    configure_story_temperature(
+        getattr(args, "temp", DEFAULT_STORY_TEMPERATURE)
+    )
     configure_formatter(getattr(args, "model", "gpt"))
+    requested_visual_style = getattr(args, "visual_style", None)
+    visual_style = normalize_visual_style(requested_visual_style)
     global_loras = normalize_lora_list(getattr(args, "lora", ()))
     lora_directory = getattr(args, "lora_dir", LORA_DIRECTORY)
     repair_segment = getattr(args, "repair", None)
@@ -32177,6 +35975,7 @@ def _run_main(
             steps=args.steps,
             global_loras=global_loras,
             no_music=getattr(args, "no_music", False),
+            visual_style=requested_visual_style,
         )
     run_id = str(uuid.uuid4())
 
@@ -32312,25 +36111,62 @@ def _run_main(
             f"One-beat-per-segment requires exactly {total_segments} beats for "
             f"{total_segments} segments, but beats.txt contains {len(beats)} beats."
         )
+    expanded_story_context = load_text_file(
+        EXPANDED_STORY_FILE,
+        required=False,
+    )
+    if expanded_story_context:
+        character_canon = canonicalize_defined_subject_wardrobes(
+            character_canon,
+            expanded_story_context,
+            base_subject_definitions,
+            canonical_data=canonical_data,
+            history_metadata={"run_id": run_id},
+        )
+        subject_information = format_beat_generation_subjects(
+            subject_definitions
+        )
+        canonical_character_facts = format_character_canon_for_beats(
+            character_canon
+        )
+        if canonical_character_facts:
+            subject_information = (
+                subject_information + "\n" + canonical_character_facts
+            ).strip()
+        canonical_subject_names, canonical_subject_genders = (
+            canonical_character_subject_hints(character_canon)
+        )
+        canonical_subject_descriptions = (
+            canonical_character_subject_descriptions(character_canon)
+        )
+
     if generate_beats_only:
-        console_log("Story arc and beats generated successfully.", flush=True)
+        console_log(
+            "Story arc, beats, and defined-Subject canonical attire generated successfully.",
+            flush=True,
+        )
         return
 
     story_location_metadata = {}
     if resume_segment == 1:
-        expanded_story_for_locations = load_text_file(
-            EXPANDED_STORY_FILE,
-            required=False,
-        )
-        if expanded_story_for_locations:
+        if expanded_story_context:
             story_location_metadata = extract_story_locations(
-                expanded_story_for_locations,
+                expanded_story_context,
                 history_metadata={"run_id": run_id},
+            )
+            story_location_metadata["setting_description"] = (
+                extract_story_setting_description(
+                    expanded_story_context,
+                    story_location_metadata["overall_location"],
+                    visual_style=visual_style,
+                    history_metadata={"run_id": run_id},
+                )
             )
             console_log(
                 "Story location metadata: "
                 f"overall={story_location_metadata['overall_location']!r}; "
-                f"starting={story_location_metadata['starting_location']!r}",
+                f"starting={story_location_metadata['starting_location']!r}; "
+                f"setting={story_location_metadata['setting_description']!r}",
                 flush=True,
             )
         else:
@@ -32376,6 +36212,9 @@ def _run_main(
         raise
 
     saved_prompt_prefix = []
+    saved_reference_jobs = []
+    saved_reference_file_token = ""
+    saved_visual_style = ""
     if resume_segment > 1 and os.path.isfile(GENERATED_PROMPTS_FILE):
         try:
             previous_payload = load_generated_prompts_file(
@@ -32386,6 +36225,22 @@ def _run_main(
                 for record in previous_payload.get("prompts", [])
                 if int(record.get("segment", 0)) < resume_segment
             ]
+            saved_reference_jobs = [
+                copy.deepcopy(job)
+                for job in previous_payload.get("reference_jobs", [])
+                if (
+                    isinstance(job, dict)
+                    and int(job.get("before_segment", 0)) < resume_segment
+                )
+            ]
+            previous_config = previous_payload.get("config")
+            if isinstance(previous_config, dict):
+                saved_reference_file_token = str(
+                    previous_config.get("reference_file_token") or ""
+                ).strip()
+                saved_visual_style = str(
+                    previous_config.get("visual_style") or ""
+                ).strip()
         except Exception as error:
             console_log(
                 f"WARNING: could not reuse saved prompt prefix during "
@@ -32393,6 +36248,9 @@ def _run_main(
                 "current resume point.",
                 flush=True,
             )
+    if requested_visual_style is None and saved_visual_style:
+        visual_style = normalize_visual_style(saved_visual_style)
+
     generated_prompts_payload = {
         "version": 1,
         "config": {
@@ -32403,12 +36261,24 @@ def _run_main(
             "trim_frames": trim_frames,
             "refresh_interval": refresh_interval,
             "total_segments": total_segments,
+            "visual_style": visual_style,
+            "disable_subject_removal": bool(
+                getattr(args, "disable_subject_removal", False)
+            ),
+            "subject_removal_window_segments": max(
+                1, int(math.ceil(float(total_segments) / 2.0))
+            ),
+            "reference_file_token": (
+                saved_reference_file_token
+                or run_id.replace("-", "")[:12]
+            ),
             "reference_image_overrides": {
                 str(number): path
                 for number, path in REFERENCE_IMAGE_OVERRIDES.items()
             },
         },
         "macro_arc": copy.deepcopy(macro_arc),
+        "reference_jobs": saved_reference_jobs,
         "prompts": saved_prompt_prefix,
     }
     save_generated_prompts_file(generated_prompts_payload)
@@ -32439,6 +36309,10 @@ def _run_main(
         retention=retention,
         test_prompt_generation=test_prompt_generation,
         no_music=getattr(args, "no_music", False),
+        disable_subject_removal=bool(
+            getattr(args, "disable_subject_removal", False)
+        ),
+        visual_style=visual_style,
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
@@ -32460,16 +36334,16 @@ def _run_main(
             subject_definitions,
             new_continuity_state(),
         )
-        continuity_state = seed_story_wardrobe(
+        continuity_state = seed_canonical_opening_wardrobe(
             subject_definitions,
-            story,
+            expanded_story_context or story,
+            character_canon,
             continuity_state,
         )
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
         )
         generation_state["continuity_state"] = {}
-        continuity_summary_pending = False
         # Bind the first segment to the current subjects.txt definitions before
         # any Director or H3 work begins. Later segments are checked against
         # this append-only identity contract.
@@ -32532,16 +36406,16 @@ def _run_main(
                 subject_definitions,
                 new_continuity_state(),
             )
-            continuity_state = seed_story_wardrobe(
+            continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 continuity_state,
             )
             generation_state["subject_registry_state"] = migrate_continuity_state(
                 continuity_state
             )
             generation_state["continuity_state"] = {}
-            continuity_summary_pending = False
             validate_subject_identity_state(
                 generation_state,
                 base_subject_definitions,
@@ -32570,8 +36444,32 @@ def _run_main(
                 subject_definitions,
                 restored["subject_registry_state"],
             )
-            continuity_summary_pending = restored["continuity_summary_pending"]
             generation_state.pop("additional_subject_definitions", None)
+
+    prop_ledger = normalize_prop_ledger(
+        generation_state.get("prop_ledger", {})
+    )
+    generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
+    character_reference_images = normalize_character_reference_images(
+        generation_state.get("character_reference_images", {})
+    )
+    base_reference_image_count = generation_state.get(
+        "base_reference_image_count"
+    )
+    reference_binding_state = copy.deepcopy(
+        generation_state.get("reference_binding_state", {})
+    )
+    if not isinstance(reference_binding_state, dict):
+        reference_binding_state = {}
+    reference_binding_state["disable_subject_removal"] = bool(
+        getattr(args, "disable_subject_removal", False)
+    )
+    reference_binding_state["subject_removal_window_segments"] = (
+        subject_removal_window_segments(total_segments)
+    )
+    generation_state["reference_binding_state"] = copy.deepcopy(
+        reference_binding_state
+    )
 
     # A prefetched prompt belongs to a live executor/Future. It cannot be
     # trusted after process restart unless that Future is restored as well.
@@ -32599,6 +36497,98 @@ def _run_main(
         """Serialize the shared checkpoint without racing a prefetch worker."""
         with generation_state_lock:
             save_generation_state(generation_state)
+
+    location_metadata = (
+        generation_state.get("metadata")
+        if isinstance(generation_state.get("metadata"), dict)
+        else {}
+    )
+    location_setting_description = str(
+        location_metadata.get("setting_description")
+        or location_metadata.get("overall_location")
+        or ""
+    ).strip()
+    location_reference_video_path = str(
+        location_metadata.get("location_reference_video")
+        or ""
+    ).strip()
+
+    if location_setting_description:
+        generated_prompts_payload["config"]["setting_description"] = (
+            location_setting_description
+        )
+
+    if not test_prompt_generation and location_setting_description:
+        if (
+            not location_reference_video_path
+            or not os.path.isfile(location_reference_video_path)
+            or os.path.getsize(location_reference_video_path) == 0
+        ):
+            console_log()
+            console_log("=" * 64)
+            console_log("LOCATION STATE REFERENCE")
+            console_log("=" * 64)
+            console_log(
+                f"Setting: {location_setting_description}\n"
+                "Rendering one character-free 2-second panoramic reference.",
+                flush=True,
+            )
+            location_reference_video_path = render_location_reference_video(
+                location_setting_description,
+                megapixels,
+                args.steps,
+                loras=global_loras,
+            )
+            location_metadata["location_reference_video"] = (
+                location_reference_video_path
+            )
+            generation_state["metadata"] = location_metadata
+            generated_prompts_payload["config"]["location_reference_video"] = (
+                location_reference_video_path
+            )
+            generated_prompts_payload["config"]["setting_description"] = (
+                location_setting_description
+            )
+            save_generated_prompts_file(generated_prompts_payload)
+            checkpoint_generation_state()
+        else:
+            console_log(
+                f"Reusing location reference: {location_reference_video_path}",
+                flush=True,
+            )
+        if location_reference_video_path:
+            generated_prompts_payload["config"]["location_reference_video"] = (
+                location_reference_video_path
+            )
+            generated_prompts_payload["config"]["setting_description"] = (
+                location_setting_description
+            )
+            save_generated_prompts_file(generated_prompts_payload)
+    elif test_prompt_generation and location_setting_description:
+        if not any(
+            isinstance(job, dict)
+            and job.get("job_id") == "location:primary"
+            for job in generated_prompts_payload["reference_jobs"]
+        ):
+            generated_prompts_payload["reference_jobs"].insert(0, {
+                "job_id": "location:primary",
+                "kind": "location_reference",
+                "before_segment": 1,
+                "setting_description": location_setting_description,
+                "megapixels": float(megapixels),
+                "steps": int(args.steps),
+                "loras": [
+                    list(item)
+                    for item in normalize_lora_list(global_loras)
+                ],
+                "noise_seed": generate_random_seed(),
+            })
+        save_generated_prompts_file(generated_prompts_payload)
+        console_log(
+            "Prompt-only mode planned the persistent location reference for "
+            "the later ComfyUI pass.",
+            flush=True,
+        )
 
     console_log()
     console_log("=" * 64)
@@ -32699,6 +36689,31 @@ def _run_main(
             f"({len(phrase_exclusions)} {exclusion_count_label})."
         )
     verify_global_loras(global_loras, lora_directory)
+    if base_reference_image_count is None:
+        base_reference_image_count = active_configured_reference_count()
+        generation_state["base_reference_image_count"] = (
+            int(base_reference_image_count)
+        )
+        checkpoint_generation_state()
+    else:
+        base_reference_image_count = int(base_reference_image_count)
+    console_log(
+        f"Active base Picture references: {base_reference_image_count}",
+        flush=True,
+    )
+    console_log(
+        "Subject reference removal: "
+        + (
+            "disabled; previously seen Subjects remain bound"
+            if getattr(args, "disable_subject_removal", False)
+            else (
+                "enabled after "
+                f"{subject_removal_window_segments(total_segments)} segment(s) "
+                "without explicit visual appearance"
+            )
+        ),
+        flush=True,
+    )
     console_log(
         "Workflow validation passed."
         if not test_prompt_generation
@@ -32726,6 +36741,7 @@ def _run_main(
         opening_state,
         opening_summary_text,
         dialogue_exclusions,
+        prop_ledger_state,
     ):
         conditioning_mode = conditioning_mode_for_segment(
             segment_number,
@@ -32748,6 +36764,12 @@ def _run_main(
                 ).hexdigest(),
                 "subject_definitions_sha256": hashlib.sha256(
                     str(subject_definitions or "").encode("utf-8")
+                ).hexdigest(),
+                "static_setting_sha256": hashlib.sha256(
+                    str(location_setting_description or "").encode("utf-8")
+                ).hexdigest(),
+                "prop_ledger_sha256": hashlib.sha256(
+                    format_prop_ledger_for_prompt(prop_ledger_state).encode("utf-8")
                 ).hexdigest(),
             },
             ensure_ascii=False,
@@ -32855,6 +36877,7 @@ def _run_main(
             )
             if conditioning_mode != "initial" else set()
         )
+        prop_ledger_snapshot = copy.deepcopy(prop_ledger)
         messages, estimated_tokens, recent_count = build_generation_messages(
             director_rules=segment_director_rules,
             story=story,
@@ -32873,6 +36896,8 @@ def _run_main(
             phrase_exclusions=phrase_exclusions,
             canonical_character_facts=canonical_character_facts,
             canonical_data=canonical_data,
+            static_setting_description=location_setting_description,
+            persistent_movable_prop_state=prop_ledger_snapshot,
         )
         return {
             "segment": segment_number,
@@ -32898,6 +36923,8 @@ def _run_main(
                 previous_result.get("non_diegetic_music") or ""
             ).strip(),
             "registry_state": opening_state,
+            "prop_ledger": prop_ledger_snapshot,
+            "static_setting_description": location_setting_description,
             "opening_summary": director_opening_summary,
             "h3_opening_summary": h3_opening_summary,
             "continuity_source": (
@@ -32916,6 +36943,7 @@ def _run_main(
                 opening_state,
                 director_opening_summary,
                 dialogue_exclusions,
+                prop_ledger_snapshot,
             ),
         }
 
@@ -33068,32 +37096,70 @@ def _run_main(
         request2_result_for_fixture = copy.deepcopy(payload["llm_result"])
         llm_result = dict(payload["llm_result"])
         raw_subject_names = []
+        raw_subject_descriptions = {}
+        raw_subject_wardrobes = {}
         accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
         resolved_raw_scene = accepted_raw_scene
-        try:
-            resolved_raw_scene, raw_subject_names = resolve_director_raw_scene_subjects(
-                accepted_raw_scene,
-                subject_definitions=subject_definitions,
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": run_config["source_sha256"],
-                    "segment": segment,
-                },
-                segment_seconds=segment_bundle["current_duration"],
+        subject_resolution_error = None
+        subject_resolution_succeeded = False
+        for subject_attempt in range(1, 3):
+            try:
+                (
+                    resolved_raw_scene,
+                    raw_subject_names,
+                    raw_subject_descriptions,
+                    raw_subject_wardrobes,
+                ) = resolve_director_raw_scene_subjects(
+                    accepted_raw_scene,
+                    subject_definitions=subject_definitions,
+                    return_subject_bootstrap=True,
+                    story_context=expanded_story_context,
+                    current_beat=segment_bundle.get("current_beat_text", ""),
+                    history_metadata={
+                        "run_id": run_id,
+                        "source_sha256": run_config["source_sha256"],
+                        "segment": segment,
+                        "attempt": subject_attempt,
+                    },
+                    segment_seconds=segment_bundle["current_duration"],
+                )
+                subject_resolution_succeeded = True
+                break
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+            ) as error:
+                subject_resolution_error = error
+                if subject_attempt < 2:
+                    console_log(
+                        f"RAW Subject resolution failed for Segment {segment} "
+                        f"(attempt {subject_attempt}/2); retrying: {error}",
+                        flush=True,
+                    )
+        if not subject_resolution_succeeded:
+            raise BeatGenerationError(
+                f"RAW Subject resolution failed for Segment {segment} after "
+                f"2 attempts: {subject_resolution_error}"
             )
-        except (
-            LLMConnectionError,
-            requests.RequestException,
-            OSError,
-            ValueError,
-            TypeError,
-        ) as error:
+        resolved_raw_scene, carried_final_subjects = (
+            _director_carry_forward_final_subjects(
+                resolved_raw_scene,
+                subject_definitions=subject_definitions,
+                resolved_subject_names=raw_subject_names,
+            )
+        )
+        if carried_final_subjects:
             console_log(
-                f"WARNING: RAW Subject resolution failed for Segment {segment}; "
-                f"using accepted RAW unchanged: {error}",
+                f"Segment {segment} deterministic final-participant carry-forward: "
+                + ", ".join(carried_final_subjects),
                 flush=True,
             )
         payload["raw_scene"] = resolved_raw_scene
+        if isinstance(payload.get("request1_result"), dict):
+            payload["request1_result"]["raw_scene"] = resolved_raw_scene
         llm_result["detailed_description"] = inject_persistent_state_into_description(
             _raw_scene_timed_description(resolved_raw_scene),
         )
@@ -33133,6 +37199,14 @@ def _run_main(
         formatter_subject_names = list(formatter_subject_genders)
         registration_subject_genders = dict(formatter_subject_genders)
         registration_subject_genders.update(canonical_subject_genders)
+        for subject_name, description in raw_subject_descriptions.items():
+            description_text = str(description or "")
+            if re.search(r"(?i)\b(?:female|woman|girl)\b", description_text):
+                registration_subject_genders[subject_name] = "female"
+            elif re.search(r"(?i)\b(?:male|man|boy)\b", description_text):
+                registration_subject_genders[subject_name] = "male"
+        registration_subject_descriptions = dict(raw_subject_descriptions)
+        registration_subject_descriptions.update(canonical_subject_descriptions)
         continuity_state, hinted_subject_names = register_named_subject_hints(
             continuity_state,
             subject_definitions,
@@ -33144,11 +37218,26 @@ def _run_main(
             )),
             origin_segment=segment,
             subject_genders=registration_subject_genders,
-            subject_descriptions=canonical_subject_descriptions,
+            subject_descriptions=registration_subject_descriptions,
+            subject_wardrobes=raw_subject_wardrobes,
         )
         newly_registered_names = list(dict.fromkeys(
             dialogue_subject_names + hinted_subject_names
         ))
+        missing_resolved_subjects = [
+            name
+            for name in raw_subject_names
+            if _find_existing_subject_name(
+                continuity_state.get("subjects", {}),
+                name,
+            ) is None
+        ]
+        if missing_resolved_subjects:
+            raise BeatGenerationError(
+                f"Segment {segment} resolved dynamic Subject(s) that were not "
+                "registered before H3 assembly: "
+                + ", ".join(missing_resolved_subjects)
+            )
         if newly_registered_names:
             previous_dynamic_definitions = list(additional_subject_definitions)
             additional_subject_definitions, new_subject_lines = (
@@ -33170,6 +37259,11 @@ def _run_main(
             generation_state["subject_registry_state"] = migrate_continuity_state(
                 continuity_state
             )
+            generation_state["subject_state_ledger"] = merge_subject_state_ledger(
+                generation_state.get("subject_state_ledger", {}),
+                continuity_state,
+                segment_number=segment,
+            )
             console_log("Registered new Subject definition(s) before H3 prompt:")
             for definition in new_subject_lines:
                 console_log(f"  {definition}")
@@ -33190,20 +37284,111 @@ def _run_main(
                 llm_result,
                 continuity_state,
             )
+        prior_clothing_reference_description = ""
+        if recent_results:
+            prior_segment_number, prior_result = recent_results[-1]
+            try:
+                immediate_prior = int(prior_segment_number) == int(segment) - 1
+            except (TypeError, ValueError):
+                immediate_prior = False
+            if immediate_prior and isinstance(prior_result, dict):
+                prior_clothing_reference_description = get_detailed_description(
+                    prior_result
+                )
+        if test_prompt_generation:
+            character_reference_images, changed_character_references = (
+                plan_character_reference_images(
+                    detailed_description,
+                    subject_definitions,
+                    continuity_state,
+                    character_reference_images,
+                    base_reference_image_count,
+                    megapixels,
+                    args.steps,
+                    segment_number=segment,
+                    reference_jobs=generated_prompts_payload["reference_jobs"],
+                    file_token=generated_prompts_payload["config"].get(
+                        "reference_file_token", ""
+                    ),
+                    subject_descriptions=canonical_subject_descriptions,
+                    loras=global_loras,
+                    prior_detailed_description=prior_clothing_reference_description,
+                    visual_style=visual_style,
+                )
+            )
+        else:
+            character_reference_images, changed_character_references = (
+                ensure_character_reference_images(
+                    detailed_description,
+                    subject_definitions,
+                    continuity_state,
+                    character_reference_images,
+                    base_reference_image_count,
+                    megapixels,
+                    args.steps,
+                    subject_descriptions=canonical_subject_descriptions,
+                    loras=global_loras,
+                    prior_detailed_description=prior_clothing_reference_description,
+                    visual_style=visual_style,
+                )
+            )
+        if changed_character_references:
+            generation_state["character_reference_images"] = copy.deepcopy(
+                character_reference_images
+            )
+            checkpoint_generation_state()
+            console_log(
+                (
+                    "Planned character reference(s): "
+                    if test_prompt_generation
+                    else "Updated character reference(s): "
+                )
+                + ", ".join(changed_character_references),
+                flush=True,
+            )
+        (
+            segment_character_reference_images,
+            h3_subject_definitions,
+            reference_binding_state,
+            segment_reference_binding_snapshot,
+        ) = build_segment_reference_bindings(
+            segment_number=segment,
+            total_segments=total_segments,
+            detailed_description=payload.get("raw_scene", detailed_description),
+            subject_definitions=subject_definitions,
+            character_references=character_reference_images,
+            base_reference_count=base_reference_image_count,
+            binding_state=reference_binding_state,
+            disable_subject_removal=bool(
+                getattr(args, "disable_subject_removal", False)
+            ),
+        )
+        generation_state["reference_binding_state"] = copy.deepcopy(
+            reference_binding_state
+        )
+        checkpoint_generation_state()
         previous_visible_subject_ids = extract_previous_visible_subject_ids(
             recent_results,
             segment,
             subject_definitions,
         )
+        segment_excluded_picture_ids = set(
+            segment_bundle.get("excluded_picture_ids") or ()
+        )
+        segment_excluded_picture_ids.update(
+            segment_reference_binding_snapshot.get(
+                "excluded_configured_picture_ids", []
+            )
+        )
         h3_prompt = build_h3_prompt(
             llm_result,
-            subject_definitions,
+            h3_subject_definitions,
             hard_cut_subject_continuity,
             payload["h3_opening_summary"],
             segment,
             ff=args.ff,
             conditioning_mode=segment_bundle["conditioning_mode"],
-            excluded_picture_ids=segment_bundle.get("excluded_picture_ids"),
+            excluded_picture_ids=segment_excluded_picture_ids,
             continuity_state=continuity_state,
             previous_visible_subject_ids=previous_visible_subject_ids,
             character_canon=character_canon,
@@ -33221,21 +37406,36 @@ def _run_main(
                 if isinstance(generation_state.get("metadata"), dict)
                 else ""
             ),
+            retained_subject_ids=segment_reference_binding_snapshot.get(
+                "active_subject_ids", []
+            ),
+            visual_style=visual_style,
         )
+        if (
+            location_setting_description
+            and (location_reference_video_path or test_prompt_generation)
+        ):
+            h3_prompt = inject_location_reference_into_h3_prompt(
+                h3_prompt,
+                location_setting_description,
+                conditioning_mode=segment_bundle["conditioning_mode"],
+            )
+
         # detailed_description is copied directly from canonical cleaned RAW,
         # so action preservation is deterministic by construction.
-        h3_action_validation = {
-            "valid": True,
-            "issues": [],
-            "observations": [],
-        }
-
         generated_prompts_payload["prompts"].append({
             "segment": int(segment),
             "duration": float(segment_bundle["current_duration"]),
             "conditioning_mode": segment_bundle["conditioning_mode"],
             "h3_prompt": h3_prompt,
-            "subject_definitions": subject_definitions,
+            "subject_definitions": h3_subject_definitions,
+            "character_reference_images": copy.deepcopy(
+                segment_character_reference_images
+            ),
+            "reference_bindings": copy.deepcopy(
+                segment_reference_binding_snapshot
+            ),
+            "excluded_picture_ids": sorted(segment_excluded_picture_ids),
             "continuity_state": copy.deepcopy(continuity_state),
             "continuity_summary": payload.get(
                 "h3_opening_summary",
@@ -33321,6 +37521,7 @@ def _run_main(
                 barrier_binding=build_director_barrier_binding_contract(
                     segment_bundle.get("assigned_state_effects", [])
                 ),
+                committed_prop_ledger=copy.deepcopy(prop_ledger),
             )
             console_log(
                 f"Combined continuity requested for segment {segment} "
@@ -33413,7 +37614,10 @@ def _run_main(
                     payload.get("h3_opening_summary", ""),
                 ),
                 "request2_result": request2_result_for_fixture,
-                "subject_definitions": subject_definitions,
+                "subject_definitions": h3_subject_definitions,
+                "reference_bindings": copy.deepcopy(
+                    segment_reference_binding_snapshot
+                ),
                 "loras": loras,
             }
         render_future = None
@@ -33446,10 +37650,13 @@ def _run_main(
                     "h3_opening_summary",
                     segment_bundle.get("h3_opening_summary", ""),
                 ),
-                subject_definitions=subject_definitions,
+                subject_definitions=h3_subject_definitions,
                 segment_length=segment_length,
                 h3_fixture_context=h3_fixture_context,
                 h3_fixture_path=h3_fixture_path if h3_fixture_context else None,
+                location_reference_video_path=location_reference_video_path,
+                character_reference_images=segment_character_reference_images,
+                excluded_picture_ids=segment_excluded_picture_ids,
             )
             render_futures_by_segment[int(segment)] = render_future
             # A cadence-skipped final render must still be completed on the main
@@ -33488,18 +37695,24 @@ def _run_main(
                         copy.deepcopy(continuity_state),
                     ),
                     "opening_state": "",
+                    "prop_ledger": copy.deepcopy(prop_ledger),
                 }
 
         if continuity_pipeline_result is not None:
             prompt_reduced_continuity_state = copy.deepcopy(
                 continuity_pipeline_result["reduced_state"]
             )
+            prop_ledger = normalize_prop_ledger(
+                continuity_pipeline_result.get("prop_ledger", prop_ledger)
+            )
+            generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
             # The source story is the only authority for the opening outfit;
             # restore it when the combined continuity response omitted the
             # still-unknown slots. Rendered observations below may override it.
-            prompt_reduced_continuity_state = seed_story_wardrobe(
+            prompt_reduced_continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 prompt_reduced_continuity_state,
             )
             if vision_required:
@@ -33521,6 +37734,7 @@ def _run_main(
                     copy.deepcopy(continuity_state),
                 ),
                 "opening_state": "",
+                "prop_ledger": copy.deepcopy(prop_ledger),
             }
             console_log(
                 f"WARNING: Segment {segment} prompt-derived continuity is "
@@ -33539,9 +37753,10 @@ def _run_main(
             prompt_reduced_continuity_state = clear_unrendered_wardrobes(
                 prompt_reduced_continuity_state
             )
-            prompt_reduced_continuity_state = seed_story_wardrobe(
+            prompt_reduced_continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 prompt_reduced_continuity_state,
             )
             prompt_only_opening_summary = request_continuity_opening_state(
@@ -33597,9 +37812,10 @@ def _run_main(
                 subject_definitions,
                 clear_unrendered_wardrobes(continuity_state),
             )
-            continuity_state = seed_story_wardrobe(
+            continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 continuity_state,
             )
         if appended_subject_lines:
@@ -33645,6 +37861,18 @@ def _run_main(
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
         )
+        generation_state["subject_state_ledger"] = merge_subject_state_ledger(
+            generation_state.get("subject_state_ledger", {}),
+            continuity_state,
+            segment_number=segment,
+        )
+        generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
+        generation_state["character_reference_images"] = copy.deepcopy(
+            character_reference_images
+        )
+        generation_state["base_reference_image_count"] = int(
+            base_reference_image_count
+        )
 
         # Persist the two-phase continuity working state before waiting for
         # ComfyUI's render response. The completed-segment record is
@@ -33663,9 +37891,10 @@ def _run_main(
             reduced_continuity_state = clear_unrendered_wardrobes(
                 prompt_reduced_continuity_state
             )
-            reduced_continuity_state = seed_story_wardrobe(
+            reduced_continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 reduced_continuity_state,
             )
             continuity_state = continuity_state_for_registry(
@@ -33686,6 +37915,7 @@ def _run_main(
                     completed_beat_ids,
                     continuity_summary,
                     continuity_state=reduced_continuity_state,
+                    prop_ledger=prop_ledger,
                     continuity_summary_pending=False,
                     subject_registry_state=continuity_state,
                 )
@@ -33694,6 +37924,13 @@ def _run_main(
                 )
                 completed_record["continuity_source"] = continuity_source
                 completed_record["h3_prompt"] = h3_prompt
+                completed_record["subject_definitions"] = h3_subject_definitions
+                completed_record["character_reference_images"] = copy.deepcopy(
+                    segment_character_reference_images
+                )
+                completed_record["reference_bindings"] = copy.deepcopy(
+                    segment_reference_binding_snapshot
+                )
                 generation_state["continuity_prompt_state"] = copy.deepcopy(
                     prompt_reduced_continuity_state
                 )
@@ -33747,8 +37984,16 @@ def _run_main(
             skipped_completed_beat_ids = sorted(set(completed_beat_ids))
             skipped_prompt_state = copy.deepcopy(prompt_reduced_continuity_state)
             skipped_registry_state = migrate_continuity_state(continuity_state)
+            skipped_prop_ledger = copy.deepcopy(prop_ledger)
             skipped_prompt_completed_beat_ids = list(prompt_completed_beat_ids)
             skipped_opening_summary = prompt_only_opening_summary
+            skipped_subject_definitions = str(h3_subject_definitions)
+            skipped_character_reference_images = copy.deepcopy(
+                segment_character_reference_images
+            )
+            skipped_reference_bindings = copy.deepcopy(
+                segment_reference_binding_snapshot
+            )
 
             # Finalize a segment whose vision check was skipped.
             def finalize_skipped_vision_segment(future):
@@ -33797,6 +38042,7 @@ def _run_main(
                         skipped_completed_beat_ids,
                         continuity_summary,
                         continuity_state=reduced_continuity_state,
+                        prop_ledger=skipped_prop_ledger,
                         continuity_summary_pending=False,
                         subject_registry_state=skipped_registry_state,
                     )
@@ -33807,6 +38053,13 @@ def _run_main(
                         skipped_prompt_state
                     )
                     completed_record["continuity_source"] = "prompt"
+                    completed_record["subject_definitions"] = skipped_subject_definitions
+                    completed_record["character_reference_images"] = copy.deepcopy(
+                        skipped_character_reference_images
+                    )
+                    completed_record["reference_bindings"] = copy.deepcopy(
+                        skipped_reference_bindings
+                    )
                     generation_state["continuity_source"] = "prompt"
                     if beats:
                         generation_state["beat_progress"] = {
@@ -33900,9 +38153,10 @@ def _run_main(
             reduced_continuity_state = clear_unrendered_wardrobes(
                 prompt_reduced_continuity_state
             )
-            reduced_continuity_state = seed_story_wardrobe(
+            reduced_continuity_state = seed_canonical_opening_wardrobe(
                 subject_definitions,
-                story,
+                expanded_story_context or story,
+                character_canon,
                 reduced_continuity_state,
             )
             console_log(
@@ -33968,6 +38222,7 @@ def _run_main(
         )
         generation_state["continuity_summary"] = continuity_summary
         generation_state["continuity_source"] = continuity_source
+        generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
 
         previous_video_path = _append_unique_video_path(
             generated_video_paths,
@@ -33987,6 +38242,7 @@ def _run_main(
                 completed_beat_ids,
                 continuity_summary,
                 continuity_state=reduced_continuity_state,
+                prop_ledger=prop_ledger,
                 continuity_summary_pending=False,
                 subject_registry_state=continuity_state,
             )
@@ -33994,6 +38250,13 @@ def _run_main(
                 prompt_reduced_continuity_state
             )
             completed_record["continuity_source"] = continuity_source
+            completed_record["subject_definitions"] = h3_subject_definitions
+            completed_record["character_reference_images"] = copy.deepcopy(
+                segment_character_reference_images
+            )
+            completed_record["reference_bindings"] = copy.deepcopy(
+                segment_reference_binding_snapshot
+            )
             generation_state["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state
             )
@@ -34205,6 +38468,7 @@ def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
 def main():
     reset_console_logs()
     console_log("Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
+    clear_state_media_output()
     recovery_resume_segment = None
     normalized_args = set(normalize_command_line(sys.argv[1:]))
     fail_fast_generation = bool(

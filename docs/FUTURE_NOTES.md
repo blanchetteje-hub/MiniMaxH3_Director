@@ -110,7 +110,7 @@ Keep the same general pattern used by current continuity invariants:
 This may become especially important for dialogue-heavy genres, where semantic beat structure can be correct while spoken content alone exceeds the available 5–30 second segment.
 
 
-## Persistent room geometry / navigable topology
+## (SOLVED) Persistent room geometry / navigable topology
 
 Observed production failure: a character can place other characters into one enclosed space and later use the same modeled door as though it leads somewhere incompatible, such as putting children in a closet and then opening that same door to enter a hallway.
 
@@ -127,4 +127,92 @@ Potential direction:
 
 Keep this deterministic and structural where possible. The purpose is not to build a full 3D scene graph; it is to prevent impossible navigation and identity reuse of doors/rooms across segments.
 
-Status: deferred. Current production work should not be blocked on this.
+Status: SOLVED.  3-second 360 orbit view of location.
+
+
+## Structured static-space catalog experiment
+
+Potential future implementation: expand the current prose setting extractor, or
+add one narrow companion call, that returns a JSON catalog of persistent static
+elements for the location reference.
+
+Possible fields could include:
+- entrances/barriers and whether multiple distinct instances are established;
+- fixed fixtures and landmarks;
+- persistent furniture;
+- major surfaces/architectural features;
+- lighting sources;
+- broad spatial relationships when explicitly supported.
+
+The purpose would be to compare the **textual static-space contract** against the
+generated location-reference video/prompt and reduce ambiguity such as one story
+door being described as a separate `back door`.
+
+Constraints:
+- Do not turn this into a full 3D scene graph.
+- Do not catalog action-only props or transient objects.
+- Do not invent counts, relative labels, or connectivity the story does not
+  establish.
+- Keep the 3-second persistent location-reference video as the visual continuity
+  mechanism; the JSON catalog would be supporting authority/validation only.
+
+Status: back-pocket experiment only. First evaluate the simpler relative-label
+extractor fix.
+
+
+## RefMod reference-conditioning experiment
+
+Potential future implementation: evaluate **RefMod / MiniMax H3 reference conditioning** as an optimization and continuity tool. Do not integrate it into the current pipeline until controlled tests show a meaningful advantage over the existing reference-image/video workflow.
+
+Two promising uses:
+
+- **Compressed previous-segment video reference:** encode/compress the prior segment into reusable RefMod conditioning to see whether we can retain most of the current continuation/visual-continuity benefit while reducing the substantial VRAM and generation-time cost of passing the full previous video as a reference.
+- **Persistent location reference:** create reusable RefMod conditioning for important environments/locations (potentially from multiple views or a short environment/panorama video) so recurring locations retain stronger visual identity and geometry across segments.
+
+Suggested validation:
+1. Same prompt/seed/segment with no continuation reference.
+2. Current full previous-segment video reference.
+3. Equivalent RefMod-conditioned previous-segment reference.
+4. Compare character/wardrobe consistency, props, location geometry, transition quality, generation time, and peak VRAM.
+5. Separately test persistent location RefMods against the existing location/reference-image approach.
+
+Important constraints:
+- Treat RefMod as **visual conditioning**, not authoritative continuity state. Python/canonical state remains the source of truth for subjects, props, locations, and transitions.
+- Compression may discard details, so do not assume it can replace full video references for precise identity or short-term continuity.
+- Do not replace existing character reference images unless direct A/B testing shows RefMod is superior.
+- Prefer this as an optimization/conditioning layer rather than another semantic planning stage.
+
+Status: back-pocket experiment only; not part of current production architecture.
+
+## Reusable standalone outfit-reference experiment
+
+Potential future implementation: generate/reference **outfits by themselves**, without a
+person wearing them, so one visual clothing asset can be applied to multiple different
+characters.
+
+Possible direction:
+- render or otherwise establish a clean isolated visual reference for the outfit itself;
+- treat that reference as clothing-only authority, never identity/body authority;
+- combine it with each target character's own identity Picture when producing the
+  character-specific outfit reference or final H3 conditioning;
+- allow the same outfit asset to be reused by Amy, another human, or another compatible
+  character without regenerating the garment design from scratch;
+- keep fit/body adaptation character-specific so one shared outfit asset does not force the
+  same body shape or proportions onto every wearer.
+
+Potential advantages:
+- fewer duplicated outfit-generation renders;
+- stronger consistency for uniforms, costumes, armor, team clothing, or recurring wardrobe
+  shared across multiple characters;
+- cleaner separation of identity authority from wardrobe authority.
+
+Risks to test:
+- whether H3 can reliably transfer an outfit-only reference onto a person without inventing
+  mannequin/body traits;
+- whether different body types/species cause fit or geometry artifacts;
+- whether identity and outfit references compete when both are supplied.
+
+Status: back-pocket experiment only. Current production architecture still generates a
+character-specific 1-second clothing reference, now conditioned by that character's
+identity Picture.
+
