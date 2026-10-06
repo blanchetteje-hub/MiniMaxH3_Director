@@ -512,6 +512,22 @@ DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "enable_thinking": True,
 }
 
+SMART_EXTRACTOR_LLM_SETTINGS = {
+    "temperature": 0,
+    "top_p": None,
+    "top_k": None,
+    "min_p": None,
+    "presence_penalty": None,
+    "frequency_penalty": None,
+    "repeat_penalty": 1.15,
+    "seed": BENCHMARK_SEED,
+    "reasoning_effort": "medium",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
+    "context_token_budget": 8192,
+}
+
 BEAT_WRITING_LLM_PURPOSES = frozenset({
     "beat_generation",
     "beat_repair",
@@ -530,6 +546,11 @@ DIRECTOR_RAW_SCENE_LLM_PURPOSES = frozenset({
 
 MUSIC_GENERATION_LLM_PURPOSES = frozenset({
     "director_h3_music",
+})
+
+SMART_EXTRACTOR_LLM_PURPOSES = frozenset({
+    "story_setting_spatial_refine",
+    "story_setting_extract",
 })
 
 DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
@@ -557,7 +578,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "macro_arc_validate",
     "source_unit_state_effects",
     "story_location_extract",
-    "story_setting_extract",
+    "story_setting_seed_extract",
     "story_subject_wardrobe_extract",
     "subject_continuity",
     "visual_end_state",
@@ -6810,6 +6831,7 @@ def new_generation_state(run_config):
         "visual_end_state": {},
         "visual_end_frame_paths": [],
         "prop_ledger": {},
+        "location_state": {},
         "subject_state_ledger": {},
         "character_reference_images": {},
         "base_reference_image_count": None,
@@ -6878,6 +6900,8 @@ def load_generation_state(path=GENERATION_STATE_FILE):
 
     if not isinstance(state, dict):
         raise RuntimeError("Generation checkpoint must contain a JSON object.")
+    if not isinstance(state.get("location_state"), dict):
+        state["location_state"] = {}
     _canonicalize_generation_state_continuity(state)
     _canonicalize_generation_state_subjects(state)
     _canonicalize_generation_state_props(state)
@@ -7834,19 +7858,16 @@ def connect_named_connection(
 # Restore the complete append video-to-conditioning graph by node title.
 def build_location_reference_h3_prompt(setting_description):
     """Build the character-free three-second persistent location reference prompt."""
-    setting = " ".join(str(setting_description or "").split()).strip(" .")
+    setting = str(setting_description or "").strip()
     if not setting:
         raise ValueError("Location reference requires a setting description.")
     return (
-        f"detailed_description: [Shot 1] The camera is positioned at a high, low-angle shot of the location. "
-        f"It is a static, fast, 3-second, full 360 orbital camera shot of the following setting: {setting}."
-        "The space contains no people, characters, creatures, or story action. "
-        "Maintain spatial relationships of major architecture, fixed fixtures, entrances, "
-        "surfaces, persistent furniture, landmarks, and lighting sources that are "
-        "actually present. Keep the view broad and readable; do not cut, zoom into "
-        "an object, or invent a plot event. Unspecified environmental details may be "
-        "designed coherently by the video model and should remain internally consistent.\n\n"
-        "overall_soundscape: N/A\n"
+        "subject_definitions: N/A\n\n"
+        "detailed_description:\n\n"
+        "[Shot 1] The camera is positioned at a high-angle shot of an empty "
+        "location. It is a 3-second, full 360 orbital camera shot of the location:\n\n"
+        f"{setting}\n\n"
+        "overall_soundscape: N/A\n\n"
         "non_diegetic_music: N/A\n"
     )
 
@@ -9445,6 +9466,8 @@ def ask_llm(
         llm_settings = DIRECTOR_RAW_SCENE_LLM_SETTINGS
     elif history_purpose in CREATIVE_GENERATION_LLM_PURPOSES:
         llm_settings = CREATIVE_GENERATION_LLM_SETTINGS
+    elif history_purpose in SMART_EXTRACTOR_LLM_PURPOSES:
+        llm_settings = SMART_EXTRACTOR_LLM_SETTINGS
     else:
         llm_settings = DETERMINISTIC_ANALYSIS_LLM_SETTINGS
 
@@ -18124,12 +18147,12 @@ def extract_story_locations(
     )
 
 
-def build_story_setting_description_messages(
+def build_story_setting_seed_messages(
     expanded_story,
     overall_location,
     visual_style=DEFAULT_VISUAL_STYLE,
 ):
-    """Build a narrow extractor for persistent static environment facts."""
+    """Extract a concise story-grounded location description before spatial refinement."""
     visual_style = normalize_visual_style(visual_style)
     return [
         {
@@ -18169,11 +18192,11 @@ def build_story_setting_description_messages(
     ]
 
 
-def build_story_setting_description_response_format():
+def build_story_setting_seed_response_format():
     return {
         "type": "json_schema",
         "json_schema": {
-            "name": "story_setting_extract",
+            "name": "story_setting_seed_extract",
             "strict": True,
             "schema": {
                 "type": "object",
@@ -18187,23 +18210,25 @@ def build_story_setting_description_response_format():
     }
 
 
-def parse_story_setting_description(raw_result, fallback=""):
+def parse_story_setting_seed(raw_result, fallback=""):
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
     if not isinstance(candidate, dict) or set(candidate) != {"setting_description"}:
         raise ValueError(
-            "Story setting extraction must contain only setting_description."
+            "Story setting seed extraction must contain only setting_description."
         )
-    value = " ".join(str(candidate.get("setting_description") or "").split()).strip(" .")
+    value = " ".join(
+        str(candidate.get("setting_description") or "").split()
+    ).strip(" .")
     if not value or value.casefold() in {"n/a", "na", "none", "null", "unknown"}:
         value = " ".join(str(fallback or "").split()).strip(" .")
     if not value:
-        raise ValueError("Story setting extraction returned no usable description.")
+        raise ValueError("Story setting seed extraction returned no usable description.")
     return value
 
 
-def extract_story_setting_description(
+def extract_story_setting_seed(
     expanded_story,
     overall_location,
     *,
@@ -18211,42 +18236,260 @@ def extract_story_setting_description(
     llm_request=None,
     history_metadata=None,
 ):
-    """Extract only persistent spatial/environment facts from the expanded story."""
+    """Extract the compact story-grounded description consumed by spatial passes."""
     if llm_request is None:
         llm_request = ask_llm
     fallback = " ".join(str(overall_location or "").split()).strip(" .")
     try:
         raw = llm_request(
-            build_story_setting_description_messages(
+            build_story_setting_seed_messages(
                 expanded_story,
                 overall_location,
                 visual_style=visual_style,
             ),
-            response_format=build_story_setting_description_response_format(),
+            response_format=build_story_setting_seed_response_format(),
             parse_json_response=False,
             max_tokens=512,
             context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
             history_metadata={
                 **dict(history_metadata or {}),
-                "purpose": "story_setting_extract",
+                "purpose": "story_setting_seed_extract",
                 "attempt": 1,
             },
-            temperature=0,
-            top_p=1,
-            seed=42,
         )
-        return parse_story_setting_description(raw, fallback=fallback)
+        return parse_story_setting_seed(raw, fallback=fallback)
     except LLMConnectionError:
         raise
     except (TypeError, ValueError) as error:
         if fallback:
             console_log(
-                f"WARNING: setting-detail extraction failed ({error}); "
+                f"WARNING: setting seed extraction failed ({error}); "
                 f"using overall location {fallback!r}.",
                 flush=True,
             )
             return fallback
         raise
+
+
+def build_story_setting_spatial_refinement_messages(location):
+    """Build the first SMART extractor that makes one location spatially explicit."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Refine this description to be spatially compliant.\n"
+                "- use east/west/north/south.\n"
+                "- if it is an interior, define anchor objects first, such as doors "
+                "or large objects, if exterior, use houses or other large landmarks.\n"
+                "- Define the size of the overall space and sizes of the objects.\n"
+                "- Make sure nothing is overlapping and everything is accessible "
+                "(especially doors).\n"
+                "- Return plain text, no tables or JSON."
+            ),
+        },
+        {
+            "role": "user",
+            "content": str(location or "").strip(),
+        },
+    ]
+
+
+def _parse_plain_extractor_text(raw_result, label):
+    value = str(raw_result or "").strip()
+    value = re.sub(
+        r"(?im)^\s*```(?:text|plaintext)?\s*$|^\s*```\s*$",
+        "",
+        value,
+    ).strip()
+    if not value:
+        raise ValueError(f"{label} returned no usable text.")
+    return value
+
+
+def refine_story_setting_spatially(
+    location,
+    *,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Make a compact location description spatially explicit before structuring it."""
+    if llm_request is None:
+        llm_request = ask_llm
+    raw = llm_request(
+        build_story_setting_spatial_refinement_messages(location),
+        response_format=None,
+        parse_json_response=False,
+        max_tokens=3072,
+        context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS["context_token_budget"],
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "story_setting_spatial_refine",
+            "attempt": 1,
+        },
+    )
+    return _parse_plain_extractor_text(raw, "Spatial setting refinement")
+
+
+def build_story_setting_description_messages(spatial_location):
+    """Build the second SMART extractor that emits JSON state plus render prose."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Describe this location spatially in detail; describe ALL objects.\n"
+                "- Define anchors, such as doors for interiors or buildings for exteriors.\n"
+                "- Do not include exact coordinates, but use references to anchors and "
+                "north/south/east/west instead.  If interior, use west wall, east wall, "
+                "etc. For exteriors, use east_side, west_side, etc.\n"
+                "- Return a spatial description of the specified area only.\n"
+                "- Keep it literal without embellishment.\n"
+                "- Make the format:\n"
+                "Location: [location]\n"
+                "[JSON representation]\n"
+                "[Text description based on JSON]\n\n"
+                "JSON format:\n"
+                "{\n"
+                "  \"location\": {\n"
+                "    \"name\": \"[name]\",\n"
+                "    ...\n"
+                "  },\n"
+                "  \"anchors\": [\n"
+                "    { \"name\": \"entrance\", \"type\": \"door\", "
+                "\"wall\": \"west\" },\n"
+                "    { \"name\": \"city hall\", \"type\": \"building\", "
+                "\"location\": \"east\" }\n"
+                "  ],\n"
+                "  \"objects\": [\n"
+                "    {\n"
+                "      \"name\": \"sign post\",\n"
+                "      \"type\": \"wooden sign\",\n"
+                "      \"near\": [\"hearth\", \"barrel\"],\n"
+                "      ...\n"
+                "    },\n"
+                "    ...\n"
+                "  ]\n"
+                "}"
+            ),
+        },
+        {
+            "role": "user",
+            "content": str(spatial_location or "").strip(),
+        },
+    ]
+
+
+def _first_balanced_json_object(value):
+    text = str(value or "")
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("Spatial setting extractor returned no JSON object.")
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return start, index + 1, text[start:index + 1]
+    raise ValueError("Spatial setting extractor returned unterminated JSON.")
+
+
+def parse_story_setting_description(raw_result):
+    """Split Location + JSON + text output into persistent state and render prose."""
+    text = str(raw_result or "").strip()
+    text = re.sub(r"(?im)^\s*```(?:json|text|plaintext)?\s*$", "", text)
+    text = re.sub(r"(?im)^\s*```\s*$", "", text).strip()
+    if not text:
+        raise ValueError("Spatial setting extraction returned no output.")
+
+    json_start, json_end, json_text = _first_balanced_json_object(text)
+    try:
+        location_state = json.loads(json_text)
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"Spatial setting extractor returned invalid JSON: {error}"
+        ) from error
+    if not isinstance(location_state, dict):
+        raise ValueError("Spatial location_state must be a JSON object.")
+    for key, expected_type in (
+        ("location", dict),
+        ("anchors", list),
+        ("objects", list),
+    ):
+        if not isinstance(location_state.get(key), expected_type):
+            raise ValueError(
+                f"Spatial location_state requires {key!r} as "
+                f"{expected_type.__name__}."
+            )
+
+    prefix = text[:json_start]
+    location_match = re.search(
+        r"(?im)^\s*Location\s*:\s*(.+?)\s*$",
+        prefix,
+    )
+    location_name = (
+        location_match.group(1).strip()
+        if location_match
+        else str(location_state.get("location", {}).get("name") or "").strip()
+    )
+    if not location_name:
+        raise ValueError("Spatial setting extractor returned no Location name.")
+
+    description = text[json_end:].strip()
+    description = re.sub(
+        r"(?im)^\s*(?:\*\*)?Text description based on JSON"
+        r"(?:\*\*)?\s*:?\s*",
+        "",
+        description,
+        count=1,
+    ).strip()
+    if not description:
+        raise ValueError(
+            "Spatial setting extractor returned no text description based on JSON."
+        )
+
+    return {
+        "location_name": location_name,
+        "location_state": location_state,
+        "text_description": description,
+    }
+
+
+def extract_story_setting_description(
+    spatial_location,
+    *,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Create canonical location_state JSON plus the matching ComfyUI description."""
+    if llm_request is None:
+        llm_request = ask_llm
+    raw = llm_request(
+        build_story_setting_description_messages(spatial_location),
+        response_format=None,
+        parse_json_response=False,
+        max_tokens=4096,
+        context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS["context_token_budget"],
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "story_setting_extract",
+            "attempt": 1,
+        },
+    )
+    return parse_story_setting_description(raw)
 
 
 def format_story_starting_location(starting_location):
@@ -36154,19 +36397,35 @@ def _run_main(
                 expanded_story_context,
                 history_metadata={"run_id": run_id},
             )
+            setting_seed = extract_story_setting_seed(
+                expanded_story_context,
+                story_location_metadata["overall_location"],
+                visual_style=visual_style,
+                history_metadata={"run_id": run_id},
+            )
+            spatial_location = refine_story_setting_spatially(
+                setting_seed,
+                history_metadata={"run_id": run_id},
+            )
+            spatial_setting = extract_story_setting_description(
+                spatial_location,
+                history_metadata={"run_id": run_id},
+            )
             story_location_metadata["setting_description"] = (
-                extract_story_setting_description(
-                    expanded_story_context,
-                    story_location_metadata["overall_location"],
-                    visual_style=visual_style,
-                    history_metadata={"run_id": run_id},
-                )
+                spatial_setting["text_description"]
+            )
+            story_location_metadata["location_state"] = copy.deepcopy(
+                spatial_setting["location_state"]
+            )
+            story_location_metadata["spatial_location_description"] = (
+                spatial_location
             )
             console_log(
                 "Story location metadata: "
                 f"overall={story_location_metadata['overall_location']!r}; "
                 f"starting={story_location_metadata['starting_location']!r}; "
-                f"setting={story_location_metadata['setting_description']!r}",
+                f"setting={story_location_metadata['setting_description']!r}; "
+                f"location_state={story_location_metadata['location_state']!r}",
                 flush=True,
             )
         else:
@@ -36276,6 +36535,9 @@ def _run_main(
                 str(number): path
                 for number, path in REFERENCE_IMAGE_OVERRIDES.items()
             },
+            "location_state": copy.deepcopy(
+                story_location_metadata.get("location_state", {})
+            ),
         },
         "macro_arc": copy.deepcopy(macro_arc),
         "reference_jobs": saved_reference_jobs,
@@ -36317,9 +36579,11 @@ def _run_main(
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
         if story_location_metadata:
-            generation_state["metadata"] = copy.deepcopy(
-                story_location_metadata
+            location_metadata = copy.deepcopy(story_location_metadata)
+            generation_state["location_state"] = copy.deepcopy(
+                location_metadata.pop("location_state", {})
             )
+            generation_state["metadata"] = location_metadata
         additional_subject_definitions = []
         completed_beat_ids = set()
         recent_results = []
@@ -36512,6 +36776,16 @@ def _run_main(
         location_metadata.get("location_reference_video")
         or ""
     ).strip()
+    location_state = copy.deepcopy(
+        generation_state.get("location_state")
+        if isinstance(generation_state.get("location_state"), dict)
+        else {}
+    )
+
+    if location_state:
+        generated_prompts_payload["config"]["location_state"] = copy.deepcopy(
+            location_state
+        )
 
     if location_setting_description:
         generated_prompts_payload["config"]["setting_description"] = (
@@ -36530,7 +36804,7 @@ def _run_main(
             console_log("=" * 64)
             console_log(
                 f"Setting: {location_setting_description}\n"
-                "Rendering one character-free 2-second panoramic reference.",
+                "Rendering one character-free 3-second panoramic reference.",
                 flush=True,
             )
             location_reference_video_path = render_location_reference_video(

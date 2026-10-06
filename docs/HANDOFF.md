@@ -898,3 +898,29 @@ This branch is the active workspace for the next object-state work. The latest
 implementation and acceptance target are the 2026-10-05 Subject/prop ledger
 handoff immediately above; no new implementation changes are part of this
 branch setup.
+
+
+## 2026-10-06 — object-state-work: canonical spatial location_state
+
+Implemented the location-state split on `object-state-work`.
+
+- Added `SMART_EXTRACTOR_LLM_SETTINGS`: temperature 0, seed 42, context budget 8192,
+  medium reasoning, 1024 reasoning tokens.
+- The story-grounded compact setting remains the seed. Two SMART passes follow:
+  1. plain-text spatial refinement with cardinal directions, anchor-first layout,
+     dimensions, accessibility, and non-overlap;
+  2. structured spatial extraction in `Location + JSON + text description` format.
+- Python parses the second pass: JSON becomes `generation_state["location_state"]`;
+  the text description becomes `metadata.setting_description` and is the only location
+  description sent to the 3-second ComfyUI reference render.
+- `generated_prompts.txt -> config.location_state` preserves the same JSON for split
+  LLM/render workflows and resume.
+- The location-reference H3 prompt now matches the tested compact form:
+  high-angle, empty location, 3-second full 360 orbit, no contradictory static/low-angle
+  wording.
+- Focused regressions cover the profile, both prompt contracts, parser split,
+  checkpoint field, and H3 location prompt.
+
+Next local action: run the tavern case and compare the emitted `location_state` JSON,
+its generated text description, and the resulting 3-second location video. Do not change
+Beat/RAW spatial rules until this upstream representation is verified.

@@ -7,8 +7,8 @@ import minimax
 
 
 class LocationStateReferenceTests(unittest.TestCase):
-    def test_setting_extractor_does_not_promote_plot_props(self):
-        messages = minimax.build_story_setting_description_messages(
+    def test_setting_seed_extractor_does_not_promote_plot_props(self):
+        messages = minimax.build_story_setting_seed_messages(
             "Amy works in a medieval tavern. Later she pulls up a chair for a unicorn.",
             "medieval tavern",
         )
@@ -16,19 +16,116 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertIn("objects/furniture mentioned only because a later action", system)
         self.assertIn("Do not promote every story prop", system)
 
-    def test_setting_description_parser_uses_fallback(self):
+    def test_smart_extractor_profile_is_medium_1024_seed_42_with_8192_context(self):
+        profile = minimax.SMART_EXTRACTOR_LLM_SETTINGS
+        self.assertEqual(profile["seed"], 42)
+        self.assertEqual(profile["context_token_budget"], 8192)
+        self.assertEqual(profile["reasoning_effort"], "medium")
+        self.assertEqual(profile["thinking_budget_tokens"], 1024)
         self.assertEqual(
-            minimax.parse_story_setting_description(
-                {"setting_description": "N/A"},
-                fallback="medieval tavern",
-            ),
-            "medieval tavern",
+            minimax.SMART_EXTRACTOR_LLM_PURPOSES,
+            {"story_setting_spatial_refine", "story_setting_extract"},
         )
 
-    def test_location_reference_prompt_is_character_free_contract(self):
-        prompt = minimax.build_location_reference_h3_prompt("medieval tavern")
+    def test_spatial_refinement_prompt_uses_requested_contract(self):
+        location = "A modest medieval tavern with a counter beside a hearth."
+        messages = minimax.build_story_setting_spatial_refinement_messages(location)
+        system = messages[0]["content"]
+        self.assertIn("Refine this description to be spatially compliant.", system)
+        self.assertIn("use east/west/north/south", system)
+        self.assertIn("define anchor objects first", system)
+        self.assertIn("Define the size of the overall space", system)
+        self.assertIn("nothing is overlapping", system)
+        self.assertIn("Return plain text, no tables or JSON", system)
+        self.assertEqual(messages[1]["content"], location)
+
+    def test_spatial_description_prompt_emits_json_and_text(self):
+        messages = minimax.build_story_setting_description_messages(
+            "A 30 ft by 20 ft tavern with an entrance on the north wall."
+        )
+        system = messages[0]["content"]
+        self.assertIn("describe ALL objects", system)
+        self.assertIn("Define anchors", system)
+        self.assertIn("Do not include exact coordinates", system)
+        self.assertIn("Keep it literal without embellishment", system)
+        self.assertIn("Location: [location]", system)
+        self.assertIn('"anchors"', system)
+        self.assertIn('"objects"', system)
+
+    def test_spatial_description_parser_splits_state_from_render_text(self):
+        raw = """Location: Tavern Interior
+{
+  "location": {"name": "Tavern Interior"},
+  "anchors": [{"name": "entrance", "type": "door", "wall": "north"}],
+  "objects": [{"name": "bar counter", "type": "counter", "location": "east"}]
+}
+Text description based on JSON
+The tavern is rectangular. The entrance is on the north wall.
+"""
+        parsed = minimax.parse_story_setting_description(raw)
+        self.assertEqual(parsed["location_name"], "Tavern Interior")
+        self.assertEqual(
+            parsed["location_state"]["anchors"][0]["wall"],
+            "north",
+        )
+        self.assertEqual(
+            parsed["text_description"],
+            "The tavern is rectangular. The entrance is on the north wall.",
+        )
+
+    def test_smart_extractors_use_profile_context_and_purposes(self):
+        refine_request = mock.Mock(
+            return_value="30 ft by 20 ft tavern; entrance north."
+        )
+        refined = minimax.refine_story_setting_spatially(
+            "medieval tavern",
+            llm_request=refine_request,
+        )
+        self.assertEqual(refined, "30 ft by 20 ft tavern; entrance north.")
+        self.assertEqual(
+            refine_request.call_args.kwargs["context_token_budget"],
+            8192,
+        )
+        self.assertEqual(
+            refine_request.call_args.kwargs["history_metadata"]["purpose"],
+            "story_setting_spatial_refine",
+        )
+
+        structured_request = mock.Mock(return_value="""Location: Tavern Interior
+{"location":{"name":"Tavern Interior"},"anchors":[],"objects":[]}
+Text description based on JSON
+A rectangular tavern interior.
+""")
+        result = minimax.extract_story_setting_description(
+            refined,
+            llm_request=structured_request,
+        )
+        self.assertEqual(
+            result["text_description"],
+            "A rectangular tavern interior.",
+        )
+        self.assertEqual(
+            structured_request.call_args.kwargs["context_token_budget"],
+            8192,
+        )
+        self.assertEqual(
+            structured_request.call_args.kwargs["history_metadata"]["purpose"],
+            "story_setting_extract",
+        )
+
+    def test_new_generation_state_has_location_state(self):
+        state = minimax.new_generation_state({})
+        self.assertEqual(state["location_state"], {})
+
+    def test_location_reference_prompt_uses_spatial_text_without_extra_world_building(self):
+        prompt = minimax.build_location_reference_h3_prompt(
+            "The entrance is on the north wall. The counter is on the east wall."
+        )
+        self.assertIn("subject_definitions: N/A", prompt)
+        self.assertIn("high-angle shot of an empty location", prompt)
         self.assertIn("3-second, full 360 orbital camera shot", prompt)
-        self.assertIn("no people, characters, creatures, or story action", prompt)
+        self.assertIn("The entrance is on the north wall.", prompt)
+        self.assertNotIn("static, fast", prompt)
         self.assertEqual(minimax.LOCATION_REFERENCE_DURATION_SECONDS, 3.0)
 
     def test_strip_video_audio_uses_video_stream_copy_and_no_audio(self):

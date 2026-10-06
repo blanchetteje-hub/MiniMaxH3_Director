@@ -57,13 +57,14 @@ This checklist is the compact current-status view. Historical sections below exp
 ### Location / environment continuity
 
 - [x] **Story-level overall + starting-location extraction** exists and Segment 1 gets authoritative starting-location context.
+- [x] **Structured spatial `location_state` extraction:** the existing story-grounded static setting seed is followed by two SMART extractor passes. The first makes the space explicit with cardinal directions, anchors, dimensions, accessibility, and non-overlap; the second emits both canonical JSON and literal prose derived from that JSON. The JSON is stored in `generation_state["location_state"]`; only the prose is sent to the 3-second location-reference render.
 - [x] **Persistent location memory:** generate one character-free 3-second 360-orbit location clip before Segment 1 and reuse it throughout the run.
 - [x] **Location-reference audio is deterministically removed with ffmpeg** before conditioning reuse.
 - [x] **Location-reference authority is limited to static environment/spatial layout**, not characters or current camera composition.
 - [x] **Location continuity accepted.** Recent tavern runs preserved covered room geometry with unexpectedly high accuracy across changing viewpoints.
 - [x] **Setting extraction avoids over-promoting action-only props** and treats relative labels such as front/back/side as uncertain unless distinct architecture is established.
 - [ ] **Production-verify Director static-setting authority.** Request 1 and RAW coherence now receive the compact extracted static setting and must preserve explicitly described fixed fixtures/lighting placement without forcing off-camera elements into frame.
-- [ ] **Compact static-space existence bookkeeping.** Add only enough text/JSON state to answer whether a closet, shelf, doorway, storage point, or other interaction location has been established. Do not duplicate the orbit video's geometry.
+- [x] **Compact static-space existence bookkeeping.** `location_state` now stores structured location/anchor/object facts separately from the rendered orbit. It is the Python-owned spatial record; the matching literal prose is the visual serialization used to create the orbit.
 - [ ] **Multi-room / returning-location stress test.** Verify authority when the story moves between several spaces and later returns.
 
 ### Subject identity / character consistency
@@ -188,6 +189,10 @@ Current task profiles:
   temperature `0`, medium reasoning, seed `42`.
 - `MUSIC_GENERATION_LLM_SETTINGS`: short non-diegetic score generation;
   temperature `0.6`, medium/256-token reasoning, randomized seed.
+- `SMART_EXTRACTOR_LLM_SETTINGS`: spatially demanding extractors that need more
+  reasoning than ordinary deterministic analysis; temperature `0`, context
+  budget `8192`, medium/1024-token reasoning, seed `42`. The spatial-refinement
+  and JSON+text location extractors use this profile.
 - `DETERMINISTIC_ANALYSIS_LLM_SETTINGS`: validators, semantic extractors,
   continuity observers, JSON repair, pronoun cleanup, H3 soundscape
   extraction, and every unclassified LLM purpose; temperature `0`,
@@ -2525,3 +2530,26 @@ clothing provisionally until this expanded-story extractor runs.
 
 This is intentionally separate from dynamic Subject wardrobe bootstrap. Dynamic
 Subjects still receive their one-time outfit from the existing post-RAW resolver.
+
+
+### 2026-10-06 — structured spatial location-state extraction
+
+Location creation now separates semantic spatial state from the H3 visual reference.
+
+- The existing story-grounded static-setting extractor still produces the compact source
+  description and filters out plot-only props.
+- A new SMART spatial-refinement pass rewrites that description with cardinal directions,
+  anchor-first layout, overall/object sizes, clear access paths, and non-overlap.
+- The altered second SMART extractor converts that refined location into the required
+  `Location: ...` + JSON + literal text format. Python parses the JSON into
+  `generation_state["location_state"]` and sends only the text description to ComfyUI.
+- `SMART_EXTRACTOR_LLM_SETTINGS` is deterministic: seed 42, 8192-token context budget,
+  medium reasoning effort, 1024-token reasoning budget.
+- The 3-second location-reference prompt now uses the tested compact high-angle,
+  character-free 360-orbit wording and no longer includes the contradictory
+  `high, low-angle` / `static orbital` language.
+- `generated_prompts.txt` also carries the frozen `location_state` in config so the
+  prompt-only/render-only package retains the same canonical spatial record.
+
+The next acceptance should inspect the emitted `location_state`, its text serialization,
+and the resulting 3-second reference together before changing Beat/RAW spatial logic.
