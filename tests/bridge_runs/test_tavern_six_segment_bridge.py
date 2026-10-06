@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +33,10 @@ def test_tavern_six_segment_live_pipeline(tmp_path):
         "--extra-minimax-arg=Live-action cinematic",
         "--extra-minimax-arg=--no-music",
     ]
+    env = os.environ.copy()
+    env["MINIMAX_COMFYUI_OUTPUT"] = str((tmp_path / "comfy-output").resolve())
+    env["MINIMAX_COMFYUI_INPUT"] = str((tmp_path / "comfy-input").resolve())
+    env["MINIMAX_VIDEO_OUTPUT"] = str((tmp_path / "video-output").resolve())
     completed = subprocess.run(
         command,
         cwd=REPO_ROOT,
@@ -39,6 +44,7 @@ def test_tavern_six_segment_live_pipeline(tmp_path):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         timeout=1700,
+        env=env,
     )
 
     print("\n=== BRIDGE ACCEPTANCE PROCESS OUTPUT ===")
