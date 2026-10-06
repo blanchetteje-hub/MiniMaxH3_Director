@@ -138,13 +138,12 @@ A rectangular tavern interior.
         )
         system = messages[0]["content"]
         user = messages[1]["content"]
-        self.assertIn("already physically present in the starting location", system)
-        self.assertIn("Read ALL beats", system)
+        self.assertIn("Return subjects defined in beats that have no entry point", system)
         self.assertIn("Jim is already there, so add Jim", system)
-        self.assertIn("William enters the scene, so do not add William", system)
-        self.assertIn("do not return a Subject defined in EXISTING SUBJECT DEFINITIONS", system)
-        self.assertIn("Role1-style functional name", system)
-        self.assertIn("Do not include held/carried props", system)
+        self.assertIn("William enters the scene, so don't add William", system)
+        self.assertIn("do not return a subject defined in EXISTING SUBJECT DEFINITIONS", system)
+        self.assertIn("initial_state must be the minimal physical location/pose", system)
+        self.assertIn("do not invent appearance, clothing, motives, actions, or plot facts", system)
         self.assertIn("Beat 2: A goblin already seated near the hearth", user)
 
     def test_initial_location_subject_extractor_retries_only_itself(self):
@@ -169,6 +168,61 @@ A rectangular tavern interior.
         self.assertEqual(
             request.call_args_list[1].kwargs["history_metadata"]["attempt"],
             2,
+        )
+
+    def test_dynamic_subject_wardrobe_uses_independent_story_extractor(self):
+        state = minimax.new_continuity_state()
+        state["subjects"] = {
+            "Goblin1": minimax.new_subject_continuity_record({
+                "subject_id": 2,
+                "name": "Goblin1",
+                "gender": "unknown",
+            }),
+        }
+        request = mock.Mock(return_value={
+            "clothing": "rough-spun shirt, brown trousers, worn leather shoes"
+        })
+        updated = minimax.apply_story_subject_wardrobes(
+            state,
+            "A goblin leans over the counter in a medieval tavern.",
+            "<Subject 2> is Goblin1 (S2), present at story start.",
+            ["Goblin1"],
+            llm_request=request,
+        )
+        self.assertEqual(request.call_count, 1)
+        self.assertEqual(
+            request.call_args.kwargs["history_metadata"]["purpose"],
+            "story_subject_wardrobe_extract",
+        )
+        self.assertEqual(
+            request.call_args.kwargs["history_metadata"]["subject"],
+            "Goblin1",
+        )
+        wardrobe = updated["subjects"]["Goblin1"]["wardrobe"]
+        self.assertEqual(wardrobe["upper"], "rough-spun shirt")
+        self.assertEqual(wardrobe["lower"], "brown trousers")
+        self.assertEqual(wardrobe["footwear"], "worn leather shoes")
+
+    def test_dynamic_subject_wardrobe_keeps_naturally_unclothed_subject_n_a(self):
+        state = minimax.new_continuity_state()
+        state["subjects"] = {
+            "Dragon1": minimax.new_subject_continuity_record({
+                "subject_id": 4,
+                "name": "Dragon1",
+                "gender": "unknown",
+            }),
+        }
+        request = mock.Mock(return_value={"clothing": "N/A"})
+        updated = minimax.apply_story_subject_wardrobes(
+            state,
+            "A dragon enters a medieval tavern.",
+            "<Subject 4> is Dragon1 (S4).",
+            ["Dragon1"],
+            llm_request=request,
+        )
+        self.assertEqual(
+            updated["subjects"]["Dragon1"]["wardrobe"],
+            {"upper": "N/A", "lower": "N/A", "footwear": "N/A", "other": "N/A"},
         )
 
     def test_initial_location_subject_is_registered_before_segment_one(self):
