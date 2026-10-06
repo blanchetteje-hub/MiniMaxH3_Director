@@ -399,6 +399,57 @@ The dynamic schema and prompt vocabulary are also checked in the Request 1
 path. Legacy compatibility writers listed in the phase 1 report remain active;
 they are still the competing state writers to audit before Gate D.
 
+## 2026-10-06 — Gate C phase 2 vocabulary and pre-Director seeding corrections
+
+Corrected three problems before Gate D. No Director candidate is committed to
+canonical WorldState, no legacy writer is disabled, and no full tavern render
+was run.
+
+- Removed `director_state_action_operations_for_segment()` and its beat/source
+  regex gating. `build_director_state_action_contract()` now includes every
+  reducer operation for which the registered entity categories can form a
+  schema. Verb wording never removes an operation; the reducer decides whether
+  an emitted action is legal.
+- Added `extract_persistent_prop_registry()` as a small semantic extractor over
+  authored story, numbered beats, validated structured event effects, and
+  canonical location state. It selects only explicitly placed cross-beat props,
+  not every noun and not legacy ledgers, accepted-beat summaries, RAW, or visual
+  observations. IDs remain Python-assigned. Prop registration now happens at
+  the prop's first relevant beat, after that beat's dynamic Subjects are
+  registered. This supports a cup whose explicit pre-handoff holder is Elf1.
+- Added `extract_current_segment_subjects()` and
+  `prepare_segment_world_state_for_director()`. Before Request 1, the narrow
+  current-beat extractor registers new identity-only Subjects, the existing
+  per-Subject canonical wardrobe extractor fills their layered wardrobe, and
+  eligible persistent props are registered. These functions do not infer
+  presence. Elf1 and Dragon1 remain `unknown` until an `enter` action. The
+  post-RAW visible-Subject resolver remains a fallback for unanticipated
+  foreground identities; those identities cannot join the current action plan
+  until they pass the controlled registration path.
+- The current-beat extractor uses exact source evidence, explicit `physical_form`
+  values, and Python stable IDs. It never infers body type from a name. The prop
+  extractor requires at least two relevant beats and an explicit pre-action
+  placement; for a handoff, the source names the giver as the prior holder.
+- Added tavern-sequence regressions that derive Amy/Goblin1 from authored and
+  story-start authorities and derive mug/barrel/chalice/cup from the prop
+  extractor response. They do not manually pre-seed Elf1, Dragon1, or the mug.
+  Segments 1, 3, and 4 assert the pre-Request-1 vocabulary; Segment 4's cup is
+  registered as held by Elf1, and the full 14-operation contract is unchanged
+  for “refills,” “handing,” “locking,” “steps outside,” and “slides onto.”
+
+Focused validation: `python -m py_compile minimax.py world_state.py
+tests/test_director_retry.py`; the five focused tavern/operation/Request-1
+regressions passed, and `tests/test_world_state_foundation.py` passed 40 tests.
+The combined `tests/test_director_retry.py tests/test_world_state_foundation.py`
+run had 137 passing tests and 14 failures in unchanged prompt-template, timing,
+and RAW-resolver assertions outside this change; those failures remain
+to be triaged separately. No full render was run.
+
+The active compatibility writers remain the legacy list recorded above. New
+WorldState writes are still limited to explicit seed APIs, the pre-Director
+identity/wardrobe/prop seed functions, and checkpoint/snapshot plumbing. The
+reducer candidate remains dry-run-only at this checkpoint.
+
 ### Test-suite maintenance and current status
 
 Use pytest from the repository root; some external-service modules use

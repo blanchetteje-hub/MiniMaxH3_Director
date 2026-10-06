@@ -10,6 +10,7 @@ from world_state import (
     register_explicit_persistent_props,
     seed_canonical_static_location_state,
     seed_story_start_presence,
+    validate_state_actions,
 )
 
 
@@ -68,6 +69,90 @@ def goblin_mug_bundle():
         "current_beat_text": "Goblin1 picks up the mug and hands it to Elf1.",
     })
     return bundle
+
+
+def tavern_persistent_prop_extractor_result():
+    """Representative semantic extractor output for the six-beat tavern plan."""
+    def prop(name, kind, first_beat, relevant_beats, holder=None, contents=None):
+        return {
+            "name": name,
+            "kind": kind,
+            "mobility": "fixed" if name == "barrel" else "movable",
+            "first_beat": first_beat,
+            "relevant_beats": relevant_beats,
+            "initial_location": None if holder else "Tavern",
+            "initial_holder": holder,
+            "support_name": "bar counter" if name == "barrel" else None,
+            "contents": contents or [],
+            "capabilities": {
+                "container": True if kind == "container" else "unknown",
+                "consumable": "unknown",
+                "openable": "unknown",
+                "lockable": "unknown",
+            },
+            "reason": f"{name} has an explicit cross-beat identity/state role.",
+        }
+
+    return {"props": [
+        prop("mug", "container", 1, [1, 3]),
+        prop(
+            "barrel", "container", 1, [1, 4],
+            contents=[{"substance": "ale", "amount": "some", "consumable": "unknown"}],
+        ),
+        prop("crystal chalice", "container", 3, [3, 5]),
+        prop("cup", "container", 4, [4, 5], holder="Elf1"),
+    ]}
+
+
+def tavern_world_state_from_authorities():
+    """Build only authored/story-start state, then use the prop registry path."""
+    state = new_world_state({
+        "source_sha256": "tavern-authority-source",
+        "subjects": {
+            "1": {
+                "subject_id": 1, "name": "Amy", "gender": "female",
+                "picture_ids": [], "physical_form": "humanoid",
+            },
+        },
+    })
+    state, location_id = seed_canonical_static_location_state(
+        state,
+        {
+            "location": {"name": "Tavern"},
+            "anchors": [],
+            "objects": [{
+                "name": "bar counter",
+                "world_state_role": "fixture_support",
+                "mobility": "fixed",
+            }],
+        },
+    )
+    state = seed_story_start_presence(
+        state,
+        [
+            {"name": "Amy", "initial_state": "standing behind the counter"},
+            {"name": "Goblin1", "initial_state": "standing by the hearth"},
+        ],
+        location_id=location_id,
+    )
+    beats = [
+        "Amy wipes the counter beside Goblin1's chipped mug; the ale barrel stands behind the bar.",
+        "Goblin1 lifts his mug and sets it on the counter.",
+        "Elf1, a humanoid elf, steps into the tavern and lifts a crystal chalice.",
+        "Dragon1, a humanoid dragon, steps inside as Elf1 hands him a cup refilled from the barrel.",
+        "Elf1 drinks from the crystal chalice while Dragon1 drinks from the cup.",
+        "Amy closes the barrel tap and the guests leave.",
+    ]
+    registry_call = mock.Mock(return_value=tavern_persistent_prop_extractor_result())
+    prop_registry = minimax.extract_persistent_prop_registry(
+        "Amy serves guests in a tavern.",
+        beats,
+        macro_arc={"phases": []},
+        location_state={"location": {"name": "Tavern"}},
+        registered_subject_names=["Amy", "Goblin1"],
+        llm_request=registry_call,
+    )
+    return state, location_id, beats, prop_registry
 
 
 def goblin_mug_transfer_actions(mug_id):
@@ -173,18 +258,212 @@ def non_audio_llm_calls(request):
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
-    def test_action_schema_operations_follow_current_segment_verbs(self):
+    def test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths(self):
+        state, _location_id, beats, prop_registry = tavern_world_state_from_authorities()
+        no_dynamic_subjects = mock.Mock(return_value={"subjects": []})
+        state, added = minimax.prepare_segment_world_state_for_director(
+            state, 1, beats[0], beats[0], "Amy serves guests in a tavern.",
+            persistent_prop_registry=prop_registry,
+            llm_request=no_dynamic_subjects,
+        )
+        self.assertEqual(added, [])
+        contract = minimax.build_director_state_action_contract(
+            state, current_segment_text=beats[0]
+        )
+        vocabulary = contract["vocabulary"]
         self.assertEqual(
-            minimax.director_state_action_operations_for_segment(
-                "Elf1 leaves the room."
-            ),
-            ["exit"],
+            {subject["name"] for subject in vocabulary["subjects"]},
+            {"Amy", "Goblin1"},
         )
         self.assertEqual(
-            minimax.director_state_action_operations_for_segment(
-                "Amy puts on a coat."
-            ),
-            ["change_clothing"],
+            {prop["name"] for prop in vocabulary["props"]},
+            {"mug", "barrel", "bar counter"},
+        )
+        self.assertEqual(
+            {prop["name"] for prop in state["props"].values()},
+            {"mug", "barrel", "bar counter"},
+        )
+
+    def test_tavern_segment_three_registers_elf_before_raw_and_allows_enter(self):
+        state, location_id, beats, prop_registry = tavern_world_state_from_authorities()
+        state, _ = minimax.prepare_segment_world_state_for_director(
+            state, 1, beats[0], beats[0], "Amy serves guests in a tavern.",
+            persistent_prop_registry=prop_registry,
+            llm_request=mock.Mock(return_value={"subjects": []}),
+        )
+        extractor = mock.Mock(side_effect=[
+            {"subjects": [{
+                "name": "Elf1",
+                "physical_form": "humanoid",
+                "gender": "female",
+                "source_description": "a humanoid elf",
+                "evidence": "Elf1, a humanoid elf",
+            }]},
+            {"clothing": "green tunic, brown trousers, leather boots"},
+        ])
+        state, added = minimax.prepare_segment_world_state_for_director(
+            state, 3, beats[2], beats[2], "A humanoid elf enters a tavern.",
+            persistent_prop_registry=prop_registry,
+            llm_request=extractor,
+        )
+        self.assertEqual(added, ["Elf1"])
+        elf_id, elf = next(
+            (subject_id, subject)
+            for subject_id, subject in state["subjects"].items()
+            if subject["name"] == "Elf1"
+        )
+        self.assertEqual(elf["presence"], "unknown")
+        self.assertEqual(elf["location_id"], "unknown")
+        self.assertEqual(elf["identity"]["clothing_applicability"], "required")
+        self.assertEqual(elf["wardrobe"]["upper"][0]["garment"], "green tunic")
+        contract = minimax.build_director_state_action_contract(
+            state, current_segment_text=beats[2]
+        )
+        vocabulary_subject_ids = {
+            subject["id"] for subject in contract["vocabulary"]["subjects"]
+        }
+        self.assertIn(elf_id, vocabulary_subject_ids)
+        schema = contract["response_format"]["json_schema"]["schema"]
+        action_schemas = schema["properties"]["state_actions"]["items"]["oneOf"]
+        enter_schema = next(
+            item for item in action_schemas
+            if item["properties"]["op"]["const"] == "enter"
+        )
+        self.assertIn(elf_id, enter_schema["properties"]["subject_id"]["enum"])
+        outcome = validate_state_actions(state, [{
+            "action_id": "elf-enters",
+            "op": "enter",
+            "subject_id": elf_id,
+            "location_id": location_id,
+        }], segment_number=3)
+        self.assertTrue(outcome[0].accepted)
+
+    def test_tavern_segment_four_registers_dragon_and_distinguishes_vessels(self):
+        state, _location_id, beats, prop_registry = tavern_world_state_from_authorities()
+        state, _ = minimax.prepare_segment_world_state_for_director(
+            state, 1, beats[0], beats[0], "Amy serves guests in a tavern.",
+            persistent_prop_registry=prop_registry,
+            llm_request=mock.Mock(return_value={"subjects": []}),
+        )
+        elf_extractor = mock.Mock(side_effect=[
+            {"subjects": [{
+                "name": "Elf1", "physical_form": "humanoid", "gender": "female",
+                "source_description": "a humanoid elf", "evidence": "Elf1, a humanoid elf",
+            }]},
+            {"clothing": "green tunic, brown trousers, leather boots"},
+        ])
+        state, _ = minimax.prepare_segment_world_state_for_director(
+            state, 3, beats[2], beats[2], "A humanoid elf enters a tavern.",
+            persistent_prop_registry=prop_registry,
+            llm_request=elf_extractor,
+        )
+        dragon_extractor = mock.Mock(side_effect=[
+            {"subjects": [{
+                "name": "Dragon1", "physical_form": "humanoid", "gender": "unknown",
+                "source_description": "a humanoid dragon", "evidence": "Dragon1, a humanoid dragon",
+            }]},
+            {"clothing": "dark vest, fitted trousers, sturdy boots"},
+        ])
+        state, added = minimax.prepare_segment_world_state_for_director(
+            state, 4, beats[3], beats[3], "A humanoid dragon enters a tavern.",
+            persistent_prop_registry=prop_registry,
+            llm_request=dragon_extractor,
+        )
+        self.assertEqual(added, ["Dragon1"])
+        dragon_id, dragon = next(
+            (subject_id, subject)
+            for subject_id, subject in state["subjects"].items()
+            if subject["name"] == "Dragon1"
+        )
+        self.assertEqual(dragon["presence"], "unknown")
+        cup_id, cup = next(
+            (prop_id, prop) for prop_id, prop in state["props"].items()
+            if prop["name"] == "cup"
+        )
+        elf_id = next(
+            subject_id for subject_id, subject in state["subjects"].items()
+            if subject["name"] == "Elf1"
+        )
+        self.assertEqual(cup["placement"], {"kind": "held", "subject_id": elf_id})
+        contract = minimax.build_director_state_action_contract(
+            state, current_segment_text=beats[3]
+        )
+        self.assertEqual(
+            {prop["name"] for prop in contract["vocabulary"]["props"]},
+            {"barrel", "cup", "bar counter"},
+        )
+        schema = contract["response_format"]["json_schema"]["schema"]
+        action_schemas = schema["properties"]["state_actions"]["items"]["oneOf"]
+        available_ops = {
+            item["properties"]["op"]["const"] for item in action_schemas
+        }
+        self.assertTrue({"enter", "handoff", "pour"}.issubset(available_ops))
+        enter_schema = next(
+            item for item in action_schemas
+            if item["properties"]["op"]["const"] == "enter"
+        )
+        self.assertIn(dragon_id, enter_schema["properties"]["subject_id"]["enum"])
+
+    def test_reducer_operation_contract_does_not_depend_on_verb_spelling(self):
+        state, _location_id, beats, prop_registry = tavern_world_state_from_authorities()
+        state, _ = minimax.prepare_segment_world_state_for_director(
+            state, 1, beats[0], beats[0], "Amy serves guests in a tavern.",
+            persistent_prop_registry=prop_registry,
+            llm_request=mock.Mock(return_value={"subjects": []}),
+        )
+        for segment, new_name, physical_form, gender, evidence, clothing in (
+            (3, "Elf1", "humanoid", "female", "Elf1, a humanoid elf", "green tunic, trousers, boots"),
+            (4, "Dragon1", "humanoid", "unknown", "Dragon1, a humanoid dragon", "dark vest, trousers, boots"),
+        ):
+            responses = mock.Mock(side_effect=[
+                {"subjects": [{
+                    "name": new_name,
+                    "physical_form": physical_form,
+                    "gender": gender,
+                    "source_description": evidence.removeprefix(new_name + ", "),
+                    "evidence": evidence,
+                }]},
+                {"clothing": clothing},
+            ])
+            state, _ = minimax.prepare_segment_world_state_for_director(
+                state,
+                segment,
+                beats[segment - 1],
+                beats[segment - 1],
+                "Tavern story context.",
+                persistent_prop_registry=prop_registry,
+                llm_request=responses,
+            )
+        shared_entities = (
+            "Amy Goblin1 Elf1 Dragon1 mug barrel crystal chalice cup "
+            "bar counter Tavern"
+        )
+        variants = (
+            f"{shared_entities}. Amy refills the cup.",
+            f"{shared_entities}. Elf1 is handing the chalice to Dragon1.",
+            f"{shared_entities}. Amy is locking the barrel.",
+            f"{shared_entities}. Goblin1 steps outside.",
+            f"{shared_entities}. Elf1 slides onto the stool.",
+        )
+        operation_sets = []
+        for text in variants:
+            contract = minimax.build_director_state_action_contract(
+                state, current_segment_text=text
+            )
+            schemas = contract["response_format"]["json_schema"]["schema"][
+                "properties"]["state_actions"]["items"]["oneOf"]
+            operation_sets.append({
+                item["properties"]["op"]["const"] for item in schemas
+            })
+        self.assertTrue(operation_sets)
+        self.assertTrue(all(operations == operation_sets[0] for operations in operation_sets))
+        self.assertEqual(
+            operation_sets[0],
+            {
+                "pickup", "place", "handoff", "pour", "consume", "enter",
+                "exit", "move", "set_support", "change_clothing", "open",
+                "close", "lock", "unlock",
+            },
         )
 
     def test_request_one_dry_runs_valid_goblin_mug_transfer_without_committing(self):
@@ -232,7 +511,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         action_schemas = request1.kwargs["response_format"]["json_schema"]["schema"]["properties"]["state_actions"]["items"]["oneOf"]
         self.assertEqual(
             {schema["properties"]["op"]["const"] for schema in action_schemas},
-            {"pickup", "handoff"},
+            {
+                "pickup", "place", "handoff", "pour", "consume", "enter",
+                "exit", "move", "set_support", "change_clothing", "open",
+                "close", "lock", "unlock",
+            },
         )
 
     def test_request_one_rejects_duplicate_or_unknown_prop_id_then_retries(self):

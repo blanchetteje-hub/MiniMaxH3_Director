@@ -232,6 +232,7 @@ def _seed_prop_record(
     contents: list[dict[str, Any]] | None = None,
     capabilities: dict[str, Any] | None = None,
     mechanism_state: str = UNKNOWN,
+    status: str = "present",
     provenance: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
@@ -239,7 +240,7 @@ def _seed_prop_record(
         "name": name,
         "kind": kind,
         "mobility": mobility,
-        "status": "present",
+        "status": status,
         "placement": deepcopy(placement),
         "contents": deepcopy(contents or []),
         "capabilities": {
@@ -274,6 +275,78 @@ def seed_predefined_subject_identities(
         by_name[name_key] = subject_id
     if candidate["source_sha256"] == UNKNOWN:
         candidate["source_sha256"] = authoritative["source_sha256"]
+    return _changed_revision(before, candidate)
+
+
+def seed_current_segment_subject_identities(
+    world_state: dict[str, Any],
+    extracted_subjects: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Register extractor-established identities without seeding presence."""
+    validate_world_state(world_state)
+    if not isinstance(extracted_subjects, list):
+        raise ValueError("Current-segment Subject identities must be an array.")
+    before = deepcopy(world_state)
+    candidate = deepcopy(world_state)
+    by_name = {
+        _name_key(subject.get("name")): subject_id
+        for subject_id, subject in candidate["subjects"].items()
+    }
+    for entry in extracted_subjects:
+        if not isinstance(entry, dict):
+            raise ValueError("Current-segment Subject identity must be an object.")
+        allowed = {"name", "physical_form", "gender", "source_description"}
+        if set(entry) - allowed or "name" not in entry:
+            raise ValueError("Current-segment Subject identity has unsupported fields.")
+        name = " ".join(str(entry.get("name") or "").split()).strip()
+        if not name:
+            raise ValueError("Current-segment Subject identity requires a name.")
+        key = _name_key(name)
+        if key in by_name:
+            continue
+        physical_form = entry.get("physical_form", UNKNOWN)
+        if physical_form not in {"humanoid", "non_humanoid", UNKNOWN}:
+            raise ValueError(f"Invalid physical form for Subject {name!r}.")
+        gender = " ".join(str(entry.get("gender") or UNKNOWN).split()).strip() or UNKNOWN
+        if gender not in {"female", "male", "unknown", "N/A"}:
+            gender = UNKNOWN
+        source_description = " ".join(
+            str(entry.get("source_description") or "").split()
+        ).strip() or UNKNOWN
+        subject_id = stable_world_state_id("subject", name)
+        if subject_id in candidate["subjects"]:
+            raise ValueError(f"Stable Subject ID collision for {name!r}.")
+        applicability = {
+            "humanoid": "required",
+            "non_humanoid": "optional",
+            UNKNOWN: UNKNOWN,
+        }[physical_form]
+        candidate["subjects"][subject_id] = {
+            "id": subject_id,
+            "subject_id": subject_id,
+            "name": name,
+            "identity": {
+                "gender": gender,
+                "picture_ids": [],
+                "canonical_description": UNKNOWN,
+                "source_description": source_description,
+                "physical_form": physical_form,
+                "clothing_applicability": applicability,
+            },
+            "presence": UNKNOWN,
+            "location_id": UNKNOWN,
+            "support_id": UNKNOWN,
+            "posture": UNKNOWN,
+            "wardrobe": {slot: UNKNOWN for slot in WARDROBE_SLOTS},
+            "persistent_condition": UNKNOWN,
+            "status": UNKNOWN,
+            "provenance": {
+                "identity": {
+                    "authority": "current_segment_subject_extractor",
+                }
+            },
+        }
+        by_name[key] = subject_id
     return _changed_revision(before, candidate)
 
 
@@ -516,7 +589,7 @@ def register_explicit_persistent_props(
         allowed = {
             "name", "kind", "mobility", "needed_for_state", "reason",
             "location_id", "holder_subject_id", "support_id", "contents",
-            "capabilities", "mechanism_state",
+            "capabilities", "mechanism_state", "first_beat",
         }
         extra = set(entry) - allowed - {"id"}
         if extra:
@@ -564,6 +637,9 @@ def register_explicit_persistent_props(
         prop_id = stable_world_state_id(
             "prop", f"{kind}|{name}", scope=str(identity_scope)
         )
+        first_beat = entry.get("first_beat", 1)
+        if isinstance(first_beat, bool) or not isinstance(first_beat, int) or first_beat < 1:
+            raise ValueError("Persistent prop first_beat must be a positive integer.")
         prop = _seed_prop_record(
             prop_id,
             name,
@@ -573,15 +649,35 @@ def register_explicit_persistent_props(
             contents=entry.get("contents"),
             capabilities=entry.get("capabilities"),
             mechanism_state=entry.get("mechanism_state", UNKNOWN),
+            status="present" if first_beat <= 1 else UNKNOWN,
             provenance={"registration": {
                 "authority": "explicit_persistent_prop_registry",
                 "reason": reason,
+                "first_beat": first_beat,
             }},
         )
         existing = candidate["props"].get(prop_id)
         if existing is not None and existing != prop:
             raise ValueError(f"Explicit prop registration conflicts for {name!r}.")
         candidate["props"][prop_id] = prop
+    return _changed_revision(before, candidate)
+
+
+def activate_persistent_props_for_segment(
+    world_state: dict[str, Any],
+    segment_number: int,
+) -> dict[str, Any]:
+    """Activate registered props at their extractor-established first beat."""
+    validate_world_state(world_state)
+    if isinstance(segment_number, bool) or not isinstance(segment_number, int) or segment_number < 1:
+        raise ValueError("Segment number must be a positive integer.")
+    before = deepcopy(world_state)
+    candidate = deepcopy(world_state)
+    for prop in candidate["props"].values():
+        registration = prop.get("provenance", {}).get("registration", {})
+        first_beat = registration.get("first_beat", 1)
+        if first_beat <= segment_number and prop["status"] == UNKNOWN:
+            prop["status"] = "present"
     return _changed_revision(before, candidate)
 
 
@@ -1439,7 +1535,6 @@ def build_director_state_action_contract(
     world_state: dict[str, Any],
     *,
     current_segment_text: str = "",
-    allowed_operations: list[str] | None = None,
 ) -> dict[str, Any]:
     """Return compact registered vocabulary and same-response action schema."""
     validate_world_state(world_state)
@@ -1481,6 +1576,15 @@ def build_director_state_action_contract(
         world_state["subjects"][subject_id].get("support_id")
         for subject_id in relevant_subject_ids
     } - {None, UNKNOWN}
+    referenced_prop_ids = {
+        item["id"] for item in all_props
+        if _registered_name_is_referenced(item["name"], segment_text)
+    }
+    needed_support_ids.update(
+        world_state["props"][prop_id].get("placement", {}).get("support_id")
+        for prop_id in referenced_prop_ids
+    )
+    needed_support_ids -= {None, UNKNOWN}
     held_prop_ids = {
         prop_id for prop_id, prop in world_state["props"].items()
         if prop.get("placement", {}).get("kind") == "held"
@@ -1537,10 +1641,8 @@ def build_director_state_action_contract(
     prop_ids = [item["id"] for item in props]
     support_ids = [item["id"] for item in supports]
     action_schemas: list[dict[str, Any]] = []
-    allowed = set(allowed_operations) if allowed_operations is not None else set(ACTION_FIELDS)
-
     def add(op: str, specs: dict[str, dict[str, Any]], required: list[str], *needed: list[str]) -> None:
-        if op in allowed and all(needed_ids for needed_ids in needed):
+        if op in ACTION_FIELDS and all(needed_ids for needed_ids in needed):
             action_schemas.append(_director_action_schema(op, specs, required))
 
     subject_field = lambda key="subject_id": {key: _string_enum(subject_ids)}
