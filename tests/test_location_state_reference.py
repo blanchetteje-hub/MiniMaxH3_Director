@@ -24,7 +24,19 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertEqual(profile["thinking_budget_tokens"], 1024)
         self.assertEqual(
             minimax.SMART_EXTRACTOR_LLM_PURPOSES,
-            {"story_setting_spatial_refine", "story_setting_extract"},
+            {"story_setting_extract"},
+        )
+        self.assertEqual(
+            minimax.SLIGHTLY_CREATIVE_LLM_PURPOSES,
+            {"story_setting_spatial_refine"},
+        )
+        self.assertIn(
+            "static_setting_extract",
+            minimax.DETERMINISTIC_ANALYSIS_LLM_PURPOSES,
+        )
+        self.assertEqual(
+            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["thinking_budget_tokens"],
+            128,
         )
 
     def test_spatial_refinement_prompt_uses_requested_contract(self):
@@ -126,17 +138,19 @@ A rectangular tavern interior.
         )
         system = messages[0]["content"]
         user = messages[1]["content"]
-        self.assertIn("subjects defined in beats that have no entry point", system)
+        self.assertIn("already physically present in the starting location", system)
+        self.assertIn("Read ALL beats", system)
         self.assertIn("Jim is already there, so add Jim", system)
-        self.assertIn("William enters the scene, so don't add William", system)
-        self.assertIn("do not return a subject defined in EXISTING SUBJECT DEFINITIONS", system)
-        self.assertIn("one sentence initial_state", system)
+        self.assertIn("William enters the scene, so do not add William", system)
+        self.assertIn("do not return a Subject defined in EXISTING SUBJECT DEFINITIONS", system)
+        self.assertIn("Role1-style functional name", system)
+        self.assertIn("Do not include held/carried props", system)
         self.assertIn("Beat 2: A goblin already seated near the hearth", user)
 
     def test_initial_location_subject_extractor_retries_only_itself(self):
         request = mock.Mock(side_effect=[
             '{"wrong":[]}',
-            '{"subjects":[{"name":"Goblin1","initial_state":"seated near the hearth"}]}',
+            '{"subjects":[{"name":"goblin","initial_state":"seated near the hearth"}]}',
         ])
         result = minimax.extract_initial_location_subjects(
             ["Amy wipes the counter.", "A goblin already seated near the hearth asks for ale."],
@@ -188,9 +202,13 @@ A rectangular tavern interior.
         rendered = minimax.format_initial_location_subjects_opening_state([
             {"name": "Goblin1", "initial_state": "seated near the hearth"},
         ])
-        self.assertIn("SUBJECTS INFERRED TO BE PRESENT AT STORY START", rendered)
+        self.assertIn(
+            "SUBJECTS ALREADY PRESENT AT STORY START — VISUAL ESTABLISHMENT REQUIRED",
+            rendered,
+        )
         self.assertIn("Goblin1: already present; seated near the hearth.", rendered)
-        self.assertIn("they may remain off-camera", rendered)
+        self.assertIn("show each Subject at least once", rendered)
+        self.assertIn("may remain stationary", rendered)
 
     def test_request_one_receives_inferred_subjects_as_optional_scene_candidates(self):
         messages, _, _ = minimax.build_generation_messages(
@@ -214,8 +232,74 @@ A rectangular tavern interior.
         prompt = messages[-1]["content"]
         self.assertIn("Goblin1", prompt)
         self.assertIn("seated near the hearth", prompt)
-        self.assertIn("decide whether each needs to be visible", prompt)
-        self.assertIn("they may remain off-camera", prompt)
+        self.assertIn("show each Subject at least once", prompt)
+        self.assertIn("may remain stationary", prompt)
+
+    def test_initial_location_subject_rejects_held_prop_state(self):
+        with self.assertRaisesRegex(ValueError, "location/pose only"):
+            minimax.parse_initial_location_subjects({
+                "subjects": [{
+                    "name": "goblin",
+                    "initial_state": "leaning over the counter clutching a chipped mug",
+                }],
+            })
+
+    def test_physical_validator_prompt_knows_existing_offscreen_subject(self):
+        state = minimax.new_continuity_state()
+        state["subjects"] = {
+            "Goblin1": minimax.new_subject_continuity_record({
+                "subject_id": 2,
+                "name": "Goblin1",
+                "position": "leaning over the counter",
+            }),
+        }
+        messages = minimax.build_director_raw_scene_physical_messages(
+            "Goblin1 leans over the counter while Amy refills a mug.",
+            "At 00:02.000, the camera pans to Goblin1 leaning over the counter.",
+            previous_shot_end="Amy stands beside a west-side table.",
+            known_subject_state=state,
+        )
+        system = messages[0]["content"]
+        user = messages[1]["content"]
+        self.assertIn("already established in the scene", system)
+        self.assertIn("does not need an entrance", system)
+        self.assertIn("KNOWN SUBJECT STATE", user)
+        self.assertIn("Goblin1: already established", user)
+        self.assertIn("leaning over the counter", user)
+
+    def test_existing_visible_subject_bootstrap_fills_only_missing_metadata(self):
+        state = minimax.new_continuity_state()
+        state["subjects"] = {
+            "Goblin1": minimax.new_subject_continuity_record({
+                "subject_id": 2,
+                "name": "Goblin1",
+                "canonical_description": "Goblin1 is a goblin.",
+                "wardrobe": {
+                    "upper": "N/A",
+                    "lower": "N/A",
+                    "footwear": "N/A",
+                    "other": "N/A",
+                },
+            }),
+        }
+        updated, changed = minimax.apply_visible_subject_bootstrap_metadata(
+            state,
+            {"Goblin1": "Goblin1 is a green-skinned humanoid goblin."},
+            {
+                "Goblin1": {
+                    "upper": "rough-spun shirt",
+                    "lower": "brown trousers",
+                    "footwear": "worn leather shoes",
+                    "other": "N/A",
+                },
+            },
+        )
+        self.assertEqual(changed, ["Goblin1"])
+        self.assertIn("green-skinned", updated["subjects"]["Goblin1"]["canonical_description"])
+        self.assertEqual(
+            updated["subjects"]["Goblin1"]["wardrobe"]["upper"],
+            "rough-spun shirt",
+        )
 
     def test_new_generation_state_has_location_state(self):
         state = minimax.new_generation_state({})
@@ -226,7 +310,7 @@ A rectangular tavern interior.
             "The entrance is on the north wall. The counter is on the east wall."
         )
         self.assertIn("subject_definitions: N/A", prompt)
-        self.assertIn("high-angle shot of an empty location", prompt)
+        self.assertIn("medium shot of an empty location", prompt)
         self.assertIn("3-second, full 360 orbital camera shot", prompt)
         self.assertIn("The entrance is on the north wall.", prompt)
         self.assertNotIn("static, fast", prompt)
