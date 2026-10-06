@@ -216,3 +216,37 @@ Status: back-pocket experiment only. Current production architecture still gener
 character-specific 1-second clothing reference, now conditioned by that character's
 identity Picture.
 
+
+
+## Clothing-state reference-video refresh
+
+Potential future implementation: when a Subject's visible clothing state changes materially
+during a segment — for example clothing becomes torn, soaked, bloodied, burned, muddy, or
+otherwise visually altered — generate a new short ComfyUI state/reference video so later
+segments do not have to reconstruct the changed wardrobe state from text alone.
+
+Possible workflow:
+1. Detect and persist the canonical clothing-state change in Python continuity state.
+2. After the segment in which the clothing visibly changes, generate a new Subject
+   state/reference video.
+3. Condition that state-video generation with:
+   - the previous segment video where the clothing state changed; and
+   - the Subject's initial reference image, when one exists.
+4. Tell the H3 prompt to create a video of the person with their clothing in the state
+   established by **<Video 1>**.
+5. Use the resulting state video as the refreshed visual wardrobe authority for subsequent
+   segments until another material clothing-state change occurs.
+
+The previous segment video should provide authority for the changed clothing condition,
+while the initial reference image preserves Subject identity. Canonical Python clothing
+state remains semantic authority; the refreshed video is visual conditioning.
+
+Questions to validate:
+- whether H3 reliably preserves the changed clothing state from <Video 1> while the initial
+  image preserves identity;
+- whether the initial clean reference image competes with a damaged/soaked clothing state;
+- whether one short refreshed state video is sufficient for later segments;
+- which clothing-state changes are visually significant enough to justify the extra render.
+
+Status: back-pocket experiment only; do not integrate until clothing-state continuity needs
+it and controlled tests show that refreshed state videos improve persistence.
