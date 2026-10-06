@@ -1038,3 +1038,50 @@ generates a random seed. The extractor call separately caps output at 512 tokens
 
 This is the first setting-specific prompt: it chooses which details from the expanded story count
 as static location facts. `story_setting_spatial_refine` and `story_setting_extract` follow it.
+
+## 2026-10-06 — repair story-start Subject handoff after local Codex pass
+
+Reviewed the local Codex implementation against the tavern run logs. The beat-wide Subject
+inference itself worked, but Segment 1 was allowed to keep inferred Subjects off-camera; H3
+reference binding then filtered the goblin out, and Segment 2's physical validator falsely treated
+the durable goblin as a new participant because it saw only PREVIOUS SHOT END.
+
+Changes on `object-state-work`:
+- Kept the user-approved character-reference timing at 0.5s with midpoint sample at 0.25s.
+- Kept the user-approved medium-shot location-reference wording.
+- Reverted only `DETERMINISTIC_ANALYSIS_LLM_SETTINGS.thinking_budget_tokens` from 256 to 128.
+- Moved `SLIGHTLY_CREATIVE_LLM_SETTINGS` from `static_setting_extract` to
+  `story_setting_spatial_refine`. Static fact selection is deterministic again; slight variation
+  is applied only while choosing unspecified spatial layout/dimensions.
+- Strengthened pre-Director story-start Subject inference:
+  - read all beats for actors whose first state implies prior presence with no entry;
+  - preserve explicit proper names;
+  - use stable Role1 names for unnamed roles/species (for example Goblin1);
+  - deterministically normalize lowercase role outputs such as `goblin` to `Goblin1`;
+  - reject/retry initial states that leak held-prop actions such as clutching/holding/carrying.
+- Segment 1 now must visually establish every inferred story-start Subject at least once in the
+  inferred state. They may stay stationary/background and receive no invented action or entrance.
+  This lets the existing RAW -> reference-binding path retain them naturally in H3.
+- The RAW physical validator now receives compact durable KNOWN SUBJECT STATE from the existing
+  registry. A known Subject may first come into frame through ordinary camera framing/reveal and is
+  not treated as a new arrival merely because PREVIOUS SHOT END omitted it.
+- The post-RAW visible-Subject resolver can return missing appearance/wardrobe metadata for an
+  already-registered visible Subject. Python fills only missing/generic fields and never overwrites
+  established canonical metadata.
+- Added focused regressions for stable Goblin1 normalization, held-prop rejection, mandatory
+  Segment-1 visual establishment, durable known-Subject validator context, existing-Subject
+  metadata fill, the medium-shot location reference, and the 128-token deterministic budget.
+
+Commits:
+- `689541a24af715892b46e1e6e532483f91510e5e` — implementation
+- `79211309cbf111c2491f86ca9176ac1a425b665b` — focused regressions
+
+Next local acceptance:
+- Story-start resolver should return `Goblin1` with a state such as `leaning over the counter`,
+  not the chipped mug.
+- Segment 1 RAW/H3 should visibly contain Goblin1 without giving him a new action or entrance.
+- Segment 1 reference bindings should therefore include Subject 2.
+- Segment 2 physical validation must not reject Goblin1 as a new participant.
+- When Goblin1 is first visually established, missing canonical appearance/appropriate humanoid
+  wardrobe may be filled once and then remain stable.
+
