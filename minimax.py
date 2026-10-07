@@ -4103,6 +4103,7 @@ def extract_current_segment_subjects(
                 "Every evidence value must be copied exactly from the current beat/source. "
                 f"Prior validation error: {last_error}"
             )
+        raw = None
         try:
             raw = llm_request(
                 messages,
@@ -4122,6 +4123,11 @@ def extract_current_segment_subjects(
             raise
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             last_error = error
+            console_log(
+                "Current-Segment prop extraction validation failed "
+                f"(attempt {attempt}/3): {error}; raw={raw!r}",
+                flush=True,
+            )
     raise ValueError(
         "Could not identify current-segment Subjects: " + str(last_error)
     )
