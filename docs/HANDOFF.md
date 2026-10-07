@@ -1815,3 +1815,65 @@ Validation:
 - `python -m pytest tests/test_world_state_foundation.py -q` — 58 passed.
 - `python -m pytest tests/test_director_retry.py -q -k segment_one_can_apply_presence_gated_action_to_amy` — 1 passed, 115 deselected.
 - `git diff --check` passed.
+
+
+## 2026-10-07 — Fixed prop location authority test result
+
+Inspected the local bridge result for `tests-20261007-fixed-prop-location-authority`.
+It ran `tests/test_world_state_foundation.py` with Python 3.11.9/pytest 9.1.1
+against the `object-state-work` test snapshot at `f1610fa4`.
+
+Result: **66 passed, 0 failed** (return code 0; status `ok`). There are no exact
+failures to report. The suite includes coverage that static fixture/support IDs
+are stable and Python-generated, the current-Segment extractor cannot create a
+new fixed scene entity, registered fixtures are supplied separately from
+supports, and support aliases or registered location IDs normalize through the
+canonical WorldState records.
+
+Canonical fixture/support identity and physical registration remain exclusively
+owned by Python WorldState: it assigns stable IDs and canonical placement, while
+the current-Segment model extractor receives that vocabulary and may only
+identify a genuinely new movable prop. A fixed candidate is omitted; aliases of
+registered fixtures/supports reuse the existing record; a support alias used as
+an initial location resolves to the support's canonical location plus support
+ID. Location normalization accepts an exact registered name or exact ID and
+fails closed when resolution is not unique. Static-setting extraction can
+provide facts for Python to seed, but it does not assign competing WorldState
+identity or mutate canonical placement.
+
+No new deterministic fix is indicated by this passing run. Keep the current
+exact-ID/name location normalization and registered-support resolution. If the
+reported failure reappears, capture its exact extractor JSON and input WorldState
+first; do not broaden alias matching from this passing suite alone. No additional
+test was queued for this inspection.
+
+
+## 2026-10-07 — Normalize RAW Subject resolver timestamp labels
+
+Inspected bridge acceptance `acceptance-20261007-object-state-tavern-6x8-r29`
+and its captured run artifacts. Segment 1 Director RAW generation succeeded,
+then `resolve_director_raw_scene_subjects()` failed on both resolver attempts
+with `RAW Subject resolver mapping has an invalid timestamp`; H3 prompt
+generation did not begin. The resolver request prompts are in the captured
+`generated/prompt_history.txt`, but the actual local 20B response JSON was not
+captured: `developer_log.jsonl` is empty, and `run.log`/`acceptance_run.json`
+contain the validation error but no resolver output.
+
+The rejection branch confirms the timestamp did not match Python's required
+bare `mm:ss.nnn` spelling. The prompt asked the model to quote the exact RAW
+timestamp, whose visible label includes `At ` and a trailing comma (for example,
+`At 00:02.500,`). This was a prompt/parser contract mismatch. Since the response
+body is absent, the precise string returned by the local model cannot be
+verified; the accepted fix normalizes the exact RAW label and other unambiguous
+timestamp spellings before requiring the normalized value to identify exactly
+one timestamped line. Bracketed/nested, multi-value, and otherwise malformed
+values still fail, and a well-formed time absent from RAW or duplicated across
+lines still fails closed. The resolver continues to substitute only validated
+identity spans; accepted RAW text and timestamps are not rewritten by the
+resolver.
+
+Validation:
+- `python -m pytest tests/test_director_retry.py -q -k raw_subject_resolution` — 9 passed, 113 deselected, 3 subtests passed.
+- `python -m pytest tests/test_world_state_foundation.py -q` — 66 passed.
+- Combined Director and WorldState run — 180 passed, 8 failed, 7 subtests passed. `test_director_prompt_is_compact_creative_contract` exceeds its 4300-character limit (4397). Seven existing mocked-prop tests exhaust their mock replies after the extractor rejects non-source evidence (`tiny hands clutching a chipped mug`, `a barrel beside the hearth`): `test_raw_state_action_consistency_and_final_h3_checks_are_state_narrow`, `test_reducer_operation_contract_does_not_depend_on_verb_spelling`, `test_rejected_world_state_transaction_rolls_back_and_detects_stale_opening`, `test_tavern_segment_four_registers_dragon_and_distinguishes_vessels`, `test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths`, `test_tavern_segment_three_registers_elf_before_raw_and_allows_enter`, and `test_tavern_state_transactions_advance_through_dragon_sip_and_final_segment`.
+- `python -m py_compile minimax.py tests/test_director_retry.py` and `git diff --check` passed.

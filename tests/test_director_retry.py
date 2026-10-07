@@ -1368,6 +1368,93 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(minimax._director_timestamps(result), minimax._director_timestamps(original))
         self.assertEqual(names, ["Guard1", "Guard2"])
 
+    def test_raw_subject_resolution_normalizes_timestamp_copied_from_raw(self):
+        original = (
+            "At 00:00.000, a guard enters the room.\n"
+            "At 00:05.500, another guard blocks the door.\n"
+            "End continuity state: both guards remain in the room."
+        )
+        request = mock.Mock(return_value={
+            "mappings": [
+                {"timestamp": "At 00:00.000,", "surface_form": "a guard", "identity_span": "guard", "subject_name": "Guard1"},
+                {"timestamp": "At 00:05.5,", "surface_form": "another guard", "identity_span": "guard", "subject_name": "Guard2"},
+            ],
+            "subject_descriptions": {}, "subject_wardrobes": {},
+        })
+
+        result, names = minimax.resolve_director_raw_scene_subjects(
+            original, "", llm_request=request, segment_seconds=6.0,
+        )
+
+        self.assertEqual(
+            result,
+            "At 00:00.000, a Guard1 enters the room.\n"
+            "At 00:05.500, another Guard2 blocks the door.\n"
+            "End continuity state: both guards remain in the room.",
+        )
+        self.assertEqual(names, ["Guard1", "Guard2"])
+        self.assertEqual(minimax._director_timestamps(result), minimax._director_timestamps(original))
+
+    def test_raw_subject_resolution_malformed_timestamps_fail_closed(self):
+        original = (
+            "At 00:00.000, a guard enters the room.\n"
+            "End continuity state: the guard remains in the room."
+        )
+        for timestamp in ("At [00:00.000],", "00:00.000 and 00:05.000", "00:00.000xyz"):
+            with self.subTest(timestamp=timestamp):
+                request = mock.Mock(return_value={
+                    "mappings": [{
+                        "timestamp": timestamp,
+                        "surface_form": "a guard",
+                        "identity_span": "guard",
+                        "subject_name": "Guard1",
+                    }],
+                    "subject_descriptions": {}, "subject_wardrobes": {},
+                })
+                with self.assertRaisesRegex(ValueError, "invalid timestamp"):
+                    minimax.resolve_director_raw_scene_subjects(
+                        original, "", llm_request=request, segment_seconds=6.0,
+                    )
+
+    def test_raw_subject_resolution_normalized_timestamp_must_match_one_raw_line(self):
+        original = (
+            "At 00:00.000, a guard enters the room.\n"
+            "End continuity state: the guard remains in the room."
+        )
+        request = mock.Mock(return_value={
+            "mappings": [{
+                "timestamp": "At 00:05.000,",
+                "surface_form": "a guard",
+                "identity_span": "guard",
+                "subject_name": "Guard1",
+            }],
+            "subject_descriptions": {}, "subject_wardrobes": {},
+        })
+        with self.assertRaisesRegex(ValueError, "must identify one accepted RAW line"):
+            minimax.resolve_director_raw_scene_subjects(
+                original, "", llm_request=request, segment_seconds=6.0,
+            )
+
+    def test_raw_subject_resolution_ambiguous_timestamp_fails_closed(self):
+        original = (
+            "At 00:00.000, a guard enters the room.\n"
+            "At 00:00.000, another guard closes the door.\n"
+            "End continuity state: both guards remain in the room."
+        )
+        request = mock.Mock(return_value={
+            "mappings": [{
+                "timestamp": "At 00:00.000,",
+                "surface_form": "a guard",
+                "identity_span": "guard",
+                "subject_name": "Guard1",
+            }],
+            "subject_descriptions": {}, "subject_wardrobes": {},
+        })
+        with self.assertRaisesRegex(ValueError, "must identify one accepted RAW line"):
+            minimax.resolve_director_raw_scene_subjects(
+                original, "", llm_request=request, segment_seconds=6.0,
+            )
+
     def test_raw_pronoun_resolution_prompt_is_narrow(self):
         messages = minimax.build_director_pronoun_resolution_messages(
             (

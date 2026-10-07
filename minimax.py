@@ -36313,6 +36313,22 @@ def build_director_raw_subject_resolution_messages(
     ]
 
 
+def _normalize_director_subject_mapping_timestamp(value):
+    """Normalize an unambiguous timestamp copied from a RAW timestamp label."""
+    match = re.fullmatch(
+        r"(?i)(?:at\s+)?(?P<minutes>\d{1,2}):(?P<seconds>\d{2})"
+        r"(?:\.(?P<fraction>\d{1,3}))?\s*,?",
+        str(value or "").strip(),
+    )
+    if match is None:
+        return None
+    fraction = (match.group("fraction") or "0").ljust(3, "0")
+    return (
+        f"{int(match.group('minutes')):02d}:{match.group('seconds')}."
+        f"{fraction}"
+    )
+
+
 def _canonicalize_end_continuity_functional_subjects(
     end_state,
     subject_definitions,
@@ -36593,8 +36609,10 @@ def resolve_director_raw_scene_subjects(
     for mapping in mappings:
         if not isinstance(mapping, dict) or set(mapping) != mapping_keys:
             raise ValueError("RAW Subject resolver returned an invalid identity mapping.")
-        timestamp = str(mapping.get("timestamp") or "").strip()
-        if not re.fullmatch(r"\d{2}:\d{2}\.\d{3}", timestamp):
+        timestamp = _normalize_director_subject_mapping_timestamp(
+            mapping.get("timestamp")
+        )
+        if timestamp is None:
             raise ValueError("RAW Subject resolver mapping has an invalid timestamp.")
         line_indexes = timestamp_lines.get(timestamp, [])
         if len(line_indexes) != 1:
