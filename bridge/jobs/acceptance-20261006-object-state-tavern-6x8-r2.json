@@ -1,0 +1,8 @@
+{
+  "kind": "run_acceptance",
+  "job_id": "acceptance-20261006-object-state-tavern-6x8-r2",
+  "model": "gpt",
+  "code_branch": "object-state-work",
+  "benchmark": "tests/acceptance/gold/amy_medieval_tavern_six.json",
+  "timeout_seconds": 3600
+}
