@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "tests-20261007-world-state-ignore-unplaced-prop",
+  "code_branch": "object-state-work",
+  "tests": [
+    "tests/test_world_state_foundation.py"
+  ],
+  "timeout_seconds": 600
+}
