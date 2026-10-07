@@ -4303,8 +4303,10 @@ def build_current_segment_persistent_prop_messages(
                 "directly involved in a transfer, placement, pour/fill/consume, or "
                 "mechanism action in CURRENT BEAT or ASSIGNED SOURCE. Return exactly "
                 "one explicit initial_location or initial_holder, using only the "
-                "registered names below. A support_name may name only a registered "
-                "support/fixture. Do not guess a placement: omit any prop whose "
+                "registered names below. initial_location means the canonical room/site, "
+                "never a counter, basket, table, shelf, or other support. Use support_name "
+                "for a registered support/fixture-support that the prop starts on or in. "
+                "Do not guess a placement: omit any prop whose "
                 "initial placement is not supported by the current sources. Evidence "
                 "must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE. "
                 "Record contents/capabilities only when explicit. If RAW explicitly "
@@ -4351,10 +4353,15 @@ def parse_current_segment_persistent_prop_result(
     source_text = "\n".join((str(current_beat or ""), str(assigned_source or "")))
     locations = {item["name"].casefold() for item in world_state["locations"].values()}
     subjects = {item["name"].casefold() for item in world_state["subjects"].values()}
-    supports = {
-        item["name"].casefold()
+    support_records = {
+        item["name"].casefold(): item
         for item in world_state["props"].values()
         if item["kind"] in {"support", "fixture_support"}
+    }
+    supports = set(support_records)
+    location_names_by_id = {
+        location_id: item["name"]
+        for location_id, item in world_state["locations"].items()
     }
     existing = {item["name"].casefold() for item in world_state["props"].values()}
     expected_keys = {
@@ -4374,8 +4381,25 @@ def parse_current_segment_persistent_prop_result(
             raise ValueError(
                 f"Persistent prop {name!r} requires exactly one explicit initial location or holder."
             )
-        if entry["initial_location"] is not None and str(entry["initial_location"]).casefold() not in locations:
-            raise ValueError(f"Persistent prop {name!r} names an unregistered location.")
+        if entry["initial_location"] is not None:
+            location_key = str(entry["initial_location"]).casefold()
+            if location_key not in locations:
+                support_record = support_records.get(location_key)
+                if support_record is None:
+                    raise ValueError(f"Persistent prop {name!r} names an unregistered location.")
+                support_location_id = support_record["placement"].get("location_id")
+                canonical_location = location_names_by_id.get(support_location_id)
+                if canonical_location is None:
+                    raise ValueError(
+                        f"Persistent prop {name!r} names a support without a registered location."
+                    )
+                if entry["support_name"] is None:
+                    entry["support_name"] = support_record["name"]
+                elif str(entry["support_name"]).casefold() != location_key:
+                    raise ValueError(
+                        f"Persistent prop {name!r} gives conflicting initial location and support."
+                    )
+                entry["initial_location"] = canonical_location
         if entry["initial_holder"] is not None and str(entry["initial_holder"]).casefold() not in subjects:
             raise ValueError(f"Persistent prop {name!r} names an unregistered holder.")
         if entry["support_name"] is not None and str(entry["support_name"]).casefold() not in supports:
