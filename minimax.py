@@ -4603,6 +4603,7 @@ def extract_current_segment_persistent_props(
                 "scene object means omit it from this NEW-PROP response. Do not predict future props. "
                 f"Prior validation error: {last_error}"
             )
+        raw = None
         try:
             raw = llm_request(
                 attempt_messages,
@@ -4622,6 +4623,11 @@ def extract_current_segment_persistent_props(
             raise
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             last_error = error
+            console_log(
+                "Current-Segment prop extraction validation failed "
+                f"(attempt {attempt}/3): {error}; raw={raw!r}",
+                flush=True,
+            )
     raise ValueError("Could not extract current-Segment persistent props: " + str(last_error))
 
 
