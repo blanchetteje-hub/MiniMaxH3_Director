@@ -1189,6 +1189,25 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["name"], "miniature door")
 
+    def test_current_segment_extractor_never_creates_new_fixed_scene_entity(self):
+        state, _ = self._static_alias_test_state("front entrance", "door")
+        candidate = self._candidate(
+            "iron latch",
+            "iron latch on the front entrance",
+            mobility="fixed",
+            initial_location="Hall",
+        )
+        candidate["support_name"] = "front entrance"
+        candidate["capabilities"]["openable"] = True
+        candidate["capabilities"]["lockable"] = True
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {"props": [candidate]},
+            "Amy pushes the iron latch on the front entrance.",
+            "Amy pushes the iron latch on the front entrance.",
+            state,
+        )
+        self.assertEqual(result, [])
+
     def test_alias_matching_multiple_same_type_fixtures_fails_closed(self):
         state, _ = seed_canonical_static_location_state(
             empty_world_state(),
