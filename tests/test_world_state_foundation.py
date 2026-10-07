@@ -1102,6 +1102,36 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertNotIn('"name":"Door"', supports)
 
 
+    def test_support_name_used_as_initial_location_is_normalized(self):
+        state = make_reducer_state()
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {
+                "props": [{
+                    "name": "damp cloth",
+                    "kind": "tool",
+                    "mobility": "movable",
+                    "initial_location": "Support A",
+                    "initial_holder": None,
+                    "support_name": None,
+                    "contents": [],
+                    "capabilities": {
+                        "container": "unknown",
+                        "consumable": "unknown",
+                        "openable": "unknown",
+                        "lockable": "unknown",
+                    },
+                    "reason": "needed for pickup",
+                    "evidence": "damp cloth",
+                }]
+            },
+            "Subject One picks up a damp cloth from Support A.",
+            "Subject One picks up a damp cloth from Support A.",
+            state,
+        )
+        self.assertEqual(result[0]["initial_location"], "Area A")
+        self.assertEqual(result[0]["support_name"], "Support A")
+
+
 class RegisteredSubjectStoryStartEvidenceTests(unittest.TestCase):
     def test_explicit_presence_uses_exact_numbered_beat_as_evidence(self):
         subject = {"name": "Amy"}
