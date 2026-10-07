@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "6196d43aeedb3c1fa614107b7c298b2802da1e43bbab276e22c84b02df1ba478",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident",
+    "role"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ",30",
+      "clothing": "Amy wears a light‑colored linen shirt beneath a sturdy brown leather apron stitched in rough lines. She pairs this with dark linen breeches that reach her knees, calf‑high leather stockings, and worn leather boots suitable for tavern work. A simple woolen cap rests on her head to keep hair out of the ale",
+      "gender": "Female",
+      "confident": "True",
+      "role": "medieval barkeep"
+    }
+  ]
+}
