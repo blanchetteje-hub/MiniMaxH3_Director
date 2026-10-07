@@ -1082,6 +1082,26 @@ class WorldStateReducerTests(unittest.TestCase):
 
 
 
+class CurrentSegmentPropVocabularyTests(unittest.TestCase):
+    def test_registered_fixture_is_exposed_separately_from_supports(self):
+        state = make_reducer_state()
+        messages = minimax.build_current_segment_persistent_prop_messages(
+            "Subject One opens the door.",
+            "Subject One opens the door.",
+            state,
+        )
+        user_prompt = messages[-1]["content"]
+        fixtures = user_prompt.split("CANONICAL FIXTURES\n", 1)[1].split(
+            "\n\nReturn only props", 1
+        )[0]
+        supports = user_prompt.split("CANONICAL SUPPORTS\n", 1)[1].split(
+            "\n\nCANONICAL FIXTURES", 1
+        )[0]
+        self.assertIn('"name":"Door"', fixtures)
+        self.assertIn('"name":"Fixed object"', fixtures)
+        self.assertNotIn('"name":"Door"', supports)
+
+
 class RegisteredSubjectStoryStartEvidenceTests(unittest.TestCase):
     def test_explicit_presence_uses_exact_numbered_beat_as_evidence(self):
         subject = {"name": "Amy"}
