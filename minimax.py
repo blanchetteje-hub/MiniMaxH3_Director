@@ -4334,7 +4334,9 @@ def build_current_segment_persistent_prop_messages(
                 "state-changing action in THIS SEGMENT. Existing props are listed "
                 "and must be reused by identity; never duplicate or rename them. "
                 "Do not harvest nouns, register ordinary staging objects, or "
-                "predict future props, beats, holders, or actions. Do not return "
+                "predict future props, beats, holders, or actions. This extractor "
+                "must never create new fixed scene entities; fixed fixtures/supports "
+                "belong to canonical Python location WorldState. Do not return "
                 "Subjects, fixtures already registered in the canonical location "
                 "vocabulary, descriptive aliases of those fixtures, garments, or "
                 "background objects. Adjectives/material descriptions do not make a "
@@ -4581,6 +4583,12 @@ def parse_current_segment_persistent_prop_result(
         if not name or key in names:
             raise ValueError("Current-Segment props must be new, non-empty, and unique.")
         names.add(key)
+        if entry["mobility"] == "fixed":
+            # Fixed scene entities are owned by canonical Python location WorldState.
+            # This current-Segment extractor may not create parallel static geometry
+            # or mechanism components. If a required fixed entity is missing, that is
+            # an upstream canonical-location extraction defect.
+            continue
         if (
             entry["initial_location"] is not None
             and entry["initial_holder"] is None
