@@ -20,6 +20,14 @@ The goal is:
 
 The pipeline is disposable. Any intermediate representation, LLM call, validator, state object, or Python layer exists only if it improves that path.
 
+## WorldState authority
+
+Deterministic Python WorldState is the canonical physical authority for the film. It owns location identity and spatial state, Subject presence/location, prop identity and placement, held/owned state, actions/state transitions, and every other continuity-relevant physical fact that can be represented deterministically.
+
+The local LLM, Director RAW, H3 prompts, visual continuation analysis, and renderer output do **not** become competing state authorities. They may interpret, stage, or visually realize the current canonical state, and narrow LLM extractors may report observations for Python to validate and commit, but accepted physical state must ultimately be represented in and governed by Python WorldState.
+
+This is a hard architectural requirement, not bookkeeping preference: if the Python object/state map disagrees with what the LLM or H3 depicts, reliable multi-segment continuity is impossible. Fix the mismatch at the earliest stage so generated actions and prompts conform to canonical WorldState; do not allow an untracked parallel reality to develop in prompt text.
+
 ## Project progress checklist
 
 This checklist is the compact current-status view. Historical sections below explain why each decision exists. A checked item means the architecture has been implemented and has enough production evidence to treat it as provisionally complete. Unchecked items are active verification targets or remaining work.
