@@ -1,0 +1,33 @@
+{
+  "version": 3,
+  "source_sha256": "49dc7b011311fe47e219862bf31475dc47049d551d4949dd96d9515ea425124f",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "medieval_barkeep",
+    "confident_woman",
+    "tavern_for_magical_humanoid_creatures",
+    "facial_identity_defined_by_picture_1",
+    "facial_structure_defined_by_picture_1",
+    "hair_defined_by_picture_1",
+    "body_proportions_defined_by_picture_1",
+    "distinguishing_features_defined_by_picture_1"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ",35",
+      "clothing": "Amy wears a sturdy linen apricot‑colored apron tied at the waist over her simple wool tunic in a muted earth tone. The tunic is long‑sleeved, reaching mid‑thigh, made of coarse but well‑stitched fabric suitable for work. Over it she sports a leather belt with a brass buckle that holds a small pouch and a pocket knife. Her boots are plain brown leather, laced up to the ankle, worn from frequent use on stone floors. The apron’s hem is slightly frayed at the edges, showing signs of regular cleaning. No additional layers or accessories are mentioned",
+      "gender": "Female",
+      "medieval_barkeep": "true",
+      "confident_woman": "true",
+      "tavern_for_magical_humanoid_creatures": "yes",
+      "facial_identity_defined_by_picture_1": "true",
+      "facial_structure_defined_by_picture_1": "true",
+      "hair_defined_by_picture_1": "true",
+      "body_proportions_defined_by_picture_1": "true",
+      "distinguishing_features_defined_by_picture_1": "true"
+    }
+  ]
+}
