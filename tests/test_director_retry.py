@@ -324,6 +324,19 @@ def non_audio_llm_calls(request):
 
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
+    def test_absent_subject_move_failure_adds_enter_retry_hint(self):
+        hint = minimax._director_state_action_retry_hint(
+            "move action move: subject_not_known_present: The subject is not explicitly recorded as present."
+        )
+        self.assertIn("Canonical WorldState records that Subject as not present", hint)
+        self.assertIn("use an `enter` action", hint)
+        self.assertIn("Do not use `move`", hint)
+
+    def test_unrelated_state_action_failure_gets_no_special_hint(self):
+        hint = minimax._director_state_action_retry_hint(
+            "pickup action take: prop_not_known_present: prop unavailable"
+        )
+        self.assertEqual(hint, "")
 
     def setUp(self):
         self._state_consistency_patcher = mock.patch(
