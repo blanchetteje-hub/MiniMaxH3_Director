@@ -860,6 +860,81 @@ class WorldStateReducerTests(unittest.TestCase):
         self.assertEqual(all_poured.world_state["props"]["prop_source"]["contents"][0]["amount"], "none")
         self.assertEqual(all_poured.world_state["props"]["prop_target"]["contents"][0]["amount"], "some")
 
+    def test_fill_adds_explicit_substance_without_source_prop(self):
+        state = make_reducer_state()
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "fill-cup", "fill", actor_subject_id="subject_1",
+                target_prop_id="prop_target", substance="special brew",
+            )],
+            segment_number=4,
+        )
+        self.assertTrue(result.committed)
+        self.assertEqual(result.world_state["props"]["prop_target"]["contents"], [{
+            "substance": "special brew", "amount": "some", "consumable": UNKNOWN,
+        }])
+        self.assertEqual(state["props"]["prop_target"]["contents"], [])
+
+    def test_explicit_consume_can_learn_unknown_substance_is_consumable(self):
+        state = make_reducer_state()
+        filled = reduce_world_state(
+            state,
+            [self.action(
+                "fill", "fill", actor_subject_id="subject_1",
+                target_prop_id="prop_target", substance="special brew",
+            )],
+            segment_number=4,
+        )
+        consumed = reduce_world_state(
+            filled.world_state,
+            [self.action(
+                "sip", "consume", actor_subject_id="subject_1",
+                prop_id="prop_target", substance="special brew", amount="partial",
+            )],
+            segment_number=5,
+        )
+        self.assertTrue(consumed.committed)
+        self.assertEqual(consumed.world_state["props"]["prop_target"]["contents"], [{
+            "substance": "special brew", "amount": "some", "consumable": True,
+        }])
+
+    def test_fill_requires_present_colocated_actor_known_container_and_substance(self):
+        state = make_reducer_state()
+        base_action = self.action(
+            "fill", "fill", actor_subject_id="subject_1",
+            target_prop_id="prop_target", substance="special brew",
+        )
+        state["subjects"]["subject_1"]["presence"] = "absent"
+        result = reduce_world_state(state, [base_action], segment_number=4)
+        self.assertFalse(result.committed)
+        self.assertEqual(result.outcomes[0].code, "subject_not_known_present")
+
+        state = make_reducer_state()
+        state["props"]["prop_target"]["placement"]["location_id"] = "location_b"
+        validate_world_state(state)
+        result = reduce_world_state(state, [base_action], segment_number=4)
+        self.assertFalse(result.committed)
+        self.assertEqual(result.outcomes[0].code, "prop_location_mismatch")
+
+        state = make_reducer_state()
+        state["props"]["prop_target"]["capabilities"]["container"] = UNKNOWN
+        result = reduce_world_state(state, [base_action], segment_number=4)
+        self.assertFalse(result.committed)
+        self.assertEqual(result.outcomes[0].code, "not_known_container")
+
+        state = make_reducer_state()
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "fill-empty", "fill", actor_subject_id="subject_1",
+                target_prop_id="prop_target", substance="  ",
+            )],
+            segment_number=4,
+        )
+        self.assertFalse(result.committed)
+        self.assertEqual(result.outcomes[0].code, "invalid_substance")
+
     def test_partial_transfer_rejects_unknown_quantity(self):
         state = make_reducer_state()
         state["props"]["prop_source"]["contents"][0]["amount"] = UNKNOWN

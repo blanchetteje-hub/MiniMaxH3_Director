@@ -91,7 +91,7 @@ TAVERN_SEGMENT_SOURCES = [
 ]
 
 
-def current_prop(name, holder=None, location="Tavern", support=None, evidence="", reason=""):
+def current_prop(name, holder=None, location="Tavern", support=None, evidence="", reason="", contents=None):
     return {
         "name": name,
         "kind": "container",
@@ -99,7 +99,7 @@ def current_prop(name, holder=None, location="Tavern", support=None, evidence=""
         "initial_location": location if holder is None else None,
         "initial_holder": holder,
         "support_name": support,
-        "contents": [],
+        "contents": copy.deepcopy(contents or []),
         "capabilities": {
             "container": True,
             "consumable": "unknown",
@@ -123,6 +123,7 @@ def tavern_segment_prop_results(segment_number):
                 "barrel", support=None,
                 evidence="a barrel beside the hearth",
                 reason="The barrel is the source container for the current tavern service sequence.",
+                contents=[{"substance": "unknown", "amount": "some", "consumable": "unknown"}],
             ),
         ]}
     if segment_number == 3:
@@ -292,6 +293,8 @@ def pipeline_llm_side_effect(
             return {"overall_soundscape": soundscape}
         if purpose == "director_h3_music":
             return {"non_diegetic_music": music}
+        if purpose == "director_raw_world_state_consistency":
+            return {"valid": True, "issue": ""}
         if purpose == "director_prop_staging":
             return {"staging": ""}
         if purpose == "director_raw_scene_pronoun_resolution":
@@ -327,6 +330,16 @@ def non_audio_llm_calls(request):
 
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
+
+    def setUp(self):
+        self._state_consistency_patcher = mock.patch(
+            "minimax.validate_raw_scene_state_action_consistency",
+            return_value={"valid": True, "issue": ""},
+        )
+        self._state_consistency_patcher.start()
+
+    def tearDown(self):
+        self._state_consistency_patcher.stop()
 
     def test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths(self):
         state, _location_id = tavern_world_state_from_authorities()
@@ -431,12 +444,266 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         available_ops = {
             item["properties"]["op"]["const"] for item in action_schemas
         }
-        self.assertTrue({"enter", "handoff", "pour"}.issubset(available_ops))
+        self.assertTrue({"enter", "handoff", "pour", "fill"}.issubset(available_ops))
+        fill_schema = next(
+            item for item in action_schemas
+            if item["properties"]["op"]["const"] == "fill"
+        )
+        self.assertEqual(
+            set(fill_schema["properties"]),
+            {"action_id", "op", "actor_subject_id", "target_prop_id", "substance"},
+        )
         enter_schema = next(
             item for item in action_schemas
             if item["properties"]["op"]["const"] == "enter"
         )
         self.assertIn(dragon_id, enter_schema["properties"]["subject_id"]["enum"])
+
+    def test_tavern_state_transactions_advance_through_dragon_sip_and_final_segment(self):
+        state, location_id = tavern_world_state_from_authorities()
+        state, _, _ = prepare_tavern_segment(state, 1)
+        generation_state = {"world_state": copy.deepcopy(state)}
+
+        # Segment 1 commits its authoritative opening and registered persistent
+        # props as a transaction, so Segment 2 opens from that exact state.
+        mug_id = next(prop_id for prop_id, prop in state["props"].items() if prop["name"] == "mug")
+        barrel_id = next(prop_id for prop_id, prop in state["props"].items() if prop["name"] == "barrel")
+        amy_id = next(subject_id for subject_id, subject in state["subjects"].items() if subject["name"] == "Amy")
+        segment_one_actions = [{
+            "action_id": "amy-refills-goblin-mug",
+            "op": "pour",
+            "actor_subject_id": amy_id,
+            "source_prop_id": barrel_id,
+            "target_prop_id": mug_id,
+            "substance": "unknown",
+            "amount": "partial",
+        }]
+        segment_one = minimax.build_world_state_transaction(
+            state, segment_one_actions, segment_number=1
+        )
+        meta = minimax.world_state_transaction_metadata(
+            segment_one, "H3 segment 1", completion_mode="prompt_only_transaction"
+        )
+        minimax.commit_world_state_transaction(generation_state, segment_one, meta)
+        segment_two_opening = copy.deepcopy(generation_state["world_state"])
+        self.assertEqual(
+            segment_two_opening,
+            segment_one["predicted_end_world_state"],
+        )
+        self.assertEqual(
+            segment_two_opening["revision"],
+            state["revision"] + 1,
+        )
+        segment_two_opening, _, _ = prepare_tavern_segment(segment_two_opening, 2)
+        self.assertEqual(
+            segment_two_opening["props"],
+            segment_one["predicted_end_world_state"]["props"],
+        )
+        self.assertEqual(
+            next(prop for prop in segment_two_opening["props"].values() if prop["name"] == "mug")["contents"],
+            [{"substance": "unknown", "amount": "some", "consumable": "unknown"}],
+        )
+        generation_state["world_state"] = copy.deepcopy(segment_two_opening)
+
+        # Segment 3 entry is committed before Segment 4 registers its new
+        # arrival; the next vocabulary therefore sees Elf1 as present.
+        state = generation_state["world_state"]
+        state, _, _ = prepare_tavern_segment(state, 3)
+        generation_state["world_state"] = copy.deepcopy(state)
+        elf_id, _elf = next(
+            (subject_id, subject) for subject_id, subject in state["subjects"].items()
+            if subject["name"] == "Elf1"
+        )
+        enter_elf = [{
+            "action_id": "elf-enters",
+            "op": "enter",
+            "subject_id": elf_id,
+            "location_id": location_id,
+        }]
+        segment_three = minimax.build_world_state_transaction(
+            state, enter_elf, segment_number=3
+        )
+        meta = minimax.world_state_transaction_metadata(
+            segment_three, "H3 segment 3", completion_mode="prompt_only_transaction"
+        )
+        minimax.commit_world_state_transaction(generation_state, segment_three, meta)
+        state = generation_state["world_state"]
+        state, _, segment_four_subjects = prepare_tavern_segment(state, 4)
+        generation_state["world_state"] = copy.deepcopy(state)
+        self.assertIn("Elf1", segment_four_subjects)
+
+        dragon_id = next(
+            subject_id for subject_id, subject in state["subjects"].items()
+            if subject["name"] == "Dragon1"
+        )
+        amy_id = next(
+            subject_id for subject_id, subject in state["subjects"].items()
+            if subject["name"] == "Amy"
+        )
+        cup_id = next(
+            prop_id for prop_id, prop in state["props"].items()
+            if prop["name"] == "crystal cup"
+        )
+        segment_four_actions = [
+            {
+                "action_id": "dragon-enters",
+                "op": "enter",
+                "subject_id": dragon_id,
+                "location_id": location_id,
+            },
+            {
+                "action_id": "amy-picks-up-cup",
+                "op": "pickup",
+                "actor_subject_id": amy_id,
+                "prop_id": cup_id,
+            },
+            {
+                "action_id": "amy-fills-cup",
+                "op": "fill",
+                "actor_subject_id": amy_id,
+                "target_prop_id": cup_id,
+                "substance": "special brew",
+            },
+            {
+                "action_id": "amy-hands-cup-to-dragon",
+                "op": "handoff",
+                "from_subject_id": amy_id,
+                "to_subject_id": dragon_id,
+                "prop_id": cup_id,
+            },
+        ]
+        segment_four = minimax.build_world_state_transaction(
+            state, segment_four_actions, segment_number=4
+        )
+        meta = minimax.world_state_transaction_metadata(
+            segment_four, "H3 segment 4", completion_mode="prompt_only_transaction"
+        )
+        minimax.commit_world_state_transaction(generation_state, segment_four, meta)
+        state = generation_state["world_state"]
+        cup = state["props"][cup_id]
+        self.assertEqual(cup["placement"], {"kind": "held", "subject_id": dragon_id})
+        self.assertEqual(cup["contents"][0]["substance"], "special brew")
+        self.assertEqual(cup["contents"][0]["amount"], "some")
+
+        # Segment 5 consumes from the same registered cup using the explicit
+        # RAW consume action; the coarse remaining amount stays nonempty.
+        state, _, _ = prepare_tavern_segment(state, 5)
+        generation_state["world_state"] = copy.deepcopy(state)
+        segment_five = minimax.build_world_state_transaction(
+            state,
+            [{
+                "action_id": "dragon-sips",
+                "op": "consume",
+                "actor_subject_id": dragon_id,
+                "prop_id": cup_id,
+                "substance": "special brew",
+                "amount": "partial",
+            }],
+            segment_number=5,
+        )
+        meta = minimax.world_state_transaction_metadata(
+            segment_five, "H3 segment 5", completion_mode="prompt_only_transaction"
+        )
+        minimax.commit_world_state_transaction(generation_state, segment_five, meta)
+        self.assertEqual(
+            generation_state["world_state"]["props"][cup_id]["contents"][0]["amount"],
+            "some",
+        )
+
+        final_segment = minimax.build_world_state_transaction(
+            generation_state["world_state"], [], segment_number=6
+        )
+        final_meta = minimax.world_state_transaction_metadata(
+            final_segment, "H3 segment 6", completion_mode="prompt_only_transaction"
+        )
+        minimax.commit_world_state_transaction(generation_state, final_segment, final_meta)
+        self.assertEqual(
+            generation_state["world_state_transactions"]["6"]["completion_mode"],
+            "prompt_only_transaction",
+        )
+        self.assertEqual(
+            generation_state["world_state_transactions"]["6"]["final_h3_hash"],
+            minimax.hashlib.sha256(b"H3 segment 6").hexdigest(),
+        )
+
+    def test_rejected_world_state_transaction_rolls_back_and_detects_stale_opening(self):
+        state, _location_id = tavern_world_state_from_authorities()
+        state, _, _ = prepare_tavern_segment(state, 1)
+        generation_state = {"world_state": copy.deepcopy(state)}
+        with self.assertRaisesRegex(ValueError, "transaction candidate rejected"):
+            minimax.build_world_state_transaction(
+                state,
+                [{
+                    "action_id": "pick-up-counter",
+                    "op": "pickup",
+                    "actor_subject_id": "subject_1",
+                    "prop_id": next(
+                        prop_id for prop_id, prop in state["props"].items()
+                        if prop["name"] == "counter"
+                    ),
+                }],
+                segment_number=1,
+            )
+        self.assertEqual(generation_state["world_state"], state)
+
+        transaction = minimax.build_world_state_transaction(
+            state, [], segment_number=1
+        )
+        generation_state["world_state"]["revision"] += 1
+        metadata = minimax.world_state_transaction_metadata(
+            transaction, "H3", completion_mode="prompt_only_transaction"
+        )
+        with self.assertRaisesRegex(ValueError, "opening revision/hash changed"):
+            minimax.commit_world_state_transaction(generation_state, transaction, metadata)
+
+    def test_raw_state_action_consistency_and_final_h3_checks_are_state_narrow(self):
+        state, _location_id = tavern_world_state_from_authorities()
+        state, _, subject_names = prepare_tavern_segment(state, 1)
+        contract = minimax.build_director_state_action_contract(
+            state,
+            current_segment_text=TAVERN_SEGMENT_BEATS[0] + TAVERN_SEGMENT_SOURCES[0],
+            current_segment_subject_names=subject_names,
+        )
+        invalid = mock.Mock(return_value={
+            "valid": False,
+            "issue": "RAW fills the mug from the barrel but state_actions omit pour.",
+        })
+        check = self._state_consistency_patcher.temp_original
+        result = check(
+            raw_scene="Amy fills the mug from the barrel.",
+            current_beat=TAVERN_SEGMENT_BEATS[0],
+            assigned_source=TAVERN_SEGMENT_SOURCES[0],
+            state_actions=[],
+            opening_world_state=state,
+            predicted_end_world_state=state,
+            vocabulary=contract["vocabulary"],
+            llm_request=invalid,
+        )
+        self.assertFalse(result["valid"])
+        sent = invalid.call_args.args[0][1]["content"]
+        self.assertIn("OPENING AND PREDICTED ENDING", sent)
+        self.assertIn("STATE ACTIONS\n[]", sent)
+        self.assertIn("mug", sent)
+
+        h3_invalid = mock.Mock(return_value={
+            "valid": False,
+            "issue": "Final H3 omits Amy's handoff of the cup.",
+        })
+        actions = [{"action_id": "handoff", "op": "handoff"}]
+        h3_result = minimax.validate_final_h3_world_state_plan(
+            final_h3_prompt="Amy leaves the cup on the shelf.",
+            raw_scene="Amy hands the cup to Dragon1.",
+            state_actions=actions,
+            opening_world_state=state,
+            predicted_end_world_state=state,
+            vocabulary=contract["vocabulary"],
+            llm_request=h3_invalid,
+        )
+        self.assertFalse(h3_result["valid"])
+        self.assertEqual(
+            h3_invalid.call_args.kwargs["history_metadata"]["purpose"],
+            "final_h3_world_state_plan_validation",
+        )
 
     def test_reducer_operation_contract_does_not_depend_on_verb_spelling(self):
         state, _location_id = tavern_world_state_from_authorities()
@@ -471,7 +738,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(
             operation_sets[0],
             {
-                "pickup", "place", "handoff", "pour", "consume", "enter",
+                "pickup", "place", "handoff", "pour", "fill", "consume", "enter",
                 "exit", "move", "set_support", "change_clothing", "open",
                 "close", "lock", "unlock",
             },
@@ -519,15 +786,65 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         prompt = request1.args[0][-1]["content"]
         self.assertIn("REGISTERED WORLDSTATE VOCABULARY", prompt)
         self.assertIn(mug_id, prompt)
+        self.assertIn("Never invent a source prop", prompt)
         action_schemas = request1.kwargs["response_format"]["json_schema"]["schema"]["properties"]["state_actions"]["items"]["oneOf"]
         self.assertEqual(
             {schema["properties"]["op"]["const"] for schema in action_schemas},
             {
-                "pickup", "place", "handoff", "pour", "consume", "enter",
+                "pickup", "place", "handoff", "pour", "fill", "consume", "enter",
                 "exit", "move", "set_support", "change_clothing", "open",
                 "close", "lock", "unlock",
             },
         )
+
+    def test_request_one_consistency_retry_reuses_immutable_opening_state(self):
+        bundle = goblin_mug_bundle()
+        opening = copy.deepcopy(bundle["world_state_opening"])
+        mug_id = next(
+            prop_id for prop_id, prop in opening["props"].items()
+            if prop["name"] == "mug"
+        )
+        actions = goblin_mug_transfer_actions(mug_id)
+        scene = (
+            "At 00:00.000, Goblin1 picks up the mug.\n"
+            "At 00:04.500, Goblin1 hands the mug to Elf1.\n"
+            "End continuity state: Elf1 holds the mug."
+        )
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            director_response(scene),
+            director_response(scene, state_actions=actions),
+        ]))
+        consistency = mock.Mock(side_effect=[
+            {"valid": False, "issue": "RAW hands off the mug but handoff is omitted."},
+            {"valid": True, "issue": ""},
+        ])
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.validate_raw_scene_state_action_consistency", consistency),
+            mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-consistency-retry", {"source_sha256": "source"}
+            )
+
+        self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
+        self.assertEqual(payload["request1_result"]["state_actions"], actions)
+        self.assertEqual(bundle["world_state_opening"], opening)
+        self.assertEqual(consistency.call_count, 2)
+        self.assertEqual(
+            [call.kwargs["opening_world_state"] for call in consistency.call_args_list],
+            [opening, opening],
+        )
+        retry_messages = [
+            call.args[0] for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
+        ][1]
+        retry_text = retry_messages[-1]["content"]
+        self.assertIn("RAW hands off the mug but handoff is omitted.", retry_text)
+        self.assertNotIn("stale", retry_text.casefold())
 
     def test_request_one_rejects_duplicate_or_unknown_prop_id_then_retries(self):
         for invalid_actions, expected_code in (

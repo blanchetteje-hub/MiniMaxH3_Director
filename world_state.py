@@ -38,6 +38,7 @@ ACTION_FIELDS = {
     "pour": {
         "actor_subject_id", "source_prop_id", "target_prop_id", "substance", "amount",
     },
+    "fill": {"actor_subject_id", "target_prop_id", "substance"},
     "consume": {"actor_subject_id", "prop_id", "amount", "substance"},
     "enter": {"subject_id", "location_id"},
     "exit": {"subject_id", "destination_location_id"},
@@ -58,6 +59,7 @@ ACTION_REQUIRED_FIELDS = {
     "pour": {
         "actor_subject_id", "source_prop_id", "target_prop_id", "substance", "amount",
     },
+    "fill": {"actor_subject_id", "target_prop_id", "substance"},
     "consume": {"actor_subject_id", "prop_id", "amount"},
     "enter": {"subject_id", "location_id"},
     "exit": {"subject_id"},
@@ -1220,6 +1222,36 @@ def _apply_state_action(
             target_content["amount"] = "some"
         changed.extend(((source, "contents"), (target, "contents")))
 
+    elif op == "fill":
+        actor_id = action["actor_subject_id"]
+        _actor, target = _require_actor_and_prop_colocated(
+            state, actor_id, action["target_prop_id"]
+        )
+        if target["capabilities"]["container"] is not True:
+            _reject(
+                "not_known_container",
+                "Fill requires a target explicitly recorded as a container.",
+            )
+        substance = action["substance"].strip() if isinstance(action["substance"], str) else ""
+        if not substance:
+            _reject("invalid_substance", "Fill requires a non-empty substance label.")
+        content = next(
+            (
+                item for item in target["contents"]
+                if item["substance"].casefold().strip() == substance.casefold()
+            ),
+            None,
+        )
+        if content is None:
+            target["contents"].append({
+                "substance": substance,
+                "amount": "some",
+                "consumable": UNKNOWN,
+            })
+        else:
+            content["amount"] = "some"
+        changed.append((target, "contents"))
+
     elif op == "consume":
         actor_id, prop_id = action["actor_subject_id"], action["prop_id"]
         _actor, prop = _require_actor_and_prop_colocated(state, actor_id, prop_id)
@@ -1243,12 +1275,15 @@ def _apply_state_action(
                 (item for item in prop["contents"] if item["substance"].casefold().strip() == key),
                 None,
             )
-            if content is None or content["consumable"] is not True:
+            if content is None or content["consumable"] is False:
                 _reject("substance_not_known_consumable", "The substance is not recorded as consumable.")
             if content["amount"] == "none":
                 _reject("content_empty", "The prop is explicitly recorded as empty of that substance.")
             if amount == "partial" and content["amount"] != "some":
                 _reject("partial_amount_unknown", "Partial consumption needs a known non-empty amount.")
+            # An explicit consume action itself establishes that this named
+            # recorded substance is consumable; no lexical inference is used.
+            content["consumable"] = True
             content["amount"] = "none" if amount == "all" else "some"
             changed.append((prop, "contents"))
             if prop["kind"] == "consumable" and all(item["amount"] == "none" for item in prop["contents"]):
@@ -1715,6 +1750,11 @@ def build_director_state_action_contract(
         "substance": {"type": "string", "minLength": 1},
         "amount": {"type": "string", "enum": ["all", "partial"]},
     }, ["actor_subject_id", "source_prop_id", "target_prop_id", "substance", "amount"], subject_ids, prop_ids)
+    add("fill", {
+        **subject_field("actor_subject_id"),
+        "target_prop_id": _string_enum(prop_ids),
+        "substance": {"type": "string", "minLength": 1},
+    }, ["actor_subject_id", "target_prop_id", "substance"], subject_ids, prop_ids)
     add("consume", {
         **subject_field("actor_subject_id"), **prop_field(),
         "amount": {"type": "string", "enum": ["all", "partial"]},
@@ -1817,7 +1857,7 @@ def parse_and_dry_run_director_state_actions(
         "activity_tools_settled", "beat_complete",
     )):
         raise ValueError("Director completion fields must be booleans.")
-    outcomes = validate_state_actions(
+    reduction = reduce_world_state(
         world_state,
         response["state_actions"],
         segment_number=segment_number,
@@ -1825,6 +1865,7 @@ def parse_and_dry_run_director_state_actions(
     return {
         "raw_scene": response["raw_scene"],
         "state_actions": deepcopy(response["state_actions"]),
-        "outcomes": outcomes,
-        "accepted": all(outcome.accepted for outcome in outcomes),
+        "outcomes": reduction.outcomes,
+        "accepted": reduction.committed,
+        "predicted_end_world_state": deepcopy(reduction.world_state),
     }

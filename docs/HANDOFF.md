@@ -1611,3 +1611,50 @@ Validation:
 - `pytest -q tests/test_director_retry.py tests/test_world_state_foundation.py` — 151 passed,
   4 subtests passed.
 - No full tavern generation was run. Stop here for Gate C review before Gate D.
+
+
+## 2026-10-06 — Gate C approved; Gate D phase 1
+
+Added the `fill(actor_subject_id, target_prop_id, substance)` reducer operation. It applies
+only to a registered container when RAW explicitly stages substance entering it and no
+registered source prop is established. The actor must be present and co-located with the
+container, and `substance` must be nonempty. The target records that substance with amount
+`some`; no source prop is created. When RAW establishes a registered source, `pour` remains
+the action. A later explicit `consume` action can consume registered container contents whose
+consumability was previously unknown.
+
+Gate D phase 1 now treats each Segment's intended WorldState change as a transaction:
+
+- Each Segment captures a detached opening WorldState, revision, and SHA-256 hash before
+  Request 1. The accepted action batch is reduced against that opening into a detached
+  `predicted_end_world_state`; it is not written to canonical WorldState during planning.
+- Before accepting Request 1, a narrow RAW/action consistency check rejects omitted persistent
+  changes, actions not staged in RAW, mismatched Subjects/props/results, and contradictory
+  endings. A separate narrow final-H3 check compares the accepted persistent-state plan with
+  final H3.
+- Normal generation commits only after the render/artifact succeeds. Prompt-only generation
+  commits after final H3 acceptance and marks the transaction `prompt_only_transaction`, so
+  sequential prompt tests advance the same intended state. Both paths include the final Segment.
+  A Director/formatter/validator/render failure leaves canonical WorldState at the opening
+  revision and hash.
+- Transaction metadata records opening revision/hash, accepted actions, predicted ending hash,
+  final-H3 hash, committed ending revision, completion mode, and artifact path (or `null` for
+  prompt-only mode).
+- Speculative next-Segment Director prefetch is disabled while transactional WorldState is
+  active. Legacy continuity writers remain in place; their migration is still a later Gate D
+  phase. Visual-observation authority was not changed.
+
+Focused sequential regressions use the locked six-Segment tavern benchmark: Segment 1's
+committed mug/barrel state reaches Segment 2; Segment 3's `enter(Elf1)` is visible in Segment 4;
+Segment 4 enters Dragon1, picks up the empty crystal cup from its shelf, fills it with special
+brew, and hands it to Dragon1; Segment 5 partially consumes from that same cup; and Segment 6
+commits normally. Additional checks cover rejected/stale transaction rollback, final-Segment
+metadata, consistency-check retry without stale failure accumulation, and prompt-only sequential
+state advancement.
+
+Validation:
+- `pytest -q tests/test_world_state_foundation.py tests/test_director_retry.py tests/test_prompt_generation_mode.py`
+  — 168 passed, 4 subtests passed.
+- `git diff --check` passed.
+- No full ComfyUI tavern generation was run. Stop before removing legacy writers or changing
+  visual-observation authority.

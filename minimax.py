@@ -54,6 +54,7 @@ from world_state import (
     new_world_state,
     build_director_state_action_contract,
     parse_and_dry_run_director_state_actions,
+    reduce_world_state,
     register_explicit_persistent_props,
     seed_canonical_static_location_state,
     seed_canonical_wardrobes,
@@ -4272,8 +4273,11 @@ def build_current_segment_persistent_prop_messages(
                 "support/fixture. Do not guess a placement: omit any prop whose "
                 "initial placement is not supported by the current sources. Evidence "
                 "must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE. "
-                "Record contents/capabilities only when explicit; otherwise use "
-                "unknown or an empty contents list. Return JSON only."
+                "Record contents/capabilities only when explicit. If RAW explicitly "
+                "transfers unnamed contents from a registered source, record one "
+                "content with substance='unknown' and amount='some'; do not guess "
+                "what the substance is. Otherwise use unknown or an empty contents "
+                "list. Return JSON only."
             ),
         },
         {
@@ -36904,6 +36908,253 @@ def validate_director_raw_scene_coherence(
     )
 
 
+WORLD_STATE_PLAN_CHECK_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "world_state_plan_consistency",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "valid": {"type": "boolean"},
+                "issue": {"type": "string"},
+            },
+            "required": ["valid", "issue"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def world_state_sha256(world_state):
+    """Hash a validated WorldState using canonical JSON serialization."""
+    validate_world_state(world_state)
+    canonical = json.dumps(
+        world_state, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def build_world_state_plan_projection(world_state, vocabulary):
+    """Return only the registered Subject/prop facts relevant to this Segment."""
+    subject_ids = {item["id"] for item in vocabulary.get("subjects", [])}
+    prop_ids = {item["id"] for item in vocabulary.get("props", [])}
+    return {
+        "subjects": {
+            subject_id: {
+                field: copy.deepcopy(world_state["subjects"][subject_id].get(field))
+                for field in (
+                    "id", "name", "presence", "location_id", "support_id",
+                    "posture", "wardrobe", "status",
+                )
+            }
+            for subject_id in sorted(subject_ids)
+            if subject_id in world_state["subjects"]
+        },
+        "props": {
+            prop_id: {
+                "id": world_state["props"][prop_id]["id"],
+                "name": world_state["props"][prop_id]["name"],
+                "kind": world_state["props"][prop_id]["kind"],
+                "mobility": world_state["props"][prop_id]["mobility"],
+                "status": world_state["props"][prop_id]["status"],
+                "placement": copy.deepcopy(world_state["props"][prop_id]["placement"]),
+                "contents": copy.deepcopy(world_state["props"][prop_id]["contents"]),
+                "container": world_state["props"][prop_id]["capabilities"]["container"],
+                "mechanism_state": world_state["props"][prop_id]["mechanism_state"],
+            }
+            for prop_id in sorted(prop_ids)
+            if prop_id in world_state["props"]
+        },
+        "locations": copy.deepcopy(vocabulary.get("locations", [])),
+    }
+
+
+def _parse_world_state_plan_check(raw_result, *, label):
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"valid", "issue"}:
+        raise ValueError(f"{label} returned an invalid response shape.")
+    if not isinstance(candidate["valid"], bool) or not isinstance(candidate["issue"], str):
+        raise ValueError(f"{label} returned invalid field types.")
+    issue = " ".join(candidate["issue"].split()).strip()
+    if not candidate["valid"] and not issue:
+        raise ValueError(f"{label} rejected the state plan without a concrete issue.")
+    return {"valid": candidate["valid"], "issue": issue}
+
+
+def validate_raw_scene_state_action_consistency(
+    *, raw_scene, current_beat, assigned_source, state_actions,
+    opening_world_state, predicted_end_world_state, vocabulary,
+    history_metadata=None, llm_request=None,
+):
+    """Check only persistent changes and their representation in one RAW plan."""
+    if llm_request is None:
+        llm_request = ask_llm
+    projection = {
+        "opening": build_world_state_plan_projection(opening_world_state, vocabulary),
+        "predicted_ending": build_world_state_plan_projection(predicted_end_world_state, vocabulary),
+    }
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Check only the consistency between this Segment's RAW actions and its "
+                "registered persistent WorldState action plan. Do not review style, "
+                "staging quality, plausibility, or unregistered facts. Compare CURRENT "
+                "BEAT and ASSIGNED SOURCE to RAW and the supplied opening/predicted state. "
+                "Reject if RAW explicitly changes a registered Subject or prop but the "
+                "change is omitted from state_actions; if an action is not actually staged "
+                "in RAW; if the actor, target, transfer, substance, presence, location, "
+                "support, clothing, or result disagrees; or if RAW's final continuity "
+                "sentence contradicts the predicted ending. An empty action list is valid "
+                "only when RAW makes no represented persistent change. Use exact supplied "
+                "IDs and names when describing an issue. Return one concise actionable "
+                "issue when invalid, otherwise an empty issue. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"CURRENT BEAT\n{current_beat or 'N/A'}\n\n"
+                f"ASSIGNED SOURCE\n{assigned_source or 'N/A'}\n\n"
+                f"REGISTERED VOCABULARY\n{json.dumps(vocabulary, ensure_ascii=False, separators=(',', ':'))}\n\n"
+                f"OPENING AND PREDICTED ENDING\n{json.dumps(projection, ensure_ascii=False, separators=(',', ':'))}\n\n"
+                f"STATE ACTIONS\n{json.dumps(state_actions, ensure_ascii=False, separators=(',', ':'))}\n\n"
+                f"RAW SCENE\n{raw_scene}\n\nReturn {{\"valid\": boolean, \"issue\": string}}."
+            ),
+        },
+    ]
+    raw = llm_request(
+        messages,
+        response_format=WORLD_STATE_PLAN_CHECK_RESPONSE_FORMAT,
+        max_tokens=384,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_raw_world_state_consistency",
+        },
+    )
+    return _parse_world_state_plan_check(raw, label="RAW/WorldState consistency check")
+
+
+def validate_final_h3_world_state_plan(
+    *, final_h3_prompt, raw_scene, state_actions, opening_world_state,
+    predicted_end_world_state, vocabulary, history_metadata=None,
+    llm_request=None,
+):
+    """Ensure final H3 preserves the accepted persistent state plan and ending."""
+    if llm_request is None:
+        llm_request = ask_llm
+    projection = {
+        "opening": build_world_state_plan_projection(opening_world_state, vocabulary),
+        "predicted_ending": build_world_state_plan_projection(predicted_end_world_state, vocabulary),
+    }
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Validate only persistent WorldState changes in the finalized H3 prompt. "
+                "Check that each accepted state action is still depicted with the same "
+                "registered Subject, prop, substance, and result, and that the final H3 "
+                "ending does not contradict the predicted ending. Do not review visual "
+                "style, general scene quality, timing, or unstated details. Do not require "
+                "the H3 text to repeat internal IDs. Return one concise issue if it omits "
+                "or contradicts a persistent state change; otherwise return valid=true and "
+                "an empty issue. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"ACCEPTED RAW SCENE\n{raw_scene}\n\n"
+                f"ACCEPTED STATE ACTIONS\n{json.dumps(state_actions, ensure_ascii=False, separators=(',', ':'))}\n\n"
+                f"OPENING AND PREDICTED ENDING\n{json.dumps(projection, ensure_ascii=False, separators=(',', ':'))}\n\n"
+                f"FINAL H3 PROMPT\n{final_h3_prompt}\n\nReturn {{\"valid\": boolean, \"issue\": string}}."
+            ),
+        },
+    ]
+    raw = llm_request(
+        messages,
+        response_format=WORLD_STATE_PLAN_CHECK_RESPONSE_FORMAT,
+        max_tokens=384,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "final_h3_world_state_plan_validation",
+        },
+    )
+    return _parse_world_state_plan_check(raw, label="Final H3 WorldState check")
+
+
+def build_world_state_transaction(opening_world_state, state_actions, *, segment_number):
+    """Dry-run one accepted action batch into a detached transaction candidate."""
+    opening = copy.deepcopy(opening_world_state)
+    validate_world_state(opening)
+    reduction = reduce_world_state(
+        opening, copy.deepcopy(state_actions), segment_number=segment_number
+    )
+    if not reduction.committed:
+        first_failure = next(
+            (outcome for outcome in reduction.outcomes if not outcome.accepted), None
+        )
+        detail = (
+            f"{first_failure.op} {first_failure.action_id}: {first_failure.code}: {first_failure.message}"
+            if first_failure else "reducer rejected the action batch"
+        )
+        raise ValueError(f"WorldState transaction candidate rejected: {detail}")
+    return {
+        "segment": int(segment_number),
+        "opening_world_state": opening,
+        "opening_revision": int(opening["revision"]),
+        "opening_hash": world_state_sha256(opening),
+        "accepted_actions": copy.deepcopy(state_actions),
+        "predicted_end_world_state": copy.deepcopy(reduction.world_state),
+        "predicted_ending_hash": world_state_sha256(reduction.world_state),
+    }
+
+
+def world_state_transaction_metadata(
+    transaction, final_h3_prompt, *, completion_mode, artifact=None,
+):
+    """Build the durable audit record for a completed WorldState transaction."""
+    return {
+        "opening_revision": transaction["opening_revision"],
+        "opening_hash": transaction["opening_hash"],
+        "accepted_actions": copy.deepcopy(transaction["accepted_actions"]),
+        "predicted_ending_hash": transaction["predicted_ending_hash"],
+        "final_h3_hash": hashlib.sha256(
+            str(final_h3_prompt or "").encode("utf-8")
+        ).hexdigest(),
+        "committed_ending_revision": int(
+            transaction["predicted_end_world_state"]["revision"]
+        ),
+        "completion_mode": str(completion_mode),
+        "artifact": os.path.abspath(artifact) if artifact else None,
+    }
+
+
+def commit_world_state_transaction(generation_state, transaction, metadata):
+    """Commit only if canonical state still matches this transaction's opening."""
+    current = generation_state.get("world_state")
+    if not isinstance(current, dict):
+        raise ValueError("Cannot commit WorldState transaction without canonical opening state.")
+    if (
+        int(current.get("revision", -1)) != transaction["opening_revision"]
+        or world_state_sha256(current) != transaction["opening_hash"]
+    ):
+        raise ValueError(
+            f"Segment {transaction['segment']} WorldState opening revision/hash changed before commit."
+        )
+    predicted = copy.deepcopy(transaction["predicted_end_world_state"])
+    validate_world_state(predicted)
+    if world_state_sha256(predicted) != transaction["predicted_ending_hash"]:
+        raise ValueError("WorldState transaction candidate hash changed before commit.")
+    generation_state["world_state"] = predicted
+    transactions = generation_state.setdefault("world_state_transactions", {})
+    transactions[str(transaction["segment"])] = copy.deepcopy(metadata)
+    return transactions[str(transaction["segment"])]
+
+
 # Run the two-stage Director micro-prompt pipeline for one segment.
 def request_segment_llm(bundle, beats, run_id, run_config):
     """Run the two-stage Director pipeline with baseline-first acceptance.
@@ -36974,7 +37225,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         + "\n\nSTATE ACTION CONTRACT — Return state_actions in this same "
         "response as RAW SCENE. Add only explicit persistent changes staged "
         "in RAW SCENE; off-camera is not an action. Use [] if no represented "
-        "state changes. The response schema restricts operations and IDs to "
+        "state changes. Use fill only when RAW explicitly puts a substance "
+        "into a registered container and no source prop is established; if a "
+        "registered source exists, use pour. Never invent a source prop. "
+        "The response schema restricts operations and IDs to "
         "the registered vocabulary."
     )
     if request1_base_messages:
@@ -37308,6 +37562,56 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "time by simplifying optional staging and/or redistributing timestamps."
                     )
                     continue
+
+            predicted_state_for_attempt = state_action_dry_run.get(
+                "predicted_end_world_state", world_state_opening
+            )
+            try:
+                state_consistency = validate_raw_scene_state_action_consistency(
+                    raw_scene=raw_scene,
+                    current_beat=current_beat_text,
+                    assigned_source=bundle.get("assigned_source", ""),
+                    state_actions=state_action_dry_run["state_actions"],
+                    opening_world_state=world_state_opening,
+                    predicted_end_world_state=predicted_state_for_attempt,
+                    vocabulary=state_action_contract["vocabulary"],
+                    history_metadata={
+                        "run_id": run_id,
+                        "source_sha256": (run_config or {}).get("source_sha256"),
+                        "segment": segment_number,
+                        "attempt": request1_attempt,
+                        "conditioning_mode": conditioning_mode,
+                    },
+                )
+            except (LLMConnectionError, requests.RequestException, OSError):
+                raise
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                state_consistency = {
+                    "valid": False,
+                    "issue": f"RAW/WorldState consistency check failed: {error}",
+                }
+            if not state_consistency["valid"]:
+                issue = state_consistency["issue"] or (
+                    "RAW SCENE and state_actions do not describe the same persistent changes."
+                )
+                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    raise BeatGenerationError(
+                        f"Director Request 1 WorldState consistency failed for "
+                        f"Segment {segment_number}: {issue}"
+                    )
+                console_log(
+                    f"Director Request 1 RAW/WorldState consistency failed "
+                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                    f"retrying from the same opening state: {issue}",
+                    flush=True,
+                )
+                request1_messages = build_request1_state_action_retry_messages(
+                    "RAW/WorldState consistency: " + issue
+                )
+                continue
+            request1_result["predicted_end_world_state"] = copy.deepcopy(
+                predicted_state_for_attempt
+            )
 
             # Baseline-reset rule: old deterministic Director guards report
             # defects but do not reject or regenerate the scene. This lets a
@@ -39061,6 +39365,8 @@ def _run_main(
         opening_state,
         opening_summary_text,
         dialogue_exclusions,
+        *,
+        world_state_opening=None,
     ):
         current_duration = segment_length
         active_beat_id = segment_number if beats else None
@@ -39211,7 +39517,21 @@ def _run_main(
             ).strip(),
             "registry_state": opening_state,
             "world_state_opening": copy.deepcopy(
-                generation_state.get("world_state")
+                world_state_opening
+                if isinstance(world_state_opening, dict)
+                else generation_state.get("world_state")
+                if isinstance(generation_state.get("world_state"), dict)
+                else empty_world_state("request1_world_state_unavailable")
+            ),
+            "world_state_opening_revision": int(
+                (world_state_opening or generation_state.get("world_state") or {}).get(
+                    "revision", 0
+                )
+            ),
+            "world_state_opening_hash": world_state_sha256(
+                world_state_opening
+                if isinstance(world_state_opening, dict)
+                else generation_state.get("world_state")
                 if isinstance(generation_state.get("world_state"), dict)
                 else empty_world_state("request1_world_state_unavailable")
             ),
@@ -39269,6 +39589,7 @@ def _run_main(
         return payload
 
     run_start_time = time.perf_counter()
+    stateful_transactions_active = True
     prefetched_next = None
     pending_previous_render_future = None
     render_futures_by_segment = {}
@@ -39314,6 +39635,9 @@ def _run_main(
                 "dynamically created Subjects from earlier phases."
             )
         prepare_current_segment_world_state(segment)
+        opening_world_state = copy.deepcopy(generation_state["world_state"])
+        opening_world_state_revision = int(opening_world_state["revision"])
+        opening_world_state_hash = world_state_sha256(opening_world_state)
         segment_bundle = build_segment_bundle(
             segment,
             completed_beat_ids,
@@ -39321,8 +39645,16 @@ def _run_main(
             continuity_state,
             continuity_summary,
             recent_dialogue_exclusions,
+            world_state_opening=opening_world_state,
         )
-        if prefetched_next is not None:
+        if (
+            segment_bundle["world_state_opening_revision"] != opening_world_state_revision
+            or segment_bundle["world_state_opening_hash"] != opening_world_state_hash
+        ):
+            raise RuntimeError(
+                f"Segment {segment} WorldState opening snapshot changed while building Request 1."
+            )
+        if prefetched_next is not None and not stateful_transactions_active:
             if prefetched_next["segment"] != segment:
                 prefetched_next["cancellation_event"].set()
                 if not prefetched_next["future"].done():
@@ -39387,6 +39719,28 @@ def _run_main(
                 beats,
                 run_id,
                 run_config,
+            )
+
+        request1_for_transaction = payload.get("request1_result", {})
+        accepted_actions = (
+            request1_for_transaction.get("state_actions", [])
+            if isinstance(request1_for_transaction, dict) else []
+        )
+        world_state_transaction = build_world_state_transaction(
+            opening_world_state,
+            accepted_actions,
+            segment_number=segment,
+        )
+        request_candidate = (
+            request1_for_transaction.get("predicted_end_world_state")
+            if isinstance(request1_for_transaction, dict) else None
+        )
+        if isinstance(request_candidate, dict) and (
+            world_state_sha256(request_candidate)
+            != world_state_transaction["predicted_ending_hash"]
+        ):
+            raise RuntimeError(
+                f"Segment {segment} Request 1 candidate differs from the immutable transaction reduction."
             )
 
         request2_result_for_fixture = copy.deepcopy(payload["llm_result"])
@@ -39755,6 +40109,42 @@ def _run_main(
                 conditioning_mode=segment_bundle["conditioning_mode"],
             )
 
+        state_action_contract = build_director_state_action_contract(
+            opening_world_state,
+            current_segment_text=(
+                str(segment_bundle.get("current_beat_text") or "")
+                + "\n"
+                + str(segment_bundle.get("assigned_source") or "")
+            ),
+            current_segment_subject_names=segment_bundle.get(
+                "world_state_current_segment_subject_names", []
+            ),
+        )
+        final_h3_state_check = validate_final_h3_world_state_plan(
+            final_h3_prompt=h3_prompt,
+            raw_scene=str(payload.get("raw_scene") or ""),
+            state_actions=world_state_transaction["accepted_actions"],
+            opening_world_state=opening_world_state,
+            predicted_end_world_state=world_state_transaction[
+                "predicted_end_world_state"
+            ],
+            vocabulary=state_action_contract["vocabulary"],
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": run_config["source_sha256"],
+                "segment": segment,
+                "attempt": 1,
+                "completion_mode": (
+                    "prompt_only" if test_prompt_generation else "rendered"
+                ),
+            },
+        )
+        if not final_h3_state_check["valid"]:
+            raise BeatGenerationError(
+                f"Final H3 persistent-state validation failed for Segment {segment}: "
+                f"{final_h3_state_check['issue']}"
+            )
+
         # detailed_description is copied directly from canonical cleaned RAW,
         # so action preservation is deterministic by construction.
         generated_prompts_payload["prompts"].append({
@@ -39998,7 +40388,11 @@ def _run_main(
             # stitch_videos after Future.result() but before the future's done
             # callback has appended the final path. The reusable completion event
             # is not sufficient here: it may already be set by an earlier segment.
-            if not vision_required and segment < total_segments:
+            if (
+                not vision_required
+                and segment < total_segments
+                and not stateful_transactions_active
+            ):
                 pending_previous_render_future = render_future
             while not render_started.wait(0.05):
                 if render_future.done():
@@ -40080,7 +40474,11 @@ def _run_main(
         # continuity before starting the next Director, while leaving the
         # current ComfyUI render in flight.
         prompt_only_opening_summary = None
-        if not vision_required and segment < total_segments:
+        if (
+            not vision_required
+            and segment < total_segments
+            and not stateful_transactions_active
+        ):
             # No rendered observation means no wardrobe evidence. Keep the
             # opening state useful for scene continuity, but do not promote
             # prompt-requested clothing into current rendered wardrobe.
@@ -40268,6 +40666,18 @@ def _run_main(
                 generation_state["continuity_prompt_state"] = copy.deepcopy(
                     prompt_reduced_continuity_state
                 )
+                transaction_metadata = world_state_transaction_metadata(
+                    world_state_transaction,
+                    h3_prompt,
+                    completion_mode="prompt_only_transaction",
+                    artifact=None,
+                )
+                commit_world_state_transaction(
+                    generation_state, world_state_transaction, transaction_metadata
+                )
+                completed_record["world_state_transaction"] = copy.deepcopy(
+                    transaction_metadata
+                )
                 save_generation_state(generation_state)
             console_log(
                 f"Completed prompt generation for segment {segment}; "
@@ -40283,6 +40693,7 @@ def _run_main(
             if (
                 segment < total_segments
                 and director_prefetch_executor is not None
+                and not stateful_transactions_active
                 and not next_segment_starts_phase
             ):
                 prepare_current_segment_world_state(segment + 1)
@@ -40565,9 +40976,8 @@ def _run_main(
             generation_state_lock,
         )
 
-        # Commit the rendered video and structured continuity state together.
-        # The lock also prevents a just-completed prompt prefetch from
-        # serializing this dictionary halfway through the commit.
+        # Commit the rendered artifact and intended WorldState together under
+        # the checkpoint lock.
         with generation_state_lock:
             completed_record = record_completed_segment(
                 generation_state,
@@ -40580,6 +40990,18 @@ def _run_main(
                 prop_ledger=prop_ledger,
                 continuity_summary_pending=False,
                 subject_registry_state=continuity_state,
+            )
+            transaction_metadata = world_state_transaction_metadata(
+                world_state_transaction,
+                h3_prompt,
+                completion_mode="rendered_segment_transaction",
+                artifact=video_path,
+            )
+            commit_world_state_transaction(
+                generation_state, world_state_transaction, transaction_metadata
+            )
+            completed_record["world_state_transaction"] = copy.deepcopy(
+                transaction_metadata
             )
             completed_record["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state
@@ -40619,6 +41041,7 @@ def _run_main(
             vision_required
             and segment < total_segments
             and director_prefetch_executor is not None
+            and not stateful_transactions_active
             and not next_segment_starts_phase
         ):
             prepare_current_segment_world_state(segment + 1)
