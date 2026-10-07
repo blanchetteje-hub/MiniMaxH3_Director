@@ -1,0 +1,38 @@
+{
+  "job_id": "acceptance-20261006-object-state-tavern-6x8-r3",
+  "kind": "run_acceptance",
+  "started_at": 1791337433.0952704,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--benchmark",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\gold\\amy_medieval_tavern_six.json"
+    ],
+    "returncode": 1,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 6 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yzfr1u92\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261006-214354\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yzfr1u92\\repo\\minimax.py\", line 41331, in <module>\n    main()\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yzfr1u92\\repo\\minimax.py\", line 41238, in main\n    clear_state_media_output()\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yzfr1u92\\repo\\minimax.py\", line 38276, in clear_state_media_output\n    os.makedirs(state_directory, exist_ok=True)\n  File \"<frozen os>\", line 215, in makedirs\n  File \"<frozen os>\", line 215, in makedirs\n  File \"<frozen os>\", line 215, in makedirs\n  [Previous line repeated 1 more time]\n  File \"<frozen os>\", line 225, in makedirs\nFileNotFoundError: [WinError 3] The system cannot find the path specified: 'H:\\\\'\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261006-214354\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6]. Include run.log for diagnosis.\nMiniMax exited with code 1; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1791337434.3176012,
+    "finished_at": 1791337435.8801126,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "story_arc.json": "files\\story_arc.json",
+      "beats.txt": "files\\beats.txt",
+      "character_canon.json": "files\\character_canon.json",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20261002-113806"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1791337435.9894876,
+  "status": "ok"
+}

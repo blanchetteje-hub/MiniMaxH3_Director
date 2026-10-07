@@ -1,0 +1,43 @@
+{
+  "version": 3,
+  "source_sha256": "6ec54a423fd2bea0b30a58b7485875708c07dfe271ceef498f84954bd86f9070",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "protects_kids_from_zombie_apocalypse",
+    "cooks_breakfast_for_will_and_amber",
+    "retrieves_hidden_army_with_pistol_and_katana",
+    "fights_zombies_one_by_one",
+    "kid_of_amy",
+    "protected_by_amy_during_zombie_attack"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "jeans and a T‑shirt with an apron over it",
+      "gender": "female",
+      "protects_kids_from_zombie_apocalypse": "true",
+      "cooks_breakfast_for_will_and_amber": "yes",
+      "retrieves_hidden_army_with_pistol_and_katana": "yes",
+      "fights_zombies_one_by_one": "yes"
+    },
+    {
+      "name": "Will",
+      "age": "10",
+      "clothing": "shorts and a T‑shirt",
+      "gender": "male",
+      "kid_of_amy": "true",
+      "protected_by_amy_during_zombie_attack": "yes"
+    },
+    {
+      "name": "Amber",
+      "age": "14",
+      "clothing": "skirt and blouse",
+      "gender": "female",
+      "kid_of_amy": "true",
+      "protected_by_amy_during_zombie_attack": "yes"
+    }
+  ]
+}
