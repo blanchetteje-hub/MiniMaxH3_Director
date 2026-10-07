@@ -1114,6 +1114,35 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertIn("descriptive aliases of those fixtures", messages[0]["content"])
 
 
+    def test_unplaced_prop_candidate_is_ignored(self):
+        state = make_reducer_state()
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {
+                "props": [{
+                    "name": "cloth",
+                    "kind": "tool",
+                    "mobility": "movable",
+                    "initial_location": None,
+                    "initial_holder": None,
+                    "support_name": None,
+                    "contents": [],
+                    "capabilities": {
+                        "container": "unknown",
+                        "consumable": "unknown",
+                        "openable": "unknown",
+                        "lockable": "unknown",
+                    },
+                    "reason": "used in this segment",
+                    "evidence": "cloth",
+                }]
+            },
+            "Subject One wipes a surface with a cloth.",
+            "Subject One wipes a surface with a cloth.",
+            state,
+        )
+        self.assertEqual(result, [])
+
+
     def test_support_name_used_as_initial_location_is_normalized(self):
         state = make_reducer_state()
         result = minimax.parse_current_segment_persistent_prop_result(
