@@ -1385,6 +1385,22 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         )
         self.assertEqual(result[0]["initial_holder"], "Subject One")
 
+    def test_registered_location_id_is_normalized_to_canonical_name(self):
+        state = make_reducer_state()
+        candidate = self._candidate(
+            "wooden tray",
+            "wooden tray",
+            mobility="movable",
+            initial_location="location_a",
+        )
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {"props": [candidate]},
+            "A wooden tray rests in Area A.",
+            "A wooden tray rests in Area A.",
+            state,
+        )
+        self.assertEqual(result[0]["initial_location"], "Area A")
+
     def test_unregistered_or_ambiguous_holder_id_still_fails_closed(self):
         state = make_reducer_state()
         candidate = self._candidate("mug", "holds a mug between its fingers")
