@@ -1,0 +1,35 @@
+{
+  "version": 3,
+  "source_sha256": "c87ad4e2d36e15aa79ae463aeb788396ecf0900e376b2f0d8d0711a0f426c548",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "A rough‑spun brown tunic reaching mid‑thigh, its fabric coarse and slightly frayed at the cuffs from years of use. Over it she wears a worn leather apron dyed dark green with patches of scuffs where her hands have worked on ale barrels. Beneath the tunic she slips into simple linen under‑tunic in off‑white, tucked into woolen trousers that fall to mid‑calf and are held by a brown leather belt. Her feet are covered by sturdy black leather boots laced up to the ankle. The apron’s pockets hold small tools for her trade",
+      "gender": "female"
+    },
+    {
+      "name": "Goblin",
+      "age": "25",
+      "clothing": "N/A",
+      "gender": "male"
+    },
+    {
+      "name": "Elf",
+      "age": "150",
+      "clothing": "N/A",
+      "gender": "female"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "500",
+      "clothing": "N/A",
+      "gender": "N/A"
+    }
+  ]
+}
