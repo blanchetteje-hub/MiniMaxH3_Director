@@ -1,0 +1,278 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).
+LLM request finished: character_canon (16.2s, finish_reason=stop).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-8bdk15bw\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-8bdk15bw\repo\beats.txt); regenerating the beat plan.
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-8bdk15bw\repo\beats.txt with 6 creative story beats.
+LLM request started: story_expansion (attempt 1/10, ~406 input tokens, max 12000 output tokens).
+LLM request finished: story_expansion (16.9s, finish_reason=stop).
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-8bdk15bw\repo\expanded_story.txt.
+Expanded story:
+Amy opens the heavy oak door of The Gilded Quill and steps onto the polished floor in a tunic that shows her medieval barkeep status. She lifts her apron, wipes it on her knee, and checks each wooden table for crumbs or spilled ale. A group of magical humanoid creatures—an elf with silver hair, a dwarf with braided beard, and a goblin whose eyes glow faintly—enter through the doorway and take seats at the bar. Amy greets them in a friendly voice, pours steaming ale into crystal mugs, and places each mug on the wooden counter beside their chairs. She wipes her hands on her apron, adjusts a chair so it sits level for the dwarf, and ensures every drink is poured to the right measure. The tavern hums with laughter as she continues serving the magical creatures, taking care of the tavern for them.
+LLM request started: story_to_beats (attempt 1/10, ~720 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats (9.7s, finish_reason=stop).
+Story-derived Beat framework created with 6 beats.
+Beat 1 created: Amy opens the heavy oak door of The Gilded Quill, steps onto its polished floor in a tunic that shows her medieval barkeep status.
+Beat 2 created: She lifts her apron, wipes it on her knee, and checks each wooden table for crumbs or spilled ale.
+Beat 3 created: A group of magical humanoid creatures—an elf with silver hair, a dwarf with braided beard, and a goblin whose eyes glow faintly—enter through the doorway and take seats at the bar.
+Beat 4 created: Amy greets them in a friendly voice, pours steaming ale into crystal mugs, and places each mug on the wooden counter beside their chairs.
+Beat 5 created: She wipes her hands on her apron, adjusts a chair so it sits level for the dwarf, and ensures every drink is poured to the right measure.
+Beat 6 created: The tavern hums with laughter as she continues serving the magical creatures, taking care of the tavern for them.
+Beat 1 jobs: current=E1 - Amy opens the heavy oak door of The Gilded Quill, steps onto its polished floor in a tunic that shows her medieval barkeep status.; next=E2 - She lifts her apron, wipes it on her knee, and checks each wooden table for crumbs or spilled ale.; completed before=none; pending before=E1, E2, E3, E4, E5, E6
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1195 input tokens, max 6869 output tokens).
+LLM request finished: beat_validation (1.1s, finish_reason=stop).
+Beat 1 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~340 input tokens, max 7724 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.8s, finish_reason=stop).
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~568 input tokens, max 7496 output tokens).
+LLM request finished: beat_coherence_validation (0.6s, finish_reason=stop).
+Beat 1 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1032 input tokens, max 7032 output tokens).
+LLM request finished: accepted_beat_state_extract (3.2s, finish_reason=stop).
+Beat 1 accepted-state observation ignored: State effects cannot nest canonical state root 'environment.story'; roots must remain top-level.
+Beat 1 accepted: Amy opens the heavy oak door of The Gilded Quill, steps onto its polished floor in a tunic that shows her medieval barkeep status.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - She lifts her apron, wipes it on her knee, and checks each wooden table for crumbs or spilled ale.; next=E3 - A group of magical humanoid creatures—an elf with silver hair, a dwarf with braided beard, and a goblin whose eyes glow faintly—enter through the doorway and take seats at the bar.; completed before=E1; pending before=E2, E3, E4, E5, E6
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1229 input tokens, max 6835 output tokens).
+LLM request finished: beat_validation (0.9s, finish_reason=stop).
+Beat 2 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~322 input tokens, max 7742 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.6s, finish_reason=stop).
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~591 input tokens, max 7473 output tokens).
+LLM request finished: beat_coherence_validation (0.7s, finish_reason=stop).
+Beat 2 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1022 input tokens, max 7042 output tokens).
+LLM request finished: accepted_beat_state_extract (4.0s, finish_reason=stop).
+Beat 2 observed persistent state: {"characters": {"Amy": {"clothing": {"upper": {"item": "apron"}}, "held_objects": ["apron"]}}}
+Beat 2 accepted: She lifts her apron, wipes it on her knee, and checks each wooden table for crumbs or spilled ale.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - A group of magical humanoid creatures—an elf with silver hair, a dwarf with braided beard, and a goblin whose eyes glow faintly—enter through the doorway and take seats at the bar.; next=E4 - Amy greets them in a friendly voice, pours steaming ale into crystal mugs, and places each mug on the wooden counter beside their chairs.; completed before=E1, E2; pending before=E3, E4, E5, E6
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1266 input tokens, max 6798 output tokens).
+LLM request finished: beat_validation (0.8s, finish_reason=stop).
+Beat 3 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~368 input tokens, max 7696 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.4s, finish_reason=stop).
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~640 input tokens, max 7424 output tokens).
+LLM request finished: beat_coherence_validation (0.6s, finish_reason=stop).
+Beat 3 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1072 input tokens, max 6992 output tokens).
+LLM request finished: accepted_beat_state_extract (6.4s, finish_reason=stop).
+Beat 3 observed persistent state: {"characters": {"Elf": {"location": "bar", "current_injuries": "none", "prior_injuries": "none", "injury_history": "no injury event has been established at any earlier beat", "held_objects": [], "equipped_objects": [], "stored_objects": [], "weapon_state": "N/A", "body_condition": "N/A", "status": "alive/conscious"}, "Dwarf": {"location": "bar", "current_injuries": "none", "prior_injuries": "none", "injury_history": "no injury event has been established at any earlier beat", "held_objects": [], "equipped_objects": [], "stored_objects": [], "weapon_state": "N/A", "body_condition": "N/A", "status": "alive/conscious"}, "Goblin": {"location": "bar", "current_injuries": "none", "prior_injuries": "none", "injury_history": "no injury event has been established at any earlier beat", "held_objects": [], "equipped_objects": [], "stored_objects": [], "weapon_state": "N/A", "body_condition": "N/A", "status": "alive/conscious"}}, "environment": {"rooms": {"bar": {"description": "a wooden bar with stools and a counter"}, "doors": {"door_to_bar": {"location_from": "outside", "location_to": "bar", "state": "open"}}}}}
+Beat 3 accepted: A group of magical humanoid creatures—an elf with silver hair, a dwarf with braided beard, and a goblin whose eyes glow faintly—enter through the doorway and take seats at the bar.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - Amy greets them in a friendly voice, pours steaming ale into crystal mugs, and places each mug on the wooden counter beside their chairs.; next=E5 - She wipes her hands on her apron, adjusts a chair so it sits level for the dwarf, and ensures every drink is poured to the right measure.; completed before=E1, E2, E3; pending before=E4, E5, E6
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1502 input tokens, max 6562 output tokens).
+LLM request finished: beat_validation (1.5s, finish_reason=stop).
+Beat 4 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~344 input tokens, max 7720 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.9s, finish_reason=stop).
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~892 input tokens, max 7172 output tokens).
+LLM request finished: beat_coherence_validation (1.1s, finish_reason=stop).
+Beat 4 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~2025 input tokens, max 6039 output tokens).
+LLM request finished: accepted_beat_state_extract (2.5s, finish_reason=stop).
+Beat 4 observed persistent state: {"environment": {"objects": {"crystal_mug_1": "bar.counter", "crystal_mug_2": "bar.counter", "crystal_mug_3": "bar.counter"}}}
+Beat 4 accepted: Amy greets them in a friendly voice, pours steaming ale into crystal mugs, and places each mug on the wooden counter beside their chairs.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - She wipes her hands on her apron, adjusts a chair so it sits level for the dwarf, and ensures every drink is poured to the right measure.; next=E6 - The tavern hums with laughter as she continues serving the magical creatures, taking care of the tavern for them.; completed before=E1, E2, E3, E4; pending before=E5, E6
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1512 input tokens, max 6552 output tokens).
+LLM request finished: beat_validation (2.2s, finish_reason=stop).
+Beat 5 validation attempt 1/10: INVALID; issue: Missing the act of pouring drinks and measuring them; only wiping hands, adjusting chair, and no mention of mug filling.
+LLM request started: story_to_beats (attempt 1/10, ~662 input tokens, max 1024 output tokens).
+LLM request finished: story_to_beats (8.0s, finish_reason=stop).
+Validating Beat 5 (attempt 2/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1520 input tokens, max 6544 output tokens).
+LLM request finished: beat_validation (1.2s, finish_reason=stop).
+Beat 5 validation attempt 2/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~351 input tokens, max 7713 output tokens).
+LLM request finished: beat_finite_endpoint_extract (2.0s, finish_reason=stop).
+Checking Beat 5 within-beat physical coherence (attempt 2/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~916 input tokens, max 7148 output tokens).
+LLM request finished: beat_coherence_validation (1.2s, finish_reason=stop).
+Beat 5 coherence attempt 2/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~2101 input tokens, max 5963 output tokens).
+LLM request finished: accepted_beat_state_extract (3.0s, finish_reason=stop).
+Beat 5 observed persistent state: {"environment": {"objects": {"crystal_mug_1": "bar.counter (contains ale)", "crystal_mug_2": "bar.counter (contains ale)", "crystal_mug_3": "bar.counter (contains ale)"}}}
+Beat 5 accepted: Amy pours a fresh measure of steaming ale into each crystal mug beside their chairs, adjusts the dwarf’s chair so it sits level, and wipes her hands on her apron.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - The tavern hums with laughter as she continues serving the magical creatures, taking care of the tavern for them.; next=none; completed before=E1, E2, E3, E4, E5; pending before=E6
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1495 input tokens, max 6569 output tokens).
+LLM request finished: beat_validation (2.5s, finish_reason=stop).
+Beat 6 validation attempt 1/10: INVALID; issue: She does not perform any serving action—no mug handed to each creature or ale poured—so the beat fails to show the required activity.
+LLM request started: story_to_beats (attempt 1/10, ~634 input tokens, max 1024 output tokens).
+LLM request finished: story_to_beats (5.8s, finish_reason=stop).
+Validating Beat 6 (attempt 2/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1516 input tokens, max 6548 output tokens).
+LLM request finished: beat_validation (2.3s, finish_reason=stop).
+Beat 6 validation attempt 2/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~352 input tokens, max 7712 output tokens).
+LLM request finished: beat_finite_endpoint_extract (2.0s, finish_reason=stop).
+Checking Beat 6 within-beat physical coherence (attempt 2/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~937 input tokens, max 7127 output tokens).
+LLM request finished: beat_coherence_validation (1.4s, finish_reason=stop).
+Beat 6 coherence attempt 2/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~2134 input tokens, max 5930 output tokens).
+LLM request finished: accepted_beat_state_extract (3.8s, finish_reason=stop).
+Beat 6 observed persistent state: {"characters": {"Elf": {"held_objects": ["crystal_mug_1"]}, "Dwarf": {"held_objects": ["crystal_mug_2"]}, "Goblin": {"held_objects": ["crystal_mug_3"]}}, "environment": {"objects": {"crystal_mug_1": "Elf", "crystal_mug_2": "Dwarf", "crystal_mug_3": "Goblin"}}}
+Beat 6 accepted: Amy hands each crystal mug of steaming ale to its respective creature—elf with silver hair, dwarf with braided beard, goblin whose eyes glow faintly—and smiles as laughter fills the tavern.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~613 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (1.8s, finish_reason=stop).
+Canonical appropriate attire for Amy: tunic (linen, light beige, long-sleeved, loose fit), apron (brown leather, worn at the knee), waist belt (simple leather strap), footwear (sturdy brown leather boots)
+LLM request started: story_location_extract (attempt 1/10, ~439 input tokens, max 256 output tokens).
+LLM request finished: story_location_extract (1.7s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~696 input tokens, max 512 output tokens).
+LLM request finished: static_setting_extract (1.8s, finish_reason=stop).
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~252 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (4.7s, finish_reason=stop).
+LLM request started: story_setting_extract (attempt 1/10, ~1019 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (32.5s, finish_reason=stop).
+Story location metadata: overall='The Gilded Quill'; starting='the polished floor of The Gilded Quill'; setting='The Gilded Quill is a rectangular medieval tavern measuring thirty feet north–south by twenty feet east–west. The heavy oak front door sits centered on the west side of the north wall, opening onto a polished stone floor that covers the entire interior. A wooden counter runs along the west wall from south to north; it measures twenty feet long and four feet deep with a three‑foot high base, topped by a one‑foot thick countertop rising two feet above the floor.\n\nFive round tables of five‑foot diameter are positioned on the east side, each six feet from the east wall. The centers of adjacent tables lie four feet apart along the north–south axis. Beside every table on both sides sit standard medieval chairs (two feet wide by one and a half feet deep), arranged so that there is at least three feet clearance between any chair and neighboring tables or the bar counter.\n\nThe south wall contains a small kitchen door, six feet tall and three feet wide, centered on the wall. The north wall features a window four feet high by five feet wide, set two feet from each side of the front door. All objects are placed so that none overlap; the entrance and kitchen doors remain fully accessible with clear paths across the polished floor.'; location_state={'location': {'name': 'The Gilded Quill', 'description': 'A medieval tavern featuring a heavy oak front door that opens onto a polished stone floor.'}, 'anchors': [{'name': 'front_door', 'type': 'door', 'wall': 'west', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'kitchen_door', 'type': 'door', 'wall': 'south', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'window', 'type': 'window', 'wall': 'north', 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'bar_counter', 'type': 'counter', 'location': 'west_wall', 'world_state_role': 'support', 'mobility': 'fixed'}], 'objects': [{'name': 'polished_floor', 'type': 'floor', 'area': '30 ft × 20 ft', 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'countertop', 'type': 'wooden_counter_top', 'attached_to': ['bar_counter'], 'thickness': '1 ft', 'height_above_floor': '2 ft', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table_1', 'type': 'round_table', 'diameter': '5 ft', 'distance_from_east_wall': '6 ft', 'center_to_center_spacing_with_next': '4 ft', 'near': ['bar_counter'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'table_2', 'type': 'round_table', 'diameter': '5 ft', 'distance_from_east_wall': '6 ft', 'center_to_center_spacing_with_next': '4 ft', 'near': ['bar_counter'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'table_3', 'type': 'round_table', 'diameter': '5 ft', 'distance_from_east_wall': '6 ft', 'center_to_center_spacing_with_next': '4 ft', 'near': ['bar_counter'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'table_4', 'type': 'round_table', 'diameter': '5 ft', 'distance_from_east_wall': '6 ft', 'center_to_center_spacing_with_next': '4 ft', 'near': ['bar_counter'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'table_5', 'type': 'round_table', 'diameter': '5 ft', 'distance_from_east_wall': '6 ft', 'center_to_center_spacing_with_next': '4 ft', 'near': ['bar_counter'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_1_left', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_1', 'side': 'left', 'near': ['table_1'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_1_right', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_1', 'side': 'right', 'near': ['table_1'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_2_left', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_2', 'side': 'left', 'near': ['table_2'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_2_right', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_2', 'side': 'right', 'near': ['table_2'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_3_left', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_3', 'side': 'left', 'near': ['table_3'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_3_right', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_3', 'side': 'right', 'near': ['table_3'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_4_left', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_4', 'side': 'left', 'near': ['table_4'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_4_right', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_4', 'side': 'right', 'near': ['table_4'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_5_left', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_5', 'side': 'left', 'near': ['table_5'], 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'chair_5_right', 'type': 'medieval_chair', 'seat_width': '2 ft', 'seat_depth': '1.5 ft', 'attached_to': 'table_5', 'side': 'right', 'near': ['table_5'], 'world_state_role': 'untracked', 'mobility': 'fixed'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~527 input tokens, max 512 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (2.6s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (attempt 1/3):
+{
+  "subjects": [
+    {
+      "name": "elf",
+      "initial_state": "standing at the bar"
+    },
+    {
+      "name": "dwarf",
+      "initial_state": "sitting on a chair beside the bar"
+    },
+    {
+      "name": "goblin",
+      "initial_state": "seated at the bar with glowing eyes"
+    }
+  ]
+}
+No additional Subjects inferred as already present at story start.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~370 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_subjects (0.8s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1035 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (1.1s, finish_reason=stop).
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 2273/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+LLM request started: director_raw_scene (attempt 1/10, ~2514 input tokens, max 5550 output tokens).
+LLM request finished: director_raw_scene (18.8s, finish_reason=stop).
+Director Request 1 physical/spatial validation failed (attempt 1/5); retrying: New participants must enter or be revealed by the camera; do not use pop-in/appears wording.
+LLM request started: director_raw_scene (attempt 1/10, ~2592 input tokens, max 5472 output tokens).
+LLM request finished: director_raw_scene (19.4s, finish_reason=stop).
+Director Request 1 state_actions failed (attempt 2/5); retrying from the same opening WorldState: move action move: movement_not_representable: Movement within one registered location has no distinct position field.
+LLM request started: director_raw_scene (attempt 1/10, ~2642 input tokens, max 5422 output tokens).
+LLM request finished: director_raw_scene (18.3s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1038 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (0.9s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~907 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (0.6s, finish_reason=stop).
+LLM request started: director_raw_scene_timing (attempt 1/10, ~741 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_timing (1.6s, finish_reason=stop).
+LLM request started: director_raw_world_state_consistency (attempt 1/10, ~1183 input tokens, max 384 output tokens).
+LLM request finished: director_raw_world_state_consistency (1.4s, finish_reason=stop).
+Checking pronouns segment:
+LLM request started: director_raw_scene_pronoun_resolution (attempt 1/10, ~563 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_pronoun_resolution (2.7s, finish_reason=stop).
+Checking pronouns segment: LLM result=At 00:00.000, The shot begins from the established opening state.
+At 00:01.000, Amy’s hand grips the heavy oak door handle. The camera pulls in from a medium‑wide view of the front entrance, framing her left shoulder and the polished stone floor beyond.
+
+At 00:02.500, Amy pulls the door inward; it swings open on its hinges with a soft creak. The camera pans right to capture the full doorway as the oak frame reveals the interior.
+
+At 00:04.200, Amy steps through the opening onto the polished floor of The Gilded Quill. Her tunic and brown leather boots are visible; her apron hangs at knee‑height on a simple waist belt.
+
+At 00:06.800, Amy pauses just inside the doorway, looking toward the wooden counter that runs along the west wall.
+Checking pronouns segment: replaced At 00:02.500, she pulls the door inward; it swings open on its hinges with a soft creak. The camera pans right to capture the full doorway as the oak frame reveals the interior. -> At 00:02.500, Amy pulls the door inward; it swings open on its hinges with a soft creak. The camera pans right to capture the full doorway as the oak frame reveals the interior.
+Checking pronouns segment: replaced At 00:06.800, she pauses just inside the doorway, looking toward the wooden counter that runs along the west wall. -> At 00:06.800, Amy pauses just inside the doorway, looking toward the wooden counter that runs along the west wall.
+Segment 1 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.000, The shot begins from the established opening state.
+At 00:01.000, Amy’s hand grips the heavy oak door handle. The camera pulls in from a medium‑wide view of the front entrance, framing her left shoulder and the polished stone floor beyond.
+
+At 00:02.500, Amy pulls the door inward; it swings open on its hinges with a soft creak. The camera pans right to capture the full doorway as the oak frame reveals the interior.
+
+At 00:04.200, Amy steps through the opening onto the polished floor of The Gilded Quill. Her tunic and brown leather boots are visible; her apron hangs at knee‑height on a simple waist belt.
+
+At 00:06.800, Amy pauses just inside the doorway, looking toward the wooden counter that runs along the west wall.
+End continuity state: Amy stands in front of the bar counter on the polished floor of The Gilded Quill, facing east.
+================================================================
+
+================================================================
+H3 SOUNDSCAPE REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_soundscape (attempt 1/10, ~653 input tokens, max 512 output tokens).
+LLM request finished: director_h3_soundscape (1.6s, finish_reason=stop).
+H3 soundscape segment 1: 'soft creak at 00:02.500; footstep on polished floor at 00:04.200'
+H3 MUSIC REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_music (attempt 1/10, ~526 input tokens, max 512 output tokens).
+LLM request finished: director_h3_music (4.2s, finish_reason=stop).
+H3 music segment 1: 'Gentle low‑pitched pizzicato strings with soft piano arpeggios create an intimate, welcoming atmosphere as Amy steps into the polished interior.'
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1520 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (1.2s, finish_reason=stop).
+Checking RAW Subjects segment: no dynamic Subjects
+Planned character reference(s): Amy
+LLM request started: final_h3_world_state_plan_validation (attempt 1/10, ~1839 input tokens, max 384 output tokens).
+LLM request finished: final_h3_world_state_plan_validation (2.6s, finish_reason=stop).
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Final H3 persistent-state validation failed for Segment 1: The final H3 ending states that Amy stands in front of the bar counter on the polished floor of The Gilded Quill, facing east, which contradicts the scene description where she pauses just inside the doorway looking toward the wooden counter that runs along the west wall (i.e., facing west).
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8bdk15bw\repo\minimax.py", line 41807, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8bdk15bw\repo\minimax.py", line 40688, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Final H3 persistent-state validation failed for Segment 1: The final H3 ending states that Amy stands in front of the bar counter on the polished floor of The Gilded Quill, facing east, which contradicts the scene description where she pauses just inside the doorway looking toward the wooden counter that runs along the west wall (i.e., facing west).
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8bdk15bw\repo\minimax.py", line 41872, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8bdk15bw\repo\minimax.py", line 41807, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8bdk15bw\repo\minimax.py", line 40688, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Final H3 persistent-state validation failed for Segment 1: The final H3 ending states that Amy stands in front of the bar counter on the polished floor of The Gilded Quill, facing east, which contradicts the scene description where she pauses just inside the doorway looking toward the wooden counter that runs along the west wall (i.e., facing west).

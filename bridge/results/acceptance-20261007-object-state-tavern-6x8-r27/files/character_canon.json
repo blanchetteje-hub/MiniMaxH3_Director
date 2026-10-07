@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "401c16069a8d258c159e31f176bde94e3ffb4b6c8a61ed5d940bf17ebef44bc9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence",
+    "occupation"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "tunic (linen, light beige, long-sleeved, loose fit), apron (brown leather, worn at the knee), waist belt (simple leather strap), footwear (sturdy brown leather boots)",
+      "gender": "female",
+      "confidence": "confident",
+      "occupation": "barkeep"
+    }
+  ]
+}
