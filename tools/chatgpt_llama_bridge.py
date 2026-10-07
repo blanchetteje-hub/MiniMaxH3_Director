@@ -36,7 +36,7 @@ DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 DEFAULT_CODE_BRANCH = "gpt-arc-refresh"
 ACCEPTANCE_MODEL = "gpt"
 ACCEPTANCE_CODE_BRANCH = "gpt-arc-refresh"
-ACCEPTANCE_EXPERIMENT_BRANCHES = frozenset({"summary-to-story-test"})
+ACCEPTANCE_EXPERIMENT_BRANCHES = frozenset({"summary-to-story-test", "object-state-work"})
 DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
 
 _ACTIVE_LOCAL_PROCESS = None
