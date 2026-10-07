@@ -1,0 +1,7 @@
+{
+  "job_id": "acceptance-20261006-object-state-tavern-6x8-r2",
+  "status": "error",
+  "error_type": "FileNotFoundError",
+  "error": "Acceptance image not found: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+  "finished_at": 1791337274.4207935
+}
