@@ -1,0 +1,25 @@
+{
+  "version": 3,
+  "source_sha256": "16e44734dcfbf034e338ee780b223defc1a328489574d856a03c6155722741a2",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "role",
+    "tavern_care",
+    "confidence",
+    "appearance_def"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ",30,",
+      "clothing": "Amy wears a sturdy linen tunic of deep green that reaches her knees, its fabric slightly worn at the cuffs from years of service. Over it she dons a brown leather apron tied snugly around her waist with a brass buckle; the apron is lined with thick canvas to protect against spills and splashes. Her lower legs are covered by dark woolen leggings that tuck into knee‑high leather boots, scuffed at the toes but still functional for moving across the tavern floor. A simple wooden hat—an old straw cap trimmed with a green ribbon—is perched on her head, keeping sun and rain from her face as she tends to patrons",
+      "gender": "Female",
+      "role": "medieval barkeep",
+      "tavern_care": "takes care of a tavern for magical humanoid creatures.",
+      "confidence": "confident woman referenced in <Picture 1>.",
+      "appearance_def": "<Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features."
+    }
+  ]
+}

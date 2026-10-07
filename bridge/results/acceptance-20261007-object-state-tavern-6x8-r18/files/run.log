@@ -1,0 +1,215 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).
+LLM request finished: character_canon (40.4s, finish_reason=stop).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\beats.txt); regenerating the beat plan.
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\beats.txt with 6 creative story beats.
+LLM request started: story_expansion (attempt 1/10, ~406 input tokens, max 12000 output tokens).
+LLM request finished: story_expansion (39.1s, finish_reason=stop).
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\expanded_story.txt.
+Expanded story:
+The morning sun glints off the iron hinges as Amy pushes open the heavy wooden door of her medieval tavern. She steps inside and wipes a handkerchief across the polished counter, then lifts a crystal goblet from its stand to pour ale into it for a small elf who has just entered. The elf nods gratefully and places the goblet on a nearby table.
+
+A dragon lands atop the roof with a thud that rattles the lanterns hanging over the bar. A single red lantern falls, shattering against the stone floor. Amy kneels beside the broken glass, lifts the pieces into her palm, then sets them back onto the hook above the tavern’s entrance.
+
+She wipes down the counter again, refills a wooden mug from the barrel with ale, and hands it to an elf who sits at the bar. The elf raises his mug in a toast; Amy smiles, clinks her own goblet against his, and says “Cheers.” The magical humanoid creatures around the tavern cheer softly as they sip their drinks, completing the day’s care for the tavern.
+LLM request started: story_to_beats (attempt 1/10, ~772 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats (29.5s, finish_reason=stop).
+Story-derived Beat framework created with 6 beats.
+Beat 1 created: Morning sun glints off iron hinges as Amy pushes open the heavy wooden door of her medieval tavern.
+Beat 2 created: She steps inside, wipes a handkerchief across the polished counter, lifts a crystal goblet from its stand and pours ale into it for the small elf who has just entered; he nods gratefully and places the goblet on a nearby table.
+Beat 3 created: A dragon lands atop the roof with a thud that rattles lanterns hanging over the bar, causing a single red lantern to fall and shatter against the stone floor.
+Beat 4 created: Amy kneels beside the broken glass, lifts the pieces into her palm, then sets them back onto the hook above the tavern’s entrance while refilling a wooden mug from the barrel with ale.
+Beat 5 created: She hands the mug to an elf who sits at the bar; he raises his mug in toast, Amy smiles and clinks her own goblet against his, saying “Cheers,” as magical humanoid creatures around the tavern cheer softly while sipping their drinks.
+Beat 6 created: The day’s care for the tavern is completed as evening settles over the medieval inn.
+Beat 1 jobs: current=E1 - Morning sun glints off iron hinges as Amy pushes open the heavy wooden door of her medieval tavern.; next=E2 - She steps inside, wipes a handkerchief across the polished counter, lifts a crystal goblet from its stand and pours ale into it for the small elf who has just entered; he nods gratefully and places the goblet on a nearby table.; completed before=none; pending before=E1, E2, E3, E4, E5, E6
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1214 input tokens, max 6850 output tokens).
+LLM request finished: beat_validation (4.2s, finish_reason=stop).
+Beat 1 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~322 input tokens, max 7742 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.8s, finish_reason=stop).
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~550 input tokens, max 7514 output tokens).
+LLM request finished: beat_coherence_validation (1.7s, finish_reason=stop).
+Beat 1 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1023 input tokens, max 7041 output tokens).
+LLM request finished: accepted_beat_state_extract (7.4s, finish_reason=stop).
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "medieval tavern"}}, "environment": {"doors": {"heavy wooden door": {"status": "open", "location": "tavern entrance"}}}}
+Beat 1 accepted: Morning sun glints off iron hinges as Amy pushes open the heavy wooden door of her medieval tavern.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - She steps inside, wipes a handkerchief across the polished counter, lifts a crystal goblet from its stand and pours ale into it for the small elf who has just entered; he nods gratefully and places the goblet on a nearby table.; next=E3 - A dragon lands atop the roof with a thud that rattles lanterns hanging over the bar, causing a single red lantern to fall and shatter against the stone floor.; completed before=E1; pending before=E2, E3, E4, E5, E6
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1301 input tokens, max 6763 output tokens).
+LLM request finished: beat_validation (5.0s, finish_reason=stop).
+Beat 2 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~395 input tokens, max 7669 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.9s, finish_reason=stop).
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~691 input tokens, max 7373 output tokens).
+LLM request finished: beat_coherence_validation (4.0s, finish_reason=stop).
+Beat 2 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1127 input tokens, max 6937 output tokens).
+LLM request finished: accepted_beat_state_extract (7.2s, finish_reason=stop).
+Beat 2 observed persistent state: {"environment": {"objects": {"crystal_goblet": {"location": "nearby table"}}}}
+Beat 2 accepted: She steps inside, wipes a handkerchief across the polished counter, lifts a crystal goblet from its stand and pours ale into it for the small elf who has just entered; he nods gratefully and places the goblet on a nearby table.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - A dragon lands atop the roof with a thud that rattles lanterns hanging over the bar, causing a single red lantern to fall and shatter against the stone floor.; next=E4 - Amy kneels beside the broken glass, lifts the pieces into her palm, then sets them back onto the hook above the tavern’s entrance while refilling a wooden mug from the barrel with ale.; completed before=E1, E2; pending before=E3, E4, E5, E6
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1321 input tokens, max 6743 output tokens).
+LLM request finished: beat_validation (4.2s, finish_reason=stop).
+Beat 3 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~356 input tokens, max 7708 output tokens).
+LLM request finished: beat_finite_endpoint_extract (2.3s, finish_reason=stop).
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~704 input tokens, max 7360 output tokens).
+LLM request finished: beat_coherence_validation (3.4s, finish_reason=stop).
+Beat 3 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1137 input tokens, max 6927 output tokens).
+LLM request finished: accepted_beat_state_extract (7.9s, finish_reason=stop).
+Beat 3 observed persistent state: {"environment": {"objects": {"red_lantern": {"location": "stone floor", "status": "shattered"}}}, "threats": {"threat_1": {"type": "dragon", "location": "roof of tavern"}}}
+Beat 3 accepted: A dragon lands atop the roof with a thud that rattles lanterns hanging over the bar, causing a single red lantern to fall and shatter against the stone floor.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - Amy kneels beside the broken glass, lifts the pieces into her palm, then sets them back onto the hook above the tavern’s entrance while refilling a wooden mug from the barrel with ale.; next=E5 - She hands the mug to an elf who sits at the bar; he raises his mug in toast, Amy smiles and clinks her own goblet against his, saying “Cheers,” as magical humanoid creatures around the tavern cheer softly while sipping their drinks.; completed before=E1, E2, E3; pending before=E4, E5, E6
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1385 input tokens, max 6679 output tokens).
+LLM request finished: beat_validation (7.0s, finish_reason=stop).
+Beat 4 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~371 input tokens, max 7693 output tokens).
+LLM request finished: beat_finite_endpoint_extract (2.0s, finish_reason=stop).
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~754 input tokens, max 7310 output tokens).
+LLM request finished: beat_coherence_validation (5.5s, finish_reason=stop).
+Beat 4 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1266 input tokens, max 6798 output tokens).
+LLM request finished: accepted_beat_state_extract (7.8s, finish_reason=stop).
+Beat 4 accepted-state observation ignored: State effects cannot nest canonical state root 'characters.environment.objects.crystal_goblet'; roots must remain top-level.
+Beat 4 accepted: Amy kneels beside the broken glass, lifts the pieces into her palm, then sets them back onto the hook above the tavern’s entrance while refilling a wooden mug from the barrel with ale.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - She hands the mug to an elf who sits at the bar; he raises his mug in toast, Amy smiles and clinks her own goblet against his, saying “Cheers,” as magical humanoid creatures around the tavern cheer softly while sipping their drinks.; next=E6 - The day’s care for the tavern is completed as evening settles over the medieval inn.; completed before=E1, E2, E3, E4; pending before=E5, E6
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1377 input tokens, max 6687 output tokens).
+LLM request finished: beat_validation (7.0s, finish_reason=stop).
+Beat 5 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~398 input tokens, max 7666 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.8s, finish_reason=stop).
+Checking Beat 5 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~789 input tokens, max 7275 output tokens).
+LLM request finished: beat_coherence_validation (3.9s, finish_reason=stop).
+Beat 5 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1280 input tokens, max 6784 output tokens).
+LLM request finished: accepted_beat_state_extract (8.9s, finish_reason=stop).
+Beat 5 observed persistent state: {"characters": {"Elf": {"location": "bar", "held_objects": ["crystal_goblet"]}}, "environment": {"objects": {"crystal_goblet": {"location": "held_by.Elf"}}}}
+Beat 5 accepted: She hands the mug to an elf who sits at the bar; he raises his mug in toast, Amy smiles and clinks her own goblet against his, saying “Cheers,” as magical humanoid creatures around the tavern cheer softly while sipping their drinks.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - The day’s care for the tavern is completed as evening settles over the medieval inn.; next=none; completed before=E1, E2, E3, E4, E5; pending before=E6
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1340 input tokens, max 6724 output tokens).
+LLM request finished: beat_validation (5.8s, finish_reason=stop).
+Beat 6 validation attempt 1/10: INVALID; issue: No action is shown to complete the day’s care for the tavern.
+LLM request started: story_to_beats (attempt 1/10, ~678 input tokens, max 1024 output tokens).
+LLM request finished: story_to_beats (14.0s, finish_reason=stop).
+Validating Beat 6 (attempt 2/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1357 input tokens, max 6707 output tokens).
+LLM request finished: beat_validation (6.8s, finish_reason=stop).
+Beat 6 validation attempt 2/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~330 input tokens, max 7734 output tokens).
+LLM request finished: beat_finite_endpoint_extract (3.2s, finish_reason=stop).
+Checking Beat 6 within-beat physical coherence (attempt 2/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~790 input tokens, max 7274 output tokens).
+LLM request finished: beat_coherence_validation (4.8s, finish_reason=stop).
+Beat 6 coherence attempt 2/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1409 input tokens, max 6655 output tokens).
+LLM request finished: accepted_beat_state_extract (8.2s, finish_reason=stop).
+Beat 6 observed persistent state: {"characters": {"Amy": {"location": "outside"}}, "environment": {"doors": {"heavy wooden door": {"status": "closed"}}}}
+Beat 6 accepted: With a final sweep, Amy pulls the heavy wooden door closed, secures it on its iron hinges, and steps outside as twilight settles over the inn.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~735 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (7.1s, finish_reason=stop).
+Canonical appropriate attire for Amy: Amy wears a sturdy linen tunic of deep green that reaches her knees, its fabric slightly worn at the cuffs from years of service. Over it she dons a brown leather apron tied snugly around her waist with a brass buckle; the apron is lined with thick canvas to protect against spills and splashes. Her lower legs are covered by dark woolen leggings that tuck into knee‑high leather boots, scuffed at the toes but still functional for moving across the tavern floor. A simple wooden hat—an old straw cap trimmed with a green ribbon—is perched on her head, keeping sun and rain from her face as she tends to patrons
+LLM request started: story_location_extract (attempt 1/10, ~491 input tokens, max 256 output tokens).
+LLM request finished: story_location_extract (3.6s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~748 input tokens, max 512 output tokens).
+LLM request finished: static_setting_extract (4.4s, finish_reason=stop).
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~298 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (15.0s, finish_reason=stop).
+LLM request started: story_setting_extract (attempt 1/10, ~1246 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (41.2s, finish_reason=stop).
+Story location metadata: overall='medieval tavern'; starting='a medieval tavern'; setting='The stone‑floored interior of the tavern opens onto a heavy wooden door on its northern wall. To the east of this doorway, a polished counter stretches along the eastern wall for four meters; it is one point eight meters high and half a meter deep. The bar area extends southward from the center of that counter, spanning three meters in length and two meters across, with a polished wooden surface rising one point five meters above the floor.\n\nHanging lanterns dangle from timber beams that run east‑west at four meters up on the ceiling; each beam carries two lanterns positioned 0.8 meters below it, centered over the bar area to evenly illuminate patrons. Above the northern doorway hangs a hook set into the stone archway at a height of two point five meters; broken glass shards are spread along its length.\n\nNear the western side of the counter sits a crystal goblet stand on the floor—one meter tall and 0.4 by 0.3 meters in footprint—positioned two meters west of the counter’s center so customers can reach it without blocking passage. At the southern end of the bar area, centered between the counter and the back wall, rests an ale barrel measuring 1.2 meters across, 0.8 meters tall, with a depth of 0.6 meters; wooden mugs are stacked beside this barrel, each mug standing 0.3 meters high and 0.15 meters wide.\n\nThe stone floor covers a space twelve meters long from north to south and ten meters wide east to west, providing clear pathways between all fixtures: the counter, bar area, goblet stand, hook, barrel, and mugs. The doorway remains fully accessible with two‑meter clearance on either side for patrons entering or exiting without obstruction.'; location_state={'location': {'name': 'Tavern Interior', 'description': 'Stone‑floored medieval tavern with polished counters and a bar area illuminated by hanging lanterns.'}, 'anchors': [{'name': 'entrance', 'type': 'door', 'wall': 'north', 'world_state_role': 'fixture', 'mobility': 'fixed'}], 'objects': [{'name': 'polished counter', 'type': 'counter', 'near': ['bar area'], 'position': {'along_wall': 'east', 'length_along_wall_m': 4}, 'height_m': 1.8, 'depth_m': 0.6, 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'bar area', 'type': 'bar surface', 'position': {'south_of_counter_center_m': 1.5, 'width_m': 2, 'length_m': 3}, 'height_above_floor_m': 1.5, 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'hanging lanterns', 'type': 'lantern set', 'position': {'over_bar_area_center': True, 'height_below_beam_m': 0.8}, 'beams_along_ceiling_east_west_spacing_m': 3, 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'crystal goblet stand', 'type': 'stand', 'position': {'west_of_counter_center_m': 2, 'depth_m': 0.3, 'width_m': 0.4, 'height_m': 1}, 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'hook above doorway', 'type': 'hook', 'position': {'above_entrance_north_wall_height_m': 2.5, 'width_m': 0.15}, 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'barrel for ale', 'type': 'ale barrel', 'position': {'south_end_of_bar_area_centered_between_counter_and_back_wall_m': True, 'diameter_m': 1.2, 'height_m': 0.8, 'depth_m': 0.6}, 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'wooden mugs', 'type': 'mug stack', 'position': {'beside_barrel_m': True, 'height_per_mug_m': 0.3, 'width_per_mug_m': 0.15}, 'world_state_role': 'untracked', 'mobility': 'unknown'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~568 input tokens, max 512 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (5.2s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (attempt 1/3):
+{"subjects":[] }
+No additional Subjects inferred as already present at story start.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+LLM request started: registered_subject_story_start_presence (attempt 1/10, ~682 input tokens, max 256 output tokens).
+LLM request finished: registered_subject_story_start_presence (6.2s, finish_reason=stop).
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~361 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_subjects (3.3s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1173 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (12.7s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1299 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (10.5s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1299 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (9.3s, finish_reason=stop).
+FATAL: prompt-generation run stopped at first real failure: ValueError: Could not extract current-Segment persistent props: Persistent prop 'heavy wooden door' names an unregistered location.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 41497, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 39872, in _run_main
+    prepare_current_segment_world_state(segment)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 39569, in prepare_current_segment_world_state
+    world_state, added = prepare_segment_world_state_for_director(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 4199, in prepare_segment_world_state_for_director
+    extracted_props = extract_current_segment_persistent_props(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 4625, in extract_current_segment_persistent_props
+    raise ValueError("Could not extract current-Segment persistent props: " + str(last_error))
+ValueError: Could not extract current-Segment persistent props: Persistent prop 'heavy wooden door' names an unregistered location.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 41562, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 41497, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 39872, in _run_main
+    prepare_current_segment_world_state(segment)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 39569, in prepare_current_segment_world_state
+    world_state, added = prepare_segment_world_state_for_director(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 4199, in prepare_segment_world_state_for_director
+    extracted_props = extract_current_segment_persistent_props(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4ifd060p\repo\minimax.py", line 4625, in extract_current_segment_persistent_props
+    raise ValueError("Could not extract current-Segment persistent props: " + str(last_error))
+ValueError: Could not extract current-Segment persistent props: Persistent prop 'heavy wooden door' names an unregistered location.
