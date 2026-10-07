@@ -1981,3 +1981,58 @@ Recommended regressions:
    a move to a different registered location continues to reduce successfully.
 
 No tests were run because this was diagnostic-only. `git diff --check` passed.
+
+
+## 2026-10-07 — Implement r30 static boundary, Subject presence, and move retry fixes
+
+Implemented the three narrowly scoped r30 fixes on `object-state-work`.
+Python WorldState remains the sole physical authority; no bridge jobs were
+queued.
+
+The canonical spatial extractor now treats `static_setting_extract` as the
+static-fact selection boundary. Before its structured location state can be
+seeded into WorldState, Python removes every anchor/fixture/support entry whose
+exact normalized name or type phrase is not present in that selected static
+source. The registered location description is reset to the selected static
+facts. The location-reference prose is serialized from that source plus the
+accepted spatial fields on canonical anchor/support records, so the
+downstream model's freeform prose cannot restore character actions or future
+events to Director static authority. Structured extraction now fails closed
+when no selected static source is supplied. The local-LLM behavior and request
+count are unchanged. Successful static, spatial-refinement, and structured
+extractor responses are now captured in the run log to make the first leaking
+pass diagnosable.
+
+The RAW physical validator now receives the segment's opening WorldState and
+renders all Subjects whose canonical presence is `present`, including those
+with unknown pose/support, with their registered location when available.
+When WorldState is supplied, legacy Subject records no longer determine or
+override the validator's established-Subject list.
+
+Same-location `move` remains rejected by the reducer. Its deterministic retry
+hint now directs the Director to keep within-location motion in RAW staging
+and omit the persistent action, while reserving `move` for a different
+registered location.
+
+Regression coverage verifies that a future goblet and a movable bucket from
+action prose do not survive the static boundary, appear in the Director's
+static authority, or register as WorldState supports; that static door/bar
+records remain; that model-authored action prose is not serialized; that
+canonical Amy presence survives contradictory legacy state; that the request
+path forwards opening WorldState; and that same-location movement remains a
+rejected reducer action while an empty persistent action batch remains valid.
+Existing reducer tests cover successful cross-location movement.
+
+Validation:
+- `python -m pytest tests/test_location_state_reference.py tests/test_world_state_foundation.py -q` — 95 passed.
+- Focused Director regressions for canonical Subject presence, Segment 1 presence-gated action, same-location retry guidance, and forwarding WorldState — 4 passed, 120 deselected.
+- `python -m pytest tests/test_postmortem_regressions.py -q -k director_request_receives_static_setting_authority` — 1 passed, 83 deselected.
+- `python -m py_compile minimax.py tests/test_location_state_reference.py tests/test_director_retry.py tests/test_world_state_foundation.py` and `git diff --check` passed.
+- Full `tests/test_director_retry.py` — 116 passed, 8 failed, 7 subtests passed. The failures are the previously recorded compact Director prompt length (4,397 vs. the 4,300 limit) and seven mocked-prop tests whose fixtures exhaust retries after existing source-evidence validation rejects `tiny hands clutching a chipped mug` / `a barrel beside the hearth`.
+- Full `tests/test_postmortem_regressions.py` — 83 passed, 1 unrelated failure: `test_character_reference_numbering_uses_active_picture_count` expects `/tmp/video/state/amy_clothing.png`, while Windows path normalization returns `C:\\tmp\\video\\state\\amy_clothing.png`.
+
+Remaining concern: the r30 artifact omitted the static extractor completion body.
+The boundary is now deterministic relative to that extractor's selected facts,
+and future logs capture its output, but a future run should verify that the
+first static-selection pass itself excludes action-only facts rather than
+misclassifying them as setting.

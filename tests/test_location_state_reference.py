@@ -56,7 +56,8 @@ class LocationStateReferenceTests(unittest.TestCase):
             "A 30 ft by 20 ft tavern with an entrance on the north wall."
         )
         system = messages[0]["content"]
-        self.assertIn("describe ALL objects", system)
+        self.assertIn("Describe only the selected static setting facts", system)
+        self.assertIn("Do not restore characters, actions, future events", system)
         self.assertIn("Define anchors", system)
         self.assertIn("Do not include exact coordinates", system)
         self.assertIn("Keep it literal without embellishment", system)
@@ -85,6 +86,82 @@ The tavern is rectangular. The entrance is on the north wall.
             "The tavern is rectangular. The entrance is on the north wall.",
         )
 
+    def test_static_boundary_drops_action_only_prop_before_worldstate_registration(self):
+        static_setting = (
+            "A medieval tavern has a fixed oak bar, an entrance door, and a hearth."
+        )
+        raw = '''Location: Medieval Tavern
+{
+  "location": {"name": "Medieval Tavern", "description": "Amy holds a goblet."},
+  "anchors": [
+    {"name": "entrance_door", "type": "door", "wall": "south",
+     "world_state_role": "fixture", "mobility": "fixed"}
+  ],
+  "objects": [
+    {"name": "oak_bar", "type": "bar", "location": "east wall",
+     "world_state_role": "support", "mobility": "fixed"},
+    {"name": "polished_goblet_at_table", "type": "goblet", "near": ["table"],
+     "world_state_role": "support", "mobility": "fixed"},
+    {"name": "brass_bucket", "type": "bucket", "near": ["oak_bar"],
+     "world_state_role": "support", "mobility": "movable"}
+  ]
+}
+Text description based on JSON
+Amy lifts the goblet and pours ale while the creature enters.
+'''
+        parsed = minimax.parse_story_setting_description(
+            raw,
+            static_setting=static_setting,
+        )
+        self.assertEqual(
+            parsed["static_boundary_rejections"],
+            ["polished_goblet_at_table", "brass_bucket"],
+        )
+        self.assertNotIn("goblet", parsed["text_description"].casefold())
+        self.assertNotIn("bucket", parsed["text_description"].casefold())
+        self.assertNotIn("Amy", parsed["text_description"])
+        self.assertNotIn("Amy", parsed["location_state"]["location"]["description"])
+        director_messages, _tokens, _recent = minimax.build_generation_messages(
+            director_rules="rules",
+            story="story",
+            beats=["Amy wipes the bar.", "A customer enters."],
+            completed_beat_ids=set(),
+            recent_results=[],
+            current_segment=1,
+            total_segments=2,
+            segment_length=8,
+            total_length=16,
+            static_setting_description=parsed["text_description"],
+        )
+        director_prompt = director_messages[-1]["content"]
+        self.assertIn("STATIC SETTING AUTHORITY", director_prompt)
+        self.assertNotIn("goblet", director_prompt.casefold())
+        self.assertNotIn("Amy lifts", director_prompt)
+        state = minimax.new_world_state({})
+        state, _location_id = minimax.seed_canonical_static_location_state(
+            state,
+            parsed["location_state"],
+            location_name=parsed["location_name"],
+        )
+        self.assertEqual(
+            {prop["name"] for prop in state["props"].values()},
+            {"entrance_door", "oak_bar"},
+        )
+
+    def test_static_description_serializes_selected_facts_not_model_action_prose(self):
+        parsed = minimax.parse_story_setting_description(
+            '''Location: Room
+{"location":{"name":"Room"},"anchors":[],"objects":[]}
+Text description based on JSON
+Amy enters and picks up a lantern.
+''',
+            static_setting="A stone room with a fixed hearth.",
+        )
+        self.assertEqual(
+            parsed["text_description"],
+            "Room A stone room with a fixed hearth.",
+        )
+
     def test_smart_extractors_use_profile_context_and_purposes(self):
         refine_request = mock.Mock(
             return_value="30 ft by 20 ft tavern; entrance north."
@@ -110,11 +187,12 @@ A rectangular tavern interior.
 """)
         result = minimax.extract_story_setting_description(
             refined,
+            static_setting="A medieval tavern with a counter beside a hearth.",
             llm_request=structured_request,
         )
         self.assertEqual(
             result["text_description"],
-            "A rectangular tavern interior.",
+            "Tavern Interior A medieval tavern with a counter beside a hearth.",
         )
         self.assertEqual(
             structured_request.call_args.kwargs["context_token_budget"],
@@ -124,6 +202,15 @@ A rectangular tavern interior.
             structured_request.call_args.kwargs["history_metadata"]["purpose"],
             "story_setting_extract",
         )
+
+    def test_structured_location_extractor_fails_closed_without_static_source(self):
+        request = mock.Mock()
+        with self.assertRaisesRegex(ValueError, "requires selected static setting facts"):
+            minimax.extract_story_setting_description(
+                "A room with a door.",
+                llm_request=request,
+            )
+        request.assert_not_called()
 
 
     def test_initial_location_subject_extractor_reads_all_beats(self):

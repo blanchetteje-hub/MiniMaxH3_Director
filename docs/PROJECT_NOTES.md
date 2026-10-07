@@ -17,7 +17,7 @@ Active experimental branch: `object-state-work`
 - **Repository / branches:** Code on `object-state-work`; ChatGPT-to-local bridge mailbox on `gpt-runtime`. Consult `docs/HANDOFF.md` and the newest bridge result before acting. Do not confuse a mailbox result with a code-branch commit.
 - **Responsibilities:** ChatGPT diagnoses acceptance runs, researches local 20B responses, decides architectural direction with the user, queues bridge jobs, and reviews outcomes. Codex performs explicitly delegated repo-local Python implementation and regression tests, updates docs, commits/pushes; Codex does not operate the bridge. User saying **"go"** means the queued bridge job is processed and ChatGPT should inspect results and continue the iteration, not redirect the user to Codex.
 - **Authoritative state:** Deterministic Python WorldState owns all representable physical facts: registered IDs, locations/fixtures/supports, Subject presence, prop placement and ownership, actions, and persistent transitions. LLM RAW, extraction, formatter and H3 output are proposals/evidence, never parallel authorities. Validate and transact accepted actions against opening state, preserve rollback on failure, and do not silently import legacy or visual observations as authoritative state.
-- **Fixed entities:** Current-segment prop extraction may not create fixed fixtures, supports or structural scene components. Only canonical location WorldState defines them. Alias resolution must use unambiguous canonical matching; ambiguity fails closed. The fixed-entity foundation bridge suite passed **66/66** on 2026-10-07.
+- **Fixed entities:** Current-segment prop extraction may not create fixed fixtures, supports or structural scene components. Only canonical location WorldState defines them. In the story-location pipeline, the static-setting extractor selects static facts; before WorldState seeding, Python drops structured fixture/support entries whose exact name or type phrase is absent from that selected source. Location-reference prose is serialized from the selected static facts and accepted spatial records, not freeform downstream narrative. Alias resolution must use unambiguous canonical matching; ambiguity fails closed. The fixed-entity foundation bridge suite passed **66/66** on 2026-10-07.
 - **RAW / Subject resolution:** After RAW has passed, Subject resolution may return validated identity mappings only. Python applies exact substitutions; the LLM must not regenerate timestamps, action choreography or the scene. Deterministic normalization of safe format variants is preferable to another creative rewrite; genuinely ambiguous mappings fail closed.
 - **Retries:** Where the user explicitly selected the hybrid policy for current-segment held-prop/holder recovery, try the primary LLM extraction **up to three times**, then use the narrow deterministic recovery only when uniquely evidenced, otherwise fail closed. This is **not** a blanket retry policy for every extractor or validator.
 - **Engineering style:** Keep it simple (KISS), generic across stories/genres, and suitable for local ~20B inference. Narrow single-purpose model calls, deterministic Python for exact IDs/parser normalization/state invariants, and no accumulating speculative prompt patches. If repeated prompt micro-edits fail, surface the exact wording/response and discuss a principled change with the user.
@@ -80,14 +80,14 @@ This checklist is the compact current-status view. Historical sections below exp
 ### Location / environment continuity
 
 - [x] **Story-level overall + starting-location extraction** exists and Segment 1 gets authoritative starting-location context.
-- [x] **Structured spatial `location_state` extraction:** the existing story-grounded static setting extraction is followed by two SMART extractor passes. The first makes the space explicit with cardinal directions, anchors, dimensions, accessibility, and non-overlap; the second emits both canonical JSON and literal prose derived from that JSON. The JSON is stored in `generation_state["location_state"]`; only the prose is sent to the 3-second location-reference render.
+- [x] **Structured spatial `location_state` extraction:** the story-grounded static setting extraction is followed by spatial refinement and structured JSON extraction. Python checks fixture/support grounding against the selected static facts, stores accepted canonical JSON in `generation_state["location_state"]`, and serializes location-reference prose from those facts plus accepted spatial fields. Model-authored narrative prose is not used for the location reference.
 - [x] **Persistent location memory:** generate one character-free 3-second 360-orbit location clip before Segment 1 and reuse it throughout the run.
 - [x] **Location-reference audio is deterministically removed with ffmpeg** before conditioning reuse.
 - [x] **Location-reference authority is limited to static environment/spatial layout**, not characters or current camera composition.
 - [x] **Location continuity accepted.** Recent tavern runs preserved covered room geometry with unexpectedly high accuracy across changing viewpoints.
 - [x] **Setting extraction avoids over-promoting action-only props** and treats relative labels such as front/back/side as uncertain unless distinct architecture is established.
 - [ ] **Production-verify Director static-setting authority.** Request 1 and RAW coherence now receive the compact extracted static setting and must preserve explicitly described fixed fixtures/lighting placement without forcing off-camera elements into frame.
-- [x] **Compact static-space existence bookkeeping.** `location_state` now stores structured location/anchor/object facts separately from the rendered orbit. It is the Python-owned spatial record; the matching literal prose is the visual serialization used to create the orbit.
+- [x] **Compact static-space existence bookkeeping.** `location_state` now stores structured location/anchor/object facts separately from the rendered orbit. It is the Python-owned spatial record; checked deterministic prose derived from selected static facts and accepted spatial fields is used to create the orbit.
 - [ ] **Multi-room / returning-location stress test.** Verify authority when the story moves between several spaces and later returns.
 
 
@@ -2577,8 +2577,10 @@ Location creation now separates semantic spatial state from the H3 visual refere
 - A new SMART spatial-refinement pass rewrites that description with cardinal directions,
   anchor-first layout, overall/object sizes, clear access paths, and non-overlap.
 - The altered second SMART extractor converts that refined location into the required
-  `Location: ...` + JSON + literal text format. Python parses the JSON into
-  `generation_state["location_state"]` and sends only the text description to ComfyUI.
+  `Location: ...` + JSON + prose format. Python parses and filters the JSON against the
+  selected static facts into `generation_state["location_state"]`, then serializes the
+  location-reference prose from those facts and accepted spatial fields; model-authored
+  prose does not flow into the location render or Director static authority.
 - `story_setting_extract` still uses `SMART_EXTRACTOR_LLM_SETTINGS`: seed 42,
   8192-token context budget, medium reasoning effort, 1024-token reasoning budget.
 - `story_setting_spatial_refine` intentionally uses `SLIGHTLY_CREATIVE_LLM_SETTINGS`

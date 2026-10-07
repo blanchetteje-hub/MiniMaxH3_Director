@@ -20109,7 +20109,12 @@ def extract_static_setting(
                     "attempt": attempt,
                 },
             )
-            return parse_static_setting_extraction(raw, fallback=fallback)
+            result = parse_static_setting_extraction(raw, fallback=fallback)
+            console_log(
+                "Static setting extractor response: " + repr(result),
+                flush=True,
+            )
+            return result
         except LLMConnectionError:
             raise
         except (TypeError, ValueError) as error:
@@ -20198,7 +20203,12 @@ def refine_story_setting_spatially(
                     "attempt": attempt,
                 },
             )
-            return _parse_plain_extractor_text(raw, "Spatial setting refinement")
+            result = _parse_plain_extractor_text(raw, "Spatial setting refinement")
+            console_log(
+                "Spatial setting refiner response: " + repr(result),
+                flush=True,
+            )
+            return result
         except LLMConnectionError:
             raise
         except (TypeError, ValueError) as error:
@@ -20222,7 +20232,10 @@ def build_story_setting_description_messages(spatial_location, static_setting=""
         {
             "role": "system",
             "content": (
-                "Describe this location spatially in detail; describe ALL objects.\n"
+                "Describe only the selected static setting facts in STATIC SETTING "
+                "FACTS, arranged spatially using SPATIAL REFINEMENT. Do not restore "
+                "characters, actions, future events, or action-only props from the "
+                "expanded story.\n"
                 "- Define anchors, such as doors for interiors or buildings for exteriors.\n"
                 "- Do not include exact coordinates, but use references to anchors and "
                 "north/south/east/west instead.  If interior, use west wall, east wall, "
@@ -20234,7 +20247,8 @@ def build_story_setting_description_messages(spatial_location, static_setting=""
                 "movable, fixed, or unknown. Use untracked for ordinary scene nouns; "
                 "only identify persistent fixtures/supports needed for cross-segment "
                 "state reasoning. Anchors are fixed fixtures unless clearly movable. "
-                "Do not create IDs.\n"
+                "Do not create IDs. Python will omit fixture/support entries whose "
+                "name or type is not explicitly grounded in STATIC SETTING FACTS.\n"
                 "- Preserve any historical period, culture, and genre in STATIC SETTING "
                 "FACTS and SPATIAL REFINEMENT in both the JSON location name/description "
                 "and the final text description. Treat those cues as visual constraints; "
@@ -20315,8 +20329,106 @@ def _first_balanced_json_object(value):
     raise ValueError("Spatial setting extractor returned unterminated JSON.")
 
 
-def parse_story_setting_description(raw_result):
-    """Split Location + JSON + text output into persistent state and render prose."""
+def _static_setting_mentions_entity(static_setting, entity):
+    """Require an exact name/type phrase from the static-fact selection pass."""
+    source_tokens = re.findall(r"[\w]+", str(static_setting or "").casefold())
+    candidate_tokens = re.findall(r"[\w]+", str(entity or "").replace("_", " ").casefold())
+    if not source_tokens or not candidate_tokens:
+        return False
+    width = len(candidate_tokens)
+    return any(
+        source_tokens[index:index + width] == candidate_tokens
+        for index in range(len(source_tokens) - width + 1)
+    )
+
+
+def _validate_static_location_state_boundary(location_state, static_setting):
+    """Drop structured fixture/support claims not selected as static facts."""
+    rejected = []
+    for field in ("anchors", "objects"):
+        kept = []
+        for item in location_state.get(field, []):
+            if not isinstance(item, dict):
+                kept.append(item)
+                continue
+            role = item.get("world_state_role")
+            is_static = field == "anchors" or role in {
+                "fixture", "support", "fixture_support",
+            }
+            if not is_static:
+                kept.append(item)
+                continue
+            name = str(item.get("name") or "").strip()
+            type_name = str(item.get("type") or "").strip()
+            if (
+                _static_setting_mentions_entity(static_setting, name)
+                or _static_setting_mentions_entity(static_setting, type_name)
+            ):
+                kept.append(item)
+            else:
+                rejected.append(name or type_name or "<unnamed>")
+        location_state[field] = kept
+    return rejected
+
+
+def format_static_location_description(location_name, static_setting, location_state):
+    """Serialize only selected static facts and validated canonical spatial records."""
+    lines = []
+    name = " ".join(str(location_name or "").split()).strip()
+    if name:
+        lines.append(name.rstrip("."))
+    source = " ".join(str(static_setting or "").split()).strip()
+    if source:
+        lines.append(source)
+    for field in ("anchors", "objects"):
+        for item in location_state.get(field, []):
+            if not isinstance(item, dict):
+                continue
+            role = item.get("world_state_role")
+            if field == "objects" and role not in {
+                "fixture", "support", "fixture_support",
+            }:
+                continue
+            label = " ".join(
+                str(item.get("name") or item.get("type") or "")
+                .replace("_", " ").split()
+            ).strip()
+            type_name = " ".join(str(item.get("type") or "").split()).strip()
+            if not label:
+                continue
+            if type_name and type_name.casefold() not in label.casefold():
+                label = f"{type_name} ({label})"
+            relation = " ".join(str(item.get("location") or "").split()).strip()
+            wall = " ".join(str(item.get("wall") or "").split()).strip()
+            near = item.get("near")
+            if not relation and wall:
+                relation = f"on the {wall} wall"
+            if not relation and isinstance(near, list) and near:
+                relation = "near " + ", ".join(
+                    " ".join(str(value).split()).strip()
+                    for value in near
+                    if str(value).strip()
+                )
+            spatial_details = []
+            for key in (
+                "dimensions", "size", "length", "width", "height",
+                "orientation", "position", "direction",
+            ):
+                value = item.get(key)
+                if value is None or isinstance(value, (dict, list)):
+                    continue
+                value = " ".join(str(value).split()).strip()
+                if value:
+                    spatial_details.append(f"{key}: {value}")
+            sentence = f"{label} is {relation}." if relation else label
+            if spatial_details:
+                sentence += " " + "; ".join(spatial_details) + "."
+            lines.append(sentence)
+    return " ".join(dict.fromkeys(line for line in lines if line)).strip()
+
+
+def parse_story_setting_description(raw_result, *, static_setting=""):
+    """Split structured location output and enforce its static-fact boundary."""
     text = str(raw_result or "").strip()
     text = re.sub(r"(?im)^\s*```(?:json|text|plaintext)?\s*$", "", text)
     text = re.sub(r"(?im)^\s*```\s*$", "", text).strip()
@@ -20361,23 +20473,44 @@ def parse_story_setting_description(raw_result):
     if not location_name:
         raise ValueError("Spatial setting extractor returned no Location name.")
 
-    description = text[json_end:].strip()
-    description = re.sub(
+    model_description = text[json_end:].strip()
+    model_description = re.sub(
         r"(?im)^\s*(?:\*\*)?Text description based on JSON"
         r"(?:\*\*)?\s*:?\s*",
         "",
-        description,
+        model_description,
         count=1,
     ).strip()
-    if not description:
+    if not model_description:
         raise ValueError(
             "Spatial setting extractor returned no text description based on JSON."
+        )
+
+    rejected = _validate_static_location_state_boundary(
+        location_state,
+        static_setting,
+    ) if static_setting else []
+    if static_setting:
+        location_state["location"]["description"] = " ".join(
+            str(static_setting).split()
+        ).strip()
+    description = format_static_location_description(
+        location_name,
+        static_setting,
+        location_state,
+    ) if static_setting else model_description
+    if rejected:
+        console_log(
+            "Static location boundary omitted ungrounded fixture/support entries: "
+            + ", ".join(repr(name) for name in rejected),
+            flush=True,
         )
 
     return {
         "location_name": location_name,
         "location_state": location_state,
         "text_description": description,
+        "static_boundary_rejections": rejected,
     }
 
 
@@ -20390,6 +20523,10 @@ def extract_story_setting_description(
     attempts=3,
 ):
     """Create canonical location_state JSON plus the matching ComfyUI description."""
+    if not str(static_setting or "").strip():
+        raise ValueError(
+            "Canonical spatial setting extraction requires selected static setting facts."
+        )
     if llm_request is None:
         llm_request = ask_llm
     last_error = None
@@ -20419,7 +20556,15 @@ def extract_story_setting_description(
                     "attempt": attempt,
                 },
             )
-            return parse_story_setting_description(raw)
+            result = parse_story_setting_description(
+                raw,
+                static_setting=static_setting,
+            )
+            console_log(
+                "Structured story setting extractor response: " + repr(raw),
+                flush=True,
+            )
+            return result
         except LLMConnectionError:
             raise
         except (TypeError, ValueError) as error:
@@ -36807,8 +36952,29 @@ def apply_visible_subject_bootstrap_metadata(
     return state, list(dict.fromkeys(changed))
 
 
-def format_known_subject_state_for_validator(continuity_state):
-    """Render compact durable Subject presence for the physical RAW validator."""
+def format_known_subject_state_for_validator(continuity_state, world_state=None):
+    """Render canonical presence when WorldState is available; otherwise legacy state."""
+    if isinstance(world_state, dict):
+        validate_world_state(world_state)
+        locations = world_state.get("locations", {})
+        lines = []
+        for subject in world_state.get("subjects", {}).values():
+            if not isinstance(subject, dict) or subject.get("presence") != "present":
+                continue
+            name = " ".join(str(subject.get("name") or "").split()).strip()
+            if not name:
+                continue
+            details = ["presence: present"]
+            location_id = subject.get("location_id")
+            location = locations.get(location_id, {})
+            if isinstance(location, dict) and str(location.get("name") or "").strip():
+                details.append(f"registered location: {location['name']}")
+            posture = _known_continuity_value(subject.get("posture"))
+            if posture:
+                details.append(f"posture: {posture}")
+            lines.append(f"- {name}: already established; " + "; ".join(details))
+        return "\n".join(lines) or "N/A"
+
     state = continuity_state if isinstance(continuity_state, dict) else {}
     subjects = state.get("subjects")
     if not isinstance(subjects, dict):
@@ -36836,6 +37002,7 @@ def build_director_raw_scene_physical_messages(
     *,
     static_setting_description="",
     known_subject_state=None,
+    world_state=None,
 ):
     """Check only subject movement, spatial continuity, and physical action order."""
     return [
@@ -36868,7 +37035,7 @@ def build_director_raw_scene_physical_messages(
                 "PREVIOUS SHOT END\n"
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
                 "KNOWN SUBJECT STATE\n"
-                f"{format_known_subject_state_for_validator(known_subject_state)}\n\n"
+                f"{format_known_subject_state_for_validator(known_subject_state, world_state)}\n\n"
                 "STATIC SETTING AUTHORITY\n"
                 f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
@@ -37353,6 +37520,7 @@ def validate_director_raw_scene_physical(
     previous_shot_end="",
     static_setting_description="",
     known_subject_state=None,
+    world_state=None,
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -37371,6 +37539,7 @@ def validate_director_raw_scene_physical(
             previous_shot_end=previous_shot_end,
             static_setting_description=static_setting_description,
             known_subject_state=known_subject_state,
+            world_state=world_state,
         ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
@@ -37545,6 +37714,16 @@ def _director_state_action_retry_hint(failure):
             "that Subject entering a registered location, use an `enter` action with "
             "the registered Subject ID and destination location ID. Do not use `move`; "
             "`move` is only for a Subject already present changing registered locations."
+        )
+    if (
+        text.startswith("move action ")
+        and "movement_not_representable" in text
+    ):
+        return (
+            " Movement within one registered location is RAW staging, not a persistent "
+            "WorldState change. Keep the movement in RAW and omit this same-location "
+            "`move` from `state_actions`; preserve `move` only for a different registered "
+            "destination location."
         )
     return ""
 
@@ -38019,6 +38198,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         previous_shot_end=previous_shot_end,
                         static_setting_description=static_setting_description,
                         known_subject_state=bundle.get("registry_state"),
+                        world_state=world_state_opening,
                         history_metadata=validator_metadata,
                     )
                 except (

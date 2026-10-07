@@ -332,11 +332,53 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("use an `enter` action", hint)
         self.assertIn("Do not use `move`", hint)
 
+    def test_same_location_move_failure_adds_staging_retry_hint(self):
+        hint = minimax._director_state_action_retry_hint(
+            "move action set_support: movement_not_representable: "
+            "Movement within one registered location has no distinct position field."
+        )
+        self.assertIn(
+            "movement within one registered location is raw staging",
+            hint.casefold(),
+        )
+        self.assertIn("omit this same-location `move`", hint)
+        self.assertIn("different registered destination location", hint)
+
     def test_unrelated_state_action_failure_gets_no_special_hint(self):
         hint = minimax._director_state_action_retry_hint(
             "pickup action take: prop_not_known_present: prop unavailable"
         )
         self.assertEqual(hint, "")
+
+    def test_physical_validator_uses_worldstate_presence_over_legacy_subject_state(self):
+        world_state, location_id, _mug_id = goblin_mug_world_state()
+        location_name = world_state["locations"][location_id]["name"]
+        legacy = {
+            "subjects": {
+                "Amy": {
+                    "position": "outside the tavern",
+                    "pose_action": "entering through the doorway",
+                },
+                "Outsider": {
+                    "position": "seated by the hearth",
+                    "pose_action": "already present",
+                },
+            }
+        }
+        prompt = "\n".join(
+            message["content"]
+            for message in minimax.build_director_raw_scene_physical_messages(
+                "Amy wipes the counter.",
+                "At 00:00.000, Amy stands at the bar.",
+                known_subject_state=legacy,
+                world_state=world_state,
+            )
+        )
+        self.assertIn("Amy: already established; presence: present", prompt)
+        self.assertIn(f"registered location: {location_name}", prompt)
+        self.assertNotIn("outside the tavern", prompt)
+        self.assertNotIn("entering through the doorway", prompt)
+        self.assertNotIn("- Outsider:", prompt)
 
     def setUp(self):
         self._state_consistency_patcher = mock.patch(
@@ -1611,6 +1653,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_request_one_retries_physically_incoherent_raw_scene(self):
         bundle = segment_bundle()
+        bundle["world_state_opening"], _location_id, _mug_id = goblin_mug_world_state()
+        bundle["registry_state"] = {
+            "subjects": {
+                "Amy": {
+                    "position": "outside the room",
+                    "pose_action": "entering the scene",
+                },
+            }
+        }
         bundle["current_beat_text"] = (
             "Amy pushes Will into the closet and closes the door behind him."
         )
@@ -1654,6 +1705,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         semantic_calls = non_audio_llm_calls(request)
         self.assertEqual(len(semantic_calls), 2)
         self.assertEqual(physical.call_count, 2)
+        self.assertEqual(
+            physical.call_args.kwargs["world_state"],
+            bundle["world_state_opening"],
+        )
         self.assertEqual(prop_state.call_count, 1)
         self.assertEqual(timing.call_count, 1)
         self.assertIn("Will steps into the closet", payload["raw_scene"])

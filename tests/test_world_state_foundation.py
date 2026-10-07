@@ -779,6 +779,27 @@ class WorldStateReducerTests(unittest.TestCase):
         self.assertEqual(subject["location_id"], "location_b")
         self.assertIsNone(subject["support_id"])
 
+    def test_same_location_move_remains_unrepresentable_and_rejected(self):
+        state = make_reducer_state()
+        before = copy.deepcopy(state)
+        raw_only = reduce_world_state(state, [], segment_number=2)
+        self.assertTrue(raw_only.committed)
+        self.assertEqual(raw_only.world_state, before)
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "same-room-reposition", "move", subject_id="subject_1",
+                destination_location_id="location_a", support_id=None,
+            )],
+            segment_number=2,
+        )
+        self.assertFalse(result.committed)
+        self.assertEqual(result.world_state, before)
+        self.assertEqual(
+            [outcome.code for outcome in result.outcomes],
+            ["movement_not_representable"],
+        )
+
     def test_move_can_explicitly_establish_new_support(self):
         state = make_reducer_state()
         result = reduce_world_state(
