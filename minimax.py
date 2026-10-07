@@ -417,7 +417,7 @@ BEAT_VALIDATION_STATE_VERSION = 3
 # Model/formatter choice must never change sampling, reasoning, prompt transport,
 # or validator behavior.
 BENCHMARK_SEED = 42
-DEFAULT_STORY_TEMPERATURE = 0.8
+DEFAULT_STORY_TEMPERATURE = 0.4
 DEFAULT_VISUAL_STYLE = "Live-action cinematic"
 DEFAULT_REFRESH_INTERVAL = 999
 REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
@@ -3812,6 +3812,23 @@ def build_registered_subject_story_start_messages(subject, story, beats):
     ]
 
 
+def _normalize_story_evidence_text(value):
+    """Normalize harmless Unicode typography for exact source-evidence checks."""
+    text = " ".join(str(value or "").split()).casefold()
+    return (
+        text.replace("\u2010", "-")
+        .replace("\u2011", "-")
+        .replace("\u2012", "-")
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+        .replace("\u2212", "-")
+        .replace("\u2018", "'")
+        .replace("\u2019", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+    )
+
+
 def parse_registered_subject_story_start_result(raw_result, subject, story, beats):
     candidate = raw_result
     if isinstance(candidate, str):
@@ -3833,7 +3850,9 @@ def parse_registered_subject_story_start_result(raw_result, subject, story, beat
             "evidence": evidence, "initial_state": "",
         }
     source_text = "\n".join((str(story or ""), *(str(beat) for beat in beats or [])))
-    if not evidence or evidence.casefold() not in source_text.casefold():
+    normalized_evidence = _normalize_story_evidence_text(evidence)
+    normalized_source = _normalize_story_evidence_text(source_text)
+    if not normalized_evidence or normalized_evidence not in normalized_source:
         raise ValueError("Explicit story-start classification requires exact source evidence.")
     if classification == "present" and not initial_state:
         raise ValueError("Present story-start classification requires an initial state.")
