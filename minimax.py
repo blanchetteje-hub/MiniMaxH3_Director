@@ -4415,16 +4415,31 @@ def _candidate_aliases_canonical_static_prop(entry, world_state):
             None,
         )
         if candidate_location_id is None:
-            candidate_location_id = next(
-                (
-                    prop.get("placement", {}).get("location_id")
-                    for prop in world_state["props"].values()
-                    if prop.get("kind") in {"support", "fixture_support"}
-                    and " ".join(str(prop.get("name") or "").split()).casefold()
-                    == location_key
-                ),
-                None,
-            )
+            exact_static = [
+                (prop_id, prop)
+                for prop_id, prop in world_state["props"].items()
+                if prop.get("kind") in {"fixture", "support", "fixture_support"}
+                and " ".join(str(prop.get("name") or "").split()).casefold()
+                == location_key
+            ]
+            if len(exact_static) == 1:
+                exact_prop_id, exact_prop = exact_static[0]
+                exact_name_tokens = _normalized_prop_name_tokens(exact_prop.get("name"))
+                exact_type_tokens = _normalized_prop_name_tokens(
+                    exact_prop.get("provenance", {})
+                    .get("registration", {})
+                    .get("source_type")
+                )
+                exact_type_heads = {
+                    tokens[-1]
+                    for tokens in (exact_name_tokens, exact_type_tokens)
+                    if tokens and tokens[-1] != "unknown"
+                }
+                if candidate_head in exact_type_heads:
+                    return (exact_prop_id,)
+                candidate_location_id = exact_prop.get("placement", {}).get("location_id")
+            elif len(exact_static) > 1:
+                return tuple(prop_id for prop_id, _prop in exact_static)
         if candidate_location_id is None:
             return ()
 
@@ -4572,6 +4587,16 @@ def parse_current_segment_persistent_prop_result(
                     entry["initial_location"], support_records
                 )
                 if support_record is None:
+                    alias_targets = _candidate_aliases_canonical_static_prop(
+                        entry, world_state
+                    )
+                    if len(alias_targets) > 1:
+                        raise ValueError(
+                            f"Persistent prop {name!r} ambiguously matches multiple "
+                            "registered fixtures/supports."
+                        )
+                    if len(alias_targets) == 1:
+                        continue
                     raise ValueError(f"Persistent prop {name!r} names an unregistered location.")
                 support_location_id = support_record["placement"].get("location_id")
                 canonical_location = location_names_by_id.get(support_location_id)
