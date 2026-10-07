@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "bef307dbfaea066511c7114944d323d90bb4dd6ea42c1622e3e486fe84de631e",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ". . .",
+      "clothing": "<Subject 1> Amy wears a worn linen apron dusted with flour from yesterday’s ale barrels. The apron is belted at the waist with a leather strap and has large pockets for mugs and tools. Underneath, she sports a simple gray wool tunic that reaches her knees, paired with brown leather breeches tucked into calf‑high woolen stockings. Her feet are covered by sturdy black leather boots suitable for a tavern keeper’s daily work",
+      "gender": "female"
+    }
+  ]
+}
