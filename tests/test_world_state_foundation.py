@@ -1162,6 +1162,21 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         )
         self.assertEqual(result, [])
 
+    def test_heavy_oak_door_with_fixture_name_as_initial_location_is_omitted(self):
+        state, _ = self._static_alias_test_state("front door", "door")
+        candidate = self._candidate(
+            "heavy oak door",
+            "heavy oak door",
+            initial_location="front door",
+        )
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {"props": [candidate]},
+            "Amy opens the heavy oak door.",
+            "Amy opens the heavy oak door.",
+            state,
+        )
+        self.assertEqual(result, [])
+
     def test_distinct_movable_object_with_same_type_noun_is_not_merged(self):
         state, _ = self._static_alias_test_state("front door", "door")
         candidate = self._candidate("miniature door", "miniature door", mobility="movable")
