@@ -1278,6 +1278,43 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertIsNone(result[0]["initial_location"])
         self.assertEqual(result[0]["initial_holder"], "Subject One")
 
+    def test_registered_subject_id_holder_is_normalized_to_canonical_name(self):
+        state = make_reducer_state()
+        candidate = self._candidate("mug", "holds a mug between its fingers")
+        candidate["initial_location"] = "location_a"
+        candidate["initial_holder"] = "subject_1"
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {"props": [candidate]},
+            "Subject One holds a mug between its fingers.",
+            "Subject One holds a mug between its fingers.",
+            state,
+        )
+        self.assertEqual(result[0]["initial_holder"], "Subject One")
+
+    def test_unregistered_or_ambiguous_holder_id_still_fails_closed(self):
+        state = make_reducer_state()
+        candidate = self._candidate("mug", "holds a mug between its fingers")
+        candidate["initial_holder"] = "subject_99"
+        with self.assertRaisesRegex(ValueError, "unregistered holder"):
+            minimax.parse_current_segment_persistent_prop_result(
+                {"props": [candidate]},
+                "Subject One holds a mug between its fingers.",
+                "Subject One holds a mug between its fingers.",
+                state,
+            )
+
+        ambiguous = make_reducer_state()
+        ambiguous["subjects"]["subject_2"]["name"] = "subject_1"
+        candidate = self._candidate("mug", "holds a mug between its fingers")
+        candidate["initial_holder"] = "subject_1"
+        with self.assertRaisesRegex(ValueError, "unregistered holder"):
+            minimax.parse_current_segment_persistent_prop_result(
+                {"props": [candidate]},
+                "Subject One holds a mug between its fingers.",
+                "Subject One holds a mug between its fingers.",
+                ambiguous,
+            )
+
 
     def test_self_referential_initial_location_is_treated_as_ungrounded(self):
         state = make_reducer_state()

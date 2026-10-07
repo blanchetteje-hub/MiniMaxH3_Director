@@ -4440,6 +4440,24 @@ def _candidate_aliases_canonical_static_prop(entry, world_state):
     return tuple(matches)
 
 
+def _canonical_registered_holder_name(value, world_state):
+    """Resolve only an exact registered Subject name or stable Subject ID."""
+    holder_key = " ".join(str(value or "").split()).casefold()
+    if not holder_key:
+        return None
+    matches = {
+        subject_id: subject
+        for subject_id, subject in world_state["subjects"].items()
+        if holder_key in {
+            str(subject_id).casefold(),
+            " ".join(str(subject.get("name") or "").split()).casefold(),
+        }
+    }
+    if len(matches) != 1:
+        return None
+    return next(iter(matches.values())).get("name")
+
+
 def parse_current_segment_persistent_prop_result(
     raw_result, current_beat, assigned_source, world_state,
 ):
@@ -4455,7 +4473,6 @@ def parse_current_segment_persistent_prop_result(
     names = set()
     source_text = "\n".join((str(current_beat or ""), str(assigned_source or "")))
     locations = {item["name"].casefold() for item in world_state["locations"].values()}
-    subjects = {item["name"].casefold() for item in world_state["subjects"].values()}
     support_records = {
         item["name"].casefold(): item
         for item in world_state["props"].values()
@@ -4518,8 +4535,13 @@ def parse_current_segment_persistent_prop_result(
                         f"Persistent prop {name!r} gives conflicting initial location and support."
                     )
                 entry["initial_location"] = canonical_location
-        if entry["initial_holder"] is not None and str(entry["initial_holder"]).casefold() not in subjects:
-            raise ValueError(f"Persistent prop {name!r} names an unregistered holder.")
+        if entry["initial_holder"] is not None:
+            canonical_holder = _canonical_registered_holder_name(
+                entry["initial_holder"], world_state
+            )
+            if canonical_holder is None:
+                raise ValueError(f"Persistent prop {name!r} names an unregistered holder.")
+            entry["initial_holder"] = canonical_holder
         if entry["support_name"] is not None and str(entry["support_name"]).casefold() not in supports:
             raise ValueError(f"Persistent prop {name!r} names an unregistered support.")
         if not isinstance(entry["contents"], list) or not isinstance(entry["capabilities"], dict):

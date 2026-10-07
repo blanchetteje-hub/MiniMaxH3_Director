@@ -1744,3 +1744,27 @@ Validation:
   evidence.
 - `python -m py_compile minimax.py tests/test_postmortem_regressions.py tests/test_director_retry.py`
   and `git diff --check` passed.
+
+
+## 2026-10-07 — Normalize registered Subject IDs returned as prop holders
+
+For the reported Beat 1, the local 20B current-Segment prop extractor returned a mug with
+`initial_holder="subject_1"`, which is Amy's registered WorldState Subject ID. The same response
+used the registered location ID as its redundant `initial_location`, quoted the Beat as its
+reason, and quoted “with a mug held between her fingers.” as evidence. The holder validator only
+accepted canonical Subject names, so it rejected this exact registered ID as an unregistered
+holder. The available Oct. 6 automation logs did not contain the r16 failure; this value came
+from a focused local 20B call with the supplied Beat and a minimal registered-Amy state.
+
+Added narrow holder canonicalization: exact registered Subject names continue to work, and an
+exact registered Subject ID resolves to that Subject's canonical name before validation and
+registration. Unknown IDs and ambiguous ID/name collisions still fail closed. The extractor's
+other source/evidence/placement checks remain unchanged; a held prop's redundant location is
+still discarded by the existing normalization path. No descriptive body-part alias rule was
+added because the observed value was the registered ID `subject_1`, not “Amy's fingers.”
+
+Validation:
+- `pytest -q tests/test_world_state_foundation.py` — 58 passed.
+- Focused local extractor call returned `initial_holder="subject_1"` for Amy.
+- `python -m py_compile minimax.py tests/test_world_state_foundation.py` passed.
+- `git diff --check` passed.
