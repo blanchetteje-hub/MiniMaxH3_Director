@@ -37484,6 +37484,21 @@ def _parse_world_state_plan_check(raw_result, *, label):
     return {"valid": candidate["valid"], "issue": issue}
 
 
+def _director_state_action_retry_hint(failure):
+    """Translate deterministic reducer failures into one narrow retry instruction."""
+    text = " ".join(str(failure or "").split())
+    if (
+        text.startswith("move action ")
+        and "subject_not_known_present" in text
+    ):
+        return (
+            " Canonical WorldState records that Subject as not present. If RAW stages "
+            "that Subject entering a registered location, use an `enter` action with "
+            "the registered Subject ID and destination location ID. Do not use `move`; "
+            "`move` is only for a Subject already present changing registered locations."
+        )
+    return ""
+
 def validate_raw_scene_state_action_consistency(
     *, raw_scene, current_beat, assigned_source, state_actions,
     opening_world_state, predicted_end_world_state, vocabulary,
@@ -37794,7 +37809,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 "same opening WorldState and registered IDs. The reducer rejected "
                 "the first failing action with this concrete diagnostic:\n"
                 f"{failure}\n"
-                "Fix this first failure and return the complete corrected action "
+                + _director_state_action_retry_hint(failure)
+                + "\nFix this first failure and return the complete corrected action "
                 "batch. Do not carry forward other validation feedback from earlier "
                 "attempts."
             ),
