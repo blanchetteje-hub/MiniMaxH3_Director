@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "cc57069a198f56a988f6f9a675dd8d8bae0954ff101c0fe74362668f4b4522c9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "medieval_barkeep",
+    "confident_woman"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "<Subject 1> wears a rough‑stitched brown leather apron that hangs loosely over her waistcoat. The waistcoat is made of coarse wool in a muted tan hue, buttoned at the front and cinched at the back with a simple iron belt. A wooden mug rests on a brass ring attached to her belt for quick service. Over her shoulder drapes a linen cloth used for wiping mugs, its color matching the apron’s brown. She wears sturdy leather boots dyed dark brown, laced up to mid‑calf, suitable for standing long hours in a medieval tavern. No headwear is mentioned; she keeps her hair pulled back into a simple knot at the nape of her neck",
+      "gender": "female",
+      "medieval_barkeep": "true",
+      "confident_woman": "true"
+    }
+  ]
+}
