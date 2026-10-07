@@ -2036,3 +2036,71 @@ The boundary is now deterministic relative to that extractor's selected facts,
 and future logs capture its output, but a future run should verify that the
 first static-selection pass itself excludes action-only facts rather than
 misclassifying them as setting.
+
+## 2026-10-07 — r31 bridge acceptance after r30 fixes
+
+Queued and processed `acceptance-20261007-object-state-tavern-6x8-r31` against
+`object-state-work` revision
+`14b70d4e98e6b5aec69b5b5f54682a903435bcc9`. The bridge job is committed on
+`gpt-runtime` as `e1cc4e00`; result commit `a274ae3a` contains the captured
+run artifacts. The bridge envelope says `status: ok`, but its child acceptance
+process returned code 1. Segment 1 failed after five Director RAW attempts;
+no H3 prompts were captured.
+
+### Confirmed findings
+
+- The r30 opening-presence fix worked for Amy: canonical `generation_state.json`
+  contains Amy as present at the registered opening location, and the Director
+  prompt receives her in registered WorldState.
+- The r30 prop-registration boundary also worked for the goblet: the opening
+  WorldState prop ledger is empty, and the canonical prop registry contains no
+  goblet support. However, the static-setting selector itself returned a
+  description containing a wide stool, low chair, barrel rack, and crystal
+  goblets based on later-beat actions. The spatial/structured passes retained
+  some as untracked location objects. This is confirmed future/action-linked
+  content in the static source; it did not become a registered support in r31.
+  Thus the final WorldState guard prevented the prior support-promotion failure,
+  while the upstream static selection and location prose remain too permissive.
+- `director_raw_scene_subject_resolution` returned Unicorn with initial state
+  “Standing on a low chair in the middle of the stone tavern.” Unicorn's first
+  occurrence is Beat 4, where it “saunters to the middle” and “steps onto a low
+  chair.” The no-explicit-entry rule correctly leaves it eligible for opening
+  presence, but the extractor copied a later action's resulting pose into the
+  opening state. This is the earliest confirmed source of the Unicorn's
+  Segment 1 position conflict.
+- Across five RAW attempts, physical validation rejected the Unicorn moving
+  from the registered “behind the bar” location to the low chair without a
+  visible transition (attempts 1 and 3). The Python reducer rejected a
+  same-location `move` as `movement_not_representable` (attempts 2 and 4),
+  consistent with the contract. The final attempt removed persistent state
+  actions but failed RAW format validation: timestamps were followed by bullet
+  lines instead of each action appearing on the timestamp line. Python properly
+  rejected that malformed scene. The emitted attempt-5 RAW response and all
+  validation messages are in `generated/prompt_history.txt` and `run.log`.
+
+### Minimal next steps
+
+1. Keep a later-beat Subject eligible for story-start presence when it has no
+   explicit entry, but do not seed its opening pose from its later first-action
+   state. Deterministically clear or generalize that pose for candidates whose
+   first occurrence is after Beat 1; add a regression using a later Subject
+   whose Beat 4 action moves onto a chair, while retaining coverage that such a
+   Subject can still be present from story start.
+2. Strengthen the pre-registration static boundary so later action-only objects
+   selected by the static extractor cannot appear as canonical static facts or
+   location-reference prose. Keep legitimate fixtures such as the bar and
+   torches. Regression should assert that the goblet/cup, action-use chair, and
+   barrel/rack details do not gain canonical fixture/support status or static
+   authority, while genuinely established fixed elements remain.
+3. Preserve the same-location `move` rejection. The retry hint appeared in the
+   prompt, but did not yield a valid fifth response. Address the upstream
+   opening-pose leak first, then verify a focused retry regression; do not
+   weaken reducer validation.
+4. Keep malformed RAW fail-closed. The final output demonstrates a formatting
+   retry can still exhaust the five-attempt budget; record the exact response
+   and consider a narrow formatting retry only if this repeats. Do not rewrite
+   accepted RAW to work around it.
+
+No production code was changed after `14b70d4`. The acceptance result is
+incomplete and not ready to count as a successful bridge run. `git diff --check`
+will be run before committing this handoff update.
