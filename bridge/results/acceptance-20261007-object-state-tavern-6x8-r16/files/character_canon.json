@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "e7aa05df8c2b1b5af0209a4c9b76c02c49057813bb0d0def91d0ac0f1ab28493",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence_level",
+    "occupation"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ". . .",
+      "clothing": "<Subject 1> wears a tunic and an apron",
+      "gender": "female",
+      "confidence_level": "confident",
+      "occupation": "barkeep in a medieval tavern for magical humanoid creatures"
+    }
+  ]
+}
