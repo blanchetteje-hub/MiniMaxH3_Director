@@ -4472,6 +4472,14 @@ def parse_current_segment_persistent_prop_result(
         if not name or key in names:
             raise ValueError("Current-Segment props must be new, non-empty, and unique.")
         names.add(key)
+        if (
+            entry["initial_location"] is not None
+            and entry["initial_holder"] is None
+            and " ".join(str(entry["initial_location"]).split()).casefold() == key
+        ):
+            # A prop cannot be its own physical location. Small models sometimes
+            # echo the prop name into initial_location; treat that as ungrounded.
+            entry["initial_location"] = None
         if entry["initial_location"] is None and entry["initial_holder"] is None:
             # The extractor is instructed to omit props whose initial placement
             # is not grounded. Treat an otherwise well-formed unplaced candidate
