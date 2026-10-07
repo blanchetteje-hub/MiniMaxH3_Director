@@ -1102,6 +1102,18 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertNotIn('"name":"Door"', supports)
 
 
+    def test_fixture_prompt_exposes_source_type_and_alias_rule(self):
+        state = make_reducer_state()
+        messages = minimax.build_current_segment_persistent_prop_messages(
+            "Subject One opens the heavy metal door.",
+            "Subject One opens the heavy metal door.",
+            state,
+        )
+        self.assertIn('"name":"Door"', messages[-1]["content"])
+        self.assertIn('"source_type":"unknown"', messages[-1]["content"])
+        self.assertIn("descriptive aliases of those fixtures", messages[0]["content"])
+
+
     def test_support_name_used_as_initial_location_is_normalized(self):
         state = make_reducer_state()
         result = minimax.parse_current_segment_persistent_prop_result(
