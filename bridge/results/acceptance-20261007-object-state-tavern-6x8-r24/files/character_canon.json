@@ -1,0 +1,19 @@
+{
+  "version": 3,
+  "source_sha256": "d92cb79d1972dc6c9da80742cdab069e892129a0cd8ff17885d667f00dd3be30",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "34",
+      "clothing": "A sturdy linen tunic of deep brown color, reaching mid-thigh and slightly flared at the waist; a matching pair of woolen leggings in a darker shade tucked into worn leather calf‑high boots. Over the tunic she wears a plain white cotton apron tied snugly around her waist with a simple leather belt. Her hair is pulled back loosely to keep it out of her face while working",
+      "gender": "Woman",
+      "confidence": "confident"
+    }
+  ]
+}
