@@ -3851,8 +3851,10 @@ def parse_registered_subject_story_start_result(raw_result, subject, story, beat
                 "Unknown story-start classification requires evidence_beat 0 and no initial state."
             )
         return {
-            "name": subject["name"], "classification": "unknown",
-            "evidence": "", "initial_state": "",
+            "name": subject["name"],
+            "classification": "unknown",
+            "evidence": "",
+            "initial_state": "",
         }
     if evidence_beat < 1 or evidence_beat > len(beat_list):
         raise ValueError(
@@ -3864,9 +3866,12 @@ def parse_registered_subject_story_start_result(raw_result, subject, story, beat
     if classification == "absent" and initial_state:
         raise ValueError("Absent story-start classification cannot include an initial state.")
     return {
-        "name": subject["name"], "classification": classification,
-        "evidence": evidence, "initial_state": initial_state,
+        "name": subject["name"],
+        "classification": classification,
+        "evidence": evidence,
+        "initial_state": initial_state,
     }
+
 
 def extract_registered_subject_story_start_presence(
     world_state,
