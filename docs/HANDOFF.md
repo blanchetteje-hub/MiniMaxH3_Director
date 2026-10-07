@@ -1877,3 +1877,107 @@ Validation:
 - `python -m pytest tests/test_world_state_foundation.py -q` — 66 passed.
 - Combined Director and WorldState run — 180 passed, 8 failed, 7 subtests passed. `test_director_prompt_is_compact_creative_contract` exceeds its 4300-character limit (4397). Seven existing mocked-prop tests exhaust their mock replies after the extractor rejects non-source evidence (`tiny hands clutching a chipped mug`, `a barrel beside the hearth`): `test_raw_state_action_consistency_and_final_h3_checks_are_state_narrow`, `test_reducer_operation_contract_does_not_depend_on_verb_spelling`, `test_rejected_world_state_transaction_rolls_back_and_detects_stale_opening`, `test_tavern_segment_four_registers_dragon_and_distinguishes_vessels`, `test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths`, `test_tavern_segment_three_registers_elf_before_raw_and_allows_enter`, and `test_tavern_state_transactions_advance_through_dragon_sip_and_final_segment`.
 - `python -m py_compile minimax.py tests/test_director_retry.py` and `git diff --check` passed.
+
+
+## 2026-10-07 — Diagnose r30 Segment 1 acceptance failure (diagnostic only)
+
+Inspected bridge acceptance `acceptance-20261007-object-state-tavern-6x8-r30`
+and its captured local run at
+`.chatgpt_exec_worktree/tests/acceptance/results/amy_medieval_tavern_six-20261007-185258/`.
+The run stopped in Segment 1 after all five Director Request 1 attempts; no H3
+prompt was generated. `acceptance_run.json` records repository snapshot
+`6c114fd562709e7e459f4c3ff511a39ade7ab0a1`. This entry records findings only;
+no production code, tests, or bridge jobs were changed or run.
+
+### Confirmed findings
+
+**Goblet entered Segment 1 through contaminated static-setting authority.** The
+final six-beat story puts the polished goblet in Beat 4, while Segment 1's
+current beat is only Amy standing at the bar. Nevertheless, generated
+`setting_description` and `spatial_location_description` contain Amy holding
+and setting down the goblet, the creature entering and drinking, and later
+table-setting actions. The canonical `location_state` also registered
+`polished_goblet_at_oak_table_center` as a fixed `support`, and Python WorldState
+copied that classification into its registry. Segment 1's Director prompt
+therefore received future actions through `STATIC SETTING AUTHORITY` and a
+future goblet in the static supports vocabulary. This is the earliest confirmed
+pipeline boundary where future-beat details had become static-setting output;
+the incomplete capture does not establish which earlier model pass first
+introduced each detail.
+
+The r30 prompt history preserves the static extractor's *input* (the expanded
+story) and the spatial and structured extractors' prompts, but not their
+completion bodies. Consequently, it cannot distinguish whether
+`static_setting_extract` first failed to filter action-only facts or whether a
+later spatial/structured setting pass reintroduced them. The final
+`story_setting_extract` prompt asks to “describe ALL objects” and receives both
+static facts and a spatial refinement of the entire narrative, which is a
+plausible contributor, not a separately confirmed first cause.
+
+The opening `prop_ledger` is `{}` and Amy has no held props in the captured
+WorldState. The first retry's “prop ledger indicates she holds a polished
+goblet” message therefore does not describe the serialized Python ledger; it is
+consistent with the polluted static authority being interpreted as held-prop
+state by the Director prop/state check. Later retries explicitly added the
+goblet to RAW without a Segment 1 acquisition. A subsequent RAW/WorldState
+consistency failure correctly noted there was no registered movable goblet in
+the action vocabulary: the location-state goblet had been registered as a
+fixed support instead. The exact internal reasoning behind the first
+prop/state-validator message is not captured, so that attribution remains an
+inference.
+
+**Amy was present in WorldState but omitted from the physical validator's known
+Subject list.** `generation_state.json` records Amy as `presence="present"` at
+the opening location. The physical validator is instead supplied the legacy
+`registry_state`; `format_known_subject_state_for_validator()` includes a
+record only when it has a known `position` or `pose_action`. Amy's legacy values
+were `N/A`, so the rendered known-state list omitted her. The validator then
+treated her standing at the bar as an unentered new participant. This is a
+confirmed mismatch between canonical opening presence and the validator input,
+not a missing entrance in the story.
+
+**The same-location `move` was an invalid Director action; reducer behavior is
+consistent with the contract.** Attempt 4 targeted Amy's current registered
+location ID as the destination. The Director prompt explicitly says movement
+within one registered location is RAW staging, while `move` is only for a
+change to a different registered location. The WorldState reducer has no
+within-location position field and correctly rejected this unrepresentable
+no-op. The beat did not require any persistent location change. Thus the
+observed action was malformed; the artifacts do not indicate insufficient
+WorldState representation or a contract/reducer mismatch.
+
+### Minimal proposals for review (not implemented)
+
+- Keep static-setting content as the only source for the location reference and
+  canonical static objects. Prevent later spatial/structured passes from
+  restoring character actions, future events, held props, or action-only
+  objects as fixed setting state. Add a deterministic boundary check against
+  the static-only source before Python seeds WorldState; fail closed or remove
+  only facts demonstrably absent from that source. Capture extractor completion
+  bodies in future artifacts so the first leaking pass is observable. Do not
+  add story-specific prompt rules or treat a movable drinking vessel as a
+  support.
+- Build the physical validator's known-Subject rendering from canonical
+  opening WorldState presence/location (or merge that authoritative presence
+  into its adapter), including present Subjects whose pose/support is unknown.
+  Keep its existing entry/reveal rule for Subjects not already present.
+- Preserve reducer rejection of same-location moves. If retry handling needs
+  help, give this deterministic reducer error a narrow hint to represent
+  within-location staging in RAW and omit the persistent `move`; retain
+  validation for genuine cross-location movement.
+
+Recommended regressions:
+
+1. A Beat 4-only movable goblet/action and its holding/pouring events never
+   enter Segment 1's static description, static support registry, or Director
+   static authority; the goblet can be introduced only by its authoritative
+   beat and corresponding valid state transition. Assert the ordinary prop
+   ledger remains empty before that beat.
+2. A Subject marked present at opening in canonical WorldState appears in the
+   physical validator's known list even when the legacy record has no position,
+   pose, or support; a genuinely absent later Subject still needs entry/reveal.
+3. A RAW-only reposition within one registered location uses no persistent
+   move action and remains valid; a same-location `move` remains rejected, and
+   a move to a different registered location continues to reduce successfully.
+
+No tests were run because this was diagnostic-only. `git diff --check` passed.
