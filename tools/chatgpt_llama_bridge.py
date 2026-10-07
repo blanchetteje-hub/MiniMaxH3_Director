@@ -37,6 +37,7 @@ DEFAULT_CODE_BRANCH = "gpt-arc-refresh"
 ACCEPTANCE_MODEL = "gpt"
 ACCEPTANCE_MODELS = {"gpt", "mistral", "qwen"}
 ACCEPTANCE_CODE_BRANCH = "gpt-arc-refresh"
+ACCEPTANCE_EXPERIMENT_BRANCHES = frozenset({"summary-to-story-test", "object-state-work"})
 DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
 
 _ACTIVE_LOCAL_PROCESS = None
@@ -378,13 +379,17 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
     }
 
 
-def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
-    """Copy the newest acceptance report/log into the mailbox result."""
+def copy_acceptance_artifacts(
+    exec_root: Path,
+    result_dir: Path,
+    benchmark_stem: str = "amy_zombie_house",
+) -> dict:
+    """Copy the newest acceptance report/log for the requested benchmark."""
 
     results_root = exec_root / "tests" / "acceptance" / "results"
     candidates = sorted(
         (
-            path for path in results_root.glob("amy_zombie_house-*")
+            path for path in results_root.glob(f"{benchmark_stem}-*")
             if path.is_dir()
             and (
                 (path / "acceptance_run.json").is_file()
@@ -395,7 +400,10 @@ def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
         reverse=True,
     )
     if not candidates:
-        raise RuntimeError("Acceptance runner produced no result directory or run.log.")
+        raise RuntimeError(
+            f"Acceptance runner produced no result directory or run.log for "
+            f"{benchmark_stem!r}."
+        )
     latest = candidates[0]
     artifacts_dir = result_dir / "files"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -816,10 +824,14 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     """Run the fixed prompt-generation acceptance suite on one code branch."""
 
     code_branch = str(job.get("code_branch") or ACCEPTANCE_CODE_BRANCH).strip()
-    if code_branch != ACCEPTANCE_CODE_BRANCH:
+    allowed_branches = {
+        ACCEPTANCE_CODE_BRANCH,
+        *ACCEPTANCE_EXPERIMENT_BRANCHES,
+    }
+    if code_branch not in allowed_branches:
         raise ValueError(
-            f"Acceptance jobs must run on {ACCEPTANCE_CODE_BRANCH!r}; "
-            f"got {code_branch!r}."
+            "Acceptance jobs must run on an approved code branch "
+            f"{sorted(allowed_branches)!r}; got {code_branch!r}."
         )
     model = str(job.get("model") or ACCEPTANCE_MODEL).strip()
     if model not in ACCEPTANCE_MODELS:
@@ -835,6 +847,24 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     if not image1.is_file():
         raise FileNotFoundError(f"Acceptance image not found: {image1}")
 
+    benchmark_raw = str(job.get("benchmark") or "").strip()
+    benchmark_stem = "amy_zombie_house"
+    benchmark = None
+    if benchmark_raw:
+        benchmark = safe_source_path(exec_root, benchmark_raw)
+        gold_root = (exec_root / "tests" / "acceptance" / "gold").resolve()
+        try:
+            benchmark.relative_to(gold_root)
+        except ValueError as error:
+            raise ValueError(
+                "Acceptance benchmark must be under tests/acceptance/gold/."
+            ) from error
+        if not benchmark.is_file() or benchmark.suffix.lower() != ".json":
+            raise FileNotFoundError(
+                f"Acceptance benchmark not found or not JSON: {benchmark}"
+            )
+        benchmark_stem = benchmark.stem
+
     command = [
         python,
         "tests/acceptance/run_acceptance.py",
@@ -843,6 +873,8 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
         "--model",
         model,
     ]
+    if benchmark is not None:
+        command.extend(["--benchmark", str(benchmark)])
     if bool(job.get("planning_only")):
         command.append("--planning-only")
     director_plan_job = str(job.get("director_plan_job") or "").strip()
