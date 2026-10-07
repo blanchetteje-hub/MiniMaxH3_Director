@@ -1134,6 +1134,24 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         )
         self.assertEqual(result, [])
 
+    def test_balanced_outer_quotes_are_removed_from_exact_prop_evidence(self):
+        state = make_reducer_state()
+        candidate = self._candidate(
+            "silver mug",
+            '"holding a silver mug in one hand."',
+            mobility="movable",
+            initial_location=None,
+        )
+        candidate["initial_holder"] = "Subject One"
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {"props": [candidate]},
+            "Subject One is holding a silver mug in one hand.",
+            "Subject One is holding a silver mug in one hand.",
+            state,
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["evidence"], "holding a silver mug in one hand.")
+
     def test_heavy_oak_door_alias_resolves_to_front_door_fixture(self):
         state, _ = self._static_alias_test_state("front door", "door")
         result = minimax.parse_current_segment_persistent_prop_result(
