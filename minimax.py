@@ -4656,6 +4656,103 @@ def parse_current_segment_persistent_prop_result(
     return parsed
 
 
+def _recover_explicit_holder_for_unplaced_props(
+    raw_result, current_beat, assigned_source, world_state,
+):
+    """Recover an omitted holder only from explicit, unambiguous current-source use."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or not isinstance(candidate.get("props"), list):
+        return raw_result
+
+    recovered = copy.deepcopy(candidate)
+    source_text = "\n".join((str(current_beat or ""), str(assigned_source or ""))).strip()
+    if not source_text:
+        return raw_result
+
+    sentences = [
+        item.strip()
+        for item in re.split(r"(?<=[.!?])\\s+|\\n+", source_text)
+        if item.strip()
+    ]
+    subject_names = [
+        " ".join(str(item.get("name") or "").split()).strip()
+        for item in world_state.get("subjects", {}).values()
+    ]
+    subject_names = [name for name in subject_names if name]
+    manipulation_pattern = re.compile(
+        r"\\b(?:hold|holds|holding|carry|carries|carrying|grip|grips|gripping|"
+        r"clutch|clutches|clutching|wield|wields|wielding|use|uses|using|"
+        r"wipe|wipes|wiping|dry|dries|drying|lift|lifts|lifting|take|takes|taking|"
+        r"pick|picks|picking|grab|grabs|grabbing)\\b",
+        re.IGNORECASE,
+    )
+
+    changed = False
+    for entry in recovered["props"]:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("initial_location") is not None or entry.get("initial_holder") is not None:
+            continue
+        prop_name = " ".join(str(entry.get("name") or "").split()).strip()
+        evidence = " ".join(str(entry.get("evidence") or "").split()).strip()
+        if len(evidence) >= 2 and (evidence[0], evidence[-1]) in {
+            ('"', '"'), ("'", "'"), ("“", "”"), ("‘", "’")
+        }:
+            evidence = evidence[1:-1].strip()
+        if not prop_name:
+            continue
+
+        relevant_sentences = [
+            sentence for sentence in sentences
+            if (
+                (evidence and evidence.casefold() in sentence.casefold())
+                or prop_name.casefold() in sentence.casefold()
+            )
+        ]
+        if not relevant_sentences:
+            continue
+        relevant_text = " ".join(relevant_sentences)
+        if prop_name.casefold() not in relevant_text.casefold():
+            continue
+        if manipulation_pattern.search(relevant_text) is None:
+            continue
+
+        matching_subjects = []
+        for subject_name in subject_names:
+            pattern = re.compile(
+                r"(?<!\\w)" + re.escape(subject_name) + r"(?!\\w)",
+                re.IGNORECASE,
+            )
+            if pattern.search(relevant_text):
+                matching_subjects.append(subject_name)
+        if len(matching_subjects) != 1:
+            continue
+
+        entry["initial_holder"] = matching_subjects[0]
+        changed = True
+
+    return recovered if changed else raw_result
+
+
+def _unplaced_persistent_prop_names(raw_result):
+    """Return explicitly emitted prop names that omit both allowed placements."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or not isinstance(candidate.get("props"), list):
+        return []
+    names = []
+    for entry in candidate["props"]:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("initial_location") is None and entry.get("initial_holder") is None:
+            name = " ".join(str(entry.get("name") or "").split()).strip()
+            names.append(name or "<unnamed>")
+    return names
+
+
 def extract_current_segment_persistent_props(
     current_beat,
     assigned_source,
@@ -4671,6 +4768,7 @@ def extract_current_segment_persistent_props(
         current_beat, assigned_source, world_state
     )
     last_error = None
+    last_raw = None
     for attempt in range(1, 4):
         attempt_messages = copy.deepcopy(messages)
         if attempt > 1:
@@ -4695,6 +4793,14 @@ def extract_current_segment_persistent_props(
                     "attempt": attempt,
                 },
             )
+            last_raw = raw
+            unplaced = _unplaced_persistent_prop_names(raw)
+            if unplaced:
+                raise ValueError(
+                    "Persistent prop(s) "
+                    + ", ".join(repr(name) for name in unplaced)
+                    + " require exactly one explicit initial location or holder."
+                )
             return parse_current_segment_persistent_prop_result(
                 raw, current_beat, assigned_source, world_state
             )
@@ -4706,6 +4812,19 @@ def extract_current_segment_persistent_props(
                 "Current-Segment prop extraction validation failed "
                 f"(attempt {attempt}/3): {error}; raw={raw!r}",
                 flush=True,
+            )
+    if last_raw is not None and _unplaced_persistent_prop_names(last_raw):
+        recovered = _recover_explicit_holder_for_unplaced_props(
+            last_raw, current_beat, assigned_source, world_state
+        )
+        if recovered is not last_raw:
+            console_log(
+                "Current-Segment prop extraction exhausted 3 placement retries; "
+                "using deterministic explicit-holder recovery.",
+                flush=True,
+            )
+            return parse_current_segment_persistent_prop_result(
+                recovered, current_beat, assigned_source, world_state
             )
     raise ValueError("Could not extract current-Segment persistent props: " + str(last_error))
 
