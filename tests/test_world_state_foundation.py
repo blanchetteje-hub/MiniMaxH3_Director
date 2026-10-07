@@ -1283,6 +1283,66 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+    def test_extractor_retries_three_times_then_recovers_explicit_holder(self):
+        state = make_reducer_state()
+        candidate = {
+            "name": "cloth",
+            "kind": "tool",
+            "mobility": "movable",
+            "initial_location": None,
+            "initial_holder": None,
+            "support_name": None,
+            "contents": [],
+            "capabilities": {
+                "container": "unknown",
+                "consumable": "unknown",
+                "openable": "unknown",
+                "lockable": "unknown",
+            },
+            "reason": "used in this segment",
+            "evidence": "Subject One wipes a surface with a cloth.",
+        }
+        request = mock.Mock(return_value={"props": [candidate]})
+        result = minimax.extract_current_segment_persistent_props(
+            "Subject One wipes a surface with a cloth.",
+            "Subject One wipes a surface with a cloth.",
+            state,
+            llm_request=request,
+        )
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["initial_holder"], "Subject One")
+
+    def test_holder_recovery_fails_closed_when_multiple_subjects_are_in_sentence(self):
+        state = make_reducer_state()
+        candidate = {
+            "name": "cloth",
+            "kind": "tool",
+            "mobility": "movable",
+            "initial_location": None,
+            "initial_holder": None,
+            "support_name": None,
+            "contents": [],
+            "capabilities": {
+                "container": "unknown",
+                "consumable": "unknown",
+                "openable": "unknown",
+                "lockable": "unknown",
+            },
+            "reason": "used in this segment",
+            "evidence": "Subject One and Subject Two wipe a surface with a cloth.",
+        }
+        request = mock.Mock(return_value={"props": [candidate]})
+        with self.assertRaisesRegex(ValueError, "exactly one explicit initial location or holder"):
+            minimax.extract_current_segment_persistent_props(
+                "Subject One and Subject Two wipe a surface with a cloth.",
+                "Subject One and Subject Two wipe a surface with a cloth.",
+                state,
+                llm_request=request,
+            )
+        self.assertEqual(request.call_count, 3)
+
+
     def test_redundant_location_is_dropped_when_holder_is_known(self):
         state = make_reducer_state()
         result = minimax.parse_current_segment_persistent_prop_result(
