@@ -4061,6 +4061,12 @@ def parse_current_segment_subject_result(raw_result, current_beat, assigned_sour
         }
         if not normalized["name"] or not normalized["evidence"]:
             raise ValueError("Current-segment Subject name and evidence are required.")
+        evidence = normalized["evidence"]
+        if len(evidence) >= 2 and (evidence[0], evidence[-1]) in {
+            ('"', '"'), ("'", "'"), ("“", "”"), ("‘", "’")
+        }:
+            evidence = evidence[1:-1].strip()
+        normalized["evidence"] = evidence
         if normalized["evidence"].casefold() not in source_text.casefold():
             raise ValueError(
                 f"Current-segment Subject evidence for {normalized['name']!r} "
