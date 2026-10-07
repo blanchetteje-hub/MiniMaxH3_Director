@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "9219b6557019b34b5e84b71778bd0fcd2d05ed776301e2009b28e863602521b2",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "Amy",
+      "gender": "female"
+    }
+  ]
+}
