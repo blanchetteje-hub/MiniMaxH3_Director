@@ -1270,6 +1270,7 @@ COMPLETION CHECK
 
 STATE ACTIONS
 - Return state_actions in this same JSON response. Describe only explicit persistent changes staged in RAW SCENE. Use only the Python-supplied registered IDs; never invent or rename an ID. Use [] when this Segment makes no represented persistent change. Off-camera is not a state action.
+- Ordinary movement between positions inside the same registered location is RAW staging only, not a WorldState `move`. Use `move` only when a Subject changes to a different registered location ID.
 
 RETURN JSON ONLY
 {{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true,"state_actions":[]}}
@@ -37320,7 +37321,9 @@ def validate_raw_scene_state_action_consistency(
                 "change is omitted from state_actions; if an action is not actually staged "
                 "in RAW; if the actor, target, transfer, substance, presence, location, "
                 "support, clothing, or result disagrees; or if RAW's final continuity "
-                "sentence contradicts the predicted ending. If RAW explicitly identifies "
+                "sentence contradicts the predicted ending. Ordinary movement between "
+                "positions inside one registered location is not a persistent WorldState "
+                "change and does not require a move action. If RAW explicitly identifies "
                 "a registered source container supplying contents to a target, require "
                 "`pour` with that registered source; `fill` is invalid in that case. "
                 "Use `fill` only when RAW explicitly introduces contents into a registered "
