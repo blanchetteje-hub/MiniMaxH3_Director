@@ -1,0 +1,7 @@
+{
+  "job_id": "acceptance-20261006-object-state-tavern-6x8",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Acceptance jobs must run on 'gpt-arc-refresh'; got 'object-state-work'.",
+  "finished_at": 1791337156.068051
+}
