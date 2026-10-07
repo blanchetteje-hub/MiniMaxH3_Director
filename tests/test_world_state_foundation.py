@@ -1143,6 +1143,36 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+    def test_redundant_location_is_dropped_when_holder_is_known(self):
+        state = make_reducer_state()
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {
+                "props": [{
+                    "name": "wooden mug",
+                    "kind": "container",
+                    "mobility": "movable",
+                    "initial_location": "Area A",
+                    "initial_holder": "Subject One",
+                    "support_name": None,
+                    "contents": [],
+                    "capabilities": {
+                        "container": True,
+                        "consumable": "unknown",
+                        "openable": "unknown",
+                        "lockable": "unknown",
+                    },
+                    "reason": "held at segment start",
+                    "evidence": "wooden mug",
+                }]
+            },
+            "Subject One carries a wooden mug.",
+            "Subject One carries a wooden mug.",
+            state,
+        )
+        self.assertIsNone(result[0]["initial_location"])
+        self.assertEqual(result[0]["initial_holder"], "Subject One")
+
+
     def test_support_name_used_as_initial_location_is_normalized(self):
         state = make_reducer_state()
         result = minimax.parse_current_segment_persistent_prop_result(
