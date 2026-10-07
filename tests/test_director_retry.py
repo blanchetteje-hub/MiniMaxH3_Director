@@ -335,6 +335,52 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def tearDown(self):
         self._state_consistency_patcher.stop()
 
+    def test_segment_one_can_apply_presence_gated_action_to_amy(self):
+        state = new_world_state({
+            "source_sha256": "amy-opening-presence",
+            "subjects": {
+                "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
+            },
+        })
+        state, location_id = seed_canonical_static_location_state(
+            state,
+            {"location": {"name": "Tavern"}, "anchors": [], "objects": []},
+        )
+        beats = [
+            "Amy steps onto the wooden floor of her medieval tavern, apron tied snugly around her waist, hat perched on her head.",
+            "Amy wipes the polished stone counter behind her bar.",
+        ]
+        state = minimax.extract_registered_subject_story_start_presence(
+            state,
+            "Amy is a medieval barkeep.",
+            beats,
+            location_id=location_id,
+            llm_request=mock.Mock(side_effect=AssertionError("LLM call is unnecessary")),
+        )
+        state = register_explicit_persistent_props(state, [{
+            "name": "damp rag", "kind": "object", "mobility": "movable",
+            "needed_for_state": True, "reason": "Amy picks up the rag during Segment 1.",
+            "location_id": location_id,
+        }])
+        amy_id = next(
+            subject_id for subject_id, subject in state["subjects"].items()
+            if subject["name"] == "Amy"
+        )
+        rag_id = next(
+            prop_id for prop_id, prop in state["props"].items()
+            if prop["name"] == "damp rag"
+        )
+
+        outcome = validate_state_actions(state, [{
+            "action_id": "amy-picks-up-rag",
+            "op": "pickup",
+            "actor_subject_id": amy_id,
+            "prop_id": rag_id,
+        }], segment_number=1)
+
+        self.assertTrue(outcome[0].accepted)
+        self.assertNotEqual(outcome[0].code, "subject_not_known_present")
+
     def test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths(self):
         state, _location_id = tavern_world_state_from_authorities()
         state, added, subject_names = prepare_tavern_segment(state, 1)

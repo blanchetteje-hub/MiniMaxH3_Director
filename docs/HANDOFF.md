@@ -1656,6 +1656,8 @@ Validation:
 - `pytest -q tests/test_world_state_foundation.py tests/test_director_retry.py tests/test_prompt_generation_mode.py`
   — 168 passed, 4 subtests passed.
 - `git diff --check` passed.
+
+
 - No full ComfyUI tavern generation was run. Stop before removing legacy writers or changing
   visual-observation authority.
 
@@ -1767,4 +1769,31 @@ Validation:
 - `pytest -q tests/test_world_state_foundation.py` — 58 passed.
 - Focused local extractor call returned `initial_holder="subject_1"` for Amy.
 - `python -m py_compile minimax.py tests/test_world_state_foundation.py` passed.
+- `git diff --check` passed.
+
+
+## 2026-10-07 — Correct story-start Subject presence from Beat evidence
+
+The opening-state inference was reversed in two related ways: Amy is an authored
+Subject whose direct Beat 1 participation was left to a per-Subject model
+classification, while the all-beats inference could seed the elf, dwarf, and
+goblin even though their first appearance is a physical entrance in Beat 3.
+
+Kept the fix inside the existing story-start path. Deterministic Python handling
+now resolves an authored Subject as present when its first exact prose mention is
+in Beat 1 without an entry/reveal cue, and absent when that first mention is an
+explicit entry. It also filters inferred opening Subjects whose first mention
+is an explicit entry. Later Subjects without such an entry remain eligible for
+the existing all-beats inference and authored-Subject classifier. No additional
+LLM pass was added, and Director state-action validation and
+`subject_not_known_present` are unchanged.
+
+Regression coverage includes Amy's Beat 1 presence without a model call, the
+Beat 3 elf/dwarf/goblin entry filter alongside a later non-entrant that remains
+eligible, and a Segment 1 pickup by Amy that passes the existing presence-gated
+Director action validator.
+
+Validation:
+- `python -m pytest tests/test_world_state_foundation.py -q` — 58 passed.
+- `python -m pytest tests/test_director_retry.py -q -k segment_one_can_apply_presence_gated_action_to_amy` — 1 passed, 115 deselected.
 - `git diff --check` passed.

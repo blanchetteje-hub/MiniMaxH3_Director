@@ -3901,6 +3901,12 @@ def extract_registered_subject_story_start_presence(
             continue
         if subject.get("provenance", {}).get("identity", {}).get("authority") != "user_authored_subject_definitions":
             continue
+        deterministic = _deterministic_authored_story_start_classification(
+            subject, beats
+        )
+        if deterministic is not None:
+            classifications.append(deterministic)
+            continue
         last_error = None
         messages = build_registered_subject_story_start_messages(subject, story, beats)
         for attempt in range(1, 4):
@@ -19397,7 +19403,67 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
     ]
 
 
-def parse_initial_location_subjects(raw_result):
+_STORY_START_ENTRY_ACTION_RE = re.compile(
+    r"(?i)\b(?:"
+    r"enter(?:s|ed|ing)?|arrive(?:s|d|ing)?|appear(?:s|ed|ing)?|"
+    r"emerge(?:s|d|ing)?|materiali[sz](?:e|es|ed|ing)|"
+    r"reveal(?:s|ed|ing)?"
+    r")\b|\b(?:walk|step|shuffle|move|come|rush|run|slip|stumble)"
+    r"(?:s|ed|ing)?\s+(?:into|inside|through|in|onstage)\b|"
+    r"\b(?:comes?|steps?|walks?|shuffles?|emerges?)\s+into\s+view\b"
+)
+
+
+def _story_subject_name_patterns(name):
+    """Return exact prose forms for a canonical functional Subject name."""
+    expanded = re.sub(r"([a-z])([A-Z])", r"\1 \2", str(name or ""))
+    expanded = re.sub(r"\d+$", "", expanded).strip()
+    words = re.findall(r"[a-z0-9]+", expanded.casefold())
+    if not words:
+        return ()
+    phrase = r"[\W_]+".join(re.escape(word) for word in words)
+    return (re.compile(rf"(?<!\w){phrase}(?!\w)", re.IGNORECASE),)
+
+
+def _first_story_subject_mention(beats, name):
+    """Find the first exact name/functional-name mention and its sentence."""
+    patterns = _story_subject_name_patterns(name)
+    for beat_index, beat in enumerate(beats or []):
+        for sentence in re.split(r"(?<=[.!?])\s+", str(beat or "")):
+            if any(pattern.search(sentence) for pattern in patterns):
+                return beat_index, str(beat or "").strip(), sentence
+    return None
+
+
+def _story_start_entry_is_explicit(beats, name):
+    first = _first_story_subject_mention(beats, name)
+    return bool(first and _STORY_START_ENTRY_ACTION_RE.search(first[2]))
+
+
+def _deterministic_authored_story_start_classification(subject, beats):
+    """Resolve only direct Beat 1 participation and explicit physical entry."""
+    first = _first_story_subject_mention(beats, subject.get("name", ""))
+    if first is None:
+        return None
+    beat_index, evidence, sentence = first
+    if _STORY_START_ENTRY_ACTION_RE.search(sentence):
+        return {
+            "name": subject["name"],
+            "classification": "absent",
+            "evidence": evidence,
+            "initial_state": "",
+        }
+    if beat_index == 0:
+        return {
+            "name": subject["name"],
+            "classification": "present",
+            "evidence": evidence,
+            "initial_state": "present in the opening scene before Beat 1's depicted action",
+        }
+    return None
+
+
+def parse_initial_location_subjects(raw_result, beats=None):
     """Normalize beat-plan inference for Subjects already present at story start."""
     candidate = raw_result
     if isinstance(candidate, str):
@@ -19453,6 +19519,11 @@ def parse_initial_location_subjects(raw_result):
             )
         if not name or not initial_state or not _subject_name_is_promotable(name):
             raise ValueError("Initial-location Subject contains unusable data.")
+        if _story_start_entry_is_explicit(beats, name):
+            # The all-beats model may mistake a later arriving Subject for an
+            # opening-state Subject. A clear entry action at first occurrence
+            # is deterministic evidence that this candidate must not be seeded.
+            continue
         key = _subject_identity_key(name)
         if key in seen:
             continue
@@ -19506,7 +19577,7 @@ def extract_initial_location_subjects(
                 f"(attempt {attempt}/{max_attempts}):\n{raw}",
                 flush=True,
             )
-            return parse_initial_location_subjects(raw)
+            return parse_initial_location_subjects(raw, beats=beats)
         except LLMConnectionError:
             raise
         except (TypeError, ValueError) as error:

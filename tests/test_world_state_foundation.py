@@ -2,6 +2,7 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import minimax
 from world_state import (
@@ -1376,6 +1377,54 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
 
 
 class RegisteredSubjectStoryStartEvidenceTests(unittest.TestCase):
+    def test_authored_subject_in_beat_one_is_seeded_present_without_llm(self):
+        state = new_world_state({
+            "source_sha256": "opening-presence",
+            "subjects": {
+                "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
+            },
+        })
+        state, location_id = seed_canonical_static_location_state(
+            state,
+            {"location": {"name": "Tavern"}, "anchors": [], "objects": []},
+        )
+        beats = [
+            "Amy steps onto the wooden floor of her medieval tavern, apron tied snugly around her waist, hat perched on her head.",
+            "Amy wipes down the bar.",
+        ]
+        request = mock.Mock(side_effect=AssertionError("LLM call is unnecessary"))
+
+        state = minimax.extract_registered_subject_story_start_presence(
+            state, "Amy is a medieval barkeep.", beats,
+            location_id=location_id, llm_request=request,
+        )
+
+        amy = state["subjects"]["subject_1"]
+        self.assertEqual(amy["presence"], "present")
+        self.assertEqual(amy["location_id"], location_id)
+        self.assertEqual(
+            amy["provenance"]["presence"]["authority"],
+            "registered_subject_story_start_classifier",
+        )
+        request.assert_not_called()
+
+    def test_all_beats_entry_candidates_are_filtered_but_later_nonentrants_remain(self):
+        beats = [
+            "Amy steps onto the wooden floor.",
+            "A tall elf, a stout dwarf, and a mischievous goblin shuffle into the tavern.",
+            "An old traveler sits quietly beside the hearth.",
+        ]
+        result = minimax.parse_initial_location_subjects(
+            {"subjects": [
+                {"name": "TallElf1", "initial_state": "inside the tavern"},
+                {"name": "StoutDwarf1", "initial_state": "inside the tavern"},
+                {"name": "MischievousGoblin1", "initial_state": "inside the tavern"},
+                {"name": "OldTraveler1", "initial_state": "beside the hearth"},
+            ]},
+            beats=beats,
+        )
+        self.assertEqual([item["name"] for item in result], ["OldTraveler1"])
+
     def test_explicit_presence_uses_exact_numbered_beat_as_evidence(self):
         subject = {"name": "Amy"}
         beats = [
