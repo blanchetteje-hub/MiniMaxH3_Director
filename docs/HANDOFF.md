@@ -1679,3 +1679,33 @@ Validation:
 - `pytest -q tests/test_world_state_foundation.py tests/test_director_retry.py tests/test_prompt_generation_mode.py`
   — 170 passed, 4 subtests passed.
 - No legacy continuity writers were removed.
+
+
+## 2026-10-07 — Deterministic current-Segment fixture/support alias resolution
+
+Observed r13 acceptance failure at result commit
+`92ef92b27abf4ef213c776aac551e64b7793a1b7`: `extract_current_segment_persistent_props()`
+received a new-prop candidate named “stone door” even though canonical WorldState already
+contained the `entrance` fixture with provenance `source_type="door"`. Earlier prompt-only
+alias guidance did not reliably prevent the duplicate.
+
+Added deterministic normalization in the Python parser. A candidate may be omitted as an
+existing canonical fixture/support alias when its normalized name matches that entity or its
+head noun matches the canonical `source_type`/name type, and its specified room agrees with the
+registered entity's room. This resolves names such as “stone door” for `entrance` and “heavy oak
+door” for `front door`. Explicitly movable or held candidates are preserved as distinct props;
+the rule does not merge objects by a broad type token alone. Canonical fixture/support records
+remain the only source for their registered identity and ID. If a descriptive head noun matches
+multiple registered static entities in the same room, extraction fails closed with an ambiguity
+diagnostic rather than selecting one arbitrarily.
+
+Existing parser behavior remains covered for support names returned as `initial_location`,
+ungrounded candidates, and redundant room locations on held props. Added regressions for both
+door alias examples, a distinct movable “miniature door”, an ambiguous multiple-door case, and a
+support alias.
+
+Validation:
+- `pytest -q tests/test_world_state_foundation.py` — 55 passed.
+- `tests/test_director_retry.py` was attempted but did not collect: its module-level fixture
+  indexes `story_text.split("\\n\\n")[1]`, while the locked benchmark's `story_text` is a single
+  paragraph. This failure is in the existing test fixture, before tests execute.

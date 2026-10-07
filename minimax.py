@@ -4348,6 +4348,88 @@ def build_current_segment_persistent_prop_messages(
     ]
 
 
+def _normalized_prop_name_tokens(value):
+    tokens = re.findall(r"[a-z0-9]+", str(value or "").casefold())
+    normalized = []
+    for token in tokens:
+        # Keep normalization deliberately small and deterministic. This handles
+        # ordinary plural aliases without treating unrelated compounds as the
+        # same object type (for example, "doorstop" is not "door").
+        if len(token) > 3 and token.endswith("s") and not token.endswith("ss"):
+            token = token[:-1]
+        normalized.append(token)
+    return normalized
+
+
+def _candidate_aliases_canonical_static_prop(entry, world_state):
+    """Return all canonical fixture/support ids matching a clear alias."""
+    if entry.get("mobility") == "movable" or entry.get("initial_holder") is not None:
+        return ()
+    if entry.get("support_name") is not None:
+        # A separately supported candidate has its own physical placement.
+        return ()
+    candidate_tokens = _normalized_prop_name_tokens(entry.get("name"))
+    if not candidate_tokens:
+        return ()
+    candidate_head = candidate_tokens[-1]
+    matches = []
+
+    candidate_location_id = None
+    initial_location = entry.get("initial_location")
+    if initial_location is not None:
+        location_key = " ".join(str(initial_location).split()).casefold()
+        candidate_location_id = next(
+            (
+                location_id for location_id, location in world_state["locations"].items()
+                if " ".join(str(location["name"]).split()).casefold() == location_key
+            ),
+            None,
+        )
+        if candidate_location_id is None:
+            candidate_location_id = next(
+                (
+                    prop.get("placement", {}).get("location_id")
+                    for prop in world_state["props"].values()
+                    if prop.get("kind") in {"support", "fixture_support"}
+                    and " ".join(str(prop.get("name") or "").split()).casefold()
+                    == location_key
+                ),
+                None,
+            )
+        if candidate_location_id is None:
+            return ()
+
+    for prop_id, prop in world_state["props"].items():
+        if prop.get("kind") not in {"fixture", "support", "fixture_support"}:
+            continue
+        registration = prop.get("provenance", {}).get("registration", {})
+        canonical_location_id = prop.get("placement", {}).get("location_id")
+        if (
+            candidate_location_id is not None
+            and canonical_location_id is not None
+            and candidate_location_id != canonical_location_id
+        ):
+            continue
+
+        canonical_name = " ".join(str(prop.get("name") or "").split())
+        canonical_key = " ".join(_normalized_prop_name_tokens(canonical_name))
+        candidate_key = " ".join(candidate_tokens)
+        if candidate_key == canonical_key:
+            return (prop_id,)
+
+        source_type = registration.get("source_type")
+        source_type_tokens = _normalized_prop_name_tokens(source_type)
+        canonical_name_tokens = _normalized_prop_name_tokens(canonical_name)
+        type_heads = {
+            tokens[-1]
+            for tokens in (source_type_tokens, canonical_name_tokens)
+            if tokens and tokens[-1] != "unknown"
+        }
+        if candidate_head in type_heads:
+            matches.append(prop_id)
+    return tuple(matches)
+
+
 def parse_current_segment_persistent_prop_result(
     raw_result, current_beat, assigned_source, world_state,
 ):
@@ -4383,9 +4465,11 @@ def parse_current_segment_persistent_prop_result(
     for entry in candidate["props"]:
         if not isinstance(entry, dict) or set(entry) != expected_keys:
             raise ValueError("Persistent prop entry has an invalid shape.")
+        original_initial_location = entry["initial_location"]
+        original_support_name = entry["support_name"]
         name = " ".join(str(entry["name"] or "").split()).strip()
         key = name.casefold()
-        if not name or key in names or key in existing:
+        if not name or key in names:
             raise ValueError("Current-Segment props must be new, non-empty, and unique.")
         names.add(key)
         if entry["initial_location"] is None and entry["initial_holder"] is None:
@@ -4426,6 +4510,23 @@ def parse_current_segment_persistent_prop_result(
         evidence = " ".join(str(entry["evidence"] or "").split()).strip()
         if not reason or not evidence or evidence.casefold() not in source_text.casefold():
             raise ValueError(f"Persistent prop {name!r} requires exact current-source evidence.")
+        alias_entry = dict(entry)
+        alias_entry["initial_location"] = original_initial_location
+        alias_entry["support_name"] = original_support_name
+        alias_targets = _candidate_aliases_canonical_static_prop(
+            alias_entry, world_state
+        )
+        if len(alias_targets) > 1:
+            raise ValueError(
+                f"Persistent prop {name!r} ambiguously matches multiple registered fixtures/supports."
+            )
+        if alias_targets:
+            # Canonical static entities already have Python-owned IDs and are
+            # present in the Director vocabulary. Do not create a second prop
+            # record for a descriptive name returned by the extractor.
+            continue
+        if key in existing:
+            raise ValueError("Current-Segment props must be new, non-empty, and unique.")
         parsed.append({**entry, "name": name, "reason": reason, "evidence": evidence})
     return parsed
 

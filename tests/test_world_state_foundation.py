@@ -1083,6 +1083,112 @@ class WorldStateReducerTests(unittest.TestCase):
 
 
 class CurrentSegmentPropVocabularyTests(unittest.TestCase):
+    @staticmethod
+    def _static_alias_test_state(name, source_type, *, role="fixture"):
+        return seed_canonical_static_location_state(
+            empty_world_state(),
+            {
+                "location": {"name": "Hall"},
+                "anchors": [],
+                "objects": [{
+                    "name": name,
+                    "type": source_type,
+                    "world_state_role": role,
+                    "mobility": "fixed",
+                }],
+            },
+        )
+
+    @staticmethod
+    def _candidate(
+        name, evidence, *, mobility="unknown", initial_location="Hall"
+    ):
+        return {
+            "name": name,
+            "kind": "object",
+            "mobility": mobility,
+            "initial_location": initial_location,
+            "initial_holder": None,
+            "support_name": None,
+            "contents": [],
+            "capabilities": {
+                "container": "unknown",
+                "consumable": "unknown",
+                "openable": "unknown",
+                "lockable": "unknown",
+            },
+            "reason": "needed for current-segment state reasoning",
+            "evidence": evidence,
+        }
+
+    def test_stone_door_alias_resolves_to_entrance_fixture(self):
+        state, _ = self._static_alias_test_state("entrance", "door")
+        result = minimax.extract_current_segment_persistent_props(
+            "The stone door opens.",
+            "The stone door opens.",
+            state,
+            llm_request=lambda *_args, **_kwargs: {
+                "props": [self._candidate("stone door", "stone door")]
+            },
+        )
+        self.assertEqual(result, [])
+
+    def test_heavy_oak_door_alias_resolves_to_front_door_fixture(self):
+        state, _ = self._static_alias_test_state("front door", "door")
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {"props": [self._candidate("heavy oak door", "heavy oak door")]},
+            "Amy opens the heavy oak door.",
+            "Amy opens the heavy oak door.",
+            state,
+        )
+        self.assertEqual(result, [])
+
+    def test_distinct_movable_object_with_same_type_noun_is_not_merged(self):
+        state, _ = self._static_alias_test_state("front door", "door")
+        candidate = self._candidate("miniature door", "miniature door", mobility="movable")
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {"props": [candidate]},
+            "Amy carries a miniature door.",
+            "Amy carries a miniature door.",
+            state,
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "miniature door")
+
+    def test_alias_matching_multiple_same_type_fixtures_fails_closed(self):
+        state, _ = seed_canonical_static_location_state(
+            empty_world_state(),
+            {
+                "location": {"name": "Hall"},
+                "anchors": [
+                    {"name": "entrance", "type": "door"},
+                    {"name": "front door", "type": "door"},
+                ],
+                "objects": [],
+            },
+        )
+        with self.assertRaisesRegex(ValueError, "ambiguously matches multiple"):
+            minimax.parse_current_segment_persistent_prop_result(
+                {"props": [self._candidate("stone door", "stone door")]},
+                "The stone door opens.",
+                "The stone door opens.",
+                state,
+            )
+
+    def test_support_alias_is_omitted_as_canonical_python_owned_entity(self):
+        state, _ = self._static_alias_test_state(
+            "bar counter", "counter", role="fixture_support"
+        )
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {"props": [self._candidate(
+                "stone counter", "stone counter", initial_location="bar counter"
+            )]},
+            "Amy leans on the stone counter.",
+            "Amy leans on the stone counter.",
+            state,
+        )
+        self.assertEqual(result, [])
+
     def test_registered_fixture_is_exposed_separately_from_supports(self):
         state = make_reducer_state()
         messages = minimax.build_current_segment_persistent_prop_messages(
