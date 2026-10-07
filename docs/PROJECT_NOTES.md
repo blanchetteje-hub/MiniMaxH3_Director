@@ -2,6 +2,10 @@
 
 This file is the persistent source of truth for the current MiniMax H3 architecture and acceptance target. Historical iteration details belong in Git history, not here.
 
+## Project roles
+
+ChatGPT (GPT 5.3 Sol) is working as the architect and QA for the project and keeps all high level concepts and memory. Codex (GPT 6.1 Luna) is the programmer who makes the large coding changes based on the architecture ChatGPT and the user have decided on.
+
 ## Repository / active branch
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
