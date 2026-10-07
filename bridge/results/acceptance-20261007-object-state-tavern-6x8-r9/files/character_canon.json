@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "4b93197a885014d8f303fb5a63fee119cf73513e5e5b0fdcca323081a784c80a",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ":35",
+      "clothing": "A loose, knee‑length linen tunic of muted brown that drapes over her waist and falls to mid‑calf, the fabric slightly worn at the cuffs from frequent use. The tunic is belted with a simple leather strap tied in a knot at the side, accenting her waistline. Over the tunic she wears a plain white linen apron secured around her hips by a brown cord, its hem frayed along the edges where it has been washed repeatedly. Her bare feet are covered by soft, worn leather sandals that show signs of many nights on the tavern floor",
+      "gender": "female"
+    }
+  ]
+}
