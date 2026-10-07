@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "b68596ca491ba79337788b1f9f9106b07df4391e275770eca26f63781c6d6ba0",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence_level",
+    "occupation",
+    "visual_reference"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "Amy wears a sturdy leather apron dyed deep brown with worn patches at the elbows and pockets for tools. Underneath, she sports a simple linen shirt in off‑white that reaches her waist, tucked into dark woolen breeches cinched by a leather belt. Her knees are covered by thick calf‑high leather boots polished to a shine. A small brimmed hat of felt sits atop her head, its color matching the apron. The ensemble is completed with a silver chain necklace bearing a tiny oak leaf charm",
+      "gender": "female",
+      "confidence_level": "confident woman",
+      "occupation": "medieval barkeep and tavern caretaker for magical humanoid creatures",
+      "visual_reference": "facial identity, structure, hair, body proportions, distinguishing features defined in Picture 1"
+    }
+  ]
+}

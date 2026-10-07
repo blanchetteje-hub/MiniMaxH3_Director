@@ -1,0 +1,262 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).
+LLM request finished: character_canon (16.6s, finish_reason=stop).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-yii75qbb\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-yii75qbb\repo\beats.txt); regenerating the beat plan.
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-yii75qbb\repo\beats.txt with 6 creative story beats.
+LLM request started: story_expansion (attempt 1/10, ~406 input tokens, max 12000 output tokens).
+LLM request finished: story_expansion (16.3s, finish_reason=stop).
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-yii75qbb\repo\expanded_story.txt.
+Expanded story:
+Amy pushes the heavy wooden door of her tavern wide open and steps inside. A goblin with green skin enters next; Amy looks toward him and nods his head in greeting. She lifts a large ale barrel from its rack, tilts it forward, and pours liquid into a mug that sits on the counter beside her. The goblin places a silver coin into Amy’s hand and she sets the coin into a tray placed under the mug. A sprite flutters around the tables while Amy takes a cloth, wipes each table surface with a quick swipe, then moves to the next one. Amy is medieval barkeep, taking care of a tavern for magical humanoid creatures.
+LLM request started: story_to_beats (attempt 1/10, ~665 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats (9.7s, finish_reason=stop).
+Story-derived Beat framework created with 6 beats.
+Beat 1 created: Amy pushes the heavy wooden door wide open and steps inside the tavern.
+Beat 2 created: A green‑skinned goblin enters; Amy looks toward him and nods his head in greeting.
+Beat 3 created: Amy lifts a large ale barrel from its rack, tilts it forward, and pours liquid into a mug that sits on the counter beside her.
+Beat 4 created: The goblin places a silver coin into Amy’s hand, and she sets the coin onto a tray placed under the mug.
+Beat 5 created: A sprite flutters around the tables while Amy takes a cloth to wipe them.
+Beat 6 created: Amy wipes each table surface with a quick swipe and then moves to the next one.
+Beat 1 jobs: current=E1 - Amy pushes the heavy wooden door wide open and steps inside the tavern.; next=E2 - A green‑skinned goblin enters; Amy looks toward him and nods his head in greeting.; completed before=none; pending before=E1, E2, E3, E4, E5, E6
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1157 input tokens, max 6907 output tokens).
+LLM request finished: beat_validation (0.8s, finish_reason=stop).
+Beat 1 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~306 input tokens, max 7758 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.0s, finish_reason=stop).
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~534 input tokens, max 7530 output tokens).
+LLM request finished: beat_coherence_validation (0.8s, finish_reason=stop).
+Beat 1 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1015 input tokens, max 7049 output tokens).
+LLM request finished: accepted_beat_state_extract (2.5s, finish_reason=stop).
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "tavern"}}, "environment": {"doors": {"heavy wooden door": {"status": "open", "location": "tavern entrance"}}}}
+Beat 1 accepted: Amy pushes the heavy wooden door wide open and steps inside the tavern.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - A green‑skinned goblin enters; Amy looks toward him and nods his head in greeting.; next=E3 - Amy lifts a large ale barrel from its rack, tilts it forward, and pours liquid into a mug that sits on the counter beside her.; completed before=E1; pending before=E2, E3, E4, E5, E6
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1198 input tokens, max 6866 output tokens).
+LLM request finished: beat_validation (1.4s, finish_reason=stop).
+Beat 2 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~312 input tokens, max 7752 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.8s, finish_reason=stop).
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~598 input tokens, max 7466 output tokens).
+LLM request finished: beat_coherence_validation (0.8s, finish_reason=stop).
+Beat 2 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1080 input tokens, max 6984 output tokens).
+LLM request finished: accepted_beat_state_extract (2.1s, finish_reason=stop).
+Beat 2 observed persistent state: {"characters": {"Goblin": {"location": "tavern", "status": "alive/conscious"}}}
+Beat 2 accepted: A green‑skinned goblin enters; Amy looks toward him and nods his head in greeting.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - Amy lifts a large ale barrel from its rack, tilts it forward, and pours liquid into a mug that sits on the counter beside her.; next=E4 - The goblin places a silver coin into Amy’s hand, and she sets the coin onto a tray placed under the mug.; completed before=E1, E2; pending before=E3, E4, E5, E6
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1255 input tokens, max 6809 output tokens).
+LLM request finished: beat_validation (1.3s, finish_reason=stop).
+Beat 3 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~338 input tokens, max 7726 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.7s, finish_reason=stop).
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~666 input tokens, max 7398 output tokens).
+LLM request finished: beat_coherence_validation (0.9s, finish_reason=stop).
+Beat 3 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1239 input tokens, max 6825 output tokens).
+LLM request finished: accepted_beat_state_extract (3.0s, finish_reason=stop).
+Beat 3 observed persistent state: {"characters": {"Amy": {"held_objects": ["ale_barrel"]}}, "environment": {"objects": {"mug_on_counter": {"contains": "ale", "location": "counter"}}}, "story": {"persistent_facts": {"mug_on_counter.contains": "ale"}}}
+Beat 3 accepted: Amy lifts a large ale barrel from its rack, tilts it forward, and pours liquid into a mug that sits on the counter beside her.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - The goblin places a silver coin into Amy’s hand, and she sets the coin onto a tray placed under the mug.; next=E5 - A sprite flutters around the tables while Amy takes a cloth to wipe them.; completed before=E1, E2, E3; pending before=E4, E5, E6
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1303 input tokens, max 6761 output tokens).
+LLM request finished: beat_validation (1.8s, finish_reason=stop).
+Beat 4 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~325 input tokens, max 7739 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.7s, finish_reason=stop).
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~723 input tokens, max 7341 output tokens).
+LLM request finished: beat_coherence_validation (0.9s, finish_reason=stop).
+Beat 4 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1331 input tokens, max 6733 output tokens).
+LLM request finished: accepted_beat_state_extract (3.0s, finish_reason=stop).
+Beat 4 observed persistent state: {"environment": {"objects": {"tray": {"contains": "silver_coin", "location": "counter"}}}, "story": {"persistent_facts": {"tray.contains": "silver_coin"}}}
+Beat 4 accepted: The goblin places a silver coin into Amy’s hand, and she sets the coin onto a tray placed under the mug.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - A sprite flutters around the tables while Amy takes a cloth to wipe them.; next=E6 - Amy wipes each table surface with a quick swipe and then moves to the next one.; completed before=E1, E2, E3, E4; pending before=E5, E6
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1314 input tokens, max 6750 output tokens).
+LLM request finished: beat_validation (1.4s, finish_reason=stop).
+Beat 5 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~307 input tokens, max 7757 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.7s, finish_reason=stop).
+Checking Beat 5 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~733 input tokens, max 7331 output tokens).
+LLM request finished: beat_coherence_validation (0.9s, finish_reason=stop).
+Beat 5 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1399 input tokens, max 6665 output tokens).
+LLM request finished: accepted_beat_state_extract (2.6s, finish_reason=stop).
+Beat 5 observed persistent state: {"characters": {"Sprite": {"location": "tavern", "status": "alive/conscious"}, "Amy": {"held_objects": ["ale_barrel", "cloth"]}}}
+Beat 5 accepted: A sprite flutters around the tables while Amy takes a cloth to wipe them.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - Amy wipes each table surface with a quick swipe and then moves to the next one.; next=none; completed before=E1, E2, E3, E4, E5; pending before=E6
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1332 input tokens, max 6732 output tokens).
+LLM request finished: beat_validation (1.1s, finish_reason=stop).
+Beat 6 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~311 input tokens, max 7753 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.8s, finish_reason=stop).
+Checking Beat 6 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~770 input tokens, max 7294 output tokens).
+LLM request finished: beat_coherence_validation (0.7s, finish_reason=stop).
+Beat 6 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1551 input tokens, max 6513 output tokens).
+LLM request finished: accepted_beat_state_extract (1.3s, finish_reason=stop).
+Beat 6 accepted: Amy wipes each table surface with a quick swipe and then moves to the next one.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~613 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (2.2s, finish_reason=stop).
+Canonical appropriate attire for Amy: Amy wears a sturdy leather apron dyed deep brown with worn patches at the elbows and pockets for tools. Underneath, she sports a simple linen shirt in off‑white that reaches her waist, tucked into dark woolen breeches cinched by a leather belt. Her knees are covered by thick calf‑high leather boots polished to a shine. A small brimmed hat of felt sits atop her head, its color matching the apron. The ensemble is completed with a silver chain necklace bearing a tiny oak leaf charm
+LLM request started: story_location_extract (attempt 1/10, ~384 input tokens, max 256 output tokens).
+LLM request finished: story_location_extract (2.0s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~639 input tokens, max 512 output tokens).
+LLM request finished: static_setting_extract (1.7s, finish_reason=stop).
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~260 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (5.2s, finish_reason=stop).
+LLM request started: story_setting_extract (attempt 1/10, ~1072 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (30.7s, finish_reason=stop).
+Story location metadata: overall='a tavern'; starting='the tavern'; setting='The tavern occupies a rectangular space measuring thirty feet long (north–south) and twenty feet wide (east–west). At the south end of the room stands a heavy wooden front door centered on the southern wall, eight feet high by four feet wide; it opens to the north. Immediately inside this doorway is a long counter that runs east‑west along the northern wall. The counter stretches the full width of the room (twenty feet) and extends six feet toward the center of the space from the north wall, its top surface three feet above the floor.\n\nOn the eastern end of the counter sits a rack of large ale barrels against the north wall; each barrel is two feet tall by one point five feet in diameter. The ten barrels are arranged in two rows of five, with the entire rack flush to the northern edge of the room. On the western side of the counter rests a single mug on its tabletop surface (mug height 0.75\u202fft, width 0.4\u202fft). Beneath this mug, directly on the counter top, is a tray measuring one foot by one foot; it sits flush with the counter.\n\nTables line the eastern wall of the room. Each table has a flat tabletop that measures three feet wide (east–west) and two feet deep (northward). The tables are set back four feet from the east wall and spaced six feet apart along the north‑south axis, ensuring no overlap and leaving clear legs beyond the counter’s edge and barrel rack.\n\nThe room is fully accessible: patrons enter through the south door into the counter area, then proceed onto a central aisle that runs north–south between the counter and the eastern-wall tables. This arrangement allows easy passage from entrance to bar or any table without obstruction.'; location_state={'location': {'name': 'Tavern Interior', 'description': 'A medieval tavern with a heavy wooden front door and an interior featuring a long counter topped by a rack of large ale barrels.'}, 'anchors': [{'name': 'entrance', 'type': 'door', 'wall': 'south', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'counter', 'type': 'bar counter', 'location': 'north wall', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'barrel rack', 'type': 'rack', 'location': 'east end of counter, north wall', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}], 'objects': [{'name': 'mug', 'type': 'ceramic mug', 'near': ['counter'], 'world_state_role': 'untracked', 'mobility': 'movable'}, {'name': 'tray', 'type': 'wooden tray', 'near': ['mug', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'barrel 1', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'barrel 2', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'barrel 3', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'barrel 4', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'barrel 5', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'barrel 6', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'barrel 7', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'barrel 8', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'barrel 9', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'barrel 10', 'type': 'ale barrel', 'near': ['barrel rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'table 1', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 2', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table 2', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 3', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table 3', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 4', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table 4', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 5', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table 5', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 6', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table 6', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 7', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table 7', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 8', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table 8', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 9', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table 9', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 10', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'table 10', 'type': 'wooden table', 'location': 'east wall, 4 ft from east side, 6 ft north of table 11', 'near': ['east_wall', 'counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~423 input tokens, max 512 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (1.4s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (attempt 1/3):
+{"subjects":[{"name":"sprite","initial_state":"Sprite hovering near the tavern tables."}]}
+Subjects inferred as already present at story start: Sprite1 (Sprite hovering near the tavern tables)
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~640 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (1.6s, finish_reason=stop).
+Canonical appropriate attire for Sprite1: Sprite1 wears a light green linen tunic that reaches her waist, paired with matching loose brown woolen trousers tucked into small leather ankle‑boots. She carries a thin silver circlet on her brow and has a tiny pouch tied to her belt for coins
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~356 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_subjects (0.9s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1884 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (1.0s, finish_reason=stop).
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 2708/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+LLM request started: director_raw_scene (attempt 1/10, ~2957 input tokens, max 5107 output tokens).
+LLM request finished: director_raw_scene (19.7s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1248 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (0.8s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~1094 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (1.3s, finish_reason=stop).
+LLM request started: director_raw_scene_timing (attempt 1/10, ~822 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_timing (2.0s, finish_reason=stop).
+LLM request started: director_raw_world_state_consistency (attempt 1/10, ~1372 input tokens, max 384 output tokens).
+LLM request finished: director_raw_world_state_consistency (1.9s, finish_reason=stop).
+Director Request 1 RAW/WorldState consistency failed (attempt 1/5); retrying from the same opening state: Registered subject_1 (Amy) changes from absent/unknown to present in location_the_tavern, but this persistent WorldState change is missing from state_actions.
+LLM request started: director_raw_scene (attempt 1/10, ~3104 input tokens, max 4960 output tokens).
+LLM request finished: director_raw_scene (20.2s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1270 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (0.8s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~1117 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (1.1s, finish_reason=stop).
+LLM request started: director_raw_scene_timing (attempt 1/10, ~844 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_timing (1.9s, finish_reason=stop).
+LLM request started: director_raw_world_state_consistency (attempt 1/10, ~1432 input tokens, max 384 output tokens).
+LLM request finished: director_raw_world_state_consistency (0.9s, finish_reason=stop).
+Checking pronouns segment:
+LLM request started: director_raw_scene_pronoun_resolution (attempt 1/10, ~690 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_pronoun_resolution (3.7s, finish_reason=stop).
+Checking pronouns segment: LLM result=At 00:00.000, Amy stands just outside the heavy wooden front door of the tavern on the southern wall, her sturdy leather apron visible as she faces north toward the doorway. The door is closed and flush with the floor; its eight‑foot height frames a narrow opening to the interior.
+
+Sprite1 hovers near an eastern table in the background, its green skin catching the light from the tavern’s lanterns.
+
+At 00:02.500, Amy pushes the heavy wooden door wide open with both hands; the door swings inward toward the north, revealing a clear path into the tavern’s central aisle.
+
+At 00:04.000, Amy steps through the doorway, her polished leather boots making a soft thud on the floor as she enters the interior space of the tavern.
+
+At 00:06.250, the camera pans slightly left to keep Sprite1 in view while Amy continues walking toward the counter area.
+
+At 00:07.500, Amy reaches the front edge of the long counter that runs along the northern wall and stops, looking around as she takes her place at the bar; the door remains open behind her.
+Checking pronouns segment: replaced At 00:04.000, she steps through the doorway, her polished leather boots making a soft thud on the floor as she enters the interior space of the tavern. -> At 00:04.000, Amy steps through the doorway, her polished leather boots making a soft thud on the floor as she enters the interior space of the tavern.
+Segment 1 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.000, Amy stands just outside the heavy wooden front door of the tavern on the southern wall, her sturdy leather apron visible as she faces north toward the doorway. The door is closed and flush with the floor; its eight‑foot height frames a narrow opening to the interior.
+
+Sprite1 hovers near an eastern table in the background, its green skin catching the light from the tavern’s lanterns.
+
+At 00:02.500, Amy pushes the heavy wooden door wide open with both hands; the door swings inward toward the north, revealing a clear path into the tavern’s central aisle.
+
+At 00:04.000, Amy steps through the doorway, her polished leather boots making a soft thud on the floor as she enters the interior space of the tavern.
+
+At 00:06.250, the camera pans slightly left to keep Sprite1 in view while Amy continues walking toward the counter area.
+
+At 00:07.500, Amy reaches the front edge of the long counter that runs along the northern wall and stops, looking around as she takes her place at the bar; the door remains open behind her.
+End continuity state: Amy is standing at the front edge of the counter inside the tavern, facing north toward the interior; Sprite1 hovers near an eastern table in the background.
+================================================================
+
+================================================================
+H3 SOUNDSCAPE REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_soundscape (attempt 1/10, ~757 input tokens, max 512 output tokens).
+LLM request finished: director_h3_soundscape (0.9s, finish_reason=stop).
+H3 soundscape segment 1: 'heavy wooden door swings open; polished leather boot soft thud on floor'
+H3 MUSIC REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_music (attempt 1/10, ~630 input tokens, max 512 output tokens).
+LLM request finished: director_h3_music (3.7s, finish_reason=stop).
+H3 music segment 1: 'Soft acoustic guitar plucks a gentle folk melody, joined by light cajón rhythm, creating warm, inviting ambiance as Amy steps inside.'
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1574 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (4.0s, finish_reason=stop).
+RAW Subject resolution failed for Segment 1 (attempt 1/2); retrying: RAW Subject resolver mapping has an invalid timestamp.
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1574 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (3.9s, finish_reason=stop).
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: RAW Subject resolution failed for Segment 1 after 2 attempts: RAW Subject resolver mapping has an invalid timestamp.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-yii75qbb\repo\minimax.py", line 41822, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-yii75qbb\repo\minimax.py", line 40353, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: RAW Subject resolution failed for Segment 1 after 2 attempts: RAW Subject resolver mapping has an invalid timestamp.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-yii75qbb\repo\minimax.py", line 41887, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-yii75qbb\repo\minimax.py", line 41822, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-yii75qbb\repo\minimax.py", line 40353, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: RAW Subject resolution failed for Segment 1 after 2 attempts: RAW Subject resolver mapping has an invalid timestamp.
