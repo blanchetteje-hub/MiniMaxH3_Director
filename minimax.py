@@ -4282,6 +4282,12 @@ def build_current_segment_persistent_prop_messages(
         for prop_id, item in sorted(world_state["props"].items())
         if item["kind"] in {"support", "fixture_support"}
     ]
+    fixtures = [
+        {"id": prop_id, "name": item["name"],
+         "location_id": item["placement"].get("location_id")}
+        for prop_id, item in sorted(world_state["props"].items())
+        if item["kind"] == "fixture"
+    ]
     return [
         {
             "role": "system",
@@ -4319,8 +4325,10 @@ def build_current_segment_persistent_prop_messages(
                 + json.dumps(props, ensure_ascii=False, separators=(",", ":"))
                 + "\n\nCANONICAL LOCATIONS\n"
                 + json.dumps(locations, ensure_ascii=False, separators=(",", ":"))
-                + "\n\nCANONICAL SUPPORTS / FIXTURES\n"
+                + "\n\nCANONICAL SUPPORTS\n"
                 + json.dumps(supports, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nCANONICAL FIXTURES\n"
+                + json.dumps(fixtures, ensure_ascii=False, separators=(",", ":"))
                 + "\n\nReturn only props needed for a persistent state action in this Segment."
             ),
         },
