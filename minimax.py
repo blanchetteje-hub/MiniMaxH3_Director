@@ -4388,9 +4388,14 @@ def parse_current_segment_persistent_prop_result(
         if not name or key in names or key in existing:
             raise ValueError("Current-Segment props must be new, non-empty, and unique.")
         names.add(key)
-        if (entry["initial_location"] is None) == (entry["initial_holder"] is None):
+        if entry["initial_location"] is None and entry["initial_holder"] is None:
+            # The extractor is instructed to omit props whose initial placement
+            # is not grounded. Treat an otherwise well-formed unplaced candidate
+            # as omitted rather than failing the whole Segment.
+            continue
+        if entry["initial_location"] is not None and entry["initial_holder"] is not None:
             raise ValueError(
-                f"Persistent prop {name!r} requires exactly one explicit initial location or holder."
+                f"Persistent prop {name!r} cannot have both an initial location and holder."
             )
         if entry["initial_location"] is not None:
             location_key = str(entry["initial_location"]).casefold()
