@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "9efc02992c43b20d0107132f4e6daa463a82112a327faeb0f4c4e07b1a502cef",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence",
+    "occupation"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "<Subject 1> wears a long‑sleeved linen tunic of deep burgundy that reaches her knees, the fabric slightly worn at the cuffs from frequent use. Over it she dons a sturdy leather apron dyed in earthy brown, its front pockets lined with faded wool for holding tools and coins. A wide leather belt cinches her waist, bearing a brass buckle engraved with a stylized oak leaf motif. Her feet are shod in soft, dark‑colored leather boots that reach just below the ankle, laced at the top to keep them snug on the worn wooden floor. The apron’s hem is tucked into the tunic, and she carries a small iron mug holder strapped across her chest for quick service",
+      "gender": "female",
+      "confidence": "confident",
+      "occupation": "medieval barkeep, tavern caretaker for magical humanoid creatures"
+    }
+  ]
+}
