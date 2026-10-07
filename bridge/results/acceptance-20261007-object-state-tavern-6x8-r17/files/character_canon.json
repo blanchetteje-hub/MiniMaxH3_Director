@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "1bd6dc98dace1cd6ec97e0ac7a3823d4920d815e1a96d24a1171a21b7874204d",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "occupation",
+    "confidence_level",
+    "tavern_type"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ",34",
+      "clothing": "A worn‑but‑pristine dark brown wool tunic reaching mid‑thigh, buttoned at the front and belted with a thick leather strap that holds her tools; over it she wears a sturdy leather apron dyed in faded green from years of ale stains, its pockets lined with small brass buckles. Her lower half is covered by simple tan breeches tucked into worn leather boots polished to a dark sheen. The tunic’s sleeves are rolled up at the wrists, revealing a faint scar on her forearm. She carries a wooden ladle in one hand and a damp rag in the other",
+      "gender": "female",
+      "occupation": "medieval barkeep",
+      "confidence_level": "confident woman",
+      "tavern_type": "for magical humanoid creatures"
+    }
+  ]
+}
