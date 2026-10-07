@@ -25,6 +25,8 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("most specific explicit role/species plus an integer", prompt)
+        self.assertIn("exact identity_span", prompt)
+        self.assertIn("Never return raw_scene or a rewritten scene", prompt)
         self.assertIn("neutral generic type label", prompt)
         self.assertNotIn("dragon", prompt.casefold())
         self.assertNotIn("griffin", prompt.casefold())
@@ -39,12 +41,13 @@ class PostmortemRegressionTests(unittest.TestCase):
 
         def fake_llm(_messages, **_kwargs):
             return {
-                "raw_scene": (
-                    "At 00:00.000, Griffin waits beside the counter.\n\n"
-                    "At 00:02.000, Griffin lifts its mug.\n\n"
-                    "At 00:04.000, Griffin settles beside Amy."
-                ),
-                "subject_names": ["Griffin"],
+                "mappings": [
+                    {"timestamp": "00:00.000", "surface_form": "Griffin", "identity_span": "Griffin", "subject_name": "Griffin"},
+                    {"timestamp": "00:02.000", "surface_form": "Griffin", "identity_span": "Griffin", "subject_name": "Griffin"},
+                    {"timestamp": "00:04.000", "surface_form": "Griffin", "identity_span": "Griffin", "subject_name": "Griffin"},
+                ],
+                "subject_descriptions": {},
+                "subject_wardrobes": {},
             }
 
         resolved, names = minimax.resolve_director_raw_scene_subjects(
@@ -625,12 +628,12 @@ class PostmortemRegressionTests(unittest.TestCase):
 
         def fake_llm(_messages, **_kwargs):
             return {
-                "raw_scene": (
-                    "At 00:00.000, Amy stands at the counter.\n\n"
-                    "At 00:01.000, Centaur1 enters from the left.\n\n"
-                    "At 00:06.200, Centaur1 sits on a low stool."
-                ),
-                "subject_names": ["Centaur1"],
+                "mappings": [
+                    {"timestamp": "00:01.000", "surface_form": "a centaur", "identity_span": "centaur", "subject_name": "Centaur1"},
+                    {"timestamp": "00:06.200", "surface_form": "the centaur", "identity_span": "centaur", "subject_name": "Centaur1"},
+                ],
+                "subject_descriptions": {},
+                "subject_wardrobes": {},
             }
 
         resolved, names = minimax.resolve_director_raw_scene_subjects(
@@ -1656,12 +1659,10 @@ class PostmortemRegressionTests(unittest.TestCase):
 
         def fake_llm(_messages, **_kwargs):
             return {
-                "raw_scene": (
-                    "At 00:00.000, Amy stands at the counter.\n"
-                    "At 00:02.000, a beautiful female elf steps in.\n"
-                    "At 00:04.000, the elf sits at the back table."
-                ),
-                "subject_names": ["Elf1"],
+                "mappings": [
+                    {"timestamp": "00:02.000", "surface_form": "a beautiful female elf", "identity_span": "elf", "subject_name": "Elf1"},
+                    {"timestamp": "00:04.000", "surface_form": "the elf", "identity_span": "elf", "subject_name": "Elf1"},
+                ],
                 "subject_descriptions": {
                     "Elf1": "silver-haired female elf"
                 },
@@ -1762,6 +1763,86 @@ class PostmortemRegressionTests(unittest.TestCase):
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("CURRENT BEAT\nA beautiful female elf", prompt)
         self.assertIn("in RAW or CURRENT BEAT", prompt)
+
+    def test_subject_resolver_preserves_empty_scene_without_rewriting_raw(self):
+        raw = (
+            "At 00:00.000, The camera tracks past the empty counters.\n"
+            "At 00:04.000, The camera settles on the quiet room.\n"
+            "End continuity state: The tavern remains quiet."
+        )
+        fake = mock.Mock(return_value={
+            "mappings": [], "subject_descriptions": {}, "subject_wardrobes": {},
+        })
+        resolved, names = minimax.resolve_director_raw_scene_subjects(
+            raw, llm_request=fake, segment_seconds=5,
+        )
+        self.assertEqual(resolved, raw)
+        self.assertEqual(names, [])
+
+    def test_subject_resolver_keeps_metadata_bootstrap_for_visible_known_subject(self):
+        raw = (
+            "At 00:00.000, Amy wipes the counter.\n"
+            "At 00:04.000, Amy sets down the cloth.\n"
+            "End continuity state: Amy remains behind the counter."
+        )
+        fake = mock.Mock(return_value={
+            "mappings": [],
+            "subject_descriptions": {"Amy": "Amy is a middle-aged human woman."},
+            "subject_wardrobes": {
+                "Amy": {
+                    "upper": "linen blouse", "lower": "wool skirt",
+                    "footwear": "leather shoes", "other": "N/A",
+                }
+            },
+        })
+        result, names, descriptions, wardrobes = minimax.resolve_director_raw_scene_subjects(
+            raw,
+            "<Subject 1> is Amy.",
+            llm_request=fake,
+            return_subject_bootstrap=True,
+        )
+        self.assertEqual(result, raw)
+        self.assertEqual(names, [])
+        self.assertEqual(descriptions, {"Amy": "Amy is a middle-aged human woman."})
+        self.assertEqual(wardrobes["Amy"]["upper"], "linen blouse")
+
+    def test_subject_resolver_substitutes_only_identity_spans(self):
+        raw = (
+            "At 00:00.000, The camera tracks as a tall guard enters the room.\n"
+            "At 00:04.000, The guard crosses to the door and stops.\n"
+            "End continuity state: Guard1 waits beside the door."
+        )
+        fake = mock.Mock(return_value={
+            "mappings": [
+                {"timestamp": "00:00.000", "surface_form": "a tall guard", "identity_span": "guard", "subject_name": "Guard1"},
+                {"timestamp": "00:04.000", "surface_form": "The guard", "identity_span": "guard", "subject_name": "Guard1"},
+            ],
+            "subject_descriptions": {"Guard1": "A tall guard."},
+            "subject_wardrobes": {},
+        })
+        resolved, names = minimax.resolve_director_raw_scene_subjects(
+            raw, llm_request=fake, segment_seconds=5,
+        )
+        self.assertEqual(
+            resolved,
+            "At 00:00.000, The camera tracks as a tall Guard1 enters the room.\n"
+            "At 00:04.000, The Guard1 crosses to the door and stops.\n"
+            "End continuity state: Guard1 waits beside the door.",
+        )
+        self.assertEqual(minimax._director_timestamps(resolved), minimax._director_timestamps(raw))
+        self.assertEqual(names, ["Guard1"])
+
+    def test_subject_resolver_rejects_response_that_attempts_structural_rewrite(self):
+        raw = (
+            "At 00:00.000, The camera tracks past an empty room.\n"
+            "End continuity state: The room remains empty."
+        )
+        fake = mock.Mock(return_value={
+            "mappings": [], "subject_descriptions": {}, "subject_wardrobes": {},
+            "raw_scene": "At 00:99.000, A rewritten scene.",
+        })
+        with self.assertRaisesRegex(ValueError, "without rewritten RAW"):
+            minimax.resolve_director_raw_scene_subjects(raw, llm_request=fake)
 
     def test_combined_continuity_sanitizes_held_prop_id_objects(self):
         candidate = {

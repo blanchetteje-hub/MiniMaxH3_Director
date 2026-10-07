@@ -76,19 +76,13 @@ TAVERN_BENCHMARK = json.loads(
     (Path(__file__).parent / "acceptance" / "gold" / "amy_medieval_tavern_six.json")
     .read_text(encoding="utf-8")
 )
-TAVERN_SOURCE_PARAGRAPHS = TAVERN_BENCHMARK["story_text"].split("\n\n")
 TAVERN_SEGMENT_BEATS = [
     "\n".join(item["must_happen"])
     for item in TAVERN_BENCHMARK["beats"]
 ]
-TAVERN_SEGMENT_SOURCES = [
-    TAVERN_SOURCE_PARAGRAPHS[0],
-    TAVERN_SOURCE_PARAGRAPHS[0],
-    TAVERN_SOURCE_PARAGRAPHS[1],
-    TAVERN_SOURCE_PARAGRAPHS[2],
-    TAVERN_SOURCE_PARAGRAPHS[3],
-    TAVERN_SOURCE_PARAGRAPHS[4],
-]
+# The locked benchmark now stores one global story sentence plus authoritative
+# per-Segment beat facts; do not index nonexistent story paragraphs.
+TAVERN_SEGMENT_SOURCES = list(TAVERN_SEGMENT_BEATS)
 
 
 def current_prop(name, holder=None, location="Tavern", support=None, evidence="", reason="", contents=None):
@@ -178,7 +172,7 @@ def tavern_world_state_from_authorities():
         location_id=location_id,
         llm_request=mock.Mock(return_value={
             "classification": "present",
-            "evidence": "Amy wipes a polished table",
+            "evidence_beat": 1,
             "initial_state": "wiping a polished table",
         }),
     )
@@ -1164,6 +1158,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         text = messages[0]["content"] + "\n" + messages[1]["content"]
         self.assertIn("unnamed foreground animate identities", text)
         self.assertIn("finalized timed RAW scene", text)
+        self.assertIn("exact identity_span", text)
+        self.assertIn("Never return raw_scene or a rewritten scene", text)
         self.assertIn("Keep already-named Subjects unchanged", text)
         self.assertIn("most specific explicit role/species plus an integer", text)
         self.assertIn("one stable functional name", text)
@@ -1177,13 +1173,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:05.000, another guard blocks the door.\n"
             "End continuity state: both guards remain in the room."
         )
-        resolved_timed = (
-            "At 00:00.000, Guard1 enters the room.\n"
-            "At 00:05.000, Guard2 blocks the door."
-        )
         request = mock.Mock(return_value={
-            "raw_scene": resolved_timed,
-            "subject_names": ["Guard1", "Guard2"],
+            "mappings": [
+                {"timestamp": "00:00.000", "surface_form": "a guard", "identity_span": "guard", "subject_name": "Guard1"},
+                {"timestamp": "00:05.000", "surface_form": "another guard", "identity_span": "guard", "subject_name": "Guard2"},
+            ],
+            "subject_descriptions": {}, "subject_wardrobes": {},
         })
         result, names = minimax.resolve_director_raw_scene_subjects(
             original,
@@ -1193,8 +1188,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             result,
-            resolved_timed
-            + "\nEnd continuity state: both guards remain in the room.",
+            "At 00:00.000, a Guard1 enters the room.\n"
+            "At 00:05.000, another Guard2 blocks the door.\n"
+            "End continuity state: both guards remain in the room.",
         )
         self.assertEqual(names, ["Guard1", "Guard2"])
         self.assertEqual(
@@ -1213,17 +1209,17 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:05.000, Elf1 sits at the back table."
         )
         request = mock.Mock(return_value={
-            "raw_scene": resolved_timed,
-            "subject_names": ["Elf1"],
+            "mappings": [
+                {"timestamp": "00:00.000", "surface_form": "a beautiful female elf with long silver hair", "identity_span": "elf", "subject_name": "Elf1"},
+                {"timestamp": "00:05.000", "surface_form": "the elf", "identity_span": "elf", "subject_name": "Elf1"},
+            ],
             "subject_descriptions": {
                 "Elf1": "Elf1 is a beautiful female elf with long silver hair."
             },
             "subject_wardrobes": {
                 "Elf1": {
-                    "upper": "forest-green fitted tunic",
-                    "lower": "brown trousers",
-                    "footwear": "soft leather boots",
-                    "other": "N/A",
+                    "upper": "forest-green fitted tunic", "lower": "brown trousers",
+                    "footwear": "soft leather boots", "other": "N/A",
                 }
             },
         })
@@ -1271,11 +1267,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "End continuity state: Will and Amber remain nearby; Zombie2 is down."
         )
         request = mock.Mock(return_value={
-            "raw_scene": (
-                "At 00:00.000, Will1 and Amber1 watch Zombie2_1 enter.\n"
-                "At 00:05.000, Zombie2_1 falls beside Amy."
-            ),
-            "subject_names": ["Will1", "Amber1", "Zombie2_1"],
+            "mappings": [
+                {"timestamp": "00:00.000", "surface_form": "Will", "identity_span": "Will", "subject_name": "Will1"},
+                {"timestamp": "00:00.000", "surface_form": "Amber", "identity_span": "Amber", "subject_name": "Amber1"},
+            ],
+            "subject_descriptions": {}, "subject_wardrobes": {},
         })
         result, names = minimax.resolve_director_raw_scene_subjects(
             original,
@@ -1287,33 +1283,31 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             llm_request=request,
             segment_seconds=6.0,
         )
-        self.assertIn("Will1 and Amber1 watch Zombie2 enter.", result)
+        self.assertIn("Will and Amber watch Zombie2 enter.", result)
         self.assertIn("Zombie2 falls beside Amy.", result)
-        self.assertIn("Will1", result)
-        self.assertIn("Amber1", result)
+        self.assertNotIn("Will1", result)
+        self.assertNotIn("Amber1", result)
         self.assertNotIn("Zombie2_1", result)
-        self.assertEqual(names, ["Will1", "Amber1"])
+        self.assertEqual(names, [])
 
-    def test_raw_subject_resolution_rejects_timestamp_drift(self):
+    def test_raw_subject_resolution_mapping_cannot_change_timestamps(self):
         original = (
-            "At 00:01.000, a guard enters.\n"
-            "At 00:04.000, another guard blocks the door.\n"
+            "At 00:00.000, a guard enters.\n"
+            "At 00:05.500, another guard blocks the door.\n"
             "End continuity state: both guards remain in the room."
         )
         request = mock.Mock(return_value={
-            "raw_scene": (
-                "At 00:01.000, Guard1 enters.\n"
-                "At 00:05.000, Guard2 blocks the door."
-            ),
-            "subject_names": ["Guard1", "Guard2"],
+            "mappings": [
+                {"timestamp": "00:00.000", "surface_form": "a guard", "identity_span": "guard", "subject_name": "Guard1"},
+                {"timestamp": "00:05.500", "surface_form": "another guard", "identity_span": "guard", "subject_name": "Guard2"},
+            ],
+            "subject_descriptions": {}, "subject_wardrobes": {},
         })
-        with self.assertRaisesRegex(ValueError, "changed timestamps"):
-            minimax.resolve_director_raw_scene_subjects(
-                original,
-                "",
-                llm_request=request,
-                segment_seconds=6.0,
-            )
+        result, names = minimax.resolve_director_raw_scene_subjects(
+            original, "", llm_request=request, segment_seconds=6.0,
+        )
+        self.assertEqual(minimax._director_timestamps(result), minimax._director_timestamps(original))
+        self.assertEqual(names, ["Guard1", "Guard2"])
 
     def test_raw_pronoun_resolution_prompt_is_narrow(self):
         messages = minimax.build_director_pronoun_resolution_messages(

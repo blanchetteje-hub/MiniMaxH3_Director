@@ -880,10 +880,21 @@ DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
         "schema": {
             "type": "object",
             "properties": {
-                "raw_scene": {"type": "string"},
-                "subject_names": {
+                "mappings": {
                     "type": "array",
-                    "items": {"type": "string", "minLength": 1},
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "timestamp": {"type": "string", "minLength": 1},
+                            "surface_form": {"type": "string", "minLength": 1},
+                            "identity_span": {"type": "string", "minLength": 1},
+                            "subject_name": {"type": "string", "minLength": 1},
+                        },
+                        "required": [
+                            "timestamp", "surface_form", "identity_span", "subject_name"
+                        ],
+                        "additionalProperties": False,
+                    },
                 },
                 "subject_descriptions": {
                     "type": "object",
@@ -905,8 +916,7 @@ DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
                 },
             },
             "required": [
-                "raw_scene",
-                "subject_names",
+                "mappings",
                 "subject_descriptions",
                 "subject_wardrobes",
             ],
@@ -35909,13 +35919,16 @@ def build_director_raw_subject_resolution_messages(
             "role": "system",
             "content": (
                 "Resolve only unnamed foreground animate identities in one finalized "
-                "timed RAW scene. Keep every timestamp, action, action order, object, "
-                "location, sound, camera instruction, dialogue, and punctuation meaning "
-                "unchanged. Keep already-named Subjects unchanged. For each distinct "
-                "unnamed foreground animate participant who acts or is acted on, replace "
-                "EVERY reference to that participant in returned raw_scene with one stable "
-                "functional name; every name listed in subject_names must literally appear "
-                "in returned raw_scene. Make the functional name from its most specific "
+                "timed RAW scene. Do not return RAW text or rewrite the scene. Return "
+                "mappings only: each mapping identifies an exact timestamp, an exact "
+                "surface_form quoted from that timestamp's line, and the smallest exact "
+                "identity_span within that phrase that names the actor, plus its "
+                "subject_name. Python applies only that identity substitution to accepted "
+                "RAW. Do not map action, camera, object, location, sound, dialogue, or "
+                "background-group words. Keep already-named Subjects unchanged. For each "
+                "distinct unnamed foreground animate participant who acts or is acted on, "
+                "map every reference that identifies that participant to one stable "
+                "functional name from its most specific "
                 "explicit role/species plus an integer. Use a neutral generic type label "
                 "only when the specific type is truly unknown. Capitalization alone does "
                 "not make a role/species noun an "
@@ -35947,7 +35960,9 @@ def build_director_raw_subject_resolution_messages(
                 "rendered nude or assigned N/A clothing, even when RAW omits their outfit; "
                 "fill missing coverage with simple setting-appropriate clothing. "
                 "Barefoot may be used when RAW explicitly says so. Exclude action, pose, "
-                "location, held props, camera, and mood. Return JSON only."
+                "location, held props, camera, and mood from descriptions. If no unnamed "
+                "foreground Subject needs promotion, return an empty mappings array. "
+                "Return JSON only."
             ),
         },
         {
@@ -35961,11 +35976,10 @@ def build_director_raw_subject_resolution_messages(
                 f"{str(subject_definitions or '').strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
-                "Return raw_scene plus subject_names containing only the functional "
-                "Subject names used in the returned RAW scene, subject_descriptions mapping "
-                "each newly named Subject to its concise non-clothing visual identity "
-                "sentence, and subject_wardrobes mapping each newly named Subject to its "
-                "canonical upper/lower/footwear/other wardrobe."
+                "Return mappings, subject_descriptions, and subject_wardrobes. Each "
+                "mapping must quote the exact timestamp and surface_form from RAW and name "
+                "the identity_span to substitute. Metadata keys must match subject_name. "
+                "Never return raw_scene or a rewritten scene."
             ),
         },
     ]
@@ -36132,8 +36146,8 @@ def resolve_director_raw_scene_subjects(
     story_context="",
     current_beat="",
 ):
-    """Name distinct unnamed foreground animate actors after RAW is finalized."""
-    original = _canonicalize_director_timestamps(raw_scene).strip()
+    """Map unnamed visible identities while Python preserves accepted RAW."""
+    original = str(raw_scene or "").strip()
     if not original:
         if return_subject_bootstrap:
             return original, [], {}, {}
@@ -36163,134 +36177,153 @@ def resolve_director_raw_scene_subjects(
     )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
-    allowed_result_keys = (
-        {"raw_scene", "subject_names"},
-        {"raw_scene", "subject_names", "subject_descriptions"},
-        {
-            "raw_scene",
-            "subject_names",
-            "subject_descriptions",
-            "subject_wardrobes",
-        },
-    )
-    if not isinstance(result, dict) or set(result) not in allowed_result_keys:
+    required_keys = {"mappings", "subject_descriptions", "subject_wardrobes"}
+    if not isinstance(result, dict) or set(result) != required_keys:
         raise ValueError(
-            "RAW Subject resolver must return raw_scene and subject_names, with "
-            "optional subject_descriptions and subject_wardrobes."
+            "RAW Subject resolver must return mappings, subject_descriptions, "
+            "and subject_wardrobes without rewritten RAW."
         )
-    raw_subject_descriptions = result.get("subject_descriptions", {})
+    mappings = result.get("mappings")
+    raw_subject_descriptions = result.get("subject_descriptions")
+    raw_subject_wardrobes = result.get("subject_wardrobes")
+    if not isinstance(mappings, list):
+        raise ValueError("RAW Subject resolver mappings must be an array.")
     if not isinstance(raw_subject_descriptions, dict):
         raise ValueError("RAW Subject resolver subject_descriptions must be an object.")
-    raw_subject_wardrobes = result.get("subject_wardrobes", {})
     if not isinstance(raw_subject_wardrobes, dict):
         raise ValueError("RAW Subject resolver subject_wardrobes must be an object.")
 
-    resolved_timed = _canonicalize_director_timestamps(
-        result.get("raw_scene", "")
-    ).strip()
-    if not resolved_timed:
-        raise ValueError("RAW Subject resolver returned empty raw_scene.")
-    if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
-        raise ValueError("RAW Subject resolver changed timestamps.")
+    # Resolve only exact, timestamp-anchored spans. The model has no output field
+    # capable of replacing accepted scene text, and an ambiguous mapping fails closed.
+    lines = timed_original.splitlines(keepends=True)
+    line_offsets = []
+    cursor = 0
+    timestamp_lines = {}
+    for index, line in enumerate(lines):
+        line_offsets.append(cursor)
+        cursor += len(line)
+        stamp_matches = list(_DIRECTOR_TIMESTAMP_RE.finditer(line))
+        for stamp_match in stamp_matches:
+            stamp = (
+                f"{int(stamp_match.group('minutes')):02d}:"
+                f"{stamp_match.group('seconds')}."
+                f"{(stamp_match.group('fraction') or '0').ljust(3, '0')}"
+            )
+            timestamp_lines.setdefault(stamp, []).append(index)
 
-    # The Subject pass may label previously unnamed actors, but identifiers that
-    # already existed in accepted RAW are immutable. Restore deterministic
-    # suffixed aliases such as Will1 -> Will or Zombie2_1 -> Zombie2.
-    protected_names = {
-        name
-        for _subject_number, name in parse_defined_subjects(subject_definitions)
-    }
+    defined_names = [
+        name for _subject_number, name in parse_defined_subjects(subject_definitions)
+    ]
+    protected_names = set(defined_names)
     protected_names.update(
         re.findall(r"(?<![\w])([A-Z][A-Za-z'\u2019-]*\d+)(?![\w])", timed_original)
     )
-    for protected_name in sorted(protected_names, key=len, reverse=True):
-        alias_pattern = re.compile(
-            rf"(?<![\w]){re.escape(protected_name)}(?:_\d+|\d+)(?![\w])",
-            re.I,
-        )
-        resolved_timed = alias_pattern.sub(protected_name, resolved_timed)
-
-    # If the model invents a new label for a role/species with exactly one
-    # established functional Subject, reuse that identity unless RAW explicitly
-    # introduces another individual of the same type.
-    resolved_subject_names = list(result.get("subject_names", []))
     known_functional_names = [
-        name
-        for _subject_number, name in parse_defined_subjects(subject_definitions)
-        if _functional_subject_type_key(name)[1]
+        name for name in defined_names if _functional_subject_type_key(name)[1]
     ]
-    for index, raw_name in enumerate(resolved_subject_names):
-        proposed_name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
-        type_key, _numbered = _functional_subject_type_key(proposed_name)
-        if not proposed_name or not type_key:
-            continue
-        matching_known = [
-            known_name
-            for known_name in known_functional_names
-            if _functional_subject_type_key(known_name)[0] == type_key
-        ]
-        if len(matching_known) != 1:
-            continue
-        canonical_name = matching_known[0]
-        if _subject_identity_key(proposed_name) == _subject_identity_key(canonical_name):
-            continue
-        if _raw_explicitly_introduces_distinct_functional_subject(
-            timed_original,
-            type_key,
-        ):
-            continue
-        resolved_timed = re.sub(
-            rf"(?<![\w]){re.escape(proposed_name)}(?![\w])",
-            canonical_name,
-            resolved_timed,
-            flags=re.I,
+
+    def canonical_subject_name(value):
+        proposed = " ".join(str(value or "").split()).strip(" ,.;:-")
+        if not proposed:
+            raise ValueError("RAW Subject resolver returned an empty subject_name.")
+        for protected_name in sorted(protected_names, key=len, reverse=True):
+            if re.fullmatch(
+                rf"{re.escape(protected_name)}(?:_\d+|\d+)",
+                proposed,
+                re.I,
+            ):
+                return protected_name
+        type_key, _numbered = _functional_subject_type_key(proposed)
+        if type_key:
+            matching_known = [
+                known_name
+                for known_name in known_functional_names
+                if _functional_subject_type_key(known_name)[0] == type_key
+            ]
+            if (
+                len(matching_known) == 1
+                and not _raw_explicitly_introduces_distinct_functional_subject(
+                    timed_original, type_key
+                )
+            ):
+                return matching_known[0]
+        return proposed
+
+    def unique_span(haystack, needle, label):
+        pattern = re.compile(re.escape(needle), re.I)
+        found = list(pattern.finditer(haystack))
+        if len(found) != 1:
+            raise ValueError(
+                f"RAW Subject resolver {label} must match exactly once in accepted RAW."
+            )
+        return found[0].span()
+
+    substitutions = []
+    resolved_subject_names = []
+    metadata_name_map = {}
+    mapping_keys = {"timestamp", "surface_form", "identity_span", "subject_name"}
+    for mapping in mappings:
+        if not isinstance(mapping, dict) or set(mapping) != mapping_keys:
+            raise ValueError("RAW Subject resolver returned an invalid identity mapping.")
+        timestamp = str(mapping.get("timestamp") or "").strip()
+        if not re.fullmatch(r"\d{2}:\d{2}\.\d{3}", timestamp):
+            raise ValueError("RAW Subject resolver mapping has an invalid timestamp.")
+        line_indexes = timestamp_lines.get(timestamp, [])
+        if len(line_indexes) != 1:
+            raise ValueError(
+                "RAW Subject resolver mapping timestamp must identify one accepted RAW line."
+            )
+        line_index = line_indexes[0]
+        line = lines[line_index]
+        surface_form = str(mapping.get("surface_form") or "").strip()
+        identity_span = str(mapping.get("identity_span") or "").strip()
+        if not surface_form or not identity_span:
+            raise ValueError("RAW Subject resolver mapping spans must be nonempty.")
+        surface_start, surface_end = unique_span(line, surface_form, "surface_form")
+        surface = line[surface_start:surface_end]
+        identity_start, identity_end = unique_span(
+            surface, identity_span, "identity_span"
         )
-        resolved_subject_names[index] = canonical_name
-        if proposed_name in raw_subject_descriptions:
-            description = raw_subject_descriptions.pop(proposed_name)
-            raw_subject_descriptions.setdefault(canonical_name, description)
-        if proposed_name in raw_subject_wardrobes:
-            wardrobe = raw_subject_wardrobes.pop(proposed_name)
-            raw_subject_wardrobes.setdefault(canonical_name, wardrobe)
+        # Identity substitutions may replace a name/role phrase only; keeping
+        # punctuation outside the span prevents edits to timing or scene structure.
+        if not re.fullmatch(r"[\w'’ -]+", identity_span, flags=re.UNICODE):
+            raise ValueError("RAW Subject resolver identity_span is not a name span.")
+        target = canonical_subject_name(mapping.get("subject_name"))
+        absolute_start = line_offsets[line_index] + surface_start + identity_start
+        absolute_end = line_offsets[line_index] + surface_start + identity_end
+        substitutions.append((absolute_start, absolute_end, target))
+        resolved_subject_names.append(target)
+        metadata_name_map[str(mapping.get("subject_name") or "").strip()] = target
+        metadata_name_map[target] = target
 
-    # The resolver can return correct Subject metadata while leaving generic
-    # role/species nouns in RAW. Canonicalize unambiguous references here so
-    # resolved Subjects cannot disappear before reference generation.
-    resolved_timed = _canonicalize_end_continuity_functional_subjects(
-        resolved_timed,
-        subject_definitions,
-        resolved_subject_names,
-    )
-    # If the resolver returned useful Subject metadata but failed to rewrite
-    # the participant label in its raw_scene, recover from the already-accepted
-    # Director RAW instead of making the whole segment retry. This keeps the
-    # semantic scene untouched and applies only deterministic functional-name
-    # canonicalization.
-    fallback_timed = _canonicalize_end_continuity_functional_subjects(
-        timed_original,
-        subject_definitions,
-        resolved_subject_names,
-    )
-    missing_resolved_names = [
-        " ".join(str(name or "").split()).strip(" ,.;:-")
-        for name in resolved_subject_names
-        if str(name or "").strip()
-        and re.search(
-            rf"(?<![\w]){re.escape(' '.join(str(name or '').split()).strip(' ,.;:-'))}(?![\w])",
-            _h3_visual_identity_text(resolved_timed),
+    # Existing named Subjects may need missing canonical appearance/wardrobe
+    # metadata even when their accepted RAW identity requires no substitution.
+    defined_name_by_key = {name.casefold(): name for name in defined_names}
+    for metadata_name in sorted(set(raw_subject_descriptions) | set(raw_subject_wardrobes)):
+        target = defined_name_by_key.get(str(metadata_name).casefold())
+        if not target or target.casefold() in {name.casefold() for name in resolved_subject_names}:
+            continue
+        if re.search(
+            rf"(?<![\w]){re.escape(target)}(?![\w])",
+            timed_original,
             re.I,
-        ) is None
-    ]
-    if missing_resolved_names and all(
-        re.search(
-            rf"(?<![\w]){re.escape(name)}(?![\w])",
-            _h3_visual_identity_text(fallback_timed),
-            re.I,
-        ) is not None
-        for name in missing_resolved_names
-    ):
-        resolved_timed = fallback_timed
+        ) is None:
+            continue
+        resolved_subject_names.append(target)
+        metadata_name_map[str(metadata_name)] = target
+        metadata_name_map[target] = target
 
+    # Reject overlapping spans and conflicting duplicate mappings.
+    ordered_substitutions = sorted(substitutions)
+    for previous, current in zip(ordered_substitutions, ordered_substitutions[1:]):
+        if current[0] < previous[1]:
+            raise ValueError("RAW Subject resolver returned overlapping identity mappings.")
+    resolved_timed = timed_original
+    for start, end, target in reversed(ordered_substitutions):
+        resolved_timed = resolved_timed[:start] + target + resolved_timed[end:]
+
+    # Preserve deterministic canonicalization for established functional Subject
+    # names in End continuity, without giving the model authority over that text.
     resolved_end_state = _canonicalize_end_continuity_functional_subjects(
         end_state_original,
         subject_definitions,
@@ -36303,7 +36336,7 @@ def resolve_director_raw_scene_subjects(
     )
     if structure_errors:
         raise ValueError(
-            "RAW Subject resolver changed shot-script structure: "
+            "RAW Subject resolver identity mapping changed shot-script structure: "
             + "; ".join(structure_errors)
         )
 
@@ -36311,46 +36344,30 @@ def resolve_director_raw_scene_subjects(
     descriptions = {}
     wardrobes = {}
     seen = set()
-    known_keys = {name.casefold() for name in protected_names}
-    defined_name_keys = {
-        existing.casefold()
-        for _number, existing in parse_defined_subjects(subject_definitions)
-    }
+    defined_name_keys = {name.casefold() for name in defined_names}
+    protected_keys = {name.casefold() for name in protected_names}
     for raw_name in resolved_subject_names:
-        name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
-        for protected_name in sorted(protected_names, key=len, reverse=True):
-            if re.fullmatch(
-                rf"{re.escape(protected_name)}(?:_\\d+|\\d+)",
-                name,
-                re.I,
-            ):
-                name = protected_name
-                break
+        name = canonical_subject_name(raw_name)
         key = name.casefold()
         if not name or key in seen or not _subject_name_is_promotable(name):
             continue
-        if re.search(
-            rf"(?<![\\w]){re.escape(name)}(?![\\w])",
-            _h3_visual_identity_text(resolved_timed),
-            re.I,
-        ) is None:
-            console_log(
-                f"WARNING: RAW Subject resolver returned {name!r} in subject_names "
-                "but no safe deterministic mapping exists in accepted RAW; ignoring "
-                "that resolver entry instead of restarting the segment.",
-                flush=True,
-            )
-            continue
         seen.add(key)
+        source_name = next(
+            (
+                source for source, target in metadata_name_map.items()
+                if target.casefold() == key and source in raw_subject_descriptions
+            ),
+            name,
+        )
         description = " ".join(
-            str(raw_subject_descriptions.get(raw_name)
+            str(raw_subject_descriptions.get(source_name)
                 or raw_subject_descriptions.get(name)
                 or "").split()
         ).strip()
         if description:
             descriptions[name] = _strip_character_description_clothing(description)
         raw_wardrobe = (
-            raw_subject_wardrobes.get(raw_name)
+            raw_subject_wardrobes.get(source_name)
             or raw_subject_wardrobes.get(name)
             or {}
         )
@@ -36359,7 +36376,7 @@ def resolve_director_raw_scene_subjects(
                 field: str(raw_wardrobe.get(field) or "N/A").strip() or "N/A"
                 for field in _WARDROBE_FIELDS
             }
-        if key in known_keys and key in defined_name_keys:
+        if key in protected_keys and key in defined_name_keys:
             continue
         names.append(name)
 
@@ -36373,7 +36390,6 @@ def resolve_director_raw_scene_subjects(
     if return_subject_descriptions:
         return resolved, names, descriptions
     return resolved, names
-
 
 def apply_visible_subject_bootstrap_metadata(
     continuity_state,

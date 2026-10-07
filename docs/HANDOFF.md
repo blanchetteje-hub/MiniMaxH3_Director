@@ -1709,3 +1709,38 @@ Validation:
 - `tests/test_director_retry.py` was attempted but did not collect: its module-level fixture
   indexes `story_text.split("\\n\\n")[1]`, while the locked benchmark's `story_text` is a single
   paragraph. This failure is in the existing test fixture, before tests execute.
+
+
+## 2026-10-07 — Preserve accepted RAW during visible Subject resolution
+
+r15 accepted Director Request 1 RAW, then failed in
+`resolve_director_raw_scene_subjects()` because the small resolver rewrote timestamps on both
+attempts. The resolver contract asked the model to reproduce the complete timed scene even
+though its only authority is to identify otherwise-unnamed visible foreground Subjects.
+
+Replaced the model-authored `raw_scene` response with a strict identity-mapping contract. Each
+mapping supplies a timestamp, exact `surface_form` from that timestamp's accepted RAW line, an
+exact `identity_span` within that phrase, and its `subject_name`. The model cannot return scene
+text. Python verifies that the timestamp identifies one line, both spans match exactly once,
+and substitutions do not overlap, then applies only the identity substitutions to the accepted
+RAW. A response containing `raw_scene` or other extra keys is rejected. Empty mappings leave a
+camera-only/no-foreground-Subject scene byte-for-byte unchanged. Existing deterministic
+canonicalization of numbered aliases and established functional Subject identities remains in
+Python; functional Subject names in End continuity are canonicalized there as well.
+
+The `test_director_retry.py` module-level paragraph indexing fixture was updated to use the
+locked benchmark's per-Segment `must_happen` facts, so the Director tests now collect. The full
+module currently has seven failures in its pre-existing Segment-1 tavern prop fixture: it
+injects mug/barrel candidates whose evidence is not established by that Segment's assigned
+source, and the current prop extractor correctly rejects them. This fixture issue is outside the
+RAW Subject resolver change.
+
+Validation:
+- `pytest -q tests/test_postmortem_regressions.py` — 84 passed.
+- `pytest -q tests/test_world_state_foundation.py` — 56 passed.
+- `pytest -q tests/test_director_retry.py -k raw_subject_resolution` — 5 passed, 110 deselected.
+- Full `tests/test_director_retry.py` — 108 passed, 7 failed; all seven fail in the existing
+  Segment-1 prop fixture because it proposes mug/barrel records without matching assigned-source
+  evidence.
+- `python -m py_compile minimax.py tests/test_postmortem_regressions.py tests/test_director_retry.py`
+  and `git diff --check` passed.
