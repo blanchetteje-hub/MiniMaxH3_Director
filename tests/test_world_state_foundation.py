@@ -1127,5 +1127,46 @@ class RegisteredSubjectStoryStartEvidenceTests(unittest.TestCase):
             )
 
 
+
+class RegisteredSubjectStoryStartEvidenceTests(unittest.TestCase):
+    def test_story_start_parser_uses_numbered_beat_as_exact_evidence(self):
+        subject = {"name": "Amy"}
+        beats = [
+            "Amy stands behind her wooden bar holding a mug of ale.",
+            "She opens the tavern door for arriving patrons.",
+        ]
+
+        result = minimax.parse_registered_subject_story_start_result(
+            {
+                "classification": "present",
+                "evidence_beat": 1,
+                "initial_state": "behind the wooden bar holding a mug of ale",
+            },
+            subject,
+            "Amy is a medieval barkeep.",
+            beats,
+        )
+
+        self.assertEqual(result["classification"], "present")
+        self.assertEqual(result["evidence"], beats[0])
+        self.assertEqual(
+            result["initial_state"],
+            "behind the wooden bar holding a mug of ale",
+        )
+
+    def test_unknown_story_start_requires_zero_evidence_beat(self):
+        with self.assertRaisesRegex(ValueError, "evidence_beat 0"):
+            minimax.parse_registered_subject_story_start_result(
+                {
+                    "classification": "unknown",
+                    "evidence_beat": 1,
+                    "initial_state": "",
+                },
+                {"name": "Amy"},
+                "Amy is a medieval barkeep.",
+                ["Amy stands behind the bar."],
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
