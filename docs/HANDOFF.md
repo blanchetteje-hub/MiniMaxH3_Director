@@ -2,6 +2,24 @@
 
 Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This file describes the current branch implementation, active experiment, latest evidence, and immediate next work.
 
+## CURRENT HANDOFF — 2026-10-07 (read first)
+
+**Most recent verified code head before this documentation update:** `f1610fa455` on `object-state-work` (fixed-prop canonical location ownership). A documentation-only operating-contract update followed at `f12d4b9986`.
+
+**Bridge:** `gpt-runtime` is active. The user says **"go"** when a queued job has finished. ChatGPT must inspect `bridge/results/<job_id>/result.json`, determine actual success from nested process return code and generated artifacts, then diagnose/queue next bridge job as appropriate. Codex does not use the bridge; delegate only bounded repo-local implementation and local tests. Do not tell the user to give Codex a bridge job.
+
+**Completed bridge test:** `tests-20261007-fixed-prop-location-authority`: `run_tests` returned 0, **66 passed in 2.77s**. Coverage includes Python-only fixture/support creation; static alias ambiguity fails closed; registered location/Subject IDs; exactly three extractor retries followed by uniquely-evidenced holder recovery. This is a foundation test, not end-to-end acceptance.
+
+**Newest bridge acceptance:** `acceptance-20261007-object-state-tavern-6x8-r29`. The mailbox result has `status: ok` for job collection, **but its nested acceptance process returned 1**. It generated a fresh expanded story and six beats; Segment 1 RAW passed after one initial WorldState mismatch retry, then `director_raw_scene_visible_subject_resolution` failed twice: `RAW Subject resolver mapping has an invalid timestamp`. No H3 prompt segments were completed. Segment 1 RAW includes Amy entering through a wooden tavern door and Sprite1 hovering near an eastern table. Preserve the accepted RAW and find the actual identity-mapping response/line/timestamp mismatch; do not silently loosen the validation or permit the model to rewrite RAW.
+
+**Current delegated Codex task (prompt provided to user, not yet verified complete):** inspect r29 resolver responses if captured; fix the timestamp-mapping root cause using the smallest deterministic, provably unambiguous normalization if possible; add focused regressions for actual response and malformed/ambiguous cases; test, update this handoff, commit/push to `object-state-work`. Codex must not queue a bridge acceptance run. **Do not assume Codex has completed the task until a new commit/report is visible.** After a verified fix, ChatGPT queues next r30 acceptance via the bridge and assesses results.
+
+**Persistent decisions:** Python WorldState is sole physical authority; newly extracted fixed fixtures/supports are forbidden outside canonical location state; all persistent state actions must be represented, dry-run validated, and transactionally committed after acceptance (or successful render); failures roll back. The **three attempts then deterministic fallback** hybrid applies narrowly to the held-prop recovery issue, not all LLM operations. Prefer KISS, generic behavior for any film/story, narrow 20B-friendly extractors, and architectural fixes over a growing stack of prompt micro-patches.
+
+**Working method:** ChatGPT = architecture, bridge orchestrator, QA and LLM failure analysis; Codex = delegated programmer, local test runner and docs/commit author; user = local bridge operator. Explain substantive architectural/prompt changes before implementing. `docs/PROJECT_NOTES.md` contains the durable contract; this section is a compact current-state checkpoint. Older historical passages below may describe superseded approaches.
+
+---
+
 ## Repository / active branch
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
