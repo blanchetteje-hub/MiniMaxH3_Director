@@ -82,18 +82,27 @@ def test_director_raw_scene_retry_budget_is_five():
 
 
 @pytest.mark.parametrize(
-    "count, render_enabled, render_fails",
-    [(1, False, False), (5, False, False), (1, True, True), (1, True, False)],
+    "count, render_enabled, render_fails, vision_cadence",
+    [
+        (1, False, False, 1),
+        (5, False, False, 1),
+        (1, True, True, 1),
+        (1, True, False, 1),
+        (2, True, False, 0),
+        (1, True, True, 0),
+    ],
 )
 def test_prompts_are_saved_and_world_state_commits_at_the_completion_boundary(
-    count, render_enabled, render_fails
+    count, render_enabled, render_fails, vision_cadence
 ):
     args = _args(segment_length=8.0, total_segments=count, total_length=999.0,
-                 test_prompt_generation=not render_enabled)
+                 test_prompt_generation=not render_enabled,
+                 vision_continuity=vision_cadence)
     saved_packages = []
     durations = []
     opening_world_states = []
     saved_states = []
+    render_completion_count = []
     h3_state_validator = mock.Mock(return_value={"valid": True, "issue": ""})
 
     def load_text(path, required=True):
@@ -109,6 +118,13 @@ def test_prompts_are_saved_and_world_state_commits_at_the_completion_boundary(
     def request_segment(bundle, _beats, _run_id, _run_config):
         durations.append(bundle["current_duration"])
         opening_world_states.append(copy.deepcopy(bundle["world_state_opening"]))
+        if render_enabled and vision_cadence == 0 and len(durations) == 2:
+            assert render_completion_count
+            assert "1" in saved_states[-1]["world_state_transactions"]
+            assert saved_states[-1]["world_state_transactions"]["1"]["completion_mode"] == "rendered_segment_transaction"
+            assert {"garment": "apron segment 1", "condition": "unknown"} in (
+                bundle["world_state_opening"]["subjects"]["subject_1"]["wardrobe"]["upper"]
+            )
         assert _run_config["total_segments"] == count
         assert _run_config["total_length"] == 8 * count
         payload = dict(bundle)
@@ -137,7 +153,14 @@ def test_prompts_are_saved_and_world_state_commits_at_the_completion_boundary(
         started_event = kwargs.get("render_started_event")
         if started_event is not None:
             started_event.set()
-        return ("workflow", "/tmp/segment.mp4", 640, 640, 0.4)
+        render_completion_count.append(True)
+        return (
+            "workflow",
+            f"/tmp/segment-{len(render_completion_count)}.mp4",
+            640,
+            640,
+            0.4,
+        )
 
     def assemble_prompt(*args, **kwargs):
         assert kwargs["character_canon"]["characters"][0]["name"] == "Amy"
@@ -238,12 +261,16 @@ def test_prompts_are_saved_and_world_state_commits_at_the_completion_boundary(
             prior_garment = {"garment": f"apron segment {segment - 1}", "condition": "unknown"}
             assert prior_garment in opening_world_states[segment - 1]["subjects"]["subject_1"]["wardrobe"]["upper"]
     else:
-        render_mock.assert_called_once()
+        assert render_mock.call_count == count
         committed = saved_states[-1]
-        transaction = committed["world_state_transactions"]["1"]
-        assert transaction["completion_mode"] == "rendered_segment_transaction"
-        assert transaction["artifact"] == "/tmp/segment.mp4"
-        assert transaction["accepted_actions"][0]["garment"] == "apron segment 1"
+        assert set(committed["world_state_transactions"]) == {
+            str(segment) for segment in range(1, count + 1)
+        }
+        for segment in range(1, count + 1):
+            transaction = committed["world_state_transactions"][str(segment)]
+            assert transaction["completion_mode"] == "rendered_segment_transaction"
+            assert transaction["artifact"] == f"/tmp/segment-{segment}.mp4"
+            assert transaction["accepted_actions"][0]["garment"] == f"apron segment {segment}"
     if render_enabled and not render_fails:
         stitch_mock.assert_called_once()
     else:

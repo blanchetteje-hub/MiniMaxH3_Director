@@ -680,10 +680,20 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             llm_request=invalid,
         )
         self.assertFalse(result["valid"])
+        consistency_system = invalid.call_args.args[0][0]["content"]
+        self.assertIn("`fill` is invalid", consistency_system)
+        self.assertIn("require `pour` with that registered source", consistency_system)
         sent = invalid.call_args.args[0][1]["content"]
         self.assertIn("OPENING AND PREDICTED ENDING", sent)
         self.assertIn("STATE ACTIONS\n[]", sent)
         self.assertIn("mug", sent)
+
+        prop_messages = minimax.build_current_segment_persistent_prop_messages(
+            current_beat="Amy fills a registered cup with special brew.",
+            assigned_source="",
+            world_state=state,
+        )
+        self.assertIn("pour/fill/consume", prop_messages[0]["content"])
 
         h3_invalid = mock.Mock(return_value={
             "valid": False,

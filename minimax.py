@@ -4266,7 +4266,7 @@ def build_current_segment_persistent_prop_messages(
                 "predict future props, beats, holders, or actions. Do not return "
                 "Subjects, fixtures already registered in the canonical location "
                 "vocabulary, garments, or background objects. Each new prop must be "
-                "directly involved in a transfer, placement, pour/consume, or "
+                "directly involved in a transfer, placement, pour/fill/consume, or "
                 "mechanism action in CURRENT BEAT or ASSIGNED SOURCE. Return exactly "
                 "one explicit initial_location or initial_holder, using only the "
                 "registered names below. A support_name may name only a registered "
@@ -37008,7 +37008,11 @@ def validate_raw_scene_state_action_consistency(
                 "change is omitted from state_actions; if an action is not actually staged "
                 "in RAW; if the actor, target, transfer, substance, presence, location, "
                 "support, clothing, or result disagrees; or if RAW's final continuity "
-                "sentence contradicts the predicted ending. An empty action list is valid "
+                "sentence contradicts the predicted ending. If RAW explicitly identifies "
+                "a registered source container supplying contents to a target, require "
+                "`pour` with that registered source; `fill` is invalid in that case. "
+                "Use `fill` only when RAW explicitly introduces contents into a registered "
+                "target container and no source prop is established. An empty action list is valid "
                 "only when RAW makes no represented persistent change. Use exact supplied "
                 "IDs and names when describing an issue. Return one concise actionable "
                 "issue when invalid, otherwise an empty issue. Return JSON only."
@@ -40688,7 +40692,11 @@ def _run_main(
         # When the cadence skips rendered-frame vision continuity, the prompt-
         # derived continuity state is authoritative and the next Director prompt
         # can be prefetched without waiting for the render to finish.
-        if not vision_required and segment < total_segments:
+        if (
+            not vision_required
+            and segment < total_segments
+            and not stateful_transactions_active
+        ):
             next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
             if (
                 segment < total_segments

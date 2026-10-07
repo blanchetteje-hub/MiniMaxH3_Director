@@ -1658,3 +1658,24 @@ Validation:
 - `git diff --check` passed.
 - No full ComfyUI tavern generation was run. Stop before removing legacy writers or changing
   visual-observation authority.
+
+
+## 2026-10-06 — Gate D phase 1 acceptance corrections
+
+Closed the rendered transaction gap when `vision_continuity=0`: stateful rendered Segments
+now bypass the cadence-skipped background-finalize/`continue` branch, wait for
+`render_future.result()`, and commit through the same normal WorldState transaction path as
+other rendered Segments. A render failure at this cadence leaves the canonical opening state
+uncommitted. Added a two-Segment rendered cadence-zero regression proving Segment 1's artifact
+and WorldState transaction are committed before Segment 2's opening is built, plus a cadence-zero
+render-failure regression.
+
+The current-Segment prop extractor now names `fill` alongside `pour` among supported state
+actions. The RAW/action consistency contract now explicitly rejects `fill` when RAW identifies
+a registered source container supplying the contents; that case requires `pour`. `fill` remains
+for explicit content introduction into a registered container without a modeled source.
+
+Validation:
+- `pytest -q tests/test_world_state_foundation.py tests/test_director_retry.py tests/test_prompt_generation_mode.py`
+  — 170 passed, 4 subtests passed.
+- No legacy continuity writers were removed.
