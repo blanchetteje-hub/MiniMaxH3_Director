@@ -1,0 +1,25 @@
+{
+  "version": 3,
+  "source_sha256": "9eb31073bcc8f45c335de37216935d6b73c84fbdb343f8d4c1a0734291c97b41",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "profession",
+    "tavern_type",
+    "confidence",
+    "era"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "Amy wears a loose‑fitting linen tunic in a muted cream color that billows around her knees, paired with a sturdy canvas apron tied at the waist. She has on simple leather boots dyed dark brown, a plain woolen belt cinching her waist, and a small pouch hanging from her belt for coins",
+      "gender": "female",
+      "profession": "barkeep",
+      "tavern_type": "magical humanoid creatures",
+      "confidence": "confident",
+      "era": "medieval"
+    }
+  ]
+}

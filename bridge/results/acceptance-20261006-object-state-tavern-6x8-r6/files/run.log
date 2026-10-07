@@ -1,0 +1,180 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).
+LLM request finished: character_canon (16.5s, finish_reason=stop).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\beats.txt); regenerating the beat plan.
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\beats.txt with 6 creative story beats.
+LLM request started: story_expansion (attempt 1/10, ~406 input tokens, max 12000 output tokens).
+LLM request finished: story_expansion (17.4s, finish_reason=stop).
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\expanded_story.txt.
+Expanded story:
+Amy stands behind her wooden bar in a tunic and apron that billow around her knees, holding a mug of ale in one hand as she looks straight at the camera.
+
+She pushes open the heavy oak door with a firm pull on its iron handle, letting a group of goblins and elves step inside. The door creaks shut behind them.
+
+Amy lifts each goblin’s mug from the barrel, pouring golden ale into it, then hands an elf a crystal glass filled with sparkling wine; she nods to each creature as they sip their drinks.
+
+She takes a cloth in her hand, wipes down a wooden table that has been used by several customers, and places fresh plates of stew and polished goblets on the clean surface.
+
+A dragon perched in the corner lifts its head, tail flicking. Amy offers it a bowl of steaming stew; the dragon licks the bowl with its long tongue.
+
+She grabs a rag, wipes the bar counter until it shines, then pushes the door closed behind her as she turns to face the camera one last time.
+LLM request started: story_to_beats (attempt 1/10, ~766 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats (8.8s, finish_reason=stop).
+Story-derived Beat framework created with 6 beats.
+Beat 1 created: Amy stands behind her wooden bar in a tunic and apron that billow around her knees, holding a mug of ale in one hand as she looks straight at the camera.
+Beat 2 created: She pushes open the heavy oak door with its iron handle, letting a group of goblins and elves step inside while the door creaks shut behind them.
+Beat 3 created: Amy lifts each goblin’s mug from the barrel, pouring golden ale into it, then hands an elf a crystal glass filled with sparkling wine; she nods to each creature as they sip their drinks.
+Beat 4 created: She takes a cloth in her hand, wipes down a wooden table that has been used by several customers, and places fresh plates of stew and polished goblets on the clean surface.
+Beat 5 created: A dragon perched in the corner lifts its head with tail flicking; Amy offers it a bowl of steaming stew, which the dragon licks with its long tongue.
+Beat 6 created: She grabs a rag, wipes the bar counter until it shines, then pushes the door closed behind her as she turns to face the camera one last time.
+Beat 1 jobs: current=E1 - Amy stands behind her wooden bar in a tunic and apron that billow around her knees, holding a mug of ale in one hand as she looks straight at the camera.; next=E2 - She pushes open the heavy oak door with its iron handle, letting a group of goblins and elves step inside while the door creaks shut behind them.; completed before=none; pending before=E1, E2, E3, E4, E5, E6
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1222 input tokens, max 6842 output tokens).
+LLM request finished: beat_validation (1.0s, finish_reason=stop).
+Beat 1 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~353 input tokens, max 7711 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.8s, finish_reason=stop).
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~581 input tokens, max 7483 output tokens).
+LLM request finished: beat_coherence_validation (0.5s, finish_reason=stop).
+Beat 1 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1039 input tokens, max 7025 output tokens).
+LLM request finished: accepted_beat_state_extract (3.0s, finish_reason=stop).
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "behind wooden bar", "held_objects": ["mug"], "clothing": {"upper": {"item": "tunic"}, "lower": {"item": "apron"}}}}}
+Beat 1 accepted: Amy stands behind her wooden bar in a tunic and apron that billow around her knees, holding a mug of ale in one hand as she looks straight at the camera.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - She pushes open the heavy oak door with its iron handle, letting a group of goblins and elves step inside while the door creaks shut behind them.; next=E3 - Amy lifts each goblin’s mug from the barrel, pouring golden ale into it, then hands an elf a crystal glass filled with sparkling wine; she nods to each creature as they sip their drinks.; completed before=E1; pending before=E2, E3, E4, E5, E6
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1288 input tokens, max 6776 output tokens).
+LLM request finished: beat_validation (0.8s, finish_reason=stop).
+Beat 2 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~348 input tokens, max 7716 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.9s, finish_reason=stop).
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~649 input tokens, max 7415 output tokens).
+LLM request finished: beat_coherence_validation (1.2s, finish_reason=stop).
+Beat 2 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1091 input tokens, max 6973 output tokens).
+LLM request finished: accepted_beat_state_extract (3.0s, finish_reason=stop).
+Beat 2 observed persistent state: {"environment": {"doors": {"heavy oak door with iron handle": "open"}}, "threats": {"threat_1": {"location": "inside the room behind wooden bar", "type": "hostile"}}}
+Beat 2 accepted: She pushes open the heavy oak door with its iron handle, letting a group of goblins and elves step inside while the door creaks shut behind them.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - Amy lifts each goblin’s mug from the barrel, pouring golden ale into it, then hands an elf a crystal glass filled with sparkling wine; she nods to each creature as they sip their drinks.; next=E4 - She takes a cloth in her hand, wipes down a wooden table that has been used by several customers, and places fresh plates of stew and polished goblets on the clean surface.; completed before=E1, E2; pending before=E3, E4, E5, E6
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1353 input tokens, max 6711 output tokens).
+LLM request finished: beat_validation (1.6s, finish_reason=stop).
+Beat 3 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~372 input tokens, max 7692 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.8s, finish_reason=stop).
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~732 input tokens, max 7332 output tokens).
+LLM request finished: beat_coherence_validation (2.1s, finish_reason=stop).
+Beat 3 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1215 input tokens, max 6849 output tokens).
+LLM request finished: accepted_beat_state_extract (3.0s, finish_reason=stop).
+Beat 3 observed persistent state: {"characters": {"Amy": {"clothing.upper.item": "tunic", "clothing.lower.item": "apron"}}}
+Beat 3 accepted: Amy lifts each goblin’s mug from the barrel, pouring golden ale into it, then hands an elf a crystal glass filled with sparkling wine; she nods to each creature as they sip their drinks.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - She takes a cloth in her hand, wipes down a wooden table that has been used by several customers, and places fresh plates of stew and polished goblets on the clean surface.; next=E5 - A dragon perched in the corner lifts its head with tail flicking; Amy offers it a bowl of steaming stew, which the dragon licks with its long tongue.; completed before=E1, E2, E3; pending before=E4, E5, E6
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1367 input tokens, max 6697 output tokens).
+LLM request finished: beat_validation (1.8s, finish_reason=stop).
+Beat 4 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~364 input tokens, max 7700 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.9s, finish_reason=stop).
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~752 input tokens, max 7312 output tokens).
+LLM request finished: beat_coherence_validation (1.2s, finish_reason=stop).
+Beat 4 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1228 input tokens, max 6836 output tokens).
+LLM request finished: accepted_beat_state_extract (2.8s, finish_reason=stop).
+Beat 4 observed persistent state: {"characters": {"Amy": {"held_objects": ["mug", "cloth"]}}, "environment": {"objects": {"wooden table": "cleaned", "fresh plates of stew": "on wooden table", "polished goblets": "on wooden table"}}}
+Beat 4 accepted: She takes a cloth in her hand, wipes down a wooden table that has been used by several customers, and places fresh plates of stew and polished goblets on the clean surface.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - A dragon perched in the corner lifts its head with tail flicking; Amy offers it a bowl of steaming stew, which the dragon licks with its long tongue.; next=E6 - She grabs a rag, wipes the bar counter until it shines, then pushes the door closed behind her as she turns to face the camera one last time.; completed before=E1, E2, E3, E4; pending before=E5, E6
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1382 input tokens, max 6682 output tokens).
+LLM request finished: beat_validation (2.0s, finish_reason=stop).
+Beat 5 validation attempt 1/10: INVALID; issue: Amy has no bowl of stew to offer—only plates and goblets are listed.
+LLM request started: story_to_beats (attempt 1/10, ~715 input tokens, max 1024 output tokens).
+LLM request finished: story_to_beats (6.3s, finish_reason=stop).
+Validating Beat 5 (attempt 2/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1385 input tokens, max 6679 output tokens).
+LLM request finished: beat_validation (1.4s, finish_reason=stop).
+Beat 5 validation attempt 2/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~353 input tokens, max 7711 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.4s, finish_reason=stop).
+Checking Beat 5 within-beat physical coherence (attempt 2/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~773 input tokens, max 7291 output tokens).
+LLM request finished: beat_coherence_validation (1.4s, finish_reason=stop).
+Beat 5 coherence attempt 2/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1305 input tokens, max 6759 output tokens).
+LLM request finished: accepted_beat_state_extract (2.6s, finish_reason=stop).
+Beat 5 observed persistent state: {"environment": {"objects": {"steaming plate of stew": "on wooden table"}}}
+Beat 5 accepted: A dragon perched in the corner lifts its head, tail flicking; Amy sets a steaming plate of stew before it, and the dragon licks the dish with its long tongue.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - She grabs a rag, wipes the bar counter until it shines, then pushes the door closed behind her as she turns to face the camera one last time.; next=none; completed before=E1, E2, E3, E4, E5; pending before=E6
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1354 input tokens, max 6710 output tokens).
+LLM request finished: beat_validation (2.7s, finish_reason=stop).
+Beat 6 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~346 input tokens, max 7718 output tokens).
+LLM request finished: beat_finite_endpoint_extract (0.9s, finish_reason=stop).
+Checking Beat 6 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~774 input tokens, max 7290 output tokens).
+LLM request finished: beat_coherence_validation (1.0s, finish_reason=stop).
+Beat 6 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1330 input tokens, max 6734 output tokens).
+LLM request finished: accepted_beat_state_extract (2.1s, finish_reason=stop).
+Beat 6 observed persistent state: {"characters": {"Amy": {"held_objects": ["mug", "cloth", "rag"]}}, "environment": {"doors": {"heavy oak door with iron handle": "closed"}}}
+Beat 6 accepted: She grabs a rag, wipes the bar counter until it shines, then pushes the door closed behind her as she turns to face the camera one last time.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~677 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (2.4s, finish_reason=stop).
+Canonical appropriate attire for Amy: Amy wears a loose‑fitting linen tunic in a muted cream color that billows around her knees, paired with a sturdy canvas apron tied at the waist. She has on simple leather boots dyed dark brown, a plain woolen belt cinching her waist, and a small pouch hanging from her belt for coins
+LLM request started: story_location_extract (attempt 1/10, ~485 input tokens, max 256 output tokens).
+LLM request finished: story_location_extract (1.9s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~739 input tokens, max 512 output tokens).
+LLM request finished: static_setting_extract (1.4s, finish_reason=stop).
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~279 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (5.1s, finish_reason=stop).
+LLM request started: story_setting_extract (attempt 1/10, ~1052 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (24.1s, finish_reason=stop).
+Story location metadata: overall='tavern'; starting='behind the wooden bar'; setting='The tavern hall is a rectangle thirty feet north‑south by twenty feet east‑west. The heavy oak entrance door, five feet wide and ten feet tall, sits centered on the east wall; its iron handle protrudes one foot from the frame. A wooden bar counter extends fifteen feet along the south wall, two feet thick with a four‑foot high top; behind it at the western end stands the bartender, leaving a clear aisle five feet wide between door and counter. In the center of the hall, ten feet north of the bar, sits a six‑by‑six foot wooden table on two‑foot legs. The northwest corner above this table holds a four‑foot long, one‑foot high wooden ledge where a dragon perches with its head facing east toward the bar. Lanterns hang from the ceiling at five‑foot intervals along both north and south walls, casting warm light that complements hearth flames in the hall’s center. All surfaces—floorboards, bar top, table planks, and the dragon’s perch—are primarily wood. No objects overlap; each door, counter, table, perch, lantern, or flame is accessible with clear pathways for patrons and staff.'; location_state={'location': {'name': 'Tavern Hall', 'description': 'A rectangular hall thirty feet north‑south by twenty feet east‑west with wooden floors and walls.'}, 'anchors': [{'name': 'entrance', 'type': 'door', 'wall': 'east', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'bar_counter', 'type': 'counter', 'wall': 'south', 'world_state_role': 'support', 'mobility': 'fixed'}], 'objects': [{'name': 'oak door frame', 'type': 'wooden frame', 'near': ['entrance'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'iron handle', 'type': 'metal handle', 'attached_to': ['entrance'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'bartender', 'type': 'person', 'position': 'behind bar_counter western end', 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'bar top', 'type': 'wooden plank', 'attached_to': ['bar_counter'], 'height': 4, 'width': 15, 'depth': 2, 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'large wooden table', 'type': 'table', 'position': 'center hall, ten feet north of bar_counter', 'size': {'width': 6, 'depth': 6}, 'legs_height': 2, 'world_state_role': 'untracked', 'mobility': 'fixed'}, {'name': 'dragon perch', 'type': 'wooden ledge', 'position': 'northwest corner above table, four feet long one foot high', 'attached_to': ['northwest wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'lantern 1', 'type': 'hanging lantern', 'location': 'ceiling north wall five feet from west corner', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'lantern 2', 'type': 'hanging lantern', 'location': 'ceiling south wall five feet from east corner', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'hearth flame', 'type': 'fire', 'position': 'center hall floor', 'world_state_role': 'untracked', 'mobility': 'movable'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~543 input tokens, max 512 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (1.5s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (attempt 1/3):
+{"subjects":[{"name":"dragon","initial_state":"perched in the corner"}]}
+Subjects inferred as already present at story start: Dragon1 (perched in the corner)
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+LLM request started: registered_subject_story_start_presence (attempt 1/10, ~657 input tokens, max 256 output tokens).
+LLM request finished: registered_subject_story_start_presence (2.4s, finish_reason=stop).
+LLM request started: registered_subject_story_start_presence (attempt 1/10, ~720 input tokens, max 256 output tokens).
+LLM request finished: registered_subject_story_start_presence (1.8s, finish_reason=stop).
+LLM request started: registered_subject_story_start_presence (attempt 1/10, ~720 input tokens, max 256 output tokens).
+LLM request finished: registered_subject_story_start_presence (1.9s, finish_reason=stop).
+FATAL: prompt-generation run stopped at first real failure: ValueError: Could not classify story-start presence for 'Amy': Explicit story-start classification requires exact source evidence.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\minimax.py", line 41285, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\minimax.py", line 38823, in _run_main
+    world_state = extract_registered_subject_story_start_presence(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\minimax.py", line 3917, in extract_registered_subject_story_start_presence
+    raise ValueError(
+ValueError: Could not classify story-start presence for 'Amy': Explicit story-start classification requires exact source evidence.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\minimax.py", line 41350, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\minimax.py", line 41285, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\minimax.py", line 38823, in _run_main
+    world_state = extract_registered_subject_story_start_presence(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-lrwhi54n\repo\minimax.py", line 3917, in extract_registered_subject_story_start_presence
+    raise ValueError(
+ValueError: Could not classify story-start presence for 'Amy': Explicit story-start classification requires exact source evidence.
