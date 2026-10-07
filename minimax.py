@@ -1270,7 +1270,7 @@ COMPLETION CHECK
 
 STATE ACTIONS
 - Return state_actions in this same JSON response. Describe only explicit persistent changes staged in RAW SCENE. Use only the Python-supplied registered IDs; never invent or rename an ID. Use [] when this Segment makes no represented persistent change. Off-camera is not a state action.
-- Ordinary movement between positions inside the same registered location is RAW staging only, not a WorldState `move`. Use `move` only when a Subject changes to a different registered location ID.
+- Ordinary movement between positions inside the same registered location is RAW staging only, not a WorldState `move`. Use `move` only when a Subject already present in WorldState changes to a different registered location ID. If an opening-state Subject is absent and RAW stages that Subject entering a registered location, use `enter`, not `move` or `set_support`.
 
 RETURN JSON ONLY
 {{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true,"state_actions":[]}}
