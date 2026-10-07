@@ -4522,6 +4522,24 @@ def _canonical_registered_holder_name(value, world_state):
     return next(iter(matches.values())).get("name")
 
 
+def _canonical_registered_location_name(value, world_state):
+    """Resolve only an exact registered Location name or stable Location ID."""
+    location_key = " ".join(str(value or "").split()).casefold()
+    if not location_key:
+        return None
+    matches = {
+        location_id: location
+        for location_id, location in world_state["locations"].items()
+        if location_key in {
+            str(location_id).casefold(),
+            " ".join(str(location.get("name") or "").split()).casefold(),
+        }
+    }
+    if len(matches) != 1:
+        return None
+    return next(iter(matches.values())).get("name")
+
+
 def parse_current_segment_persistent_prop_result(
     raw_result, current_beat, assigned_source, world_state,
 ):
@@ -4581,6 +4599,11 @@ def parse_current_segment_persistent_prop_result(
             # may redundantly return both; keep the stronger holder placement.
             entry["initial_location"] = None
         if entry["initial_location"] is not None:
+            canonical_location = _canonical_registered_location_name(
+                entry["initial_location"], world_state
+            )
+            if canonical_location is not None:
+                entry["initial_location"] = canonical_location
             location_key = str(entry["initial_location"]).casefold()
             if location_key not in locations:
                 support_record = _registered_support_record_for_alias(
