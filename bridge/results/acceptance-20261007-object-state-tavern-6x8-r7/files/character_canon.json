@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "105daf75f8e24fc5ba3f9f4ac478a277e2b34e9f27d0804d431e0cfe7dafb46e",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence",
+    "occupation",
+    "tavern_clientele"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "tunic_or_shirt",
+      "gender": "female",
+      "confidence": "confident",
+      "occupation": "medieval barkeep",
+      "tavern_clientele": "magical humanoid creatures"
+    }
+  ]
+}
