@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "009c548d679fc3b18e8df7e9bde17340db18eadb96ea1eb6b0ebd4acc944c907",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "occupation",
+    "setting",
+    "personality"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "tunic made of light blue linen with a slight sheen, reaching mid-thigh; leather apron in dark brown worn over the tunic, featuring reinforced stitching at the shoulders and waist, with a small silver buckle on the left side; ankle-high leather boots dyed deep mahogany, polished to a subtle shine; simple white cotton wrist cuffs tied loosely around both wrists",
+      "gender": "female",
+      "occupation": "barkeeper",
+      "setting": "tavern for magical humanoid creatures",
+      "personality": "confident"
+    }
+  ]
+}
