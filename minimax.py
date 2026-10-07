@@ -19636,6 +19636,16 @@ _STORY_START_ENTRY_ACTION_RE = re.compile(
     r"\b(?:comes?|steps?|walks?|shuffles?|emerges?)\s+into\s+view\b"
 )
 
+_STORY_START_POSITIONING_ACTION_RE = re.compile(
+    r"(?i)\b(?:"
+    r"saunter(?:s|ed|ing)?|walk(?:s|ed|ing)?|step(?:s|ped|ping)?|"
+    r"shuffle(?:s|d|ing)?|move(?:s|d|ing)?|approach(?:es|ed|ing)?|"
+    r"cross(?:es|ed|ing)?|climb(?:s|ed|ing)?|mount(?:s|ed|ing)?|"
+    r"sit(?:s|ting)?\s+down|take(?:s|n)?\s+(?:a\s+)?seat|"
+    r"settle(?:s|d|ing)?\s+(?:onto|on|into|at)"
+    r")\b"
+)
+
 
 def _story_subject_name_patterns(name):
     """Return exact prose forms for a canonical functional Subject name."""
@@ -19747,6 +19757,20 @@ def parse_initial_location_subjects(raw_result, beats=None):
             # opening-state Subject. A clear entry action at first occurrence
             # is deterministic evidence that this candidate must not be seeded.
             continue
+        first = _first_story_subject_mention(beats, name)
+        if (
+            first
+            and first[0] > 0
+            and _STORY_START_POSITIONING_ACTION_RE.search(first[2])
+        ):
+            # Presence may remain eligible when a later Subject has no entry
+            # point, but a later beat's movement result is not opening-state
+            # evidence. Keep presence and the story location while leaving its
+            # exact opening position/pose unknown.
+            initial_state = (
+                "present in the story's starting location; exact position and "
+                "pose unknown"
+            )
         key = _subject_identity_key(name)
         if key in seen:
             continue

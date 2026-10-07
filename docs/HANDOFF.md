@@ -2104,3 +2104,30 @@ no H3 prompts were captured.
 No production code was changed after `14b70d4`. The acceptance result is
 incomplete and not ready to count as a successful bridge run. `git diff --check`
 will be run before committing this handoff update.
+
+## 2026-10-07 — Prevent later Subject pose from becoming opening state
+
+The r31 evidence showed that the all-beats extractor could correctly retain a
+later Subject with no explicit entry, yet incorrectly copy that Subject's
+post-movement pose into the opening WorldState. Added deterministic handling in
+`parse_initial_location_subjects`: when the first mention is after Beat 1 and
+contains a positioning action, retain story-start presence eligibility but
+replace the action-derived state with the story location and unknown exact
+position/pose. This keeps the intended no-entry eligibility rule while
+preventing a Beat 4 action such as stepping onto a chair from becoming a Beat 1
+fact. Added a regression for the observed Unicorn pattern. Updated
+`PROJECT_NOTES.md` with this durable story-start rule.
+
+Validation:
+- `python -m pytest tests/test_location_state_reference.py tests/test_world_state_foundation.py -q` — 96 passed.
+- `python -m pytest tests/test_director_retry.py -q -k 'same_location_move_failure_adds_staging_retry_hint or segment_one_can_apply_presence_gated_action_to_amy or physical_validator_prompt_knows_existing_offscreen_subject or opening_world_state'` — 2 passed, 122 deselected.
+- `python -m pytest tests/test_postmortem_regressions.py -q -k director_request_receives_static_setting_authority` — 1 passed, 83 deselected.
+- `python -m py_compile minimax.py tests/test_world_state_foundation.py` and `git diff --check` passed.
+
+Next: push this change, then run tavern acceptance r32 against the resulting
+`object-state-work` revision. The r31 finding about action-linked facts in the
+static extractor's own selected description remains open; r31 did not promote
+the goblet into canonical WorldState support, but it did leave future/action
+objects in static prose. Keep WorldState validation strict and use r32 to check
+whether removing the leaked opening pose resolves the Segment 1 physical
+retries; inspect any remaining reducer or RAW-format failures separately.

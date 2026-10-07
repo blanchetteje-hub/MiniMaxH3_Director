@@ -1656,6 +1656,29 @@ class RegisteredSubjectStoryStartEvidenceTests(unittest.TestCase):
 
 
 class RegisteredSubjectStoryStartEvidenceTests(unittest.TestCase):
+    def test_later_subject_presence_does_not_import_beat_action_pose(self):
+        beats = [
+            "Amy stands behind the tavern bar.",
+            "A unicorn saunters to the middle of the tavern and steps onto a low chair.",
+        ]
+        result = minimax.parse_initial_location_subjects(
+            {"subjects": [{
+                "name": "Unicorn",
+                "initial_state": "standing on a low chair in the middle of the tavern",
+            }]},
+            beats=beats,
+        )
+        self.assertEqual(
+            result,
+            [{
+                "name": "Unicorn",
+                "initial_state": (
+                    "present in the story's starting location; exact position and "
+                    "pose unknown"
+                ),
+            }],
+        )
+
     def test_story_start_parser_uses_numbered_beat_as_exact_evidence(self):
         subject = {"name": "Amy"}
         beats = [

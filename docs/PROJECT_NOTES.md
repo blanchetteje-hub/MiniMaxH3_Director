@@ -101,7 +101,10 @@ state. These Subjects are registered into the normal Python-owned Subject regist
 `origin_segment=0` and their opening state is authoritative Segment 1 context. This exists to
 prevent later beats from causing actors that were implicitly present all along to pop into
 existence. Do not broaden this into general future-character extraction: actors with an earlier
-entry/arrival/reveal remain later dynamic Subjects.
+entry/arrival/reveal remain later dynamic Subjects. A later Subject with no explicit entry can
+remain eligible for opening presence, but if its first mention performs a positioning action,
+Python must not copy the action's resulting pose into story-start state; keep its opening pose and
+exact position unknown.
 
 ### Subject identity / character consistency
 
@@ -2631,6 +2634,9 @@ Rules:
 - lowercase generic role outputs are normalized deterministically to that form;
 - `initial_state` contains only minimal supported location/pose, never held/carried props,
   wardrobe, motives, or invented actions;
+- if a later first mention stages movement or a new position, keep the Subject eligible for
+  opening presence when no entry is described, but replace that later action result with an
+  unknown opening position/pose;
 - inferred Subjects are inserted into the normal durable Subject registry with
   `origin_segment=0`, not into a parallel background-cast system;
 - Segment 1 must visually establish each inferred Subject at least once in the inferred position,
