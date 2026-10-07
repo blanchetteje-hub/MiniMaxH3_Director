@@ -37598,10 +37598,17 @@ def validate_final_h3_world_state_plan(
         {
             "role": "system",
             "content": (
-                "Validate only persistent WorldState changes in the finalized H3 prompt. "
-                "Check that each accepted state action is still depicted with the same "
-                "registered Subject, prop, substance, and result, and that the final H3 "
-                "ending does not contradict the predicted ending. Do not review visual "
+                "Validate only persistent facts owned by canonical Python WorldState. "
+                "The supplied opening/predicted projection and accepted state_actions are "
+                "the complete authority for what persistent facts may be checked. Use RAW "
+                "only to verify that an accepted state action survived into finalized H3; "
+                "do not derive additional persistent constraints from RAW prose. Check that "
+                "each accepted state action is still depicted with the same registered "
+                "Subject, prop, substance, and result, and that the final H3 ending does not "
+                "contradict a fact explicitly represented in the predicted ending. Ignore "
+                "facing direction, gaze, camera framing, exact local in-room position, and "
+                "other visual/staging details unless that fact is explicitly represented in "
+                "the Python projection or an accepted state_action. Do not review visual "
                 "style, general scene quality, timing, or unstated details. Do not require "
                 "the H3 text to repeat internal IDs. Return one concise issue if it omits "
                 "or contradicts a persistent state change; otherwise return valid=true and "
