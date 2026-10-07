@@ -938,7 +938,13 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
 
     artifacts = dict(developer_artifacts)
     try:
-        artifacts.update(copy_acceptance_artifacts(exec_root, result_dir))
+        artifacts.update(
+            copy_acceptance_artifacts(
+                exec_root,
+                result_dir,
+                benchmark_stem=benchmark_stem,
+            )
+        )
     except Exception as error:
         if not _GRACEFUL_STOP_REQUESTED.is_set():
             raise
