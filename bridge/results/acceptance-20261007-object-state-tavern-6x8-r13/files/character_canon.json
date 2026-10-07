@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "127ef557566734720d196dc18502cb93548fbe10d99db792b148a00a426c9e49",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "occupation",
+    "setting",
+    "confidence"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "leather apron (dusted with flour), linen blouse beneath, woolen breeches, sturdy leather boots",
+      "gender": "woman",
+      "occupation": "barkeep",
+      "setting": "medieval tavern for magical humanoid creatures",
+      "confidence": "confident woman referenced in Picture 1"
+    }
+  ]
+}
