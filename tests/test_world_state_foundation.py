@@ -1081,5 +1081,51 @@ class WorldStateReducerTests(unittest.TestCase):
             validate_world_state(state)
 
 
+
+class RegisteredSubjectStoryStartEvidenceTests(unittest.TestCase):
+    def test_explicit_presence_uses_exact_numbered_beat_as_evidence(self):
+        subject = {"name": "Amy"}
+        beats = [
+            "Amy stands behind her wooden bar holding a mug of ale.",
+            "Amy opens the tavern door.",
+        ]
+        result = minimax.parse_registered_subject_story_start_result(
+            {
+                "classification": "present",
+                "evidence_beat": 1,
+                "initial_state": "behind the wooden bar holding a mug of ale",
+            },
+            subject,
+            "Amy is a medieval barkeep.",
+            beats,
+        )
+        self.assertEqual(result["evidence"], beats[0])
+        self.assertEqual(result["classification"], "present")
+
+    def test_unknown_presence_requires_zero_evidence_beat(self):
+        result = minimax.parse_registered_subject_story_start_result(
+            {
+                "classification": "unknown",
+                "evidence_beat": 0,
+                "initial_state": "",
+            },
+            {"name": "Elf1"},
+            "",
+            ["Amy stands behind the bar."],
+        )
+        self.assertEqual(result["evidence"], "")
+        with self.assertRaisesRegex(ValueError, "evidence_beat 0"):
+            minimax.parse_registered_subject_story_start_result(
+                {
+                    "classification": "unknown",
+                    "evidence_beat": 1,
+                    "initial_state": "",
+                },
+                {"name": "Elf1"},
+                "",
+                ["Amy stands behind the bar."],
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
