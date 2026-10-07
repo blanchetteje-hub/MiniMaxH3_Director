@@ -4394,9 +4394,9 @@ def parse_current_segment_persistent_prop_result(
             # as omitted rather than failing the whole Segment.
             continue
         if entry["initial_location"] is not None and entry["initial_holder"] is not None:
-            raise ValueError(
-                f"Persistent prop {name!r} cannot have both an initial location and holder."
-            )
+            # A held prop's world location is derived from its holder. Small models
+            # may redundantly return both; keep the stronger holder placement.
+            entry["initial_location"] = None
         if entry["initial_location"] is not None:
             location_key = str(entry["initial_location"]).casefold()
             if location_key not in locations:
