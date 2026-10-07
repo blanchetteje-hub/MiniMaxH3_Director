@@ -1393,6 +1393,25 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertEqual(result[0]["initial_location"], "Area A")
         self.assertEqual(result[0]["support_name"], "Support A")
 
+    def test_descriptive_support_alias_used_as_initial_location_is_normalized(self):
+        state, _ = self._static_alias_test_state(
+            "linen basket", "basket", role="support"
+        )
+        candidate = self._candidate(
+            "damp cloth",
+            "damp cloth pulled from the linen basket beside it",
+            mobility="movable",
+            initial_location="linen basket beside it",
+        )
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {"props": [candidate]},
+            "Amy wipes the counter with a damp cloth pulled from the linen basket beside it.",
+            "Amy wipes the counter with a damp cloth pulled from the linen basket beside it.",
+            state,
+        )
+        self.assertEqual(result[0]["initial_location"], "Hall")
+        self.assertEqual(result[0]["support_name"], "linen basket")
+
 
 class CurrentSegmentSubjectEvidenceTests(unittest.TestCase):
     def test_balanced_outer_quotes_are_removed_from_exact_subject_evidence(self):
