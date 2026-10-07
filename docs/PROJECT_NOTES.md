@@ -4,13 +4,24 @@ This file is the persistent source of truth for the current MiniMax H3 architect
 
 ## Project roles
 
-ChatGPT (GPT 5.3 Sol) is working as the architect and QA for the project and keeps all high level concepts and memory. Codex (GPT 6.1 Luna) is the programmer who makes the large coding changes based on the architecture ChatGPT and the user have decided on.
+ChatGPT (currently GPT-6) owns architecture, LLM/Director behavior analysis, bridge job orchestration, acceptance interpretation, and decisions with the user. Codex owns delegated deterministic Python implementation, local tests, and associated documentation/commits. Codex does **not** run or inspect the ChatGPT-to-local-LLM bridge as its default workflow. ChatGPT may make narrowly scoped repository fixes when necessary; substantive architecture changes require explaining the failure and proposed fix first. The local GPT-OSS 20B-class model remains the production runtime; paid hosted ChatGPT models are development tools only.
 
 ## Repository / active branch
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
 Active experimental branch: `object-state-work`
+
+## Active operating contract — 2026-10-07
+
+- **Repository / branches:** Code on `object-state-work`; ChatGPT-to-local bridge mailbox on `gpt-runtime`. Consult `docs/HANDOFF.md` and the newest bridge result before acting. Do not confuse a mailbox result with a code-branch commit.
+- **Responsibilities:** ChatGPT diagnoses acceptance runs, researches local 20B responses, decides architectural direction with the user, queues bridge jobs, and reviews outcomes. Codex performs explicitly delegated repo-local Python implementation and regression tests, updates docs, commits/pushes; Codex does not operate the bridge. User saying **"go"** means the queued bridge job is processed and ChatGPT should inspect results and continue the iteration, not redirect the user to Codex.
+- **Authoritative state:** Deterministic Python WorldState owns all representable physical facts: registered IDs, locations/fixtures/supports, Subject presence, prop placement and ownership, actions, and persistent transitions. LLM RAW, extraction, formatter and H3 output are proposals/evidence, never parallel authorities. Validate and transact accepted actions against opening state, preserve rollback on failure, and do not silently import legacy or visual observations as authoritative state.
+- **Fixed entities:** Current-segment prop extraction may not create fixed fixtures, supports or structural scene components. Only canonical location WorldState defines them. Alias resolution must use unambiguous canonical matching; ambiguity fails closed. The fixed-entity foundation bridge suite passed **66/66** on 2026-10-07.
+- **RAW / Subject resolution:** After RAW has passed, Subject resolution may return validated identity mappings only. Python applies exact substitutions; the LLM must not regenerate timestamps, action choreography or the scene. Deterministic normalization of safe format variants is preferable to another creative rewrite; genuinely ambiguous mappings fail closed.
+- **Retries:** Where the user explicitly selected the hybrid policy for current-segment held-prop/holder recovery, try the primary LLM extraction **up to three times**, then use the narrow deterministic recovery only when uniquely evidenced, otherwise fail closed. This is **not** a blanket retry policy for every extractor or validator.
+- **Engineering style:** Keep it simple (KISS), generic across stories/genres, and suitable for local ~20B inference. Narrow single-purpose model calls, deterministic Python for exact IDs/parser normalization/state invariants, and no accumulating speculative prompt patches. If repeated prompt micro-edits fail, surface the exact wording/response and discuss a principled change with the user.
+- **Documentation:** Update `docs/HANDOFF.md` with newest evidence, decisions, commit/test results and next action; update this file for durable architectural rules. Do not mark an acceptance run successful because its bridge envelope says `status: ok`—inspect the child process return code and actual prompt/artifact completion.
 
 ## Primary goal
 
@@ -41,7 +52,7 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **20B-class local runtime is the production target.** GPT-5.6 Sol is development/evaluation only.
 - [x] **Task-specific LLM sampling/reasoning profiles** are separated by job rather than loaded model.
 - [x] **Prompt generation and ComfyUI rendering can be separated** for a one-GPU workflow.
-- [x] **Bridge/mailbox workflow retired.** Local runs + uploaded artifacts are the active acceptance/debugging path.
+- [x] **Bridge/mailbox workflow active for ChatGPT-controlled local LLM acceptance/testing.** Jobs and results travel through `gpt-runtime`, while implementation remains on `object-state-work`. Some local runs and uploaded artifacts are also used; do not treat the bridge as retired.
 
 ### Director / H3 prompt quality
 
