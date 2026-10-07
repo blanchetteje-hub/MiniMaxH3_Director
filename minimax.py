@@ -417,7 +417,7 @@ BEAT_VALIDATION_STATE_VERSION = 3
 # Model/formatter choice must never change sampling, reasoning, prompt transport,
 # or validator behavior.
 BENCHMARK_SEED = 42
-DEFAULT_STORY_TEMPERATURE = 0.4
+DEFAULT_STORY_TEMPERATURE = 0.8
 DEFAULT_VISUAL_STYLE = "Live-action cinematic"
 DEFAULT_REFRESH_INTERVAL = 999
 REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
