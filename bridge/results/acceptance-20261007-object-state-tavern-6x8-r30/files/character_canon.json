@@ -1,0 +1,25 @@
+{
+  "version": 3,
+  "source_sha256": "db4d106d6c7c8a06c8584d373e54564a22a7c6fa6069e8a84b07d28fb4cb962d",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "profession",
+    "tavern_role",
+    "confidence_level",
+    "visual_definition"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ".32",
+      "clothing": "worn linen tunic, leather apron tied around waist",
+      "gender": "Female",
+      "profession": "medieval barkeep",
+      "tavern_role": "runs a tavern for magical humanoid creatures",
+      "confidence_level": "confident woman referenced in <Picture 1>",
+      "visual_definition": "<Picture 1> defines Amy's facial identity, structure, hair, body proportions, and distinguishing features"
+    }
+  ]
+}
