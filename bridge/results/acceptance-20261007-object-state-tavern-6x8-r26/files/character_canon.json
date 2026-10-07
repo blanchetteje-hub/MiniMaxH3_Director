@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "117dbc89c14d16f4000a2947ab7ce87ff13aa80bd14ffcc3ee8901f010e4ba65",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy is wearing a worn leather apron hanging over her shoulders, the fabric faded to a deep brown from years of use in the tavern kitchen. The apron has sturdy canvas patches sewn onto its front for extra durability. Underneath, she wears a simple linen tunic in a muted olive color that reaches mid-thigh, with a loose fit suitable for moving around the bar. Her lower half is covered by dark woolen breeches tucked into worn leather boots that reach just below her knees. The overall outfit reflects her role as a tavern owner and serves both practicality and modesty in a medieval setting",
+      "gender": "female"
+    }
+  ]
+}
