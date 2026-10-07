@@ -3758,10 +3758,10 @@ def build_registered_subject_story_start_response_format():
                         "type": "string",
                         "enum": ["present", "absent", "unknown"],
                     },
-                    "evidence": {"type": "string"},
+                    "evidence_beat": {"type": "integer", "minimum": 0},
                     "initial_state": {"type": "string"},
                 },
-                "required": ["classification", "evidence", "initial_state"],
+                "required": ["classification", "evidence_beat", "initial_state"],
                 "additionalProperties": False,
             },
         },
@@ -3834,26 +3834,31 @@ def parse_registered_subject_story_start_result(raw_result, subject, story, beat
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
     if not isinstance(candidate, dict) or set(candidate) != {
-        "classification", "evidence", "initial_state",
+        "classification", "evidence_beat", "initial_state",
     }:
         raise ValueError("Registered Subject story-start result has an invalid shape.")
     classification = candidate["classification"]
-    evidence = " ".join(str(candidate["evidence"] or "").split()).strip()
+    evidence_beat = candidate["evidence_beat"]
     initial_state = " ".join(str(candidate["initial_state"] or "").split()).strip()
     if classification not in {"present", "absent", "unknown"}:
         raise ValueError("Registered Subject story-start result has an invalid classification.")
+    if isinstance(evidence_beat, bool) or not isinstance(evidence_beat, int):
+        raise ValueError("Registered Subject story-start evidence_beat must be an integer.")
+    beat_list = list(beats or [])
     if classification == "unknown":
-        if initial_state:
-            raise ValueError("Unknown story-start classification cannot include an initial state.")
+        if evidence_beat != 0 or initial_state:
+            raise ValueError(
+                "Unknown story-start classification requires evidence_beat 0 and no initial state."
+            )
         return {
             "name": subject["name"], "classification": "unknown",
-            "evidence": evidence, "initial_state": "",
+            "evidence": "", "initial_state": "",
         }
-    source_text = "\n".join((str(story or ""), *(str(beat) for beat in beats or [])))
-    normalized_evidence = _normalize_story_evidence_text(evidence)
-    normalized_source = _normalize_story_evidence_text(source_text)
-    if not normalized_evidence or normalized_evidence not in normalized_source:
-        raise ValueError("Explicit story-start classification requires exact source evidence.")
+    if evidence_beat < 1 or evidence_beat > len(beat_list):
+        raise ValueError(
+            "Explicit story-start classification requires a valid evidence_beat."
+        )
+    evidence = str(beat_list[evidence_beat - 1]).strip()
     if classification == "present" and not initial_state:
         raise ValueError("Present story-start classification requires an initial state.")
     if classification == "absent" and initial_state:
@@ -3862,7 +3867,6 @@ def parse_registered_subject_story_start_result(raw_result, subject, story, beat
         "name": subject["name"], "classification": classification,
         "evidence": evidence, "initial_state": initial_state,
     }
-
 
 def extract_registered_subject_story_start_presence(
     world_state,
@@ -3889,7 +3893,7 @@ def extract_registered_subject_story_start_presence(
             if attempt > 1:
                 attempt_messages[-1]["content"] += (
                     "\n\nFIX: return only present, absent, or unknown for this one Subject; "
-                    "unknown is required when explicit source evidence is missing. "
+                    "for present/absent choose the exact 1-based NUMBERED BEAT that proves it; unknown requires evidence_beat 0. "
                     f"Prior validation error: {last_error}"
                 )
             try:
