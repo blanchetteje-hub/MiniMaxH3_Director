@@ -1,0 +1,294 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_medieval_tavern_six",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_medieval_tavern_six.json",
+  "benchmark_sha256": "8a52b90dac4bcc6c0549b4d73c67187e3af092bf93eea5b9cbe6e88916d9f18b",
+  "repository_revision": "2c41627aa48d0ff38a15a1734e0efd12b8787ceb",
+  "created_at_utc": "2026-10-07T01:50:22Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "8",
+    "6",
+    "0.5",
+    "--test-prompt-generation",
+    "--vision-continuity",
+    "0",
+    "--model",
+    "gpt",
+    "--image1",
+    "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+    "--refresh",
+    "999999"
+  ],
+  "exit_code": 1,
+  "capture_status": {
+    "complete": false,
+    "mode": "full_prompt_generation",
+    "expected_segments": 6,
+    "captured_segments": [],
+    "missing_segments": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 6,
+        "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+        "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+        "characters_introduced": [],
+        "location": "As established by the expanded story.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "The floorboards creak beneath her feet as Amy lifts a rough‑spun tunic over her shoulders and an oil‑soaked cloth to wipe the polished tabletop with slow, deliberate strokes of ale scent.",
+            "beat_number": 1,
+            "state_effects": []
+          },
+          {
+            "id": "E2",
+            "event": "A slick green‑skinned goblin leans forward at the counter clutching a chipped mug while Amy reaches for a barrel beside the hearth, draws out a cupful of liquid, and refills the goblin’s vessel.",
+            "beat_number": 2,
+            "state_effects": [],
+            "depends_on": [
+              "E1"
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "The back door opens to reveal an elf with silver hair streaming down her shoulders who takes a seat at the far table; Amy turns toward her, lifts a crystal chalice from the shelf, pours steaming liquid into it, sets the cup gently on wood and nods in thanks.",
+            "beat_number": 3,
+            "state_effects": [],
+            "depends_on": [
+              "E2"
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "From the doorway slides a dragon‑shaped creature onto a high bar stool, its scales glittering like polished obsidian as wings unfurl to reveal amber eyes that scan the room; Amy smiles warmly at the newcomer, lifts another crystal cup from her shelf, pours a special brew into it and hands the cup to the dragon.",
+            "beat_number": 4,
+            "state_effects": [],
+            "depends_on": [
+              "E3"
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "The dragon licks its lips before taking a slow sip, liquid swirling across its tongue as Amy watches while the creature exhales contentedly; she then takes a fresh cloth, wipes the bar with firm strokes smoothing any drips of ale that have fallen onto the wood.",
+            "beat_number": 5,
+            "state_effects": [],
+            "depends_on": [
+              "E4"
+            ]
+          },
+          {
+            "id": "E6",
+            "event": "Amy turns off each lantern at every table and pulls a wooden latch on the back door; stepping outside she closes it, locks the tavern for the night as moonlight rises over the medieval town.",
+            "beat_number": 6,
+            "state_effects": [],
+            "depends_on": [
+              "E5"
+            ]
+          }
+        ],
+        "required_end_state": "End at the expanded story's stated conclusion."
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. The floorboards creak beneath her feet as Amy lifts a rough‑spun tunic over her shoulders and an oil‑soaked cloth to wipe the polished tabletop with slow, deliberate strokes of ale scent.\n2. A slick green‑skinned goblin leans forward at the counter clutching a chipped mug while Amy reaches for a barrel beside the hearth, draws out a cupful of liquid, and refills the goblin’s vessel.\n3. The back door opens to reveal an elf with silver hair streaming down her shoulders who takes a seat at the far table; Amy turns toward her, lifts a crystal chalice from the shelf, pours steaming liquid into it, sets the cup gently on wood and nods in thanks.\n4. From the doorway slides a dragon‑shaped creature onto a high bar stool, its scales glittering like polished obsidian as wings unfurl to reveal amber eyes that scan the room; Amy smiles warmly at the newcomer, lifts another crystal cup from her shelf, pours a special brew into it and hands the cup to the dragon.\n5. The dragon licks its lips before taking a slow sip, liquid swirling across its tongue as Amy watches while the creature exhales contentedly; she then takes a fresh cloth, wipes the bar with firm strokes smoothing any drips of ale that have fallen onto the wood.\n6. Amy turns off each lantern at every table and pulls a wooden latch on the back door; stepping outside she closes it, locks the tavern for the night as moonlight rises over the medieval town.\n",
+  "segments": [
+    {
+      "segment_number": 1,
+      "gold_mode": "initial",
+      "pipeline_mode": "initial",
+      "gold_target": {
+        "beat": 1,
+        "mode": "initial",
+        "length_seconds": 8,
+        "must_happen": [
+          "Amy wipes a polished table with an ale-scented cloth.",
+          "Amy's medieval work clothing is visible.",
+          "Goblin may already be present because it has no entry point."
+        ],
+        "must_not_happen": [
+          "Elf must not already be present.",
+          "Dragon must not already be present.",
+          "No invented dialogue."
+        ],
+        "expected_end_state": [
+          "Amy remains inside the tavern near the wiped table.",
+          "Goblin is the only later-beat Subject eligible to have been present from story start."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 2,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 2,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Goblin is already at the counter with one chipped mug.",
+          "Amy refills that mug from the barrel beside the hearth."
+        ],
+        "must_not_happen": [
+          "Goblin must not newly enter.",
+          "Mug must not change identity.",
+          "Elf and Dragon must not enter early."
+        ],
+        "expected_end_state": [
+          "Goblin remains in the tavern with the same mug.",
+          "Amy has completed the refill."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 3,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 3,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Elf visibly steps into the tavern.",
+          "Elf takes a seat at the back table.",
+          "Amy serves the elf in a crystal chalice."
+        ],
+        "must_not_happen": [
+          "Elf must not have been present from frame zero.",
+          "No modern athletic clothing for the elf.",
+          "No duplicated serving container."
+        ],
+        "expected_end_state": [
+          "Elf is seated at the back table with the served chalice."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 4,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 4,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Dragon visibly enters from the doorway.",
+          "Dragon moves onto the high bar stool.",
+          "Amy serves the dragon a special brew in one crystal cup."
+        ],
+        "must_not_happen": [
+          "Dragon must not have been present from story start.",
+          "Dragon must not teleport to the stool.",
+          "Do not invent clothing when appropriate attire is naturally unclothed."
+        ],
+        "expected_end_state": [
+          "Dragon is established at the high bar stool with its drink."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 5,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 5,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Dragon takes a slow sip and exhales contentedly.",
+          "Amy wipes the bar with a fresh cloth."
+        ],
+        "must_not_happen": [
+          "Drink container must not change identity.",
+          "No extra hands or duplicated glasses.",
+          "No invented dialogue."
+        ],
+        "expected_end_state": [
+          "Dragon remains with the same drink container.",
+          "Amy has wiped the bar."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 6,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 6,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Amy turns off the lanterns.",
+          "Amy operates the back-door latch.",
+          "Amy steps outside and closes/locks the tavern for the night."
+        ],
+        "must_not_happen": [
+          "No teleportation.",
+          "No invented unseen room geometry.",
+          "No reverse-walking patrons caused by continuity drift."
+        ],
+        "expected_end_state": [
+          "Amy is outside after closing and locking the tavern.",
+          "The tavern is shut for the night."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    }
+  ],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "character_canon.json": "generated\\character_canon.json",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}

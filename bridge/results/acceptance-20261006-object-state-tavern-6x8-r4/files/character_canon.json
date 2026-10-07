@@ -1,0 +1,19 @@
+{
+  "version": 3,
+  "source_sha256": "b2bc61d802c8ea350581805629ad5b77f1deee0616629572cbe67db54d225673",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "Amy wears a rough‑spun linen tunic in muted brown that drapes to her knees, its hem frayed from years of use. Over the tunic she dons a leather apron dyed dark tan, scuffed at the shoulders and cuffs by frequent handling of barrels and mugs. She pairs these with sturdy woolen leggings in charcoal gray, tucked into worn leather boots polished to a dull sheen. A simple linen shirt beneath the tunic is visible at her collar, its pale cream color contrasting softly with the brown fabric",
+      "gender": "female",
+      "confident_woman": "true"
+    }
+  ]
+}
