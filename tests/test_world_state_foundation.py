@@ -1279,6 +1279,35 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertEqual(result[0]["initial_holder"], "Subject One")
 
 
+    def test_self_referential_initial_location_is_treated_as_ungrounded(self):
+        state = make_reducer_state()
+        result = minimax.parse_current_segment_persistent_prop_result(
+            {
+                "props": [{
+                    "name": "heavy oak door",
+                    "kind": "fixture",
+                    "mobility": "unknown",
+                    "initial_location": "heavy oak door",
+                    "initial_holder": None,
+                    "support_name": None,
+                    "contents": [],
+                    "capabilities": {
+                        "container": "unknown",
+                        "consumable": "unknown",
+                        "openable": True,
+                        "lockable": "unknown",
+                    },
+                    "reason": "used in this segment",
+                    "evidence": "heavy oak door",
+                }]
+            },
+            "Amy opens the heavy oak door.",
+            "Amy opens the heavy oak door.",
+            state,
+        )
+        self.assertEqual(result, [])
+
+
     def test_support_name_used_as_initial_location_is_normalized(self):
         state = make_reducer_state()
         result = minimax.parse_current_segment_persistent_prop_result(
