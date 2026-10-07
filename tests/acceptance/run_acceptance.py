@@ -30,6 +30,7 @@ DEFAULT_BENCHMARK = Path(__file__).with_name("gold") / "amy_zombie_house.json"
 RESULTS_ROOT = Path(__file__).with_name("results")
 
 GENERATED_FILES = (
+    "expanded_story.txt",
     "story_arc.json",
     "story_arc.json.sha256",
     "beats.txt",
