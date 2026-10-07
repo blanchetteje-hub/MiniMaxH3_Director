@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "2ed99a2467604567d84b28662aeaa8890ae07482cf5b01e7f9584a0ba42b0852",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence",
+    "occupation",
+    "facial_details"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "34",
+      "clothing": "A 34‑year‑old confident woman named Amy wears a worn brown leather apron tied at the waist over a plain linen tunic in a muted olive hue. The tunic reaches her knees and has long sleeves, buttoned at the front with simple brass buttons. Beneath the tunic she sports sturdy dark leather boots that reach mid‑calf, scuffed from years of service. Over her head is a woolen cap in deep burgundy, slightly frayed at the edges. The apron’s pockets hold a wooden ladle and a small cloth for wiping the bar counter",
+      "gender": "woman",
+      "confidence": "confident woman",
+      "occupation": "medieval barkeep taking care of a tavern for magical humanoid creatures",
+      "facial_details": "defined in Picture 1: facial identity, structure, hair, body proportions, and distinguishing features"
+    }
+  ]
+}
