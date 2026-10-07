@@ -4283,8 +4283,16 @@ def build_current_segment_persistent_prop_messages(
         if item["kind"] in {"support", "fixture_support"}
     ]
     fixtures = [
-        {"id": prop_id, "name": item["name"],
-         "location_id": item["placement"].get("location_id")}
+        {
+            "id": prop_id,
+            "name": item["name"],
+            "source_type": (
+                item.get("provenance", {})
+                .get("registration", {})
+                .get("source_type", "unknown")
+            ),
+            "location_id": item["placement"].get("location_id"),
+        }
         for prop_id, item in sorted(world_state["props"].items())
         if item["kind"] == "fixture"
     ]
@@ -4299,7 +4307,10 @@ def build_current_segment_persistent_prop_messages(
                 "Do not harvest nouns, register ordinary staging objects, or "
                 "predict future props, beats, holders, or actions. Do not return "
                 "Subjects, fixtures already registered in the canonical location "
-                "vocabulary, garments, or background objects. Each new prop must be "
+                "vocabulary, descriptive aliases of those fixtures, garments, or "
+                "background objects. Adjectives/material descriptions do not make a "
+                "registered fixture into a new prop; match by object identity and type, "
+                "not exact wording. Each new prop must be "
                 "directly involved in a transfer, placement, pour/fill/consume, or "
                 "mechanism action in CURRENT BEAT or ASSIGNED SOURCE. Return exactly "
                 "one explicit initial_location or initial_holder, using only the "
@@ -4433,9 +4444,11 @@ def extract_current_segment_persistent_props(
         attempt_messages = copy.deepcopy(messages)
         if attempt > 1:
             attempt_messages[-1]["content"] += (
-                "\n\nFIX: Return only new props needed for a persistent state-changing "
-                "action in this Segment, with exact source evidence and exactly one "
-                "registered initial location or holder. Do not predict future props. "
+                "\n\nFIX: Return only genuinely new props needed for a persistent "
+                "state-changing action in this Segment, with exact source evidence and "
+                "exactly one registered initial location or holder. Do not return a "
+                "descriptive alias of any registered fixture/support; reuse of an existing "
+                "scene object means omit it from this NEW-PROP response. Do not predict future props. "
                 f"Prior validation error: {last_error}"
             )
         try:
