@@ -4673,7 +4673,7 @@ def _recover_explicit_holder_for_unplaced_props(
 
     sentences = [
         item.strip()
-        for item in re.split(r"(?<=[.!?])\\s+|\\n+", source_text)
+        for item in re.split(r"(?<=[.!?])\s+|\n+", source_text)
         if item.strip()
     ]
     subject_names = [
@@ -4682,10 +4682,10 @@ def _recover_explicit_holder_for_unplaced_props(
     ]
     subject_names = [name for name in subject_names if name]
     manipulation_pattern = re.compile(
-        r"\\b(?:hold|holds|holding|carry|carries|carrying|grip|grips|gripping|"
+        r"\b(?:hold|holds|holding|carry|carries|carrying|grip|grips|gripping|"
         r"clutch|clutches|clutching|wield|wields|wielding|use|uses|using|"
         r"wipe|wipes|wiping|dry|dries|drying|lift|lifts|lifting|take|takes|taking|"
-        r"pick|picks|picking|grab|grabs|grabbing)\\b",
+        r"pick|picks|picking|grab|grabs|grabbing)\b",
         re.IGNORECASE,
     )
 
@@ -4722,7 +4722,7 @@ def _recover_explicit_holder_for_unplaced_props(
         matching_subjects = []
         for subject_name in subject_names:
             pattern = re.compile(
-                r"(?<!\\w)" + re.escape(subject_name) + r"(?!\\w)",
+                r"(?<!\w)" + re.escape(subject_name) + r"(?!\w)",
                 re.IGNORECASE,
             )
             if pattern.search(relevant_text):
