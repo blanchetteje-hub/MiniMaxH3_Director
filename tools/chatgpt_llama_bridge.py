@@ -330,13 +330,17 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
     }
 
 
-def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
-    """Copy the newest acceptance report/log into the mailbox result."""
+def copy_acceptance_artifacts(
+    exec_root: Path,
+    result_dir: Path,
+    benchmark_stem: str = "amy_zombie_house",
+) -> dict:
+    """Copy the newest acceptance report/log for the requested benchmark."""
 
     results_root = exec_root / "tests" / "acceptance" / "results"
     candidates = sorted(
         (
-            path for path in results_root.glob("amy_zombie_house-*")
+            path for path in results_root.glob(f"{benchmark_stem}-*")
             if path.is_dir()
             and (
                 (path / "acceptance_run.json").is_file()
@@ -347,7 +351,10 @@ def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
         reverse=True,
     )
     if not candidates:
-        raise RuntimeError("Acceptance runner produced no result directory or run.log.")
+        raise RuntimeError(
+            f"Acceptance runner produced no result directory or run.log for "
+            f"{benchmark_stem!r}."
+        )
     latest = candidates[0]
     artifacts_dir = result_dir / "files"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -724,6 +731,24 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     if not image1.is_file():
         raise FileNotFoundError(f"Acceptance image not found: {image1}")
 
+    benchmark_raw = str(job.get("benchmark") or "").strip()
+    benchmark_stem = "amy_zombie_house"
+    benchmark = None
+    if benchmark_raw:
+        benchmark = safe_source_path(exec_root, benchmark_raw)
+        gold_root = (exec_root / "tests" / "acceptance" / "gold").resolve()
+        try:
+            benchmark.relative_to(gold_root)
+        except ValueError as error:
+            raise ValueError(
+                "Acceptance benchmark must be under tests/acceptance/gold/."
+            ) from error
+        if not benchmark.is_file() or benchmark.suffix.lower() != ".json":
+            raise FileNotFoundError(
+                f"Acceptance benchmark not found or not JSON: {benchmark}"
+            )
+        benchmark_stem = benchmark.stem
+
     command = [
         python,
         "tests/acceptance/run_acceptance.py",
@@ -732,6 +757,8 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
         "--model",
         model,
     ]
+    if benchmark is not None:
+        command.extend(["--benchmark", str(benchmark)])
     if bool(job.get("planning_only")):
         command.append("--planning-only")
 
@@ -748,7 +775,11 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
             result_dir,
         )
 
-    artifacts = copy_acceptance_artifacts(exec_root, result_dir)
+    artifacts = copy_acceptance_artifacts(
+        exec_root,
+        result_dir,
+        benchmark_stem=benchmark_stem,
+    )
     artifacts.update(developer_artifacts)
     process["artifacts"] = artifacts
     return process
