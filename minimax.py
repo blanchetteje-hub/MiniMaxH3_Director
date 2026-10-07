@@ -4459,6 +4459,36 @@ def _candidate_aliases_canonical_static_prop(entry, world_state):
     return tuple(matches)
 
 
+def _registered_support_record_for_alias(value, support_records):
+    """Resolve a small-model support alias only when one registered support is unambiguous."""
+    alias_tokens = _normalized_prop_name_tokens(value)
+    if not alias_tokens:
+        return None
+    exact_key = " ".join(str(value or "").split()).casefold()
+    exact = support_records.get(exact_key)
+    if exact is not None:
+        return exact
+
+    matches = []
+    alias_set = set(alias_tokens)
+    for record in support_records.values():
+        support_tokens = _normalized_prop_name_tokens(record.get("name"))
+        if not support_tokens:
+            continue
+        support_set = set(support_tokens)
+        if support_set.issubset(alias_set):
+            matches.append(record)
+            continue
+        if len(alias_tokens) == 1 and alias_tokens[-1] == support_tokens[-1]:
+            matches.append(record)
+    unique = {record.get("id"): record for record in matches if record.get("id")}
+    if len(unique) > 1:
+        raise ValueError(
+            f"Support alias {value!r} ambiguously matches multiple registered supports."
+        )
+    return next(iter(unique.values()), None)
+
+
 def _canonical_registered_holder_name(value, world_state):
     """Resolve only an exact registered Subject name or stable Subject ID."""
     holder_key = " ".join(str(value or "").split()).casefold()
@@ -4538,7 +4568,9 @@ def parse_current_segment_persistent_prop_result(
         if entry["initial_location"] is not None:
             location_key = str(entry["initial_location"]).casefold()
             if location_key not in locations:
-                support_record = support_records.get(location_key)
+                support_record = _registered_support_record_for_alias(
+                    entry["initial_location"], support_records
+                )
                 if support_record is None:
                     raise ValueError(f"Persistent prop {name!r} names an unregistered location.")
                 support_location_id = support_record["placement"].get("location_id")
@@ -4561,8 +4593,13 @@ def parse_current_segment_persistent_prop_result(
             if canonical_holder is None:
                 raise ValueError(f"Persistent prop {name!r} names an unregistered holder.")
             entry["initial_holder"] = canonical_holder
-        if entry["support_name"] is not None and str(entry["support_name"]).casefold() not in supports:
-            raise ValueError(f"Persistent prop {name!r} names an unregistered support.")
+        if entry["support_name"] is not None:
+            support_record = _registered_support_record_for_alias(
+                entry["support_name"], support_records
+            )
+            if support_record is None:
+                raise ValueError(f"Persistent prop {name!r} names an unregistered support.")
+            entry["support_name"] = support_record["name"]
         if not isinstance(entry["contents"], list) or not isinstance(entry["capabilities"], dict):
             raise ValueError(f"Persistent prop {name!r} has invalid contents/capabilities.")
         reason = " ".join(str(entry["reason"] or "").split()).strip()
