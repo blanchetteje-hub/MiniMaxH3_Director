@@ -1394,6 +1394,23 @@ class CurrentSegmentPropVocabularyTests(unittest.TestCase):
         self.assertEqual(result[0]["support_name"], "Support A")
 
 
+class CurrentSegmentSubjectEvidenceTests(unittest.TestCase):
+    def test_balanced_outer_quotes_are_removed_from_exact_subject_evidence(self):
+        result = minimax.parse_current_segment_subject_result(
+            {"subjects": [{
+                "name": "Elf_1",
+                "physical_form": "humanoid",
+                "gender": "unknown",
+                "source_description": "elf perched on a stool",
+                "evidence": '"the elf perched on a stool"',
+            }]},
+            "Amy serves the elf perched on a stool.",
+            "",
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "Elf_1")
+
+
 class RegisteredSubjectStoryStartEvidenceTests(unittest.TestCase):
     def test_authored_subject_in_beat_one_is_seeded_present_without_llm(self):
         state = new_world_state({
