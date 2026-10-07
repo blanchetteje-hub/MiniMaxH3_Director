@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "1c45b30d26e44a5c9e3ce2b444f12fe3ecc963cceab6593532ae98f3976a359e",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "Amy wears a simple linen apron over her work clothes. The apron is made of light blue linen with a slightly worn texture from frequent use; it has two large pockets at the front and hangs to mid-thigh. Underneath she sports a plain white cotton blouse, buttoned to the collar, with a modest ruffle on the cuffs that shows faint signs of wear. Her trousers are sturdy dark brown wool, cut straight and reaching her ankles, showing small scuffs from carrying mugs. She wears worn leather boots dyed in a deep tan, laced at the top, with soles slightly cracked but still functional for standing behind the bar",
+      "gender": "female"
+    }
+  ]
+}
