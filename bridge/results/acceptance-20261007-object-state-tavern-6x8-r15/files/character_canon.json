@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "9d671255138376037ff7beef9fb5149493acc5e5064666fbbca822d5c0a9c37c",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence",
+    "role",
+    "picture_identity"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "Amy wears a loose, knee‑length linen tunic in muted sage green with a simple white collar that falls to her waist. Over the tunic she dons a thick woolen apron dyed deep burgundy, fastened at the neck by a leather strap and tied around her hips with a wide brown belt. Her lower body is covered by sturdy leather breeches tucked into worn, calf‑high leather boots polished to a dark sheen. She wears fingerless leather gloves on both hands for polishing the oak counter. No hat or additional headwear is present",
+      "gender": "female",
+      "confidence": "confident",
+      "role": "medieval barkeep taking care of a tavern for magical humanoid creatures",
+      "picture_identity": "Defined by Picture 1 – facial identity, structure, hair, body proportions and distinguishing features"
+    }
+  ]
+}
