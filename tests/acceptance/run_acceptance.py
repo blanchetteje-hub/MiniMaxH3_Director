@@ -267,6 +267,8 @@ def build_command(
         model,
         "--image1",
         str(image1),
+        "--temp",
+        "0.4",
     ]
     # Disable the legacy numeric fallback for acceptance. Source-span chapter
     # starts must produce refreshes on their own.
