@@ -1,0 +1,405 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_medieval_tavern_six",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_medieval_tavern_six.json",
+  "benchmark_sha256": "32005716893a2c76f7b3c9eda3a6991cd2ba1a1615d4f1c166f596e39307851a",
+  "repository_revision": "2bbb1de466ef186396e92fda73dbbb398939b0e5",
+  "created_at_utc": "2026-10-07T21:08:24Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "8",
+    "6",
+    "0.5",
+    "--test-prompt-generation",
+    "--vision-continuity",
+    "0",
+    "--model",
+    "gpt",
+    "--image1",
+    "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+    "--temp",
+    "0.4",
+    "--refresh",
+    "999999"
+  ],
+  "exit_code": 1,
+  "capture_status": {
+    "complete": false,
+    "mode": "full_prompt_generation",
+    "expected_segments": 6,
+    "captured_segments": [
+      1
+    ],
+    "missing_segments": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 6,
+        "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+        "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+        "characters_introduced": [],
+        "location": "As established by the expanded story.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "Amy pushes open the heavy oak door at dawn, hinges creaking as she steps inside.",
+            "beat_number": 1,
+            "state_effects": []
+          },
+          {
+            "id": "E2",
+            "event": "A group of goblin‑like humanoids with shimmering green scales walk through the doorway, sit on benches by the hearth, and murmur in a low guttural language that only other magical creatures understand.",
+            "beat_number": 2,
+            "state_effects": [],
+            "depends_on": [
+              "E1"
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "Amy walks from the back storage room to the front counter carrying a wooden crate of ale barrels.",
+            "beat_number": 3,
+            "state_effects": [],
+            "depends_on": [
+              "E2"
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "She lifts one barrel onto her shoulder, places it on the bar, cracks its lid with a firm thump, pours golden liquid into a mug held by a goblin, and the goblin clinks his mug against another's as he takes a sip.",
+            "beat_number": 4,
+            "state_effects": [],
+            "depends_on": [
+              "E3"
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "Amy sets each filled mug in front of a goblin, wipes her hands across the polished wooden counter with a clean cloth, then a small dragon perched on a high shelf bumps its tail against the sign that reads “Welcome,” knocking it off the wall and sending it clatter to the floor.",
+            "beat_number": 5,
+            "state_effects": [],
+            "depends_on": [
+              "E4"
+            ]
+          },
+          {
+            "id": "E6",
+            "event": "Amy steps forward from the bar, grabs a broom, sweeps the fallen sign onto a nearby tray, places the tray beside her crate of barrels, wipes down the counter once more with the cloth, then steps back into the doorway as the goblins finish their drinks.",
+            "beat_number": 6,
+            "state_effects": [],
+            "depends_on": [
+              "E5"
+            ]
+          }
+        ],
+        "required_end_state": "End at the expanded story's stated conclusion."
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. Amy pushes open the heavy oak door at dawn, hinges creaking as she steps inside.\n2. A group of goblin‑like humanoids with shimmering green scales walk through the doorway, sit on benches by the hearth, and murmur in a low guttural language that only other magical creatures understand.\n3. Amy walks from the back storage room to the front counter carrying a wooden crate of ale barrels.\n4. She lifts one barrel onto her shoulder, places it on the bar, cracks its lid with a firm thump, pours golden liquid into a mug held by a goblin, and the goblin clinks his mug against another's as he takes a sip.\n5. Amy sets each filled mug in front of a goblin, wipes her hands across the polished wooden counter with a clean cloth, then a small dragon perched on a high shelf bumps its tail against the sign that reads “Welcome,” knocking it off the wall and sending it clatter to the floor.\n6. Amy steps forward from the bar, grabs a broom, sweeps the fallen sign onto a nearby tray, places the tray beside her crate of barrels, wipes down the counter once more with the cloth, then steps back into the doorway as the goblins finish their drinks.\n",
+  "segments": [
+    {
+      "segment_number": 1,
+      "gold_mode": "initial",
+      "pipeline_mode": "initial",
+      "gold_target": {
+        "beat": 1,
+        "mode": "initial",
+        "length_seconds": 8,
+        "must_happen": [
+          "Amy wipes a polished table with an ale-scented cloth.",
+          "Amy's medieval work clothing is visible.",
+          "Goblin may already be present because it has no entry point."
+        ],
+        "must_not_happen": [
+          "Elf must not already be present.",
+          "Dragon must not already be present.",
+          "No invented dialogue."
+        ],
+        "expected_end_state": [
+          "Amy remains inside the tavern near the wiped table.",
+          "Goblin is the only later-beat Subject eligible to have been present from story start."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 2> is SmallDragon1 (S2), present at story start. SmallDragon1 is a small dragon. Last known state: SmallDragon1 was perched on a high shelf. SmallDragon1 is referenced in <Picture 2> for identity and current appearance.\n<Picture 2> defines SmallDragon1's identity, physical appearance, species/distinguishing traits, and current clothing.\nAmy is a 32-year-old female wearing a brown linen tunic reaching mid-thigh, belted at the waist; worn under a sturdy leather apron with multiple pockets for tools and mugs; brown leather knee‑high boots laced up to the calf; simple woolen cap tucked into her hair when she works behind the bar.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The tavern occupies a rectangular space 30 ft wide (east–west) by 40 ft long (north–south). The north wall is the main entrance. A heavy oak door, 8 ft tall and 4 ft wide, sits centered on this wall; its hinges are visible along both sides and it has a small wooden threshold extending one foot into the interior. East of the doorway, a polished wooden counter runs east–west along the northern half of the tavern. The counter is 12 ft long and 3 ft wide, positioned two feet south of the north wall so that its front edge aligns with the door’s threshold. Directly south of the counter lies a stone hearth centered on the east–west axis; it measures 10 ft by 6 ft and rises four feet high. Four benches surround the hearth: one each along the north, south, east, and west sides of the hearth, each bench being three feet long. The benches are spaced evenly so that a clear path remains to the door from any side of the hearth. Above the counter’s back edge is a narrow shelf 12 ft long by 1 ft wide, positioned five feet high. A small dragon perches on this shelf with its wings slightly spread against the wall. On the west wall at eye level, centered between the north and south walls, hangs a wall‑mounted sign reading “Welcome.” The sign is six feet wide and four feet tall. All objects are arranged so that none overlap; the counter’s width allows passage beside it, benches around the hearth leave clear paths to the door, and the shelf is high enough for easy access from the counter area. The entrance remains fully accessible with its threshold providing a smooth transition into the tavern). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, The scene starts in a medieval tavern. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, The shot begins from the established opening state.\n\nAt 00:01.000, the frame is a wide view of the north entrance from just west of the heavy oak door; the wooden threshold extends one foot into the tavern and SmallDragon1 perches on the high shelf above the counter in the background.\n\nAt 00:02.500, Amy (subject_1) stands on the threshold, pushing open the oak door with Amy's left hand; hinges creak as the door swings a few inches toward the interior. The camera pans right to follow her motion and keeps SmallDragon1 visible above the counter.\n\nAt 00:04.000, Amy steps inside onto the wooden floor of the tavern, Amy's boots striking the threshold. She is now centered in front of the polished wooden counter; the door remains open a few inches. The camera pulls slightly inward to keep Amy and the counter in frame while SmallDragon1 stays perched on the shelf.\n\nAt 00:06.500, the camera continues to pull in, revealing the full interior of the tavern with its benches around the hearth and the sign “Welcome” hanging above the counter; Amy stands near the front of the bar, looking toward the entrance, while SmallDragon1 remains perched on the high shelf.\n\noverall_soundscape: hinges creak as the oak door opens; Amy's boots striking the wooden threshold\n\nnon_diegetic_music: Soft acoustic guitar arpeggios and subtle flute accents create an intimate, welcoming tavern mood.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, The shot begins from the established opening state. At 00:01.000, the frame is a wide view of the north entrance from just west of the heavy oak door; the wooden threshold extends one foot into the tavern and SmallDragon1 perches on the high shelf above the counter in the background. At 00:02.500, Amy (subject_1) stands on the threshold, pushing open the oak door with Amy's left hand; hinges creak as the door swings a few inches toward the interior. The camera pans right to follow her motion and keeps SmallDragon1 visible above the counter. At 00:04.000, Amy steps inside onto the wooden floor of the tavern, Amy's boots striking the threshold. She is now centered in front of the polished wooden counter; the door remains open a few inches. The camera pulls slightly inward to keep Amy and the counter in frame while SmallDragon1 stays perched on the shelf. At 00:06.500, the camera continues to pull in, revealing the full interior of the tavern with its benches around the hearth and the sign “Welcome” hanging above the counter; Amy stands near the front of the bar, looking toward the entrance, while SmallDragon1 remains perched on the high shelf.",
+        "overall_soundscape": "hinges creak as the oak door opens; Amy's boots striking the wooden threshold",
+        "non_diegetic_music": "Soft acoustic guitar arpeggios and subtle flute accents create an intimate, welcoming tavern mood.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy is standing at the front of the tavern beside the polished wooden counter, and SmallDragon1 remains perched on the high shelf above the counter."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "Tavern",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "canonical_description": "",
+            "position": "front of the tavern beside the polished wooden counter",
+            "pose_action": "standing",
+            "wardrobe": {
+              "upper": "brown linen tunic",
+              "lower": "mid-thigh length",
+              "footwear": "brown leather knee‑high boots",
+              "other": "sturdy leather apron with pockets, woolen cap"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "beside counter"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "SmallDragon1": {
+            "name": "SmallDragon1",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "N/A",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": 0,
+            "persistent_structural_change": false,
+            "canonical_description": "SmallDragon1 is a small dragon.",
+            "position": "perched on the high shelf above the counter",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "above counter"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "SmallDragon1",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "unknown",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": 0
+        }
+      },
+      "completed_beat_ids": [
+        1
+      ]
+    },
+    {
+      "segment_number": 2,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 2,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Goblin is already at the counter with one chipped mug.",
+          "Amy refills that mug from the barrel beside the hearth."
+        ],
+        "must_not_happen": [
+          "Goblin must not newly enter.",
+          "Mug must not change identity.",
+          "Elf and Dragon must not enter early."
+        ],
+        "expected_end_state": [
+          "Goblin remains in the tavern with the same mug.",
+          "Amy has completed the refill."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 3,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 3,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Elf visibly steps into the tavern.",
+          "Elf takes a seat at the back table.",
+          "Amy serves the elf in a crystal chalice."
+        ],
+        "must_not_happen": [
+          "Elf must not have been present from frame zero.",
+          "No modern athletic clothing for the elf.",
+          "No duplicated serving container."
+        ],
+        "expected_end_state": [
+          "Elf is seated at the back table with the served chalice."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 4,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 4,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Dragon visibly enters from the doorway.",
+          "Dragon moves onto the high bar stool.",
+          "Amy serves the dragon a special brew in one crystal cup."
+        ],
+        "must_not_happen": [
+          "Dragon must not have been present from story start.",
+          "Dragon must not teleport to the stool.",
+          "Do not invent clothing when appropriate attire is naturally unclothed."
+        ],
+        "expected_end_state": [
+          "Dragon is established at the high bar stool with its drink."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 5,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 5,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Dragon takes a slow sip and exhales contentedly.",
+          "Amy wipes the bar with a fresh cloth."
+        ],
+        "must_not_happen": [
+          "Drink container must not change identity.",
+          "No extra hands or duplicated glasses.",
+          "No invented dialogue."
+        ],
+        "expected_end_state": [
+          "Dragon remains with the same drink container.",
+          "Amy has wiped the bar."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 6,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 6,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Amy turns off the lanterns.",
+          "Amy operates the back-door latch.",
+          "Amy steps outside and closes/locks the tavern for the night."
+        ],
+        "must_not_happen": [
+          "No teleportation.",
+          "No invented unseen room geometry.",
+          "No reverse-walking patrons caused by continuity drift."
+        ],
+        "expected_end_state": [
+          "Amy is outside after closing and locking the tavern.",
+          "The tavern is shut for the night."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    }
+  ],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "character_canon.json": "generated\\character_canon.json",
+    "generation_state.json": "generated\\generation_state.json",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "8db1ed5c6d5987a43a55341b7aa3d02162fe42bc16f40b7a2e7de5db4fc964a0",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "role",
+    "description",
+    "tavern_care"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "brown linen tunic reaching mid-thigh, belted at the waist; worn under a sturdy leather apron with multiple pockets for tools and mugs; brown leather knee‑high boots laced up to the calf; simple woolen cap tucked into her hair when she works behind the bar",
+      "gender": "Female",
+      "role": "medieval barkeep",
+      "description": "confident woman",
+      "tavern_care": "takes care of a tavern for magical humanoid creatures"
+    }
+  ]
+}
