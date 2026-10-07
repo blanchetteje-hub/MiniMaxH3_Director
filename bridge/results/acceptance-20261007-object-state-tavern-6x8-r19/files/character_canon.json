@@ -1,0 +1,25 @@
+{
+  "version": 3,
+  "source_sha256": "8b73c21b6b9782da23b88cd03206e373b2c689e3730ae9b672946d052b3c1e80",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "occupation",
+    "role",
+    "personality",
+    "appearance_reference"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "Amy wears a sturdy linen tunic in deep burgundy that reaches her knees, belted at the waist with a worn leather strap. Over this she dons a brown woolen cloak fastened by a brass brooch shaped like a clover. Her lower half is covered by dark green canvas breeches tucked into knee‑high leather boots polished to a shine. Around her neck hangs a simple silver chain bearing a small wooden charm of an ale mug. On her head sits a wide brimmed straw hat, its brim slightly worn from frequent use, with a faded red ribbon tied at the back. She carries a thick linen apron in charcoal gray, tied snugly around her waist and draped over her shoulders to protect her tunic while she works",
+      "gender": "female",
+      "occupation": "medieval barkeep",
+      "role": "takes care of a tavern for magical humanoid creatures",
+      "personality": "confident woman",
+      "appearance_reference": "Picture 1 defines Amy's facial identity, structure, hair, body proportions, and distinguishing features"
+    }
+  ]
+}

@@ -1,0 +1,235 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).
+LLM request finished: character_canon (21.7s, finish_reason=stop).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\beats.txt); regenerating the beat plan.
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\beats.txt with 6 creative story beats.
+LLM request started: story_expansion (attempt 1/10, ~406 input tokens, max 12000 output tokens).
+LLM request finished: story_expansion (36.4s, finish_reason=stop).
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\expanded_story.txt.
+Expanded story:
+Amy steps onto the wooden floor of her medieval tavern, apron tied snugly around her waist, hat perched on her head. She greets the first patron with a nod and wipes the counter with a cloth.
+
+She opens the heavy oak door, letting in a group of magical humanoid creatures—a tall elf, a stout dwarf, and a mischievous goblin—who shuffle into the tavern’s dim glow. Amy smiles, sets their mugs on the bar, and pours frothy ale from a brass jug into each cup.
+
+The patrons clink glasses; laughter echoes off stone walls as they sip their drinks in the lively tavern she keeps running for them.
+LLM request started: story_to_beats (attempt 1/10, ~659 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats (22.8s, finish_reason=stop).
+Story-derived Beat framework created with 6 beats.
+Beat 1 created: Amy steps onto the wooden floor of her medieval tavern, apron tied snugly around her waist, hat perched on her head.
+Beat 2 created: She greets the first patron with a nod and wipes the counter with a cloth.
+Beat 3 created: The heavy oak door opens as a tall elf, a stout dwarf, and a mischievous goblin shuffle into the dim glow of the tavern.
+Beat 4 created: Amy smiles at them, sets their mugs on the bar, and pours frothy ale from a brass jug into each cup.
+Beat 5 created: The patrons clink glasses; laughter echoes off stone walls as they sip their drinks in the lively tavern she keeps running for them.
+Beat 6 created: Amy continues to run the bustling tavern, ensuring every magical creature feels welcome and satisfied.
+Beat 1 jobs: current=E1 - Amy steps onto the wooden floor of her medieval tavern, apron tied snugly around her waist, hat perched on her head.; next=E2 - She greets the first patron with a nod and wipes the counter with a cloth.; completed before=none; pending before=E1, E2, E3, E4, E5, E6
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1180 input tokens, max 6884 output tokens).
+LLM request finished: beat_validation (3.2s, finish_reason=stop).
+Beat 1 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~332 input tokens, max 7732 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.7s, finish_reason=stop).
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~560 input tokens, max 7504 output tokens).
+LLM request finished: beat_coherence_validation (1.8s, finish_reason=stop).
+Beat 1 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1028 input tokens, max 7036 output tokens).
+LLM request finished: accepted_beat_state_extract (8.6s, finish_reason=stop).
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "medieval tavern", "clothing": {"upper": {"item": "apron tied snugly around waist"}}, "equipped_objects": ["hat perched on her head"]}}}
+Beat 1 accepted: Amy steps onto the wooden floor of her medieval tavern, apron tied snugly around her waist, hat perched on her head.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - She greets the first patron with a nod and wipes the counter with a cloth.; next=E3 - The heavy oak door opens as a tall elf, a stout dwarf, and a mischievous goblin shuffle into the dim glow of the tavern.; completed before=E1; pending before=E2, E3, E4, E5, E6
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1227 input tokens, max 6837 output tokens).
+LLM request finished: beat_validation (3.2s, finish_reason=stop).
+Beat 2 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~308 input tokens, max 7756 output tokens).
+LLM request finished: beat_finite_endpoint_extract (2.1s, finish_reason=stop).
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~607 input tokens, max 7457 output tokens).
+LLM request finished: beat_coherence_validation (2.1s, finish_reason=stop).
+Beat 2 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1083 input tokens, max 6981 output tokens).
+LLM request finished: accepted_beat_state_extract (7.5s, finish_reason=stop).
+Beat 2 observed persistent state: {"characters": {"Amy": {"held_objects": ["cloth"]}}, "environment": {"persistent_effects": ["counter_wiped"]}}
+Beat 2 accepted: She greets the first patron with a nod and wipes the counter with a cloth.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - The heavy oak door opens as a tall elf, a stout dwarf, and a mischievous goblin shuffle into the dim glow of the tavern.; next=E4 - Amy smiles at them, sets their mugs on the bar, and pours frothy ale from a brass jug into each cup.; completed before=E1, E2; pending before=E3, E4, E5, E6
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1259 input tokens, max 6805 output tokens).
+LLM request finished: beat_validation (3.4s, finish_reason=stop).
+Beat 3 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~334 input tokens, max 7730 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.7s, finish_reason=stop).
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~644 input tokens, max 7420 output tokens).
+LLM request finished: beat_coherence_validation (2.4s, finish_reason=stop).
+Beat 3 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1129 input tokens, max 6935 output tokens).
+LLM request finished: accepted_beat_state_extract (19.2s, finish_reason=stop).
+Beat 3 observed persistent state: {"characters": {"Elf": {"current_injuries": "none", "prior_injuries": "none", "injury_history": "no injury event has been established at any earlier beat", "location": "medieval tavern", "containment": "N/A", "contained_in": null, "accessible": true, "clothing": {"upper": {"item": "N/A", "damage": "none"}, "lower": {"item": "N/A", "damage": "none"}}, "held_objects": [], "equipped_objects": ["N/A"], "stored_objects": [], "weapon_state": "N/A", "injuries": [], "body_condition": "N/A", "status": "alive/conscious unless stated otherwise", "relationships": []}, "Dwarf": {"current_injuries": "none", "prior_injuries": "none", "injury_history": "no injury event has been established at any earlier beat", "location": "medieval tavern", "containment": "N/A", "contained_in": null, "accessible": true, "clothing": {"upper": {"item": "N/A", "damage": "none"}, "lower": {"item": "N/A", "damage": "none"}}, "held_objects": [], "equipped_objects": ["N/A"], "stored_objects": [], "weapon_state": "N/A", "injuries": [], "body_condition": "N/A", "status": "alive/conscious unless stated otherwise", "relationships": []}, "Goblin": {"current_injuries": "none", "prior_injuries": "none", "injury_history": "no injury event has been established at any earlier beat", "location": "medieval tavern", "containment": "N/A", "contained_in": null, "accessible": true, "clothing": {"upper": {"item": "N/A", "damage": "none"}, "lower": {"item": "N/A", "damage": "none"}}, "held_objects": [], "equipped_objects": ["N/A"], "stored_objects": [], "weapon_state": "N/A", "injuries": [], "body_condition": "N/A", "status": "alive/conscious unless stated otherwise", "relationships": []}}}
+Beat 3 accepted: The heavy oak door opens as a tall elf, a stout dwarf, and a mischievous goblin shuffle into the dim glow of the tavern.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - Amy smiles at them, sets their mugs on the bar, and pours frothy ale from a brass jug into each cup.; next=E5 - The patrons clink glasses; laughter echoes off stone walls as they sip their drinks in the lively tavern she keeps running for them.; completed before=E1, E2, E3; pending before=E4, E5, E6
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1488 input tokens, max 6576 output tokens).
+LLM request finished: beat_validation (4.8s, finish_reason=stop).
+Beat 4 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~323 input tokens, max 7741 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.5s, finish_reason=stop).
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~879 input tokens, max 7185 output tokens).
+LLM request finished: beat_coherence_validation (4.3s, finish_reason=stop).
+Beat 4 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~2351 input tokens, max 5713 output tokens).
+LLM request finished: accepted_beat_state_extract (11.4s, finish_reason=stop).
+Beat 4 observed persistent state: {"environment": {"objects": {"mug1": {"location": "bar", "content": "frothy ale"}, "mug2": {"location": "bar", "content": "frothy ale"}}}}
+Beat 4 accepted: Amy smiles at them, sets their mugs on the bar, and pours frothy ale from a brass jug into each cup.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - The patrons clink glasses; laughter echoes off stone walls as they sip their drinks in the lively tavern she keeps running for them.; next=E6 - Amy continues to run the bustling tavern, ensuring every magical creature feels welcome and satisfied.; completed before=E1, E2, E3, E4; pending before=E5, E6
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1523 input tokens, max 6541 output tokens).
+LLM request finished: beat_validation (7.3s, finish_reason=stop).
+Beat 5 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~341 input tokens, max 7723 output tokens).
+LLM request finished: beat_finite_endpoint_extract (1.5s, finish_reason=stop).
+Checking Beat 5 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~923 input tokens, max 7141 output tokens).
+LLM request finished: beat_coherence_validation (2.0s, finish_reason=stop).
+Beat 5 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~2439 input tokens, max 5625 output tokens).
+LLM request finished: accepted_beat_state_extract (9.3s, finish_reason=stop).
+Beat 5 observed persistent state: {"environment": {"persistent_effects": ["counter_wiped", "tavern_lively"]}}
+Beat 5 accepted: The patrons clink glasses; laughter echoes off stone walls as they sip their drinks in the lively tavern she keeps running for them.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - Amy continues to run the bustling tavern, ensuring every magical creature feels welcome and satisfied.; next=none; completed before=E1, E2, E3, E4, E5; pending before=E6
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+LLM request started: beat_validation (attempt 1/10, ~1499 input tokens, max 6565 output tokens).
+LLM request finished: beat_validation (4.2s, finish_reason=stop).
+Beat 6 validation attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~324 input tokens, max 7740 output tokens).
+LLM request finished: beat_finite_endpoint_extract (2.0s, finish_reason=stop).
+Checking Beat 6 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~920 input tokens, max 7144 output tokens).
+LLM request finished: beat_coherence_validation (1.9s, finish_reason=stop).
+Beat 6 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~2440 input tokens, max 5624 output tokens).
+LLM request finished: accepted_beat_state_extract (7.3s, finish_reason=stop).
+Beat 6 accepted: Amy continues to run the bustling tavern, ensuring every magical creature feels welcome and satisfied.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~612 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (6.1s, finish_reason=stop).
+Canonical appropriate attire for Amy: Amy wears a sturdy linen tunic in deep burgundy that reaches her knees, belted at the waist with a worn leather strap. Over this she dons a brown woolen cloak fastened by a brass brooch shaped like a clover. Her lower half is covered by dark green canvas breeches tucked into knee‑high leather boots polished to a shine. Around her neck hangs a simple silver chain bearing a small wooden charm of an ale mug. On her head sits a wide brimmed straw hat, its brim slightly worn from frequent use, with a faded red ribbon tied at the back. She carries a thick linen apron in charcoal gray, tied snugly around her waist and draped over her shoulders to protect her tunic while she works
+LLM request started: story_location_extract (attempt 1/10, ~378 input tokens, max 256 output tokens).
+LLM request finished: story_location_extract (3.4s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~635 input tokens, max 512 output tokens).
+LLM request finished: static_setting_extract (2.2s, finish_reason=stop).
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~247 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (7.3s, finish_reason=stop).
+LLM request started: story_setting_extract (attempt 1/10, ~913 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (63.0s, finish_reason=stop).
+Story location metadata: overall='a medieval tavern'; starting='the wooden floor of a medieval tavern'; setting='The tavern interior is a rectangular space measuring thirty feet from north to south and twenty feet east to west. Centered on the southern wall stands a heavy oak door, seven feet tall and three feet wide. North of this entrance, along the northern stone wall, runs an eighteen‑foot bar counter that faces south toward the doorway; its front edge is at the center line of the room. A brass jug sits atop the middle of the counter, two feet high and one foot across.\n\nThe floor consists of wooden planks laid in a north–south orientation. Stone walls rise ten feet on all sides. Dim ambient light comes from recessed stone sconces placed every five feet along both east and west walls; each sconce emits a low glow that casts soft shadows across the walls, counter, and floor. The space is fully accessible with ample room for patrons to move east–west along the wooden floor.'; location_state={'location': {'name': 'Tavern Interior'}, 'anchors': [{'name': 'entrance', 'type': 'door', 'wall': 'south', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'bar counter', 'type': 'counter', 'location': 'north wall', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}], 'objects': [{'name': 'brass jug', 'type': 'jug', 'near': ['bar counter'], 'height_ft': 2, 'width_ft': 1, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'sconce_west_0', 'type': 'stone sconce', 'near': ['west wall'], 'position_from_north_ft': 0, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'sconce_west_5', 'type': 'stone sconce', 'near': ['west wall'], 'position_from_north_ft': 5, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'sconce_west_10', 'type': 'stone sconce', 'near': ['west wall'], 'position_from_north_ft': 10, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'sconce_west_15', 'type': 'stone sconce', 'near': ['west wall'], 'position_from_north_ft': 15, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'sconce_east_0', 'type': 'stone sconce', 'near': ['east wall'], 'position_from_north_ft': 0, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'sconce_east_5', 'type': 'stone sconce', 'near': ['east wall'], 'position_from_north_ft': 5, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'sconce_east_10', 'type': 'stone sconce', 'near': ['east wall'], 'position_from_north_ft': 10, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'sconce_east_15', 'type': 'stone sconce', 'near': ['east wall'], 'position_from_north_ft': 15, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'wooden floor planks', 'type': 'floor', 'orientation': 'north–south', 'length_ft': 30, 'width_ft': 20, 'height_ft': 0.5, 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'stone wall north', 'type': 'wall', 'location': 'north', 'length_ft': 20, 'height_ft': 10, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'stone wall south', 'type': 'wall', 'location': 'south', 'length_ft': 20, 'height_ft': 10, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'stone wall east', 'type': 'wall', 'location': 'east', 'length_ft': 30, 'height_ft': 10, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'stone wall west', 'type': 'wall', 'location': 'west', 'length_ft': 30, 'height_ft': 10, 'world_state_role': 'fixture', 'mobility': 'fixed'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~455 input tokens, max 512 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (3.6s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (attempt 1/3):
+{"subjects":[
+  {"name":"tall elf","initial_state":"standing inside the tavern"},
+  {"name":"stout dwarf","initial_state":"standing inside the tavern"},
+  {"name":"mischievous goblin","initial_state":"standing inside the tavern"}
+]}
+Subjects inferred as already present at story start: TallElf1 (standing inside the tavern); StoutDwarf1 (standing inside the tavern); MischievousGoblin1 (standing inside the tavern)
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+LLM request started: registered_subject_story_start_presence (attempt 1/10, ~568 input tokens, max 256 output tokens).
+LLM request finished: registered_subject_story_start_presence (2.7s, finish_reason=stop).
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~632 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (3.2s, finish_reason=stop).
+Canonical appropriate attire for TallElf1: upper: linen tunic, light green color, slightly worn at cuffs; lower: wool breeches in deep forest brown, tucked into leather boots; footwear: sturdy leather boots, ankle height, laced; other: simple silver circlet with a single emerald gem
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~635 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (5.1s, finish_reason=stop).
+Canonical appropriate attire for StoutDwarf1: StoutDwarf1 wears a worn‑wool tunic in earthy brown, its sleeves reaching mid‑forearm and hemmed at the waist with a simple leather belt. Beneath it he dons rough linen breeches of dark gray that fall to his knees, tucked into sturdy leather boots dyed deep green. On his head rests a battered felt cap, brim worn from years of use. No additional accessories are noted
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~641 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (6.0s, finish_reason=stop).
+Canonical appropriate attire for MischievousGoblin1: MischievousGoblin1 wears a greenish‑brown linen tunic reaching mid‑thigh, slightly patched at the elbows and hem. The tunic is belted at the waist with a worn leather strap that holds a small pouch of coins. Underneath, he sports loose brown woolen breeches tied at the ankles by a simple cord. His feet are covered in sturdy dark leather boots laced up to mid‑calf, scuffed from many adventures. As an extra garment, he wears a battered green cap with a feather tucked into its brim for added flair
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~379 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_subjects (1.5s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~2426 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (6.5s, finish_reason=stop).
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 2575/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+LLM request started: director_raw_scene (attempt 1/10, ~2937 input tokens, max 5127 output tokens).
+LLM request finished: director_raw_scene (52.6s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1221 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (4.5s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~1027 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (4.2s, finish_reason=stop).
+LLM request started: director_raw_scene_timing (attempt 1/10, ~968 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_timing (4.5s, finish_reason=stop).
+LLM request started: director_raw_world_state_consistency (attempt 1/10, ~2306 input tokens, max 384 output tokens).
+LLM request finished: director_raw_world_state_consistency (9.8s, finish_reason=stop).
+Director Request 1 RAW/WorldState consistency failed (attempt 1/5); retrying from the same opening state: RAW shows Amy stepping onto the wooden floor, changing her presence from absent to present at location_the_wooden_floor_of_a_medieval_t_12e898f2959b and tying her apron snugly around her waist; however, no corresponding action is listed in STATE ACTIONS.
+LLM request started: director_raw_scene (attempt 1/10, ~3111 input tokens, max 4953 output tokens).
+LLM request finished: director_raw_scene (42.9s, finish_reason=stop).
+Director Request 1 state_actions failed (attempt 2/5); retrying from the same opening WorldState: set_support action subject_1: subject_not_known_present: The subject is not explicitly recorded as present.
+LLM request started: director_raw_scene (attempt 1/10, ~3061 input tokens, max 5003 output tokens).
+LLM request finished: director_raw_scene (43.6s, finish_reason=stop).
+Director Request 1 state_actions failed (attempt 3/5); retrying from the same opening WorldState: set_support action set_support: subject_not_known_present: The subject is not explicitly recorded as present.
+LLM request started: director_raw_scene (attempt 1/10, ~3062 input tokens, max 5002 output tokens).
+LLM request finished: director_raw_scene (47.2s, finish_reason=stop).
+Director Request 1 state_actions failed (attempt 4/5); retrying from the same opening WorldState: set_support action set_presence: subject_not_known_present: The subject is not explicitly recorded as present.
+LLM request started: director_raw_scene (attempt 1/10, ~3062 input tokens, max 5002 output tokens).
+LLM request finished: director_raw_scene (48.6s, finish_reason=stop).
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Director Request 1 state_actions failed for Segment 1: set_support action set_presence: subject_not_known_present: The subject is not explicitly recorded as present.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\minimax.py", line 41503, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\minimax.py", line 39958, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\minimax.py", line 37589, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Director Request 1 state_actions failed for Segment 1: set_support action set_presence: subject_not_known_present: The subject is not explicitly recorded as present.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\minimax.py", line 41568, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\minimax.py", line 41503, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\minimax.py", line 39958, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qg7b49ym\repo\minimax.py", line 37589, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Director Request 1 state_actions failed for Segment 1: set_support action set_presence: subject_not_known_present: The subject is not explicitly recorded as present.
