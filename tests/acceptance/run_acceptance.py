@@ -198,14 +198,27 @@ def copy_artifact(workspace: Path, output_dir: Path, filename: str) -> str | Non
     return str(destination.relative_to(output_dir))
 
 
-def acceptance_child_env() -> dict[str, str]:
-    """Force live MiniMax output through the acceptance runner's pipe."""
+def acceptance_child_env(workspace: Path) -> dict[str, str]:
+    """Force isolated prompt-generation I/O through the acceptance workspace."""
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
     # Windows pipes otherwise inherit a legacy charmap encoding and can crash
     # on ordinary model punctuation such as a non-breaking hyphen.
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+
+    # Prompt-only acceptance must never depend on the developer machine's
+    # ComfyUI drive letters or mutate its real input/output trees.
+    comfy_root = workspace / ".acceptance_comfyui"
+    comfy_input = comfy_root / "input"
+    comfy_output = comfy_root / "output"
+    video_output = comfy_output / "video"
+    for path in (comfy_input, video_output):
+        path.mkdir(parents=True, exist_ok=True)
+    env["MINIMAX_COMFYUI_ROOT"] = str(comfy_root)
+    env["MINIMAX_COMFYUI_INPUT"] = str(comfy_input)
+    env["MINIMAX_COMFYUI_OUTPUT"] = str(comfy_output)
+    env["MINIMAX_VIDEO_OUTPUT"] = str(video_output)
     return env
 
 
@@ -532,7 +545,7 @@ def main(argv=None) -> int:
                 encoding="utf-8",
                 errors="replace",
                 bufsize=1,
-                env=acceptance_child_env(),
+                env=acceptance_child_env(workspace),
             )
             assert process.stdout is not None
             for line in process.stdout:
