@@ -4560,6 +4560,10 @@ def parse_current_segment_persistent_prop_result(
             raise ValueError(f"Persistent prop {name!r} has invalid contents/capabilities.")
         reason = " ".join(str(entry["reason"] or "").split()).strip()
         evidence = " ".join(str(entry["evidence"] or "").split()).strip()
+        if len(evidence) >= 2 and (evidence[0], evidence[-1]) in {
+            ('"', '"'), ("'", "'"), ("“", "”"), ("‘", "’")
+        }:
+            evidence = evidence[1:-1].strip()
         if not reason or not evidence or evidence.casefold() not in source_text.casefold():
             raise ValueError(f"Persistent prop {name!r} requires exact current-source evidence.")
         alias_entry = dict(entry)
