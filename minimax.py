@@ -536,6 +536,7 @@ DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "seed": BENCHMARK_SEED,
     "reasoning_effort": "medium",
     "thinking_budget_tokens": 256,
+    "max_output_tokens": 1024,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -10502,10 +10503,6 @@ def ask_llm(
             f"{max(0, available_completion_tokens)} completion tokens inside "
             f"{effective_context_budget}. Simplify the stage prompt."
         )
-    effective_max_tokens = min(
-        int(max_tokens),
-        int(available_completion_tokens),
-    )
     history_purpose = str((history_metadata or {}).get("purpose", ""))
     # Select request behavior strictly by task/responsibility. Formatter/model
     # selection is intentionally absent from this routing.
@@ -10528,6 +10525,11 @@ def ask_llm(
     else:
         llm_settings = DETERMINISTIC_ANALYSIS_LLM_SETTINGS
 
+    effective_max_tokens = min(
+        int(max_tokens),
+        int(available_completion_tokens),
+        int(llm_settings.get("max_output_tokens", max_tokens)),
+    )
     temperature = llm_settings["temperature"]
     top_p = llm_settings["top_p"]
     top_k = llm_settings["top_k"]
