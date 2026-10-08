@@ -7406,7 +7406,6 @@ def extract_subject_canonical_wardrobe(
                     canonical_record,
                 ),
                 response_format=build_story_subject_wardrobe_response_format(),
-                max_tokens=256,
                 context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **dict(history_metadata or {}),
@@ -7583,7 +7582,6 @@ def canonicalize_defined_subject_wardrobes(
                         record,
                     ),
                     response_format=build_story_subject_wardrobe_response_format(),
-                    max_tokens=256,
                     context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                     history_metadata={
                         **dict(history_metadata or {}),
