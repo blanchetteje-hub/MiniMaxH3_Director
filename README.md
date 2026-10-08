@@ -925,7 +925,6 @@ frame alignment and stitching trims can affect the final encoded duration.
 | `--use-prompts PATH` | Render the saved prompt package at PATH without LLM planning. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--disable-subject-removal` | Keep every previously seen Subject/reference bound in later segments instead of aging inactive Subjects out after the default half-story sliding window. |
-| `--temp N` | Temperature for the initial story-writing LLM call only; defaults to `0.4`. Must be finite and zero or greater. Available as **Story temperature** under New → Prompt & story options. |
 | `--no-music` | Skip the music LLM request and set `non_diegetic_music` to `N/A`; soundscape generation still runs. |
 | `--steps STEPS` | BasicScheduler sampling steps for all workflows; defaults to `6`. |
 | `--trim-frames FRAMES` | Trim this many leading frames from non-guided continuation clips when stitching; guided clips already remove the exact native Guide overlap. Defaults to `2`. |

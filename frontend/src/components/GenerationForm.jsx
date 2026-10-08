@@ -6,7 +6,7 @@ const INITIAL_SETTINGS = {
   generation_mode: 'new', vram_mode: '32', segment_length: '', total_segments: '',
   megapixels: '0.5', resume: '1', steps: '6', trim_frames: '2', refresh: '999',
   vision_continuity: '0', retention: false, disable_subject_removal: false,
-  repair: '', model: 'gpt', temp: '0.4', visual_style: 'Live-Action cinematic', first_frame: false,
+  repair: '', model: 'gpt', visual_style: 'Live-Action cinematic', first_frame: false,
   loras: [], beat_count: '', beat_length: '', use_prompts: '',
   test_prompt_generation: false, director_only: false,
   capture_h3_segment: '', capture_h3_fixture: '', capture_h3_validation_segment: '',
@@ -93,7 +93,6 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
           {!rendering && !limited && input('vision_continuity', 'Vision continuity interval', 'Check rendered frames every N segments. 0 disables checks; requires both the LLM and ComfyUI.')}
         </div></details>}
         {!rendering && <details className="advanced"><summary>Prompt & story options</summary><div className="field-grid">
-          {mode === 'new' && input('temp', 'Story temperature', 'Controls creativity in the initial story-writing LLM call only (--temp). Default: 0.4. Zero is allowed; later LLM calls keep their own settings.', 'number', { min: '0', step: 'any' })}
           {input('visual_style', 'Visual style', 'Global rendering style injected immediately after [Shot 1] in every H3 prompt (--visual-style).', 'text', { placeholder: 'Live-Action cinematic' })}
           <Field label="Response formatter" help="Choose how the LLM response is parsed. Match this to your configured model."><select aria-label="Response formatter" value={settings.model} onChange={event => setField('model', event.target.value)} disabled={disabled}><option value="gpt">GPT</option><option value="mistral">Mistral</option><option value="qwen">Qwen</option></select></Field>
         </div>{check('retention', 'Include retention analysis', 'Append retention analysis to every clip after the first.')}{check('disable_subject_removal', 'Disable subject removal', 'Keep every previously seen Subject/reference bound instead of aging inactive Subjects out after half the story.')}{check('first_frame', 'First-frame instructions', 'Add first-frame guidance to the prompt for segment 1.')}

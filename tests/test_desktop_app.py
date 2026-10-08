@@ -222,17 +222,18 @@ class DesktopBridgeTests(unittest.TestCase):
                 migrated = bridge.get_settings()
                 persisted = json.loads(settings_path.read_text(encoding="utf-8"))
                 self.assertEqual(migrated["refresh"], "999")
-                self.assertEqual(migrated["temp"], "0.4")
+                self.assertNotIn("temp", migrated)
+                self.assertNotIn("temp", persisted)
                 self.assertEqual(persisted["settings_version"], 2)
 
-                # Version 2 means a later deliberate choice of the old values
-                # is explicit and must not be migrated again.
+                # A legacy saved temperature is ignored; refresh remains an
+                # independently saved UI setting.
                 persisted["refresh"] = "6"
                 persisted["temp"] = "0.8"
                 settings_path.write_text(json.dumps(persisted), encoding="utf-8")
                 explicit = bridge.get_settings()
                 self.assertEqual(explicit["refresh"], "6")
-                self.assertEqual(explicit["temp"], "0.8")
+                self.assertNotIn("temp", explicit)
 
     def test_all_new_settings_are_persisted(self):
         with tempfile.TemporaryDirectory() as directory:

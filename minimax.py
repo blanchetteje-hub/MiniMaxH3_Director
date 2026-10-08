@@ -423,12 +423,12 @@ VISION_LLM_SETTINGS = MappingProxyType({
     "repeat_penalty": 1.15,
     "max_output_tokens": VISION_REQUEST_MAX_TOKENS,
 })
-DEFAULT_STORY_TEMPERATURE = 0.4
+DEFAULT_STORY_TEMPERATURE = 0.8
 DEFAULT_VISUAL_STYLE = "Live-action cinematic"
 DEFAULT_REFRESH_INTERVAL = 999
 REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
 
-CREATIVE_GENERATION_LLM_SETTINGS = {
+CREATIVE_GENERATION_LLM_SETTINGS = MappingProxyType({
     "temperature": 0.8,
     "top_p": 0.95,
     "top_k": 0,
@@ -443,9 +443,9 @@ CREATIVE_GENERATION_LLM_SETTINGS = {
     "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
+})
 
-DIRECTOR_RAW_SCENE_LLM_SETTINGS = {
+DIRECTOR_RAW_SCENE_LLM_SETTINGS = MappingProxyType({
     "temperature": 0.2,
     "top_p": 0.95,
     "top_k": 0,
@@ -460,9 +460,9 @@ DIRECTOR_RAW_SCENE_LLM_SETTINGS = {
     "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
+})
 
-BEAT_WRITING_LLM_SETTINGS = {
+BEAT_WRITING_LLM_SETTINGS = MappingProxyType({
     "temperature": 0,
     "top_p": None,
     "top_k": None,
@@ -477,9 +477,9 @@ BEAT_WRITING_LLM_SETTINGS = {
     "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
+})
 
-STORY_EXPANSION_LLM_SETTINGS = {
+STORY_EXPANSION_LLM_SETTINGS = MappingProxyType({
     "temperature": DEFAULT_STORY_TEMPERATURE,
     "top_p": 0.95,
     "top_k": 0,
@@ -494,9 +494,9 @@ STORY_EXPANSION_LLM_SETTINGS = {
     "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
+})
 
-STORY_TO_BEATS_LLM_SETTINGS = {
+STORY_TO_BEATS_LLM_SETTINGS = MappingProxyType({
     "temperature": 0,
     "top_p": None,
     "top_k": None,
@@ -511,9 +511,9 @@ STORY_TO_BEATS_LLM_SETTINGS = {
     "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
+})
 
-MUSIC_GENERATION_LLM_SETTINGS = {
+MUSIC_GENERATION_LLM_SETTINGS = MappingProxyType({
     "temperature": 0.6,
     "top_p": 0.95,
     "top_k": 0,
@@ -528,9 +528,9 @@ MUSIC_GENERATION_LLM_SETTINGS = {
     "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
+})
 
-SLIGHTLY_CREATIVE_LLM_SETTINGS = {
+SLIGHTLY_CREATIVE_LLM_SETTINGS = MappingProxyType({
     "temperature": 0.1,
     "top_p": None,
     "top_k": None,
@@ -544,9 +544,9 @@ SLIGHTLY_CREATIVE_LLM_SETTINGS = {
     "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
+})
 
-DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
+DETERMINISTIC_ANALYSIS_LLM_SETTINGS = MappingProxyType({
     "temperature": 0,
     "top_p": None,
     "top_k": None,
@@ -561,9 +561,9 @@ DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
+})
 
-SMART_EXTRACTOR_LLM_SETTINGS = {
+SMART_EXTRACTOR_LLM_SETTINGS = MappingProxyType({
     "temperature": 0,
     "top_p": None,
     "top_k": None,
@@ -577,8 +577,31 @@ SMART_EXTRACTOR_LLM_SETTINGS = {
     "max_output_tokens": 4096,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-    "context_token_budget": 8192,
-}
+    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
+})
+
+# Long-input responsibilities get their own immutable settings profiles. This
+# keeps context budgets in the selected profile instead of purpose-level
+# overrides applied after routing.
+LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS = MappingProxyType({
+    **CREATIVE_GENERATION_LLM_SETTINGS,
+    "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+})
+LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_SETTINGS = MappingProxyType({
+    **DETERMINISTIC_ANALYSIS_LLM_SETTINGS,
+    "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+})
+
+LONG_CONTEXT_CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
+    "world_state_current_segment_subjects",
+    "world_state_current_segment_props",
+    "story_subject_wardrobe_extract",
+    "story_location_extract",
+    "static_setting_extract",
+})
+LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
+    "registered_subject_story_start_presence",
+})
 
 BEAT_WRITING_LLM_PURPOSES = frozenset({
     "beat_generation",
@@ -642,25 +665,6 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "director_raw_scene_visible_subject_resolution",
     "subject_continuity",
     "visual_end_state",
-})
-
-# Exceptional per-purpose limits belong here rather than at request call sites.
-LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
-    "director_raw_scene_subject_resolution": 1024,
-    "story_to_beats_repair": 1024,
-    "macro_arc_majority_tail_repair": 1000,
-})
-
-LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS = MappingProxyType({
-    "registered_subject_story_start_presence": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "world_state_current_segment_subjects": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "world_state_current_segment_props": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "story_subject_wardrobe_extract": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "story_location_extract": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "static_setting_extract": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "story_expansion": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "story_to_beats": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "story_to_beats_repair": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
 })
 
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
@@ -1921,14 +1925,6 @@ def get_formatter(model):
 
 
 # Select the formatter used by the existing generation pipeline.
-def configure_story_temperature(value=DEFAULT_STORY_TEMPERATURE):
-    """Set temperature only for the initial summary-to-story writing stage."""
-    value = float(value)
-    if not math.isfinite(value) or value < 0:
-        raise ValueError("Story temperature must be finite and zero or greater.")
-    STORY_EXPANSION_LLM_SETTINGS["temperature"] = value
-
-
 def configure_formatter(model):
     """Select the formatter used by the existing generation pipeline."""
 
@@ -2295,13 +2291,6 @@ def parse_args(arguments=None):
         help="resolution target (default: 0.5)",
     )
     parser.add_argument(
-        "--temp", type=float, default=DEFAULT_STORY_TEMPERATURE, metavar="N",
-        help=(
-            "temperature for the initial story-writing LLM call only "
-            f"(default: {DEFAULT_STORY_TEMPERATURE:g})"
-        ),
-    )
-    parser.add_argument(
         "--visual-style",
         default=None,
         metavar="STYLE",
@@ -2543,8 +2532,6 @@ def parse_args(arguments=None):
 
     args = parser.parse_args(normalize_command_line(arguments))
     args.total_length = None
-    if not math.isfinite(args.temp) or args.temp < 0:
-        parser.error("--temp must be finite and zero or greater.")
     if args.segment_length is not None and (
         not math.isfinite(args.segment_length) or args.segment_length <= 0
     ):
@@ -10507,6 +10494,10 @@ def ask_llm(
         llm_settings = STORY_EXPANSION_LLM_SETTINGS
     elif history_purpose in {"story_to_beats", "story_to_beats_repair"}:
         llm_settings = STORY_TO_BEATS_LLM_SETTINGS
+    elif history_purpose in LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_PURPOSES:
+        llm_settings = LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_SETTINGS
+    elif history_purpose in LONG_CONTEXT_CREATIVE_GENERATION_LLM_PURPOSES:
+        llm_settings = LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS
     elif history_purpose in MUSIC_GENERATION_LLM_PURPOSES:
         llm_settings = MUSIC_GENERATION_LLM_SETTINGS
     elif history_purpose in BEAT_WRITING_LLM_PURPOSES:
@@ -10523,12 +10514,7 @@ def ask_llm(
         llm_settings = DETERMINISTIC_ANALYSIS_LLM_SETTINGS
 
     estimated_input_tokens = estimate_message_tokens(messages)
-    effective_context_budget = (
-        LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS.get(
-            history_purpose,
-            llm_settings["context_token_budget"],
-        )
-    )
+    effective_context_budget = llm_settings["context_token_budget"]
     if effective_context_budget <= LLM_CONTEXT_SAFETY_TOKENS:
         raise ValueError("context_token_budget must leave room for completion.")
     available_completion_tokens = (
@@ -10545,10 +10531,7 @@ def ask_llm(
         )
     effective_max_tokens = min(
         int(available_completion_tokens),
-        int(LLM_PURPOSE_MAX_OUTPUT_TOKENS.get(
-            history_purpose,
-            llm_settings["max_output_tokens"],
-        )),
+        int(llm_settings["max_output_tokens"]),
     )
     temperature = llm_settings["temperature"]
     top_p = llm_settings["top_p"]
@@ -37995,9 +37978,6 @@ def _run_main(
             "arc/beat generation is disabled.",
             flush=True,
         )
-    configure_story_temperature(
-        getattr(args, "temp", DEFAULT_STORY_TEMPERATURE)
-    )
     configure_formatter(getattr(args, "model", "gpt"))
     requested_visual_style = getattr(args, "visual_style", None)
     visual_style = normalize_visual_style(requested_visual_style)

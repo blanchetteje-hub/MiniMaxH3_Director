@@ -8,6 +8,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from types import MappingProxyType
 
 
 SCRIPT_DIR = os.path.dirname(
@@ -24,7 +25,7 @@ DEFAULT_MODEL = "mistral-3-14b-instruct-2512-absolute-heresy"
 
 # Settings that were previously hard-coded in call_llama(). Values set to None
 # use the llama.cpp/server default and are omitted from the request payload.
-MISTRAL_24B_SETTINGS = {
+MISTRAL_24B_SETTINGS = MappingProxyType({
   "temperature": 0,
   "seed": BENCHMARK_SEED,
   "repeat_penalty": 1.15,
@@ -37,10 +38,10 @@ MISTRAL_24B_SETTINGS = {
   "context": 8192,
   "user_prompt_only": False,
   "stream": False
-}
+})
 
 
-QWEN38_27B_SETTINGS = {
+QWEN38_27B_SETTINGS = MappingProxyType({
     "temperature": 0,
     "seed": BENCHMARK_SEED,
     "repeat_penalty": 1.15,
@@ -53,7 +54,7 @@ QWEN38_27B_SETTINGS = {
     "context": 8192,
     "user_prompt_only": True,
     "stream": False,
-}
+})
 
 
 class LLMError(RuntimeError):
@@ -71,8 +72,6 @@ def get_model_settings(model: str | None = None) -> dict[str, object]:
     settings = dict(profile)
     settings["model"] = model
     settings["timeout"] = float(os.environ.get("H3_LLM_TIMEOUT", "300"))
-    if "H3_LLM_TEMPERATURE" in os.environ:
-        settings["temperature"] = float(os.environ["H3_LLM_TEMPERATURE"])
     return settings
 
 

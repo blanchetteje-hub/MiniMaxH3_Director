@@ -31,6 +31,14 @@ State/subject/action continuity -> active work
 
 Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture/prompt changes.
 
+## 2026-10-08 — immutable LLM settings profiles
+
+- Removed per-purpose output-token caps and context-budget overrides. `ask_llm()` now reads both values from the selected immutable profile; remaining output capacity is reduced only when needed to fit the request inside that profile's context budget.
+- `director_raw_scene_subject_resolution` now receives the full `SMART_EXTRACTOR_LLM_SETTINGS` output allowance (4096 tokens), instead of the previous 1024 purpose cap.
+- Long-input extraction purposes select explicit immutable long-context profiles. All runtime LLM profile mappings are read-only.
+- Removed the mutable story-temperature CLI/GUI override. Story expansion now uses its fixed profile value of 0.8.
+- The test-only llama client no longer accepts `H3_LLM_TEMPERATURE`; endpoint, model, and request timeout remain configurable.
+
 ## 2026-10-08 — acceptance #03: opening Subject classification
 
 - Bridge preflight accept-world-state-rebuild-00-preflight-20261008-03: 10/10 passed.

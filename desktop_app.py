@@ -26,7 +26,6 @@ from typing import Any
 
 from minimax import (
     DEFAULT_REFRESH_INTERVAL,
-    DEFAULT_STORY_TEMPERATURE,
     DEFAULT_VISUAL_STYLE,
     LORA_DIRECTORY,
     VIDEO_OUTPUT,
@@ -68,7 +67,6 @@ DEFAULT_SETTINGS = {
     "disable_subject_removal": False,
     "repair": "",
     "model": "gpt",
-    "temp": str(DEFAULT_STORY_TEMPERATURE),
     "visual_style": DEFAULT_VISUAL_STYLE,
     "first_frame": False,
     "loras": [],
@@ -120,16 +118,6 @@ FILE_DEFINITIONS = {
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-def _story_temperature(value: Any) -> float:
-    try:
-        value = float(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError("Story temperature must be a number.") from error
-    if not math.isfinite(value) or value < 0:
-        raise ValueError("Story temperature must be finite and zero or greater.")
-    return value
 
 
 def _positive_float(value: Any, label: str) -> float:
@@ -243,17 +231,15 @@ class MiniMaxBridge:
                             pass
                     saved.pop("total_length", None)
                     saved.pop("generate_all", None)
+                    saved.pop("temp", None)
                     try:
                         settings_version = int(saved.get("settings_version", 1))
                     except (TypeError, ValueError):
                         settings_version = 1
                     if settings_version < 2:
-                        # Migrate only the historical defaults once. After the
-                        # version bump, an explicit user-selected 6 / 0.8 is kept.
+                        # Migrate only the historical refresh default once.
                         if str(saved.get("refresh", "")).strip() == "6":
                             saved["refresh"] = str(DEFAULT_REFRESH_INTERVAL)
-                        if str(saved.get("temp", "")).strip() == "0.8":
-                            saved["temp"] = str(DEFAULT_STORY_TEMPERATURE)
                         saved["settings_version"] = 2
                         try:
                             SETTINGS_FILE.write_text(
@@ -348,7 +334,6 @@ class MiniMaxBridge:
         if model not in {"gpt", "mistral", "qwen"}:
             raise ValueError("Model formatter must be 'gpt', 'mistral', or 'qwen'.")
         validated["model"] = model
-        validated["temp"] = _story_temperature(settings.get("temp", DEFAULT_STORY_TEMPERATURE))
         validated["visual_style"] = normalize_visual_style(
             settings.get("visual_style", DEFAULT_VISUAL_STYLE)
         )
@@ -425,8 +410,6 @@ class MiniMaxBridge:
                 _number_argument(beat_length),
                 "--model",
                 model,
-                "--temp",
-                _number_argument(_story_temperature(settings.get("temp", DEFAULT_STORY_TEMPERATURE))),
             ]
 
         if not isinstance(settings, dict):
@@ -462,7 +445,7 @@ class MiniMaxBridge:
                              steps=6, trim_frames=2, refresh=DEFAULT_REFRESH_INTERVAL, vision_continuity=0,
                              model="gpt", resume=1, first_frame=False,
                              retention=False, disable_subject_removal=False,
-                             loras=[], temp=DEFAULT_STORY_TEMPERATURE)
+                             loras=[])
         values = self._validate_settings(effective)
         command = [
             self.python_executable,
@@ -495,7 +478,6 @@ class MiniMaxBridge:
             command.extend(("--use-prompts", custom_prompts) if custom_prompts
                            else ("--generate-from-prompts",))
         else:
-            command.extend(("--temp", _number_argument(values["temp"])))
             command.append("--new" if mode == "new" else "--existing")
             if operation == "prompts":
                 command.extend(("--generate-prompts", str(values["total_segments"])))

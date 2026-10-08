@@ -9,21 +9,27 @@ import minimax
 class SummaryToStoryPipelineTests(unittest.TestCase):
     def test_story_pipeline_profiles_match_tuned_settings(self):
         self.assertEqual(
-            minimax.STORY_EXPANSION_LLM_PARAMETERS["temperature"],
-            0.4,
+            minimax.STORY_EXPANSION_LLM_SETTINGS["temperature"],
+            0.8,
         )
-        self.assertEqual(minimax.STORY_EXPANSION_REASONING_EFFORT, "high")
         self.assertEqual(
-            minimax.STORY_EXPANSION_REASONING_BUDGET_TOKENS,
+            minimax.STORY_EXPANSION_LLM_SETTINGS["reasoning_effort"],
+            "high",
+        )
+        self.assertEqual(
+            minimax.STORY_EXPANSION_LLM_SETTINGS["thinking_budget_tokens"],
             1024,
         )
         self.assertEqual(
-            minimax.STORY_TO_BEATS_LLM_PARAMETERS["temperature"],
+            minimax.STORY_TO_BEATS_LLM_SETTINGS["temperature"],
             0,
         )
-        self.assertEqual(minimax.STORY_TO_BEATS_REASONING_EFFORT, "medium")
         self.assertEqual(
-            minimax.STORY_TO_BEATS_REASONING_BUDGET_TOKENS,
+            minimax.STORY_TO_BEATS_LLM_SETTINGS["reasoning_effort"],
+            "medium",
+        )
+        self.assertEqual(
+            minimax.STORY_TO_BEATS_LLM_SETTINGS["thinking_budget_tokens"],
             1024,
         )
 
@@ -93,8 +99,11 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             calls[0][1]["history_metadata"]["purpose"],
             "story_location_extract",
         )
+        self.assertNotIn("context_token_budget", calls[0][1])
         self.assertEqual(
-            calls[0][1]["context_token_budget"],
+            minimax.LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS[
+                "context_token_budget"
+            ],
             minimax.STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
         )
 

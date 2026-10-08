@@ -4,12 +4,15 @@ import minimax
 
 
 class LocationStatePostmortemTests(unittest.TestCase):
-    def test_cli_defaults_disable_routine_refresh_and_lower_story_temperature(self):
+    def test_cli_defaults_disable_routine_refresh_and_use_fixed_story_profile(self):
         args = minimax.parse_args(["8", "6", "0.3"])
         self.assertEqual(args.refresh, 999)
         self.assertEqual(args.refresh, minimax.DEFAULT_REFRESH_INTERVAL)
-        self.assertEqual(args.temp, 0.4)
-        self.assertEqual(args.temp, minimax.DEFAULT_STORY_TEMPERATURE)
+        self.assertFalse(hasattr(args, "temp"))
+        self.assertEqual(
+            minimax.STORY_EXPANSION_LLM_SETTINGS["temperature"],
+            minimax.DEFAULT_STORY_TEMPERATURE,
+        )
 
     def test_explicit_refresh_interval_overrides_source_span_chapter_refreshes(self):
         arc = {
