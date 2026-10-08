@@ -261,10 +261,8 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
                 ["story_expansion", "story_to_beats"],
             )
             for _purpose, kwargs in calls:
-                self.assertEqual(
-                    kwargs["context_token_budget"],
-                    minimax.STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-                )
+                self.assertNotIn("context_token_budget", kwargs)
+                self.assertNotIn("max_tokens", kwargs)
 
 
 if __name__ == "__main__":

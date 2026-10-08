@@ -16,15 +16,15 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertIn("objects/furniture mentioned only because a later action", system)
         self.assertIn("Do not promote every story prop", system)
 
-    def test_smart_extractor_profile_is_medium_1024_seed_42_with_8192_context(self):
+    def test_smart_extractor_profile_is_high_1024_seed_42_with_8192_context(self):
         profile = minimax.SMART_EXTRACTOR_LLM_SETTINGS
         self.assertEqual(profile["seed"], 42)
         self.assertEqual(profile["context_token_budget"], 8192)
-        self.assertEqual(profile["reasoning_effort"], "medium")
+        self.assertEqual(profile["reasoning_effort"], "high")
         self.assertEqual(profile["thinking_budget_tokens"], 1024)
         self.assertEqual(
             minimax.SMART_EXTRACTOR_LLM_PURPOSES,
-            {"story_setting_extract"},
+            {"story_setting_extract", "director_raw_scene_subject_resolution"},
         )
         self.assertEqual(
             minimax.SLIGHTLY_CREATIVE_LLM_PURPOSES,
@@ -36,7 +36,11 @@ class LocationStateReferenceTests(unittest.TestCase):
         )
         self.assertEqual(
             minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["thinking_budget_tokens"],
-            128,
+            256,
+        )
+        self.assertEqual(
+            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["max_output_tokens"],
+            1024,
         )
 
     def test_spatial_refinement_prompt_uses_requested_contract(self):
@@ -94,10 +98,7 @@ The tavern is rectangular. The entrance is on the north wall.
             llm_request=refine_request,
         )
         self.assertEqual(refined, "30 ft by 20 ft tavern; entrance north.")
-        self.assertEqual(
-            refine_request.call_args.kwargs["context_token_budget"],
-            8192,
-        )
+        self.assertNotIn("context_token_budget", refine_request.call_args.kwargs)
         self.assertEqual(
             refine_request.call_args.kwargs["history_metadata"]["purpose"],
             "story_setting_spatial_refine",
@@ -116,10 +117,7 @@ A rectangular tavern interior.
             result["text_description"],
             "A rectangular tavern interior.",
         )
-        self.assertEqual(
-            structured_request.call_args.kwargs["context_token_budget"],
-            8192,
-        )
+        self.assertNotIn("context_token_budget", structured_request.call_args.kwargs)
         self.assertEqual(
             structured_request.call_args.kwargs["history_metadata"]["purpose"],
             "story_setting_extract",

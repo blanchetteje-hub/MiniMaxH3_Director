@@ -841,7 +841,8 @@ class PostmortemRegressionTests(unittest.TestCase):
                 kwargs["history_metadata"]["purpose"],
                 "story_subject_wardrobe_extract",
             )
-            self.assertEqual(kwargs["max_tokens"], 256)
+            self.assertNotIn("max_tokens", kwargs)
+            self.assertNotIn("context_token_budget", kwargs)
 
         self.assertEqual(
             result["characters"][0]["clothing"],

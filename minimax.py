@@ -37,6 +37,7 @@ import time
 import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from types import MappingProxyType
 import requests
 from PIL import Image, UnidentifiedImageError
 
@@ -416,6 +417,12 @@ BEAT_VALIDATION_STATE_VERSION = 3
 # Model/formatter choice must never change sampling, reasoning, prompt transport,
 # or validator behavior.
 BENCHMARK_SEED = 42
+VISION_LLM_SETTINGS = MappingProxyType({
+    "temperature": 0,
+    "seed": BENCHMARK_SEED,
+    "repeat_penalty": 1.15,
+    "max_output_tokens": VISION_REQUEST_MAX_TOKENS,
+})
 DEFAULT_STORY_TEMPERATURE = 0.4
 DEFAULT_VISUAL_STYLE = "Live-action cinematic"
 DEFAULT_REFRESH_INTERVAL = 999
@@ -432,6 +439,8 @@ CREATIVE_GENERATION_LLM_SETTINGS = {
     "seed": None,
     "reasoning_effort": "high",
     "thinking_budget_tokens": 1024,
+    "max_output_tokens": 8192,
+    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -447,6 +456,8 @@ DIRECTOR_RAW_SCENE_LLM_SETTINGS = {
     "seed": None,
     "reasoning_effort": "high",
     "thinking_budget_tokens": 1024,
+    "max_output_tokens": 8192,
+    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -462,6 +473,8 @@ BEAT_WRITING_LLM_SETTINGS = {
     "seed": BENCHMARK_SEED,
     "reasoning_effort": "high",
     "thinking_budget_tokens": 1024,
+    "max_output_tokens": 8192,
+    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -477,6 +490,8 @@ STORY_EXPANSION_LLM_SETTINGS = {
     "seed": None,
     "reasoning_effort": "high",
     "thinking_budget_tokens": 1024,
+    "max_output_tokens": 12000,
+    "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -492,6 +507,8 @@ STORY_TO_BEATS_LLM_SETTINGS = {
     "seed": BENCHMARK_SEED,
     "reasoning_effort": "medium",
     "thinking_budget_tokens": 1024,
+    "max_output_tokens": 4096,
+    "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -507,6 +524,8 @@ MUSIC_GENERATION_LLM_SETTINGS = {
     "seed": None,
     "reasoning_effort": "medium",
     "thinking_budget_tokens": 256,
+    "max_output_tokens": 512,
+    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -521,6 +540,8 @@ SLIGHTLY_CREATIVE_LLM_SETTINGS = {
     "repeat_penalty": 1.15,
     "reasoning_effort": "low",
     "thinking_budget_tokens": 384,
+    "max_output_tokens": 3072,
+    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -537,6 +558,7 @@ DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "reasoning_effort": "medium",
     "thinking_budget_tokens": 256,
     "max_output_tokens": 1024,
+    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
@@ -552,6 +574,7 @@ SMART_EXTRACTOR_LLM_SETTINGS = {
     "seed": BENCHMARK_SEED,
     "reasoning_effort": "high",
     "thinking_budget_tokens": 1024,
+    "max_output_tokens": 4096,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
     "context_token_budget": 8192,
@@ -619,6 +642,25 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "director_raw_scene_visible_subject_resolution",
     "subject_continuity",
     "visual_end_state",
+})
+
+# Exceptional per-purpose limits belong here rather than at request call sites.
+LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
+    "director_raw_scene_subject_resolution": 512,
+    "story_to_beats_repair": 1024,
+    "macro_arc_majority_tail_repair": 1000,
+})
+
+LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS = MappingProxyType({
+    "registered_subject_story_start_presence": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "world_state_current_segment_subjects": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "world_state_current_segment_props": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "story_subject_wardrobe_extract": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "story_location_extract": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "static_setting_extract": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "story_expansion": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "story_to_beats": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "story_to_beats_repair": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
 })
 
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
@@ -3862,13 +3904,11 @@ def extract_registered_subject_story_start_presence(
                     "registered Subject. Use unknown and an empty initial_state when "
                     "the source does not make the status explicit. "
                     f"Prior validation error: {last_error}"
-                )
+            )
             try:
                 raw = llm_request(
                     attempt_messages,
                     response_format=build_registered_subject_story_start_response_format(),
-                    max_tokens=256,
-                    context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                     history_metadata={
                         **dict(history_metadata or {}),
                         "purpose": "registered_subject_story_start_presence",
@@ -4066,8 +4106,6 @@ def extract_current_segment_subjects(
             raw = llm_request(
                 messages,
                 response_format=build_current_segment_subject_response_format(),
-                max_tokens=512,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "world_state_current_segment_subjects",
@@ -4376,8 +4414,6 @@ def extract_current_segment_persistent_props(
             raw = llm_request(
                 attempt_messages,
                 response_format=build_current_segment_persistent_prop_response_format(),
-                max_tokens=512,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "world_state_current_segment_props",
@@ -7406,7 +7442,6 @@ def extract_subject_canonical_wardrobe(
                     canonical_record,
                 ),
                 response_format=build_story_subject_wardrobe_response_format(),
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "story_subject_wardrobe_extract",
@@ -7582,7 +7617,6 @@ def canonicalize_defined_subject_wardrobes(
                         record,
                     ),
                     response_format=build_story_subject_wardrobe_response_format(),
-                    context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                     history_metadata={
                         **dict(history_metadata or {}),
                         "purpose": "story_subject_wardrobe_extract",
@@ -10457,56 +10491,21 @@ def ask_llm(
     retry_delay=5,
     response_format=RESPONSE_FORMAT,
     history_metadata=None,
-    temperature=None,
-    top_p=None,
-    top_k=None,
-    min_p=None,
-    presence_penalty=None,
-    frequency_penalty=None,
-    repeat_penalty=None,
-    seed=None,
-    thinking=None,
     chat_template=None,
     jinja=None,
-    reasoning_effort=None,
-    thinking_budget_tokens=None,
-    reasoning_budget_message=None,
-    enable_thinking=None,
-    max_tokens=8192,
     parse_json_response=None,
-    context_token_budget=None,
 ):
     last_error = None
     last_connection_error = None
     last_content = None
     received_response = False
     messages = normalize_llm_host_messages(messages)
-    estimated_input_tokens = estimate_message_tokens(messages)
-    effective_context_budget = (
-        LLM_CONTEXT_TOKEN_BUDGET
-        if context_token_budget is None
-        else int(context_token_budget)
-    )
-    if effective_context_budget <= LLM_CONTEXT_SAFETY_TOKENS:
-        raise ValueError("context_token_budget must leave room for completion.")
-    available_completion_tokens = (
-        effective_context_budget
-        - LLM_CONTEXT_SAFETY_TOKENS
-        - estimated_input_tokens
-    )
-    if available_completion_tokens < LLM_MIN_COMPLETION_TOKENS:
-        raise RuntimeError(
-            "LLM request exceeds the configured local context budget: "
-            f"{estimated_input_tokens} estimated input tokens leave only "
-            f"{max(0, available_completion_tokens)} completion tokens inside "
-            f"{effective_context_budget}. Simplify the stage prompt."
-        )
     history_purpose = str((history_metadata or {}).get("purpose", ""))
     # Select request behavior strictly by task/responsibility. Formatter/model
     # selection is intentionally absent from this routing.
     if history_purpose == "story_expansion":
         llm_settings = STORY_EXPANSION_LLM_SETTINGS
-    elif history_purpose == "story_to_beats":
+    elif history_purpose in {"story_to_beats", "story_to_beats_repair"}:
         llm_settings = STORY_TO_BEATS_LLM_SETTINGS
     elif history_purpose in MUSIC_GENERATION_LLM_PURPOSES:
         llm_settings = MUSIC_GENERATION_LLM_SETTINGS
@@ -10523,10 +10522,33 @@ def ask_llm(
     else:
         llm_settings = DETERMINISTIC_ANALYSIS_LLM_SETTINGS
 
+    estimated_input_tokens = estimate_message_tokens(messages)
+    effective_context_budget = (
+        LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS.get(
+            history_purpose,
+            llm_settings["context_token_budget"],
+        )
+    )
+    if effective_context_budget <= LLM_CONTEXT_SAFETY_TOKENS:
+        raise ValueError("context_token_budget must leave room for completion.")
+    available_completion_tokens = (
+        effective_context_budget
+        - LLM_CONTEXT_SAFETY_TOKENS
+        - estimated_input_tokens
+    )
+    if available_completion_tokens < LLM_MIN_COMPLETION_TOKENS:
+        raise RuntimeError(
+            "LLM request exceeds the configured local context budget: "
+            f"{estimated_input_tokens} estimated input tokens leave only "
+            f"{max(0, available_completion_tokens)} completion tokens inside "
+            f"{effective_context_budget}. Simplify the stage prompt."
+        )
     effective_max_tokens = min(
-        int(max_tokens),
         int(available_completion_tokens),
-        int(llm_settings.get("max_output_tokens", max_tokens)),
+        int(LLM_PURPOSE_MAX_OUTPUT_TOKENS.get(
+            history_purpose,
+            llm_settings["max_output_tokens"],
+        )),
     )
     temperature = llm_settings["temperature"]
     top_p = llm_settings["top_p"]
@@ -19227,10 +19249,6 @@ def extract_initial_location_subjects(
                 messages,
                 response_format=INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT,
                 parse_json_response=False,
-                max_tokens=512,
-                context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS[
-                    "context_token_budget"
-                ],
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "director_raw_scene_subject_resolution",
@@ -19442,8 +19460,6 @@ def extract_story_locations(
                 build_story_location_messages(expanded_story),
                 response_format=build_story_location_response_format(),
                 parse_json_response=False,
-                max_tokens=256,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "story_location_extract",
@@ -19569,8 +19585,6 @@ def extract_static_setting(
                 ),
                 response_format=build_static_setting_extraction_response_format(),
                 parse_json_response=False,
-                max_tokens=512,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "static_setting_extract",
@@ -19658,8 +19672,6 @@ def refine_story_setting_spatially(
                 build_story_setting_spatial_refinement_messages(location),
                 response_format=None,
                 parse_json_response=False,
-                max_tokens=3072,
-                context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS["context_token_budget"],
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "story_setting_spatial_refine",
@@ -19879,8 +19891,6 @@ def extract_story_setting_description(
                 messages,
                 response_format=None,
                 parse_json_response=False,
-                max_tokens=4096,
-                context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS["context_token_budget"],
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "story_setting_extract",
@@ -20224,8 +20234,6 @@ def generate_beats_via_story_expansion(
                 ),
                 response_format=None,
                 parse_json_response=False,
-                max_tokens=12000,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **(history_metadata or {}),
                     "purpose": "story_expansion",
@@ -20266,8 +20274,6 @@ def generate_beats_via_story_expansion(
                     total_segments
                 ),
                 parse_json_response=False,
-                max_tokens=4096,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **(history_metadata or {}),
                     "purpose": "story_to_beats",
@@ -20339,11 +20345,9 @@ def generate_beats_via_story_expansion(
                 beat_number
             ),
             parse_json_response=False,
-            max_tokens=1024,
-            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
             history_metadata={
                 **(history_metadata or {}),
-                "purpose": "story_to_beats",
+                "purpose": "story_to_beats_repair",
                 "beat_number": beat_number,
                 "total_segments": total_segments,
                 "repair": True,
@@ -20737,7 +20741,6 @@ def generate_beats_from_story(
                                 "attempt": validation_round,
                                 "total_segments": total_segments,
                             },
-                            max_tokens=1000,
                         )
                         replacements = parse_macro_arc_majority_tail_repair_result(
                             tail_raw,
@@ -22474,11 +22477,6 @@ def filter_continuity_attached_objects(
                     "subject": str(subject_name),
                     "object": object_text,
                 },
-                temperature=0,
-                top_p=1,
-                max_tokens=512,
-                seed=42,
-                repeat_penalty=1.15,
             )
             if parse_continuity_attachment(result) == "ATTACHED":
                 kept.append(object_name)
@@ -23060,11 +23058,6 @@ def validate_final_h3_action_preservation(
                 "purpose": "final_h3_action_preservation",
                 "timestamp": timestamp,
             },
-            temperature=0,
-            top_p=1,
-            max_tokens=512,
-            seed=42,
-            repeat_penalty=1.15,
         )
         status = parse_h3_action_preservation(result)
         observations.append({
@@ -26957,9 +26950,6 @@ def request_continuity_opening_state(
             raw_opening = llm_request(
                 phase2_messages,
                 response_format=None,
-                temperature=0.10,
-                top_p=0.90,
-                max_tokens=2000,
                 **({"history_metadata": attempt_metadata} if attempt_metadata else {}),
             )
             opening_state = _normalize_continuity_opening_text(raw_opening)
@@ -27280,9 +27270,6 @@ def request_combined_continuity(
                 # this request, so JSON syntax is enforced by the prompt,
                 # parser, and bounded retry loop below.
                 response_format=None,
-                temperature=0.10,
-                top_p=0.90,
-                max_tokens=6000,
                 **({"history_metadata": metadata} if metadata else {}),
             )
             raw_received = True
@@ -27473,8 +27460,6 @@ def request_structured_continuity_state(
         raw_delta = llm_request(
             messages,
             response_format=None,
-            temperature=0.10,
-            top_p=0.90,
             **({"history_metadata": metadata} if metadata else {}),
         )
         if isinstance(raw_delta, str):
@@ -27554,8 +27539,6 @@ def request_structured_continuity_state(
             raw_validation = llm_request(
                 validation_messages,
                 response_format=None,
-                temperature=0.05,
-                top_p=0.90,
                 **(
                     {"history_metadata": validation_metadata}
                     if validation_metadata else {}
@@ -30915,10 +30898,10 @@ def ask_vision_model(
             {"role": "system", "content": VISUAL_END_STATE_SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
         ],
-        "temperature": 0,
-        "seed": BENCHMARK_SEED,
-        "repeat_penalty": 1.15,
-        "max_tokens": VISION_REQUEST_MAX_TOKENS,
+        "temperature": VISION_LLM_SETTINGS["temperature"],
+        "seed": VISION_LLM_SETTINGS["seed"],
+        "repeat_penalty": VISION_LLM_SETTINGS["repeat_penalty"],
+        "max_tokens": VISION_LLM_SETTINGS["max_output_tokens"],
     }
     if VISION_MODEL:
         payload["model"] = VISION_MODEL
@@ -35646,11 +35629,6 @@ def resolve_director_raw_scene_pronouns(
             **dict(history_metadata or {}),
             "purpose": "director_raw_scene_pronoun_resolution",
         },
-        temperature=0,
-        top_p=1,
-        max_tokens=2048,
-        seed=42,
-        repeat_penalty=1.15,
     )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
@@ -35965,7 +35943,6 @@ def resolve_director_raw_scene_subjects(
             **dict(history_metadata or {}),
             "purpose": "director_raw_scene_visible_subject_resolution",
         },
-        max_tokens=2048,
     )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
@@ -36781,11 +36758,6 @@ def validate_director_raw_scene_timing(
             **dict(history_metadata or {}),
             "purpose": "director_raw_scene_timing",
         },
-        temperature=0,
-        top_p=1,
-        max_tokens=384,
-        seed=42,
-        repeat_penalty=1.15,
     )
     return parse_beat_validation_result(result)
 
@@ -36822,11 +36794,6 @@ def validate_director_raw_scene_physical(
             **dict(history_metadata or {}),
             "purpose": "director_raw_scene_physical",
         },
-        temperature=0,
-        top_p=1,
-        max_tokens=384,
-        seed=42,
-        repeat_penalty=1.15,
     )
     return parse_beat_validation_result(result)
 
@@ -36858,11 +36825,6 @@ def validate_director_raw_scene_prop_state(
             **dict(history_metadata or {}),
             "purpose": "director_raw_scene_prop_state",
         },
-        temperature=0,
-        top_p=1,
-        max_tokens=384,
-        seed=42,
-        repeat_penalty=1.15,
     )
     return parse_beat_validation_result(result)
 
@@ -37518,7 +37480,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     "attempt": audio_attempt,
                     "conditioning_mode": conditioning_mode,
                 },
-                max_tokens=512,
             )
             soundscape = parse_h3_soundscape_result(
                 raw_soundscape,
@@ -37580,7 +37541,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "attempt": audio_attempt,
                         "conditioning_mode": conditioning_mode,
                     },
-                    max_tokens=512,
                 )
                 music = parse_h3_music_result(raw_music)
                 console_log(

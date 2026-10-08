@@ -53,9 +53,8 @@ class ContinuityCallContractTests(unittest.TestCase):
         self.assertIn("Return JSON only", messages[0]["content"])
         self.assertIn("FINAL H3 PROMPT", messages[1]["content"])
         self.assertIsNone(request.call_args.kwargs["response_format"])
-        self.assertEqual(request.call_args.kwargs["temperature"], 0.10)
-        self.assertEqual(request.call_args.kwargs["top_p"], 0.90)
-        self.assertEqual(request.call_args.kwargs["max_tokens"], 6000)
+        for setting in ("temperature", "top_p", "max_tokens", "context_token_budget"):
+            self.assertNotIn(setting, request.call_args.kwargs)
         self.assertEqual(
             request.call_args.kwargs["history_metadata"],
             {
@@ -87,9 +86,8 @@ class ContinuityCallContractTests(unittest.TestCase):
         self.assertIn('"bedroom"', phase2_messages[1]["content"])
         self.assertNotIn(json.dumps(phase, ensure_ascii=False, indent=2), phase2_messages[1]["content"])
         self.assertEqual(request.call_args_list[1].kwargs["response_format"], None)
-        self.assertEqual(request.call_args_list[1].kwargs["temperature"], 0.10)
-        self.assertEqual(request.call_args_list[1].kwargs["top_p"], 0.90)
-        self.assertEqual(request.call_args_list[1].kwargs["max_tokens"], 2000)
+        for setting in ("temperature", "top_p", "max_tokens", "context_token_budget"):
+            self.assertNotIn(setting, request.call_args_list[1].kwargs)
         self.assertEqual(
             request.call_args_list[1].kwargs["history_metadata"],
             {
@@ -177,9 +175,8 @@ class ContinuityCallContractTests(unittest.TestCase):
         self.assertEqual(result, "A concise opening.")
         kwargs = request.call_args.kwargs
         self.assertEqual(kwargs["response_format"], None)
-        self.assertEqual(kwargs["temperature"], 0.10)
-        self.assertEqual(kwargs["top_p"], 0.90)
-        self.assertEqual(kwargs["max_tokens"], 2000)
+        for setting in ("temperature", "top_p", "max_tokens", "context_token_budget"):
+            self.assertNotIn(setting, kwargs)
         self.assertEqual(
             kwargs["history_metadata"],
             {
@@ -345,11 +342,6 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             [{"role": "user", "content": "test"}],
             response_format=None,
             history_metadata={"purpose": "beat_generation"},
-            temperature=0.8,
-            top_p=0.95,
-            top_k=40,
-            min_p=0.05,
-            repeat_penalty=1.0,
         )
 
         self.assertEqual(result, {"ok": True})
@@ -494,7 +486,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
     @patch("minimax.generate_random_llm_seed", return_value=42)
     @patch("minimax.requests.post")
-    def test_ask_llm_respects_requested_completion_when_it_fits_context(
+    def test_ask_llm_uses_profile_output_limit_when_it_fits_context(
         self, post, _random_seed
     ):
         response = Mock()
@@ -505,9 +497,12 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         }
         post.return_value = response
         messages = [{"role": "user", "content": "short request"}]
-        minimax.ask_llm(messages, response_format=None, max_tokens=8000)
+        minimax.ask_llm(messages, response_format=None)
         request_json = post.call_args.kwargs["json"]
-        self.assertEqual(request_json["max_tokens"], 8000)
+        self.assertEqual(
+            request_json["max_tokens"],
+            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["max_output_tokens"],
+        )
     @patch("minimax.requests.post")
     def test_ask_llm_rejects_input_that_leaves_no_completion_room(self, post):
         oversized = "x" * (
@@ -605,8 +600,6 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             [{"role": "user", "content": "validate"}],
             response_format=None,
             history_metadata={"purpose": "beat_validation"},
-            temperature=0.99,
-            repeat_penalty=0.5,
         )
 
         request_json = post.call_args.kwargs["json"]
