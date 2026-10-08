@@ -36688,6 +36688,15 @@ def resolve_director_raw_scene_subjects(
         },
         max_tokens=2048,
     )
+    diagnostic = (
+        result if isinstance(result, str)
+        else json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+    )
+    diagnostic = str(diagnostic)
+    suffix = " [truncated]" if len(diagnostic) > 4000 else ""
+    console_log(
+        "RAW Subject resolver response:", diagnostic[:4000] + suffix
+    )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
     required_keys = {"mappings", "subject_descriptions", "subject_wardrobes"}

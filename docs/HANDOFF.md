@@ -4,17 +4,13 @@ Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This fi
 
 ## CURRENT HANDOFF — 2026-10-07 (read first)
 
-**Latest iteration:** r36 used `fixed-plan-r31-unicorn` on `object-state-work`
-revision `33786849d5f7e2fa4949086b0749ee4e44b238a7`. It captured H3 prompts
-for Segments 1 and 2, then exited 1 in Segment 3 after the RAW/WorldState
-consistency validator found that explicit barrel opening and ale pouring were
-not represented in `state_actions`. The reducer/validator correctly failed
-closed. A focused prompt clarification now maps explicit opening to `open` and
-source-to-target pouring to `pour`, including both actions when both occur.
-Prompt regression and focused Director tests passed (12 passed). The update is
-being committed to `object-state-work`; next queue the same fixed plan as r37
-and inspect whether it gets past Segment 3. This instruction does not authorize
-weakening consistency validation.
+**Latest iteration:** r37 replayed `fixed-plan-r31-unicorn` at code revision
+`bc4319c677d0a9cb558528585fc981674e2748f5`. It exited 1 before Segment 1 was
+captured: the Subject resolver rejected an identity span after two attempts.
+The newly added `open`/`pour` guidance was not exercised. The bridge omitted the
+resolver response body, so bounded logging of that response is being added
+without changing validation. Next queue the fixed plan again and inspect the
+logged response; retain fail-closed behavior.
 
 **Most recent verified code head before this documentation update:** `f1610fa455` on `object-state-work` (fixed-prop canonical location ownership). A documentation-only operating-contract update followed at `f12d4b9986`.
 
@@ -2280,3 +2276,23 @@ state_action_contract or same_location_move_failure_adds_staging_retry_hint'`
 Next: queue r37 with the same fixed plan, verify Segment 3's action sequence,
 and continue inspecting full-run artifact count/exit status. Do not modify the
 strict action or state consistency rules to get past the run.
+
+## 2026-10-07 — r37 blocked before the open/pour regression
+
+Queued r37 on `gpt-runtime` as `6f5cc800`; it ran code revision
+`bc4319c677d0a9cb558528585fc981674e2748f5`. The nested acceptance process
+exited 1 with no H3 segments captured. Segment 1 RAW and soundscape/music
+generation completed, but Subject resolution failed twice with
+`RAW Subject resolver identity_span must match exactly once in accepted RAW`.
+The actual resolver responses were not present in `run.log`; `developer_log`
+was empty. Thus r37 does not tell us whether the new `open`/`pour` guidance
+works, and no action-validation rule should be changed based on it.
+
+Added diagnostic-only logging of each resolver response, capped at 4,000
+characters, and a regression that checks an invalid mapping response is logged
+while the same exact-span validation still raises. This is to make the next
+failure inspectable; it does not alter resolver inputs, outputs, matching, or
+substitution behavior. Validation: focused resolver/action-contract tests — 22
+passed, 103 deselected (5 subtests passed); `py_compile` and `git diff --check`
+passed. Next queue r38 with the same fixed plan and inspect the bounded resolver
+diagnostics before evaluating Segment 1 or the open/pour change.

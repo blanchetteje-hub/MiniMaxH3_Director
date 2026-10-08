@@ -1304,6 +1304,28 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "director_raw_scene_visible_subject_resolution",
         )
 
+    def test_raw_subject_resolution_logs_response_when_mapping_is_invalid(self):
+        response = {
+            "mappings": [{
+                "timestamp": "00:00.000",
+                "surface_form": "a guard enters the room",
+                "identity_span": "elf",
+                "subject_name": "Elf1",
+            }],
+            "subject_descriptions": {},
+            "subject_wardrobes": {},
+        }
+        with mock.patch("minimax.console_log") as log:
+            with self.assertRaisesRegex(ValueError, "identity_span must match exactly once"):
+                minimax.resolve_director_raw_scene_subjects(
+                    "At 00:00.000, a guard enters the room.\n"
+                    "End continuity state: the guard remains in the room.",
+                    "<Subject 1> is Mara.",
+                    llm_request=mock.Mock(return_value=response),
+                )
+        log.assert_called_once()
+        self.assertIn("Elf1", log.call_args.args[1])
+
     def test_raw_subject_resolution_bootstraps_identity_and_wardrobe_once(self):
         original = (
             "At 00:00.000, a beautiful female elf with long silver hair enters.\n"
