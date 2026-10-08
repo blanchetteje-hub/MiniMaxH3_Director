@@ -6,7 +6,7 @@ This file is the persistent source of truth for the current MiniMax H3 architect
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
-Active experimental branch: `object-state-work`
+Active experimental branch: `world-state-rebuild`
 
 ## Primary goal
 
@@ -15,6 +15,10 @@ The goal is:
 > **story.txt -> gold-standard MiniMax H3 prompts**
 
 The pipeline is disposable. Any intermediate representation, LLM call, validator, state object, or Python layer exists only if it improves that path.
+
+**KISS / architectural stop rule:** If a fix expands state, validation, retries, reconciliation, or compatibility layers beyond what the observed H3 failure warrants, stop and reconsider the design or revert to a simpler checkpoint. Do not respond to architectural ballooning by stacking another subsystem or validator. Propose the smallest evidenced fix first and measure it with the bridge acceptance run.
+
+**2026-10-08 rebuild checkpoint:** `world-state-rebuild` forks from `33a56bb5a5b8a79c72b8acbeff86268b3709d9eb` (Gate C before Gate D). Director state-action dry-run/retry remains, but reducer candidates are not committed to WorldState; legacy compatibility writers still run. The later Gate D transactional layers on `object-state-work` are intentionally excluded pending simpler evidence-driven design.
 
 ## Project progress checklist
 
@@ -29,7 +33,7 @@ This checklist is the compact current-status view. Historical sections below exp
 - [x] **20B-class local runtime is the production target.** GPT-5.6 Sol is development/evaluation only.
 - [x] **Task-specific LLM sampling/reasoning profiles** are separated by job rather than loaded model.
 - [x] **Prompt generation and ComfyUI rendering can be separated** for a one-GPU workflow.
-- [x] **Bridge/mailbox workflow retired.** Local runs + uploaded artifacts are the active acceptance/debugging path.
+- [x] **GitHub bridge/mailbox workflow is active for acceptance and debugging.** Code/test target: `world-state-rebuild`; mailbox/results branch: `gpt-runtime`; local worker: `tools/chatgpt_llama_bridge.py`. The bridge runs prompt-generation acceptance through the local 20B runtime, publishes results to GitHub, and avoids manually shuttling logs.
 
 ### Director / H3 prompt quality
 
