@@ -198,14 +198,16 @@ def copy_artifact(workspace: Path, output_dir: Path, filename: str) -> str | Non
     return str(destination.relative_to(output_dir))
 
 
-def acceptance_child_env() -> dict[str, str]:
-    """Force live MiniMax output through the acceptance runner's pipe."""
+def acceptance_child_env(workspace: Path | None = None) -> dict[str, str]:
+    """Isolate acceptance output and force unbuffered UTF-8 logging."""
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
     # Windows pipes otherwise inherit a legacy charmap encoding and can crash
     # on ordinary model punctuation such as a non-breaking hyphen.
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    if workspace is not None:
+        env["MINIMAX_VIDEO_OUTPUT"] = str(workspace / "output" / "video")
     return env
 
 
@@ -532,7 +534,7 @@ def main(argv=None) -> int:
                 encoding="utf-8",
                 errors="replace",
                 bufsize=1,
-                env=acceptance_child_env(),
+                env=acceptance_child_env(workspace),
             )
             assert process.stdout is not None
             for line in process.stdout:
