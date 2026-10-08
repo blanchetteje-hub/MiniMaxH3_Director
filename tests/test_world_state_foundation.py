@@ -1006,5 +1006,20 @@ class WorldStateReducerTests(unittest.TestCase):
             validate_world_state(state)
 
 
+class StoryStartRegressionTests(unittest.TestCase):
+    def test_classifier_accepts_exact_evidence_with_newline(self):
+        value = minimax.parse_registered_subject_story_start_result(
+            {"classification": "present",
+             "evidence": "Amy wipes a polished table.",
+             "initial_state": "wiping table"},
+            {"name": "Amy"}, "Amy wipes a\npolished table.", [])
+        self.assertEqual(value["classification"], "present")
+
+    def test_classifier_prompt_accepts_opening_action(self):
+        messages = minimax.build_registered_subject_story_start_messages(
+            {"name": "Amy", "identity": {}}, "Amy wipes a table.", ["Amy wipes a table."])
+        self.assertIn("performing a starting action", messages[0]["content"])
+
+
 if __name__ == "__main__":
     unittest.main()
