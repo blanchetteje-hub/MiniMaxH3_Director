@@ -143,7 +143,7 @@ A rectangular tavern interior.
     def test_initial_location_subject_extractor_uses_first_classification_per_subject(self):
         beats = [
             "Amy wipes the counter while the elf waits by the door.",
-            "The goblin asks Amy for a pint; the elf steps into the tavern.",
+            "The blue-coated goblin asks Amy for a pint; the elf steps into the tavern.",
             "The goblin enters from outside, and the elf is already seated.",
         ]
         responses = [
@@ -183,6 +183,7 @@ A rectangular tavern interior.
                 call.kwargs["history_metadata"]["purpose"],
                 "director_raw_scene_subject_resolution",
             )
+        self.assertIn("blue-coated goblin", request.call_args_list[1].args[0][-1]["content"])
 
     def test_initial_location_subject_retry_repeats_only_current_beat(self):
         request = mock.Mock(side_effect=[
@@ -236,14 +237,32 @@ A rectangular tavern interior.
             }],
         )
 
-    def test_initial_location_subject_ignores_names_outside_canon_vocabulary(self):
-        request = mock.Mock(return_value='{"unlisted":{"present":true,"reason":"An unlisted figure acts."}}')
+    def test_initial_location_subject_retries_unrecognized_keys(self):
+        request = mock.Mock(side_effect=[
+            '{"subjects":{"present":true,"reason":"Unknown wrapper key."}}',
+            '{"Amy":{"present":true,"reason":"Amy opens the curtains."}}',
+        ])
         result = minimax.extract_initial_location_subjects(
-            ["An unlisted figure acts."],
+            ["Amy opens the curtains."],
             possible_subjects=["Amy"],
             llm_request=request,
         )
-        self.assertEqual(result, [])
+        self.assertEqual(
+            result,
+            [{
+                "name": "Amy",
+                "initial_state": "present in the opening scene",
+                "reason": "Amy opens the curtains.",
+            }],
+        )
+        self.assertEqual(request.call_count, 2)
+
+    def test_initial_location_subject_parser_rejects_unknown_canon_key(self):
+        with self.assertRaisesRegex(ValueError, "unrecognized Subject key"):
+            minimax.parse_initial_location_subjects(
+                {"Unknown": {"present": True, "reason": "It acts."}},
+                possible_subject_names=["Amy"],
+            )
 
     def test_location_state_prompt_labels_only_needed_fixtures_and_supports(self):
         messages = minimax.build_story_setting_description_messages(

@@ -281,9 +281,16 @@ def seed_predefined_subject_identities(
 def seed_current_segment_subject_identities(
     world_state: dict[str, Any],
     extracted_subjects: list[dict[str, Any]],
+    *,
+    identity_authority: str = "current_segment_subject_extractor",
 ) -> dict[str, Any]:
     """Register extractor-established identities without seeding presence."""
     validate_world_state(world_state)
+    if identity_authority not in {
+        "current_segment_subject_extractor",
+        "character_canon",
+    }:
+        raise ValueError("Current-segment Subject identity authority is invalid.")
     if not isinstance(extracted_subjects, list):
         raise ValueError("Current-segment Subject identities must be an array.")
     before = deepcopy(world_state)
@@ -342,7 +349,7 @@ def seed_current_segment_subject_identities(
             "status": UNKNOWN,
             "provenance": {
                 "identity": {
-                    "authority": "current_segment_subject_extractor",
+                    "authority": identity_authority,
                 }
             },
         }

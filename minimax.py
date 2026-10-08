@@ -7376,7 +7376,11 @@ def build_story_subject_wardrobe_response_format():
     }
 
 
-def parse_story_subject_wardrobe_result(raw_result, llm_request=None):
+def parse_story_subject_wardrobe_result(
+    raw_result,
+    llm_request=None,
+    subject_name="",
+):
     """Normalize one subject's extracted canonical attire."""
     candidate = raw_result
     if isinstance(candidate, str):
@@ -7392,6 +7396,11 @@ def parse_story_subject_wardrobe_result(raw_result, llm_request=None):
     clothing = " ".join(str(candidate.get("clothing") or "").split()).strip(" ,.;")
     if not clothing or not re.search(r"[A-Za-z0-9]", clothing):
         raise ValueError("Subject wardrobe extraction returned unusable clothing.")
+    if (
+        str(subject_name or "").strip()
+        and clothing.casefold() == " ".join(str(subject_name).split()).casefold()
+    ):
+        raise ValueError("Subject wardrobe extraction returned the Subject's name as clothing.")
     if clothing.casefold() in {
         "none", "no clothes", "no clothing", "unclothed",
         "naturally unclothed", "not applicable", "n/a", "na",
@@ -7445,6 +7454,7 @@ def extract_subject_canonical_wardrobe(
             clothing = parse_story_subject_wardrobe_result(
                 raw,
                 llm_request=llm_request,
+                subject_name=subject_name,
             )
             break
         except LLMConnectionError:
@@ -7560,9 +7570,6 @@ def canonicalize_defined_subject_wardrobes(
         raise ValueError("Character canon is required for wardrobe extraction.")
 
     registry = parse_subject_registry(subject_definitions)
-    if not registry:
-        return character_canon
-
     canon = copy.deepcopy(character_canon)
     records = [
         record
@@ -7585,13 +7592,28 @@ def canonicalize_defined_subject_wardrobes(
         )
     }
 
+    defined_subjects = {}
     for subject_id, subject in sorted(registry.items()):
         name = " ".join(str(subject.get("name") or "").split()).strip()
+        if not name:
+            continue
         record = by_name.get(name.casefold())
         if record is None:
             raise ValueError(
                 f"Defined Subject {name!r} has no canonical character record."
             )
+        defined_subjects[name.casefold()] = (
+            int(subject_id), subject, definition_lines.get(int(subject_id), "")
+        )
+
+    # Canonical wardrobe belongs to identity, not to the Subject's first
+    # appearance. Run the existing per-Subject extractor for every canon entry.
+    for record in records:
+        name = " ".join(str(record.get("name") or "").split()).strip()
+        if not name:
+            continue
+        definition = defined_subjects.get(name.casefold())
+        subject_id, _subject, definition_line = definition or (None, None, "")
         clothing = None
         last_wardrobe_error = None
         for wardrobe_attempt in range(1, 4):
@@ -7600,7 +7622,7 @@ def canonicalize_defined_subject_wardrobes(
                     build_story_subject_wardrobe_messages(
                         expanded_story,
                         name,
-                        definition_lines.get(subject_id, ""),
+                        definition_line,
                         record,
                     ),
                     response_format=build_story_subject_wardrobe_response_format(),
@@ -7608,13 +7630,14 @@ def canonicalize_defined_subject_wardrobes(
                         **dict(history_metadata or {}),
                         "purpose": "story_subject_wardrobe_extract",
                         "subject": name,
-                        "subject_id": int(subject_id),
+                        "subject_id": int(subject_id) if subject_id is not None else None,
                         "attempt": wardrobe_attempt,
                     },
                 )
                 clothing = parse_story_subject_wardrobe_result(
                     raw,
                     llm_request=llm_request,
+                    subject_name=name,
                 )
                 break
             except LLMConnectionError:
@@ -19185,6 +19208,19 @@ def parse_initial_location_subjects(raw_result, possible_subject_names=None):
         for name in possible_subject_names or []
         if str(name or "").strip()
     }
+    # Character canon commonly names numbered roles (for example Elf1), while
+    # the beat classifier may return the unnumbered role. Resolve that alias
+    # only when it maps to one supplied canonical identity.
+    role_aliases = {}
+    for canonical_name in canonical_names.values():
+        if canonical_name.casefold().endswith("1"):
+            alias = canonical_name[:-1].strip()
+            alias_key = _subject_identity_key(alias)
+            if alias_key and alias_key not in canonical_names:
+                role_aliases.setdefault(alias_key, set()).add(canonical_name)
+    for alias_key, targets in role_aliases.items():
+        if len(targets) == 1:
+            canonical_names[alias_key] = next(iter(targets))
     for raw_name, item in candidate.items():
         name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
         if not isinstance(item, dict) or set(item) != {"present", "reason"}:
@@ -19208,9 +19244,13 @@ def parse_initial_location_subjects(raw_result, possible_subject_names=None):
             role_tokens = re.findall(r"[a-z0-9]+", name)
             if role_tokens:
                 name = "".join(token[:1].upper() + token[1:] for token in role_tokens) + "1"
+        key = _subject_identity_key(name)
+        if possible_subject_names is not None and key not in canonical_names:
+            raise ValueError(
+                f"Subject presence response contains unrecognized Subject key {name!r}."
+            )
         if not name or not _subject_name_is_promotable(name):
             raise ValueError("Initial-location Subject contains unusable data.")
-        key = _subject_identity_key(name)
         if key in seen:
             raise ValueError(f"Duplicate Subject presence classification for {name!r}.")
         seen.add(key)
@@ -19290,13 +19330,10 @@ def extract_initial_location_subjects(
                     key = _subject_identity_key(item["name"])
                     canonical_name = possible_subject_names.get(key)
                     if canonical_name is None:
-                        console_log(
-                            "Ignoring story-start Subject classification outside "
-                            f"character_canon vocabulary: {item['name']} in Beat "
-                            f"{beat_index}.",
-                            flush=True,
+                        raise ValueError(
+                            "Subject presence response contains unrecognized "
+                            f"character_canon Subject {item['name']!r}."
                         )
-                        continue
                     previous = first_classification_by_subject.get(key)
                     if previous is not None:
                         console_log(
@@ -25283,6 +25320,32 @@ def world_state_wardrobes_from_character_canon(character_canon):
         if name and isinstance(clothing, str) and clothing.strip():
             wardrobes[name] = _world_state_wardrobe_from_canonical_text(clothing)
     return wardrobes
+
+
+def seed_character_canon_subject_identities(world_state, character_canon):
+    """Register every canonical identity without implying scene presence."""
+    records = character_canon.get("characters", []) if isinstance(character_canon, dict) else []
+    identities = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        name = " ".join(str(record.get("name") or "").split()).strip()
+        if not name:
+            continue
+        gender = str(record.get("gender") or "unknown").strip().casefold()
+        if gender not in {"female", "male", "unknown", "n/a"}:
+            gender = "unknown"
+        identities.append({
+            "name": name,
+            "gender": gender,
+            "physical_form": "unknown",
+            "source_description": "unknown",
+        })
+    return seed_current_segment_subject_identities(
+        world_state,
+        identities,
+        identity_authority="character_canon",
+    )
 
 
 # Join wardrobe components.
@@ -38467,6 +38530,10 @@ def _run_main(
         world_state = seed_predefined_subject_identities(
             generation_state["world_state"],
             run_config.get("world_state_seed", {}),
+        )
+        world_state = seed_character_canon_subject_identities(
+            world_state,
+            character_canon,
         )
         canonical_location_state = generation_state.get("location_state")
         if not isinstance(canonical_location_state, dict) or not isinstance(

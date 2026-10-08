@@ -223,6 +223,38 @@ class DestructiveStateMergeRegressionTests(unittest.TestCase):
 
 
 class WorldStateSeedTests(unittest.TestCase):
+    def test_character_canon_identities_register_without_presence_and_receive_wardrobe(self):
+        authored = minimax.authoritative_world_state_seed_from_subject_definitions(
+            "<Subject 1> is Subject Alpha (S1)."
+        )
+        state = seed_predefined_subject_identities(empty_world_state(), authored)
+        canon = {
+            "characters": [
+                {"name": "Subject Alpha", "gender": "female", "clothing": "linen shirt and trousers"},
+                {"name": "Subject Beta", "gender": "male", "clothing": "canvas coat and boots"},
+                {"name": "Subject Gamma", "gender": "unknown", "clothing": "N/A"},
+            ]
+        }
+        state = minimax.seed_character_canon_subject_identities(state, canon)
+        by_name = {subject["name"]: subject for subject in state["subjects"].values()}
+        self.assertEqual(set(by_name), {"Subject Alpha", "Subject Beta", "Subject Gamma"})
+        for subject in by_name.values():
+            self.assertEqual(subject["presence"], UNKNOWN)
+            self.assertEqual(subject["location_id"], UNKNOWN)
+        self.assertEqual(
+            by_name["Subject Beta"]["provenance"]["identity"]["authority"],
+            "character_canon",
+        )
+
+        seeded = seed_canonical_wardrobes(
+            state,
+            minimax.world_state_wardrobes_from_character_canon(canon),
+        )
+        seeded_by_name = {subject["name"]: subject for subject in seeded["subjects"].values()}
+        self.assertEqual(seeded_by_name["Subject Beta"]["wardrobe"]["upper"][0]["garment"], "canvas coat")
+        self.assertEqual(seeded_by_name["Subject Gamma"]["wardrobe"]["upper"], "N/A")
+        self.assertEqual(seeded_by_name["Subject Beta"]["presence"], UNKNOWN)
+
     def test_new_world_state_seeds_only_explicit_subject_identities(self):
         seed = {
             "source_path": "subjects.txt",

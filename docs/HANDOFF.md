@@ -29,6 +29,14 @@ Continuity
 Location continuity -> 3-second persistent 360-orbit room reference is accepted; covered geometry stayed ~99% consistent in the latest tavern run
 State/subject/action continuity -> active work
 
+## 2026-10-08 — acceptance -12 Subject identity and wardrobe coverage
+
+- Registered every `character_canon` identity in WorldState before canonical wardrobe seeding. This reuses the existing identity-only registration API and leaves presence/location unknown unless a separate authority establishes them.
+- Made the existing per-beat `director_raw_scene_subject_resolution` parser reject keys outside the supplied canonical Subject vocabulary. The existing retry path handles invalid keys; the earliest valid classification remains authoritative. Beat text, including descriptive modifiers, is passed through unchanged.
+- Expanded `canonicalize_defined_subject_wardrobes()` to run the existing `story_subject_wardrobe_extract` once for every `character_canon` Subject, including Subjects absent from `subjects.txt`. The same prompt/schema/profile are used. The narrow parser retry also rejects clothing that exactly equals the Subject's name; no broader wardrobe validation was added.
+- No runtime prompt or LLM-facing schema changed. The fixed humanoid clothing rule remains in the existing wardrobe prompt.
+- Verification: WorldState foundation 41 passed (2 pre-existing stale story-start prompt/schema assertions deselected); location reference 28 passed; character canon 14 passed (2 pre-existing stale prompt assertions deselected). New regressions cover identity without presence, wardrobe for later-appearing canon identities, exact-name clothing retry, unknown resolver keys, canonical numbered-role aliases, and unmodified descriptive Beat text.
+
 Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture/prompt changes.
 
 ## 2026-10-08 — immutable LLM settings profiles
