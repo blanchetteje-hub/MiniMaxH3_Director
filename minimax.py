@@ -410,6 +410,7 @@ BEAT_PHASE_GENERATION_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
 DIRECTOR_RAW_SCENE_ATTEMPTS = 5
+DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS = 10
 
 BEAT_VALIDATION_STATE_VERSION = 3
 
@@ -571,6 +572,7 @@ CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
 
 DIRECTOR_RAW_SCENE_LLM_PURPOSES = frozenset({
     "director_raw_scene",
+    "director_raw_scene_repair",
 })
 
 MUSIC_GENERATION_LLM_PURPOSES = frozenset({
@@ -823,6 +825,20 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                 "beat_complete",
                 "state_actions",
             ],
+            "additionalProperties": False,
+        },
+    },
+}
+
+DIRECTOR_RAW_SCENE_REPAIR_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_raw_scene_repair",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {"raw_scene": {"type": "string"}},
+            "required": ["raw_scene"],
             "additionalProperties": False,
         },
     },
@@ -22496,6 +22512,55 @@ def _parse_director_raw_scene_result(raw_result):
     }
 
 
+def build_director_raw_scene_repair_messages(
+    *, current_beat, known_subject_state, previous_shot_end,
+    static_setting_authority, raw_scene, issue,
+):
+    """Build the dedicated repair prompt for one rejected Director RAW scene."""
+    if isinstance(known_subject_state, (dict, list)):
+        subject_state_text = json.dumps(
+            known_subject_state, ensure_ascii=False, sort_keys=True
+        )
+    else:
+        subject_state_text = str(known_subject_state or "N/A").strip() or "N/A"
+    return [
+        {
+            "role": "system",
+            "content": "Rewrite the RAW SCENE in order to fix the ISSUE.",
+        },
+        {
+            "role": "user",
+            "content": (
+                f"CURRENT BEAT\n{str(current_beat or '').strip() or 'N/A'}\n\n"
+                f"KNOWN SUBJECT STATE\n{subject_state_text}\n\n"
+                f"PREVIOUS SHOT END\n{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
+                "STATIC SETTING AUTHORITY\n"
+                f"{str(static_setting_authority or '').strip() or 'N/A'}\n\n"
+                f"RAW SCENE\n{str(raw_scene or '').strip()}\n"
+                f"ISSUE\n{str(issue or '').strip()}"
+            ),
+        },
+    ]
+
+
+def _parse_director_raw_scene_repair(raw_result):
+    """Extract only the repaired RAW scene, rejecting missing/empty output."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        try:
+            candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            candidate = {"raw_scene": candidate}
+    if not isinstance(candidate, dict) or not isinstance(
+        candidate.get("raw_scene"), str
+    ):
+        raise ValueError("Director RAW repair must return a raw_scene string.")
+    repaired = _normalize_raw_scene_result(candidate["raw_scene"])
+    if not repaired or repaired == "N/A":
+        raise ValueError("Director RAW repair returned an empty raw_scene.")
+    return repaired
+
+
 def _director_timestamp_range_errors(value, segment_seconds=None):
     """Return malformed/out-of-range Director timestamp errors."""
     errors = []
@@ -38054,6 +38119,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     request1_result = None
     raw_scene = ""
     request1_retry_requirements = []
+    pending_raw_scene_repair = None
+    request1_create_attempts = 0
+    request1_repair_attempts = 0
 
     def build_request1_retry_messages(requirement):
         """Retry from the clean base while retaining every observed blocker."""
@@ -38092,22 +38160,72 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         })
         return messages
 
-    request1_messages = request1_base_messages
-    for request1_attempt in range(1, DIRECTOR_RAW_SCENE_ATTEMPTS + 1):
-        request1_metadata = {
+    def queue_raw_scene_repair(issue, rejected_result):
+        """Repair the rejected RAW candidate without regenerating its action plan."""
+        nonlocal request1_repair_attempts
+        if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
+            return None
+        request1_repair_attempts += 1
+        previous_shot_end = (
+            bundle.get("previous_final_frame", "")
+            if segment_number > 1
+            else ""
+        )
+        messages = build_director_raw_scene_repair_messages(
+            current_beat=bundle.get("current_beat_text", ""),
+            known_subject_state=bundle.get("registry_state"),
+            previous_shot_end=previous_shot_end,
+            static_setting_authority=bundle.get(
+                "static_setting_description", ""
+            ),
+            raw_scene=rejected_result.get("raw_scene", ""),
+            issue=issue,
+        )
+        repair_metadata = {
             "run_id": run_id,
             "source_sha256": (run_config or {}).get("source_sha256"),
-            "purpose": "director_raw_scene",
+            "purpose": "director_raw_scene_repair",
             "segment": segment_number,
-            "attempt": request1_attempt,
+            "attempt": request1_repair_attempts,
             "conditioning_mode": conditioning_mode,
             "opening_state_sha256": bundle.get("opening_state_sha256"),
         }
-        raw_scene_result = ask_llm(
-            request1_messages,
-            response_format=state_action_contract["response_format"],
-            history_metadata=request1_metadata,
+        repaired_result = ask_llm(
+            messages,
+            response_format=DIRECTOR_RAW_SCENE_REPAIR_RESPONSE_FORMAT,
+            history_metadata=repair_metadata,
         )
+        repaired_scene = _parse_director_raw_scene_repair(repaired_result)
+        pending = copy.deepcopy(rejected_result)
+        pending["raw_scene"] = repaired_scene
+        return pending
+
+    request1_messages = request1_base_messages
+    for request1_attempt in range(
+        1,
+        DIRECTOR_RAW_SCENE_ATTEMPTS
+        + DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS
+        + 1,
+    ):
+        if pending_raw_scene_repair is not None:
+            raw_scene_result = pending_raw_scene_repair
+            pending_raw_scene_repair = None
+        else:
+            request1_create_attempts += 1
+            request1_metadata = {
+                "run_id": run_id,
+                "source_sha256": (run_config or {}).get("source_sha256"),
+                "purpose": "director_raw_scene",
+                "segment": segment_number,
+                "attempt": request1_create_attempts,
+                "conditioning_mode": conditioning_mode,
+                "opening_state_sha256": bundle.get("opening_state_sha256"),
+            }
+            raw_scene_result = ask_llm(
+                request1_messages,
+                response_format=state_action_contract["response_format"],
+                history_metadata=request1_metadata,
+            )
         try:
             state_action_dry_run = parse_and_dry_run_director_state_actions(
                 world_state_opening,
@@ -38141,14 +38259,15 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     else "invalid_state_action_batch: reducer rejected the batch."
                 )
         if state_action_failure:
-            if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+            if request1_create_attempts >= DIRECTOR_RAW_SCENE_ATTEMPTS:
                 raise BeatGenerationError(
                     f"Director Request 1 state_actions failed for Segment "
                     f"{segment_number}: {state_action_failure}"
                 )
             console_log(
                 f"Director Request 1 state_actions failed "
-                f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                f"(create attempt {request1_create_attempts}/"
+                f"{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
                 f"retrying from the same opening WorldState: {state_action_failure}",
                 flush=True,
             )
@@ -38173,19 +38292,21 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 duration,
             )
             if structure_errors:
-                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
                     raise BeatGenerationError(
                         f"Director Request 1 returned malformed shot script for "
                         f"Segment {segment_number}: " + "; ".join(structure_errors)
                     )
                 console_log(
-                    f"Director Request 1 shot-script structure failed "
-                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                    f"Director RAW repair needed for shot-script structure "
+                    f"(repair {request1_repair_attempts + 1}/"
+                    f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS}); "
                     f"retrying: " + "; ".join(structure_errors),
                     flush=True,
                 )
-                request1_messages = build_request1_retry_messages(
-                    "SHOT SCRIPT: " + "; ".join(structure_errors)
+                pending_raw_scene_repair = queue_raw_scene_repair(
+                    "; ".join(structure_errors),
+                    request1_result,
                 )
                 continue
 
@@ -38195,22 +38316,20 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 raw_scene,
             )
             if dialogue_issue:
-                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
                     raise BeatGenerationError(
                         f"Director Request 1 never rendered required direct dialogue "
                         f"for Segment {segment_number}: {dialogue_issue}"
                     )
                 console_log(
-                    f"Director Request 1 dialogue contract failed "
-                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                    f"Director RAW repair needed for dialogue contract "
+                    f"(repair {request1_repair_attempts + 1}/"
+                    f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS}); "
                     f"retrying: {dialogue_issue}",
                     flush=True,
                 )
-                request1_messages = build_request1_retry_messages(
-                    "DIALOGUE: CURRENT BEAT requires intelligible speech. "
-                    + dialogue_issue
-                    + " Use one brief direct line in the form "
-                    "Speaker said <d>exact words</d>."
+                pending_raw_scene_repair = queue_raw_scene_repair(
+                    dialogue_issue, request1_result
                 )
                 continue
 
@@ -38257,19 +38376,19 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     issue = physical["issue"] or (
                         "RAW SCENE has an impossible subject movement or action order."
                     )
-                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
                         raise BeatGenerationError(
                             f"Director Request 1 remained physically incoherent for "
                             f"Segment {segment_number}: {issue}"
                         )
                     console_log(
-                        f"Director Request 1 physical/spatial validation failed "
-                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                        f"retrying: {issue}",
+                        f"Director RAW physical/spatial repair "
+                        f"({request1_repair_attempts + 1}/"
+                        f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS}): {issue}",
                         flush=True,
                     )
-                    request1_messages = build_request1_retry_messages(
-                        f"PHYSICAL/SPATIAL: Fix this physical/spatial problem: {issue}"
+                    pending_raw_scene_repair = queue_raw_scene_repair(
+                        issue, request1_result
                     )
                     continue
 
@@ -38298,19 +38417,19 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     issue = prop_state["issue"] or (
                         "RAW SCENE has inconsistent prop, transfer, or final object state."
                     )
-                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
                         raise BeatGenerationError(
                             f"Director Request 1 remained prop/state incoherent for "
                             f"Segment {segment_number}: {issue}"
                         )
                     console_log(
-                        f"Director Request 1 prop/state validation failed "
-                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                        f"retrying: {issue}",
+                        f"Director RAW prop/state repair "
+                        f"({request1_repair_attempts + 1}/"
+                        f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS}): {issue}",
                         flush=True,
                     )
-                    request1_messages = build_request1_retry_messages(
-                        f"PROP/STATE: Fix this prop/state problem: {issue}"
+                    pending_raw_scene_repair = queue_raw_scene_repair(
+                        issue, request1_result
                     )
                     continue
 
@@ -38342,22 +38461,19 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         timing["issue"]
                         or "RAW SCENE compresses a physical transition into too little visible time."
                     )
-                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
                         raise BeatGenerationError(
                             f"Director Request 1 remained physically over-compressed for "
                             f"Segment {segment_number}: {issue}"
                         )
                     console_log(
-                        f"Director Request 1 timing feasibility failed "
-                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                        f"retrying: {issue}",
+                        f"Director RAW timing repair "
+                        f"({request1_repair_attempts + 1}/"
+                        f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS}): {issue}",
                         flush=True,
                     )
-                    request1_messages = build_request1_retry_messages(
-                        "TIMING: "
-                        + issue
-                        + " Give required travel and prerequisite actions enough visible "
-                        "time by simplifying optional staging and/or redistributing timestamps."
+                    pending_raw_scene_repair = queue_raw_scene_repair(
+                        issue, request1_result
                     )
                     continue
 
@@ -38392,14 +38508,15 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 issue = state_consistency["issue"] or (
                     "RAW SCENE and state_actions do not describe the same persistent changes."
                 )
-                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                if request1_create_attempts >= DIRECTOR_RAW_SCENE_ATTEMPTS:
                     raise BeatGenerationError(
                         f"Director Request 1 WorldState consistency failed for "
                         f"Segment {segment_number}: {issue}"
                     )
                 console_log(
                     f"Director Request 1 RAW/WorldState consistency failed "
-                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                    f"(create attempt {request1_create_attempts}/"
+                    f"{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
                     f"retrying from the same opening state: {issue}",
                     flush=True,
                 )
@@ -38513,15 +38630,16 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     console_log(f"  WARNING: {issue}", flush=True)
             break
 
-        if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+        if request1_create_attempts >= DIRECTOR_RAW_SCENE_ATTEMPTS:
             raise BeatGenerationError(
                 f"Director Request 1 returned no usable RAW SCENE for Segment "
-                f"{segment_number} after {DIRECTOR_RAW_SCENE_ATTEMPTS} attempts."
+                f"{segment_number} after {DIRECTOR_RAW_SCENE_ATTEMPTS} create attempts."
             )
 
         console_log(
             f"Director Request 1 returned no usable RAW SCENE "
-            f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+            f"(create attempt {request1_create_attempts}/"
+            f"{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
             "retrying the same segment.",
             flush=True,
         )

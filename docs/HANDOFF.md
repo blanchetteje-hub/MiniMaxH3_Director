@@ -52,6 +52,24 @@ WorldState is the canonical state model for Director actions and Segment transac
 
 Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture or prompt changes.
 
+## 2026-10-07 — dedicated Director RAW validate/repair loop
+
+Director RAW validation failures now repair the rejected RAW candidate using a
+separate RAW-only response contract. The repair prompt receives the current
+Beat, known Subject state, previous shot end, static-setting authority, rejected
+RAW, and the concrete issue. It does not restart from the original creation
+prompt. Python carries forward the reducer-accepted `state_actions`, then runs
+the repaired RAW through the same structure, dialogue, physical, prop-state,
+timing, and RAW/WorldState checks. The repair cap is ten per segment; malformed
+reducer actions and RAW/WorldState action-plan mismatches still use the
+state-action correction path.
+
+Implementation was syntax-checked with `python -m py_compile minimax.py` and
+`git diff --check`; focused tests were not run in this change. Upstream Beat
+regeneration after exhausting ten RAW repairs is not yet connected to this
+request path and remains follow-up work. The automation checkout's `minimax.py`
+was overwritten from `automate_git` and verified byte-identical.
+
 ## 2026-10-06 — WorldState foundation, review gates A and B
 
 Implemented only the first two steps of the WorldState refactor for review. Do
