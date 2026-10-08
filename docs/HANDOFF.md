@@ -6,7 +6,7 @@ Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This fi
 
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
-Active experimental branch: `object-state-work`
+Active experimental branch: `world-state-rebuild`
 
 Runtime/bridge mailbox branch: `gpt-runtime`
 
@@ -30,6 +30,15 @@ Location continuity -> 3-second persistent 360-orbit room reference is accepted;
 State/subject/action continuity -> active work
 
 Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture/prompt changes.
+
+## 2026-10-08 — WorldState rollback and bridge acceptance
+
+- **Current code branch:** `world-state-rebuild`, created from Gate C checkpoint `33a56bb5a5b8a79c72b8acbeff86268b3709d9eb` rather than continuing the 78 later commits on `object-state-work`.
+- **Reason for branch:** subsequent Gate D and follow-up changes accumulated excessive WorldState/legacy reconciliation and architectural complexity. Keep proven authoring, location, Director validation/repair, and Gate C action dry-run; do not restore the downstream transaction machinery by default.
+- **Current acceptance path:** ChatGPT writes an allowlisted `run_acceptance` job under `bridge/jobs/` on `gpt-runtime`; local `tools/chatgpt_llama_bridge.py` executes `world-state-rebuild` using the 20B runtime and publishes logs/artifacts under `bridge/results/` on `gpt-runtime`.
+- **Benchmark:** `tests/acceptance/gold/amy_medieval_tavern_six.json`; six eight-second prompt-only segments. Evaluate actual H3 prompts, RAW staging, identities, geometry, prop reuse and WorldState dry-run diagnostics, not just unit-test status.
+- **KISS is mandatory:** If a fix requires adding another validator, synchronizer, shadow state, or repair subsystem, stop to redesign or simplify. Solve the earliest observed acceptance failure with the minimum change. Gate D remains excluded unless fresh evidence justifies a lean redesign.
+- **Next:** queue one bridge acceptance, inspect outputs, and recommend only the first concrete fix. Historical branch and bridge-retirement notes below are superseded by this checkpoint.
 
 ## 2026-10-06 — tavern generation postmortem fixes
 
