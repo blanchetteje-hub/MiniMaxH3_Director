@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "c0452e0994fbe6f3bb799c4216bf256fb07125b3207f55f7be2218488574c923",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "occupation",
+    "personality_trait",
+    "tavern_duty"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "N/A",
+      "gender": "female",
+      "occupation": "medieval barkeep",
+      "personality_trait": "confident woman",
+      "tavern_duty": "takes care of a tavern for magical humanoid creatures"
+    }
+  ]
+}

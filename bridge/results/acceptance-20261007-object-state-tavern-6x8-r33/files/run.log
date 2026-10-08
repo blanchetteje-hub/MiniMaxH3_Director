@@ -1,0 +1,37 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+LLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).
+LLM request finished: character_canon (17.2s, finish_reason=stop).
+WARNING: expanded_story.txt is unavailable; Segment 1 will continue without extracted location metadata.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~501 input tokens, max 512 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (2.0s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (attempt 1/3):
+{
+  "subjects": [
+    {
+      "name": "Unicorn",
+      "initial_state": "Sitting on a low chair in the middle of the tavern, holding a clear crystal cup."
+    }
+  ]
+}
+Subjects inferred as already present at story start: Unicorn (present in the story's starting location; exact position and pose unknown)
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+FATAL: prompt-generation run stopped at first real failure: ValueError: WorldState story-start presence requires canonical starting-location state.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-0liuqfch\repo\minimax.py", line 42044, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-0liuqfch\repo\minimax.py", line 39572, in _run_main
+    raise ValueError(
+ValueError: WorldState story-start presence requires canonical starting-location state.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-0liuqfch\repo\minimax.py", line 42109, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-0liuqfch\repo\minimax.py", line 42044, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-0liuqfch\repo\minimax.py", line 39572, in _run_main
+    raise ValueError(
+ValueError: WorldState story-start presence requires canonical starting-location state.

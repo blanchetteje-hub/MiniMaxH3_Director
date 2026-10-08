@@ -1,0 +1,40 @@
+{
+  "job_id": "acceptance-20261007-object-state-tavern-6x8-r33",
+  "kind": "run_acceptance",
+  "started_at": 1791417803.9576523,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--benchmark",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\gold\\amy_medieval_tavern_six.json",
+      "--director-plan-dir",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_bridge_worktree\\bridge\\results\\acceptance-20261007-object-state-tavern-6x8-r31\\files"
+    ],
+    "returncode": 1,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 6 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --temp 0.4 --refresh 999999 --director-only\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-0liuqfch\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261007-200325\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nRun start: cleared files and folders in the video state directory.\nDirector-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.\nLLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).\nLLM request finished: character_canon (17.2s, finish_reason=stop).\nWARNING: expanded_story.txt is unavailable; Segment 1 will continue without extracted location metadata.\nLLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~501 input tokens, max 512 output tokens).\nLLM request finished: director_raw_scene_subject_resolution (2.0s, finish_reason=stop).\ndirector_raw_scene_subject_resolution LLM result (attempt 1/3):\n{\n  \"subjects\": [\n    {\n      \"name\": \"Unicorn\",\n      \"initial_state\": \"Sitting on a low chair in the middle of the tavern, holding a clear crystal cup.\"\n    }\n  ]\n}\nSubjects inferred as already present at story start: Unicorn (present in the story's starting location; exact position and pose unknown)\nPrompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.\nFATAL: prompt-generation run stopped at first real failure: ValueError: WorldState story-start presence requires canonical starting-location state.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-0liuqfch\\repo\\minimax.py\", line 42044, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-0liuqfch\\repo\\minimax.py\", line 39572, in _run_main\n    raise ValueError(\nValueError: WorldState story-start presence requires canonical starting-location state.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-0liuqfch\\repo\\minimax.py\", line 42109, in <module>\n    main()\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-0liuqfch\\repo\\minimax.py\", line 42044, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-0liuqfch\\repo\\minimax.py\", line 39572, in _run_main\n    raise ValueError(\nValueError: WorldState story-start presence requires canonical starting-location state.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261007-200325\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6]. Include run.log for diagnosis.\nMiniMax exited with code 1; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1791417805.1693609,
+    "finished_at": 1791417825.7240565,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "story_arc.json": "files\\story_arc.json",
+      "beats.txt": "files\\beats.txt",
+      "character_canon.json": "files\\character_canon.json",
+      "source_result_dir": "tests\\acceptance\\results\\amy_medieval_tavern_six-20261007-200325"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1791417825.7574024,
+  "status": "ok"
+}
