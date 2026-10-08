@@ -1,0 +1,9 @@
+{
+  "job_id": "accept-world-state-rebuild-00-preflight-20261008-03",
+  "kind": "run_tests",
+  "code_branch": "world-state-rebuild",
+  "tests": [
+    "tests/test_acceptance_runner.py"
+  ],
+  "timeout_seconds": 900
+}
