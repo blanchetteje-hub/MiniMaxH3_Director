@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "source_sha256": "bad3ad244ca11da1ec28b8961126138604bf333b83bdb447e93cdc41904a74eb",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman",
+    "tunic_and_leather_apron_show_scuffs_of_medieval_trade",
+    "silver_hair_streaming_down_its_shoulders",
+    "beautiful_female_elf",
+    "green_skin",
+    "tiny_hands_clutching_a_chipped_mug",
+    "scales_glittering_like_polished_obsidian",
+    "pair_of_amber_eyes_that_scan_the_room"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "Amy wears a rough‑spun gray tunic of coarse wool that reaches her mid‑thigh, its hem frayed from frequent use. Over the tunic she dons a sturdy brown leather apron with scuffs and dents marking the spots where pots and pans have struck it during her medieval trade. Beneath the tunic she slips on dark blue linen breeches tucked into black leather boots that reach just below the knee. A simple leather belt cinches at her waist, holding the apron’s straps in place",
+      "gender": "female",
+      "confident_woman": "true",
+      "tunic_and_leather_apron_show_scuffs_of_medieval_trade": "true"
+    },
+    {
+      "name": "Elf",
+      "age": "120",
+      "clothing": "N/A",
+      "gender": "female",
+      "silver_hair_streaming_down_its_shoulders": "true",
+      "beautiful_female_elf": "true"
+    },
+    {
+      "name": "Goblin",
+      "age": "30",
+      "clothing": "N/A",
+      "gender": "male",
+      "green_skin": "true",
+      "tiny_hands_clutching_a_chipped_mug": "true"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "300",
+      "clothing": "N/A",
+      "gender": "female",
+      "scales_glittering_like_polished_obsidian": "true",
+      "pair_of_amber_eyes_that_scan_the_room": "true"
+    }
+  ]
+}
