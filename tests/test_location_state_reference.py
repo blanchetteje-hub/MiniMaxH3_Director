@@ -245,6 +245,53 @@ A rectangular tavern interior.
             }],
         )
 
+    def test_initial_location_subject_resolves_unique_descriptive_name_alias(self):
+        result = minimax.parse_initial_location_subjects(
+            [{"subject": "Elf", "present": True, "reason": "The elf acts."}],
+            possible_subject_names=["Beautiful Female Elf"],
+        )
+        self.assertEqual(
+            result,
+            [{"name": "Beautiful Female Elf", "present": True, "reason": "The elf acts."}],
+        )
+
+    def test_initial_location_subject_exact_canonical_name_wins_over_alias(self):
+        result = minimax.parse_initial_location_subjects(
+            [{"subject": "Elf", "present": True, "reason": "The elf acts."}],
+            possible_subject_names=["Beautiful Female Elf", "Elf"],
+        )
+        self.assertEqual(result[0]["name"], "Elf")
+
+    def test_initial_location_subject_rejects_ambiguous_descriptive_alias(self):
+        with self.assertRaisesRegex(ValueError, "ambiguous canonical alias"):
+            minimax.parse_initial_location_subjects(
+                [{"subject": "Elf", "present": True, "reason": "The elf acts."}],
+                possible_subject_names=["Beautiful Female Elf", "Tall Male Elf"],
+            )
+
+    def test_initial_location_subject_alias_preserves_earliest_classification(self):
+        request = mock.Mock(side_effect=[
+            '[{"subject":"Elf","present":true,"reason":"The elf waits inside."}]',
+            '[{"subject":"Beautiful Female Elf","present":false,"reason":"The elf enters."}]',
+        ])
+        result = minimax.extract_initial_location_subjects(
+            ["The elf waits inside.", "Beautiful Female Elf enters the room."],
+            possible_subjects=["Beautiful Female Elf"],
+            llm_request=request,
+        )
+        self.assertEqual(
+            result,
+            [{
+                "name": "Beautiful Female Elf",
+                "initial_state": "present in the opening scene",
+                "reason": "The elf waits inside.",
+            }],
+        )
+        self.assertEqual(
+            request.call_args_list[1].args[0][-1]["content"],
+            "POSSIBLE SUBJECTS\nBeautiful Female Elf\n\nSTORY BEAT\nBeautiful Female Elf enters the room.",
+        )
+
     def test_initial_location_subject_retries_unrecognized_keys(self):
         request = mock.Mock(side_effect=[
             '[{"subject":"Unknown","present":true,"reason":"Unknown Subject."}]',

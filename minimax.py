@@ -19205,19 +19205,20 @@ def parse_initial_location_subjects(raw_result, possible_subject_names=None):
         for name in possible_subject_names or []
         if str(name or "").strip()
     }
-    # Character canon commonly names numbered roles (for example Elf1), while
-    # the beat classifier may return the unnumbered role. Resolve that alias
-    # only when it maps to one supplied canonical identity.
-    role_aliases = {}
+    # Build conservative aliases from numbered role names and descriptive
+    # canonical names. A suffix such as "Elf" can resolve "Beautiful Female
+    # Elf" only when it identifies exactly one supplied Subject.
+    aliases = {}
     for canonical_name in canonical_names.values():
         if canonical_name.casefold().endswith("1"):
-            alias = canonical_name[:-1].strip()
-            alias_key = _subject_identity_key(alias)
+            alias_key = _subject_identity_key(canonical_name[:-1].strip())
             if alias_key and alias_key not in canonical_names:
-                role_aliases.setdefault(alias_key, set()).add(canonical_name)
-    for alias_key, targets in role_aliases.items():
-        if len(targets) == 1:
-            canonical_names[alias_key] = next(iter(targets))
+                aliases.setdefault(alias_key, set()).add(canonical_name)
+        name_tokens = _subject_identity_key(canonical_name).split()
+        for start in range(1, len(name_tokens)):
+            alias_key = _subject_identity_key(" ".join(name_tokens[start:]))
+            if alias_key and alias_key not in canonical_names:
+                aliases.setdefault(alias_key, set()).add(canonical_name)
     for item in candidate:
         if not isinstance(item, dict) or set(item) != {"subject", "present", "reason"}:
             raise ValueError(
@@ -19231,10 +19232,18 @@ def parse_initial_location_subjects(raw_result, possible_subject_names=None):
         reason = " ".join(str(item.get("reason") or "").split()).strip()
         if not reason:
             raise ValueError(f"Subject presence reason for {name!r} must not be empty.")
-        canonical_name = canonical_names.get(_subject_identity_key(name))
-        if canonical_name:
+        name_key = _subject_identity_key(name)
+        canonical_name = canonical_names.get(name_key)
+        if canonical_name is not None:
             name = canonical_name
-        elif (
+        elif name_key in aliases:
+            targets = aliases[name_key]
+            if len(targets) != 1:
+                raise ValueError(
+                    f"Subject presence name {name!r} is an ambiguous canonical alias."
+                )
+            name = next(iter(targets))
+        elif possible_subject_names is None and (
             name
             and name == name.casefold()
             and re.fullmatch(r"[a-z][a-z0-9 '-]*", name)

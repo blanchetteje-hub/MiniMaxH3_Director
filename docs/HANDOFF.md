@@ -29,6 +29,13 @@ Continuity
 Location continuity -> 3-second persistent 360-orbit room reference is accepted; covered geometry stayed ~99% consistent in the latest tavern run
 State/subject/action continuity -> active work
 
+## 2026-10-08 — canonical descriptive-name aliases in Subject resolver
+
+- Added deterministic Python alias resolution for `director_raw_scene_subject_resolution`: a returned name matching a suffix of a supplied descriptive canonical name resolves to that Subject only when exactly one canonical Subject matches (for example, `Elf` to `Beautiful Female Elf`).
+- Exact canonical names take precedence over aliases. Ambiguous aliases and names outside the supplied vocabulary fail closed. Earliest-classification behavior and the current Beat text are unchanged.
+- No LLM prompt, response schema, or call path changed.
+- Verification: `python -m pytest -q tests/test_location_state_reference.py` (32 passed), `python -m py_compile minimax.py tests/test_location_state_reference.py`, and `git diff --check` passed.
+
 ## 2026-10-08 — Subject resolver array response
 
 - Updated the `director_raw_scene_subject_resolution` system prompt to the approved wording: classify each referenced possible Subject as entering (`present=false`) or already present and acting (`present=true`), omit unreferenced Subjects, return Subject names without adjectives, and return a JSON array.
