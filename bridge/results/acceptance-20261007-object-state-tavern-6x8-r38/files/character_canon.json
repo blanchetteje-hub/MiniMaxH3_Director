@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "d8fc45e23f89a8967d5213dc8d190831578a4a03eab0fa4cc5a15fedc39f8197",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence_level",
+    "role"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy wears a sturdy leather apron over a simple linen tunic in earth‑tinted brown. The tunic is long‑sleeved, reaching her knees, made of coarse wool to keep warm against the tavern’s woodsmoke. Over it she has a worn brass belt with pouches for tools and coins. Her boots are heavy leather, laced at the ankle, suitable for standing behind the bar all day. The apron is tied around her waist with a thick cord, its front pockets lined with felt to hold mugs and ale barrels",
+      "gender": "female",
+      "confidence_level": "confident",
+      "role": "medieval barkeep taking care of a tavern for magical humanoid creatures"
+    }
+  ]
+}
