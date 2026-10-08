@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "source_sha256": "f2f3970e9c1cab4fa7efbb367de249cb5ac0d927a7d9856c615f253ed24f0a31",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "occupation",
+    "action",
+    "skin_color",
+    "hands",
+    "hair_color",
+    "scales_color",
+    "eye_color"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy wears a rough‑spun wool tunic in brown with coarse texture and visible scuffs from daily work. Over the tunic she dons a dark‑brown leather apron that is worn and scuffed. She completes her outfit with sturdy leather boots, simple woolen trousers beneath the tunic, and a plain knitted cap to keep hair out of the way",
+      "gender": "female",
+      "occupation": "tavern keeper",
+      "action": "wipes a polished table with a cloth soaked in ale-scented oil"
+    },
+    {
+      "name": "Goblin",
+      "age": "20",
+      "clothing": "Goblin: - Tunic (rough‑spun wool, dark green, stiff texture, scuffed from daily use) - Breeches (brown leather, smooth with worn patches) - Boots (black leather, rubbery sole, scuffed at the toes) - Belt (woven brown leather across waist)",
+      "gender": "male",
+      "skin_color": "green",
+      "hands": "tiny, clutching a chipped mug"
+    },
+    {
+      "name": "Elf",
+      "age": "150",
+      "clothing": "female elf (age 150) wearing a long emerald‑green linen tunic with delicate silver thread embroidery along the cuffs and hem; fitted dark brown linen breeches tucked into leather ankle boots dyed deep amber; a lightweight woolen cloak in midnight blue draped over her shoulders, fastened at the neck by a simple silver brooch; she carries a small leather pouch on a waist belt. Hair is long silver flowing down to her shoulders",
+      "gender": "female",
+      "hair_color": "silver",
+      "action": "takes a seat at the back table"
+    },
+    {
+      "name": "Dragon",
+      "age": "700",
+      "clothing": "N/A",
+      "gender": "male",
+      "scales_color": "obsidian (polished)",
+      "eye_color": "amber",
+      "action": "slides onto a high bar stool, licks its lips and sips the brew"
+    }
+  ]
+}
