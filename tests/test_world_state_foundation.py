@@ -2,6 +2,7 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 import minimax
 from world_state import (
@@ -223,6 +224,73 @@ class DestructiveStateMergeRegressionTests(unittest.TestCase):
 
 
 class WorldStateSeedTests(unittest.TestCase):
+    def test_canon_covered_dynamic_subject_skips_compatibility_wardrobe_extraction(self):
+        canon = {
+            "characters": [{
+                "name": "Goblin1",
+                "gender": "unknown",
+                "clothing": "rough-spun shirt, brown trousers, leather shoes",
+            }]
+        }
+        world_state = minimax.seed_character_canon_subject_identities(
+            empty_world_state(),
+            canon,
+        )
+        world_state = seed_canonical_wardrobes(
+            world_state,
+            minimax.world_state_wardrobes_from_character_canon(canon),
+        )
+        goblin_world_state_subject = next(
+            subject for subject in world_state["subjects"].values()
+            if subject["name"] == "Goblin1"
+        )
+        opening_wardrobe = copy.deepcopy(goblin_world_state_subject["wardrobe"])
+
+        base_definitions = "<Subject 1> is Amy (S1)."
+        continuity = minimax.continuity_state_for_registry(
+            base_definitions,
+            minimax.new_continuity_state(),
+        )
+        continuity, added = minimax.seed_initial_location_subjects(
+            continuity,
+            base_definitions,
+            [{"name": "Goblin1", "initial_state": "leaning over the counter"}],
+        )
+        self.assertEqual(added, ["Goblin1"])
+        extended_definitions = minimax.combine_subject_definitions(
+            base_definitions,
+            minimax.derive_additional_subject_definitions(
+                base_definitions,
+                continuity,
+            ),
+        )
+        request = Mock(side_effect=AssertionError("canon wardrobe was re-extracted"))
+        wardrobe_sink = {}
+        updated = minimax.apply_story_subject_wardrobes(
+            continuity,
+            "A goblin leans over the counter.",
+            extended_definitions,
+            added,
+            character_canon=canon,
+            llm_request=request,
+            world_state_wardrobe_sink=wardrobe_sink,
+        )
+
+        self.assertEqual(request.call_count, 0)
+        self.assertEqual(wardrobe_sink, {})
+        self.assertIn("Goblin1", updated["subjects"])
+        self.assertEqual(
+            updated["subjects"]["Goblin1"]["wardrobe"]["upper"],
+            "rough-spun shirt",
+        )
+        self.assertEqual(
+            updated["subjects"]["Goblin1"]["wardrobe"]["lower"],
+            "brown trousers",
+        )
+        self.assertEqual(
+            goblin_world_state_subject["wardrobe"], opening_wardrobe
+        )
+
     def test_character_canon_identities_register_without_presence_and_receive_wardrobe(self):
         authored = minimax.authoritative_world_state_seed_from_subject_definitions(
             "<Subject 1> is Subject Alpha (S1)."

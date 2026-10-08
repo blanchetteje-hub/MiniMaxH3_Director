@@ -7483,12 +7483,28 @@ def apply_story_subject_wardrobes(
     subject_definitions,
     subject_names,
     *,
+    character_canon=None,
     history_metadata=None,
     llm_request=None,
     world_state_wardrobe_sink=None,
 ):
-    """Run one independent attire call for each named Subject and seed its state."""
+    """Seed canon attire or extract missing dynamic attire into compatibility state."""
     state = copy.deepcopy(continuity_state) if isinstance(continuity_state, dict) else {}
+    canon_records = {}
+    if isinstance(character_canon, dict):
+        canon_records = {
+            " ".join(str(record.get("name") or "").split()).strip().casefold(): record
+            for record in character_canon.get("characters", [])
+            if isinstance(record, dict) and str(record.get("name") or "").strip()
+        }
+    if canon_records:
+        # Keep the legacy continuity view aligned with the canonical wardrobe,
+        # but do not run a second extractor for Subjects already covered by it.
+        state = seed_character_canon_wardrobe(
+            subject_definitions,
+            character_canon,
+            state,
+        )
     subjects = state.get("subjects")
     if not isinstance(subjects, dict):
         return state
@@ -7508,6 +7524,13 @@ def apply_story_subject_wardrobes(
             continue
         record = subjects.get(existing_name)
         if not isinstance(record, dict):
+            continue
+        if " ".join(existing_name.split()).casefold() in canon_records:
+            console_log(
+                f"Using canonical character_canon wardrobe for {existing_name}; "
+                "skipping compatibility re-extraction.",
+                flush=True,
+            )
             continue
         clothing = extract_subject_canonical_wardrobe(
             expanded_story,
@@ -38632,6 +38655,7 @@ def _run_main(
                     expanded_story_context,
                     subject_definitions,
                     initial_added_subjects,
+                    character_canon=character_canon,
                     history_metadata={"run_id": run_id},
                     world_state_wardrobe_sink=dynamic_world_state_wardrobes,
                 )
@@ -39667,6 +39691,7 @@ def _run_main(
                     expanded_story_context,
                     subject_definitions,
                     newly_registered_names,
+                    character_canon=character_canon,
                     history_metadata={
                         "run_id": run_id,
                         "source_sha256": run_config["source_sha256"],

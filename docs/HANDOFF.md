@@ -29,6 +29,12 @@ Continuity
 Location continuity -> 3-second persistent 360-orbit room reference is accepted; covered geometry stayed ~99% consistent in the latest tavern run
 State/subject/action continuity -> active work
 
+## 2026-10-08 — avoid re-extracting canon-covered dynamic wardrobes
+
+- The initial-location/dynamic Subject compatibility path now receives `character_canon`. For a Subject with canonical clothing, it seeds the legacy continuity wardrobe from that existing record and skips a second `story_subject_wardrobe_extract` call and WorldState wardrobe sink update.
+- Non-canon dynamic Subjects still use the existing extractor and compatibility behavior. Dynamic registration and `seed_canonical_wardrobes()` conflict checks are unchanged.
+- Verification: WorldState foundation 42 passed (2 documented stale story-start prompt assertions deselected); location-reference 32 passed; syntax and whitespace checks passed.
+
 ## 2026-10-08 — canonical descriptive-name aliases in Subject resolver
 
 - Added deterministic Python alias resolution for `director_raw_scene_subject_resolution`: a returned name matching a suffix of a supplied descriptive canonical name resolves to that Subject only when exactly one canonical Subject matches (for example, `Elf` to `Beautiful Female Elf`).
