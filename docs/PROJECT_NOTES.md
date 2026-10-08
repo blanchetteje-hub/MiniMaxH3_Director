@@ -2,7 +2,7 @@
 
 **Purpose:** Tell GPT-6 (and any delegated coding assistant) what this project is, how to work on it, what GPT-6 owns, and what to do or avoid. This is a **stable operating contract**, not a progress log or an implementation specification.
 
-**Read order:** (1) this file; (2) `docs/HANDOFF.md` for current branch architecture, latest results, blockers, and next action; (3) current branch code, tests, prompts, and actual run artifacts. `docs/FUTURE_NOTES.md` holds deferred ideas. Git history preserves superseded experiments and decisions. Do not copy dated handoff material back into this file.
+**Read order:** (1) this file; (2) `docs/HANDOFF.md` for current branch architecture, latest results, blockers, and next action; (3) current branch code, tests, prompts, and actual run artifacts. `docs/FUTURE_NOTES.md` holds deferred ideas. **`docs/LLM_PROMPTS.md` catalogs the runtime LLM prompts/calls by `purpose` identifier, settings constant, purpose, input summary, and returned output; actual prompt wording remains in source and is user-owned.** Git history preserves superseded experiments and decisions. Do not copy dated handoff material back into this file.
 
 **Repository:** `blanchetteje-hub/MiniMaxH3_Director`. **Working branch at this checkpoint:** `world-state-rebuild`. Verify the branch head before every change; never assume a historical branch or SHA remains current. The mailbox/results branch is `gpt-runtime`.
 
