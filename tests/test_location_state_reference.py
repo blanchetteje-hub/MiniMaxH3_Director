@@ -126,10 +126,19 @@ A rectangular tavern interior.
 
     def test_initial_location_subject_prompt_contains_only_one_beat(self):
         beat = "A goblin already seated near the hearth asks Amy for a pint."
-        messages = minimax.build_initial_location_subjects_messages(beat)
-        self.assertIn("examine a story beat", messages[0]["content"])
-        self.assertIn("(no adjectives)", messages[0]["content"])
-        self.assertEqual(messages[1]["content"], beat)
+        possible_subjects = ["Amy", "Goblin1"]
+        messages = minimax.build_initial_location_subjects_messages(
+            possible_subjects,
+            beat,
+        )
+        self.assertIn("examine a STORY BEAT", messages[0]["content"])
+        self.assertIn("making present = false", messages[0]["content"])
+        self.assertIn("making present=true", messages[0]["content"])
+        self.assertIn("if the POSSIBLE SUBJECT isn't referenced at all", messages[0]["content"])
+        self.assertEqual(
+            messages[1]["content"],
+            "POSSIBLE SUBJECTS\nAmy, Goblin1\n\nSTORY BEAT\n" + beat,
+        )
 
     def test_initial_location_subject_extractor_uses_first_classification_per_subject(self):
         beats = [
@@ -149,6 +158,7 @@ A rectangular tavern interior.
         result = minimax.extract_initial_location_subjects(
             beats,
             "<Subject 1> is Amy (S1).",
+            possible_subjects=["Amy", "Elf1", "Goblin1"],
             llm_request=request,
         )
         self.assertEqual(
@@ -162,7 +172,10 @@ A rectangular tavern interior.
         self.assertEqual(request.call_count, len(beats))
         for index, beat in enumerate(beats):
             call = request.call_args_list[index]
-            self.assertEqual(call.args[0][-1]["content"], beat)
+            self.assertEqual(
+                call.args[0][-1]["content"],
+                "POSSIBLE SUBJECTS\nAmy, Elf1, Goblin1\n\nSTORY BEAT\n" + beat,
+            )
             self.assertEqual(
                 call.kwargs["history_metadata"]["beat_index"], index + 1
             )
@@ -179,6 +192,7 @@ A rectangular tavern interior.
         ])
         result = minimax.extract_initial_location_subjects(
             ["The goblin asks for ale.", "Amy serves the goblin."],
+            possible_subjects=["Goblin1"],
             llm_request=request,
         )
         self.assertEqual(
@@ -193,7 +207,10 @@ A rectangular tavern interior.
         first_messages = request.call_args_list[0].args[0]
         retry_messages = request.call_args_list[1].args[0]
         self.assertEqual(first_messages, retry_messages)
-        self.assertEqual(first_messages[-1]["content"], "The goblin asks for ale.")
+        self.assertEqual(
+            first_messages[-1]["content"],
+            "POSSIBLE SUBJECTS\nGoblin1\n\nSTORY BEAT\nThe goblin asks for ale.",
+        )
         self.assertEqual(
             [call.kwargs["history_metadata"]["beat_index"] for call in request.call_args_list],
             [1, 1, 2],
@@ -202,6 +219,31 @@ A rectangular tavern interior.
             [call.kwargs["history_metadata"]["attempt"] for call in request.call_args_list],
             [1, 2, 1],
         )
+
+    def test_initial_location_subject_exact_canon_name_survives_role_normalization(self):
+        request = mock.Mock(return_value='{"goblin":{"present":true,"reason":"The goblin asks for ale."}}')
+        result = minimax.extract_initial_location_subjects(
+            ["The goblin asks for ale."],
+            possible_subjects=["Goblin"],
+            llm_request=request,
+        )
+        self.assertEqual(
+            result,
+            [{
+                "name": "Goblin",
+                "initial_state": "present in the opening scene",
+                "reason": "The goblin asks for ale.",
+            }],
+        )
+
+    def test_initial_location_subject_ignores_names_outside_canon_vocabulary(self):
+        request = mock.Mock(return_value='{"unlisted":{"present":true,"reason":"An unlisted figure acts."}}')
+        result = minimax.extract_initial_location_subjects(
+            ["An unlisted figure acts."],
+            possible_subjects=["Amy"],
+            llm_request=request,
+        )
+        self.assertEqual(result, [])
 
     def test_location_state_prompt_labels_only_needed_fixtures_and_supports(self):
         messages = minimax.build_story_setting_description_messages(

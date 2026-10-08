@@ -19127,33 +19127,51 @@ def build_story_location_messages(expanded_story):
     ]
 
 
-def build_initial_location_subjects_messages(beat_text):
+def build_initial_location_subjects_messages(possible_subjects, beat_text):
     """Build one Subject story-start presence request for a single beat."""
+    if isinstance(possible_subjects, str):
+        subject_names = [
+            " ".join(name.split()).strip()
+            for name in possible_subjects.split(",")
+            if name.strip()
+        ]
+    else:
+        subject_names = [
+            " ".join(str(name or "").split()).strip()
+            for name in possible_subjects or []
+            if str(name or "").strip()
+        ]
     return [
         {
             "role": "system",
             "content": (
-                "Your job is to examine a story beat.  Each Subject that appears in that beat, "
-                "you need to validate two things:\n"
-                "Are they entering the scene: walked in, opened the door and entered, etc.?\n"
+                "Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in "
+                "that beat, you need to validate two things:\n"
+                "Are they entering the scene: walked in, opened the door and entered, etc., "
+                "making present = false.\n"
                 "OR\n"
                 "Are they performing an action while already in the scene: picked up a cup, "
-                "kicked the wall, etc.\n\n"
+                "kicked the wall, etc., making present=true.\n\n"
                 "Use the above determination to determine if they were present in the scene "
                 "before this story beat or not.\n\n"
-                "- List the Subject (no adjectives), present:{true:false},  and one-sentence "
-                "reasoning.\n"
+                "- if the POSSIBLE SUBJECT isn't referenced at all, don't return it.\n"
+                "- List the Subject, present:{true:false},  and one-sentence reasoning.\n"
                 "- Return JSON."
             ),
         },
         {
             "role": "user",
-            "content": str(beat_text or "").strip(),
+            "content": (
+                "POSSIBLE SUBJECTS\n"
+                + ", ".join(subject_names)
+                + "\n\nSTORY BEAT\n"
+                + str(beat_text or "").strip()
+            ),
         },
     ]
 
 
-def parse_initial_location_subjects(raw_result):
+def parse_initial_location_subjects(raw_result, possible_subject_names=None):
     """Normalize name-keyed Subject presence classifications."""
     candidate = raw_result
     if isinstance(candidate, str):
@@ -19162,6 +19180,11 @@ def parse_initial_location_subjects(raw_result):
         raise ValueError("Subject presence extraction must return a JSON object.")
     normalized = []
     seen = set()
+    canonical_names = {
+        _subject_identity_key(name): " ".join(str(name).split()).strip()
+        for name in possible_subject_names or []
+        if str(name or "").strip()
+    }
     for raw_name, item in candidate.items():
         name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
         if not isinstance(item, dict) or set(item) != {"present", "reason"}:
@@ -19173,7 +19196,10 @@ def parse_initial_location_subjects(raw_result):
         reason = " ".join(str(item.get("reason") or "").split()).strip()
         if not reason:
             raise ValueError(f"Subject presence reason for {name!r} must not be empty.")
-        if (
+        canonical_name = canonical_names.get(_subject_identity_key(name))
+        if canonical_name:
+            name = canonical_name
+        elif (
             name
             and name == name.casefold()
             and re.fullmatch(r"[a-z][a-z0-9 '-]*", name)
@@ -19196,6 +19222,7 @@ def extract_initial_location_subjects(
     beats,
     subject_definitions="",
     *,
+    possible_subjects=(),
     llm_request=None,
     history_metadata=None,
     attempts=3,
@@ -19205,6 +19232,26 @@ def extract_initial_location_subjects(
         llm_request = ask_llm
     if not beats:
         return []
+    if isinstance(possible_subjects, str):
+        possible_subjects = [
+            item.strip() for item in possible_subjects.split(",") if item.strip()
+        ]
+    canonical_subjects = []
+    for raw_name in possible_subjects or []:
+        name = " ".join(str(raw_name or "").split()).strip()
+        if name and _subject_name_is_promotable(name):
+            canonical_subjects.append(name)
+    canonical_subjects = list(dict.fromkeys(canonical_subjects))
+    if not canonical_subjects:
+        console_log(
+            "No character_canon Subjects were available for story-start "
+            "presence classification.",
+            flush=True,
+        )
+        return []
+    possible_subject_names = {
+        _subject_identity_key(name): name for name in canonical_subjects
+    }
     max_attempts = max(1, int(attempts))
     first_classification_by_subject = {}
     for beat_index, beat in enumerate(beats, start=1):
@@ -19212,7 +19259,10 @@ def extract_initial_location_subjects(
         if not beat_text:
             continue
         last_error = None
-        base_messages = build_initial_location_subjects_messages(beat_text)
+        base_messages = build_initial_location_subjects_messages(
+            canonical_subjects,
+            beat_text,
+        )
         for attempt in range(1, max_attempts + 1):
             messages = [dict(message) for message in base_messages]
             try:
@@ -19232,14 +19282,26 @@ def extract_initial_location_subjects(
                     f"(Beat {beat_index}, attempt {attempt}/{max_attempts}):\n{raw}",
                     flush=True,
                 )
-                classifications = parse_initial_location_subjects(raw)
+                classifications = parse_initial_location_subjects(
+                    raw,
+                    possible_subject_names=canonical_subjects,
+                )
                 for item in classifications:
                     key = _subject_identity_key(item["name"])
+                    canonical_name = possible_subject_names.get(key)
+                    if canonical_name is None:
+                        console_log(
+                            "Ignoring story-start Subject classification outside "
+                            f"character_canon vocabulary: {item['name']} in Beat "
+                            f"{beat_index}.",
+                            flush=True,
+                        )
+                        continue
                     previous = first_classification_by_subject.get(key)
                     if previous is not None:
                         console_log(
                             "Ignoring later story-start Subject classification for "
-                            f"{item['name']} in Beat {beat_index}; first classified in "
+                            f"{canonical_name} in Beat {beat_index}; first classified in "
                             f"Beat {previous['beat_index']} as "
                             f"present={previous['present']}.",
                             flush=True,
@@ -19247,11 +19309,12 @@ def extract_initial_location_subjects(
                         continue
                     first_classification_by_subject[key] = {
                         **item,
+                        "name": canonical_name,
                         "beat_index": beat_index,
                     }
                     console_log(
                         "First story-start Subject classification: "
-                        f"{item['name']} in Beat {beat_index} "
+                        f"{canonical_name} in Beat {beat_index} "
                         f"present={item['present']}; reason={item['reason']}",
                         flush=True,
                     )
@@ -38225,6 +38288,7 @@ def _run_main(
         initial_location_subjects = extract_initial_location_subjects(
             beats,
             base_subject_definitions,
+            possible_subjects=canonical_subject_names,
             history_metadata={"run_id": run_id},
         )
         initial_location_subjects_extracted = True

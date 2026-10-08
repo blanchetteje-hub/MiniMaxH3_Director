@@ -42,10 +42,11 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
 
 ## 2026-10-08 — per-beat Subject presence classification
 
-- Changed `director_raw_scene_subject_resolution` from one story-wide pass to one call for each nonempty beat, in chronological order. Each user prompt contains only that beat's text; the system prompt asks for each Subject's presence determination and one-sentence reason.
+- `director_raw_scene_subject_resolution` runs once for each nonempty beat, in chronological order. The system prompt distinguishes entering (`present=false`) from acting while already in the scene (`present=true`) and says to omit unreferenced candidates.
+- Each user prompt contains only the `character_canon` Subject names as a comma-delimited `POSSIBLE SUBJECTS` list and the current `STORY BEAT`. Python canonicalizes returned names against that allowlist and ignores any name outside it.
 - Python keeps the first classification for each normalized Subject identity and ignores later conflicting results. A Subject omitted from a beat is not classified by that beat. Existing authored Subjects are filtered deterministically after the beat passes.
 - The extractor continues returning the existing `initial_location_subjects` seed structure, so downstream Subject registration and prompts keep their contract.
-- Verification: `python -m py_compile minimax.py`, `python -m pytest -q tests/test_location_state_reference.py` (25 passed), and `git diff --check` passed.
+- Verification: `python -m py_compile minimax.py`, `python -m pytest -q tests/test_location_state_reference.py` (27 passed), and `git diff --check` passed. A combined run with `tests/test_character_canon.py` had 39 passes and two unrelated stale prompt-text assertions.
 
 ## 2026-10-08 — acceptance #03: opening Subject classification
 
