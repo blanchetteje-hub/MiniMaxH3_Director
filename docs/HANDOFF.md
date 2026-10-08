@@ -4,15 +4,39 @@ Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This fi
 
 ## CURRENT HANDOFF — 2026-10-07 (read first)
 
-**Latest iteration:** r37 replayed `fixed-plan-r31-unicorn` at code revision
-`bc4319c677d0a9cb558528585fc981674e2748f5`. It exited 1 before Segment 1 was
-captured: the Subject resolver rejected an identity span after two attempts.
-The newly added `open`/`pour` guidance was not exercised. The bridge omitted the
-resolver response body, so bounded logging of that response is being added
-without changing validation. Next queue the fixed plan again and inspect the
-logged response; retain fail-closed behavior.
+**Latest acceptance:** r40 ran revision `7b337d2ac4180ff55767d7469560fc3dbb7e56f5`
+and exposed three issues before a Segment could complete: Python's
+`state_actions_dry_run_accepted` annotation leaked into RAW repair and violated
+the exact six-field Director envelope; an explicitly authored open on an
+openable prop could not proceed from unknown mechanism state; and three failed
+current-Segment prop extraction attempts escaped Beat recovery as a plain
+`ValueError`.
 
-**Most recent verified code head before this documentation update:** `f1610fa455` on `object-state-work` (fixed-prop canonical location ownership). A documentation-only operating-contract update followed at `f12d4b9986`.
+The repair loop now keeps an exact external Director candidate separate from
+Python-enriched results. RAW repair replaces only `raw_scene`; state-action
+repair replaces only `state_actions`; both candidates are reparsed through the
+unchanged strict contract. Before Request 1, deterministic Python logic binds an
+explicit authored `open`/`close` action to exactly one registered openable prop
+and seeds only its logically required unknown pre-action state (closed/open).
+Known mechanism state is preserved so contradictory actions still fail in the
+reducer. Subject, wardrobe, and prop extraction exhaustion now raises a typed
+three-attempt recovery signal; a failure while rebuilding a Segment restores
+its pre-Segment WorldState and retries recovery from the current Beat. Candidate
+seeding is private until all extraction succeeds, so partial registrations do
+not escape.
+
+Focused r40 regressions and preserved r39 action-repair checks pass (9/9), and
+`tests.test_world_state_foundation` passes (70/70). The full
+`tests.test_director_retry` run remains red (5 failures, 7 errors): the seven
+errors come from stale tavern mock prop evidence that is not an exact substring
+of the current fixture source; the failures include the existing 4,300-character
+prompt assertion and legacy RAW retry expectations that predate the dedicated
+repair contracts. See the latest test command output before the next acceptance.
+`py_compile`, `git diff --check`, and the required automation `minimax.py` copy
+check pass. Next run a fresh acceptance of the same six-Segment benchmark; do
+not queue it from Codex.
+
+**Code revision inspected for r40:** `7b337d2ac4180ff55767d7469560fc3dbb7e56f5` on `object-state-work`.
 
 **Bridge:** `gpt-runtime` is active. The user says **"go"** when a queued job has finished. ChatGPT must inspect `bridge/results/<job_id>/result.json`, determine actual success from nested process return code and generated artifacts, then diagnose/queue next bridge job as appropriate. Codex does not use the bridge; delegate only bounded repo-local implementation and local tests. Do not tell the user to give Codex a bridge job.
 

@@ -328,6 +328,150 @@ def non_audio_llm_calls(request):
 
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
+    def test_raw_repair_reparses_clean_six_field_envelope_after_python_annotation(self):
+        bundle = goblin_mug_bundle()
+        first_scene = (
+            "At 00:00.000, Goblin1 holds the mug.\n"
+            "At 00:04.500, Goblin1 remains beside the table.\n"
+            "End continuity state: Goblin1 holds the mug."
+        )
+        repaired_scene = first_scene.replace("remains beside", "stands beside")
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            director_response(first_scene),
+            {"raw_scene": repaired_scene},
+        ]))
+        physical = mock.Mock(side_effect=[
+            {"valid": False, "issue": "RAW needs one physical correction."},
+            {"valid": True, "issue": ""},
+        ])
+        parser = mock.Mock(wraps=minimax.parse_and_dry_run_director_state_actions)
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.parse_and_dry_run_director_state_actions", parser),
+            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-r40-clean-envelope", {"source_sha256": "source"}
+            )
+
+        self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
+        self.assertEqual(parser.call_count, 2)
+        expected_fields = {
+            "raw_scene", "finite_activity_complete", "named_beneficiaries_complete",
+            "activity_tools_settled", "beat_complete", "state_actions",
+        }
+        observed_scenes = []
+        for call in parser.call_args_list:
+            candidate = call.args[1]
+            self.assertEqual(set(candidate), expected_fields)
+            self.assertNotIn("state_actions_dry_run_accepted", candidate)
+            observed_scenes.append(candidate["raw_scene"])
+        self.assertEqual(observed_scenes, [first_scene, repaired_scene])
+
+    def test_authored_barrel_lid_opening_seeds_closed_precondition_generically(self):
+        state, _location_id = tavern_world_state_from_authorities()
+        location_id = next(iter(state["locations"]))
+        state = register_explicit_persistent_props(state, [{
+            "name": "barrel", "kind": "container", "mobility": "movable",
+            "needed_for_state": True,
+            "reason": "The registered barrel is opened during the current Segment.",
+            "location_id": location_id,
+            "capabilities": {"container": True, "openable": True},
+        }])
+        barrel_id = next(prop_id for prop_id, prop in state["props"].items() if prop["name"] == "barrel")
+        fact = minimax._explicit_current_segment_mechanism_preconditions(
+            "Amy opens the barrel's iron lid at dawn.", "", state
+        )
+        self.assertEqual(fact, [{
+            "prop_id": barrel_id,
+            "op": "open",
+            "evidence": "opens the barrel's iron lid",
+        }])
+        inferred = minimax.seed_mechanism_action_preconditions(
+            state, fact, segment_number=1
+        )
+        self.assertEqual(inferred["props"][barrel_id]["mechanism_state"], "closed")
+
+    def test_pre_director_world_state_preparation_applies_mechanism_precondition(self):
+        state, location_id, _mug_id = goblin_mug_world_state()
+        room_name = state["locations"][location_id]["name"]
+        beat = "Amy opens the barrel's iron lid."
+        barrel = current_prop(
+            "barrel", location=room_name,
+            evidence="the barrel's iron lid",
+            reason="The barrel lid is opened in the current Segment.",
+        )
+        barrel["capabilities"]["openable"] = True
+        llm = mock.Mock(side_effect=[{"subjects": []}, {"props": [barrel]}])
+        prepared, _added = minimax.prepare_segment_world_state_for_director(
+            state, 1, beat, beat, "", llm_request=llm
+        )
+        barrel_id = next(
+            prop_id for prop_id, prop in prepared["props"].items()
+            if prop["name"] == "barrel"
+        )
+        self.assertEqual(prepared["props"][barrel_id]["mechanism_state"], "closed")
+
+    def test_current_segment_extraction_exhaustion_is_typed_and_discards_partial_seed(self):
+        state, _location_id = tavern_world_state_from_authorities()
+        original = copy.deepcopy(state)
+        subject = {
+            "subjects": [{
+                "name": "Traveler", "physical_form": "humanoid", "gender": "unknown",
+                "source_description": "traveler",
+                "evidence": "A traveler enters",
+            }]
+        }
+        replies = [subject, {"clothing": "a coat"}]
+        replies.extend({"props": [{"name": "untrusted"}]} for _ in range(3))
+        llm = mock.Mock(side_effect=replies)
+        beat = "A traveler enters and opens a metal box."
+        with self.assertRaises(minimax.CurrentSegmentWorldStatePreparationExhaustedError) as raised:
+            minimax.prepare_segment_world_state_for_director(
+                state,
+                3,
+                beat,
+                beat,
+                TAVERN_BENCHMARK["story_text"],
+                llm_request=llm,
+            )
+        self.assertEqual(raised.exception.stage, "persistent-prop extraction")
+        self.assertEqual(raised.exception.attempts, 3)
+        self.assertEqual(state, original)
+        self.assertEqual(llm.call_count, 5)
+
+    def test_seed_exhaustion_recovery_restores_and_retries_current_beat(self):
+        opening = {"revision": 3, "subjects": {}, "props": {}}
+        state = {"world_state": copy.deepcopy(opening)}
+        initial = minimax.DirectorRawRepairExhaustedError(2, "RAW issue", "scene")
+        extraction_error = minimax.CurrentSegmentWorldStatePreparationExhaustedError(
+            2, "persistent-prop extraction", "bad evidence"
+        )
+
+        def rebuild(failure):
+            if failure is initial:
+                state["world_state"]["revision"] = 99
+                raise extraction_error
+            self.assertIs(failure, extraction_error)
+            self.assertEqual(state["world_state"], opening)
+            return "rebuilt bundle"
+
+        rebuild_mock = mock.Mock(side_effect=rebuild)
+
+        def restore(_error):
+            state["world_state"] = copy.deepcopy(opening)
+
+        result = minimax.retry_current_beat_after_seed_exhaustion(
+            initial, rebuild_mock, restore
+        )
+
+        self.assertEqual(result, "rebuilt bundle")
+        self.assertEqual(rebuild_mock.call_count, 2)
+        self.assertEqual(state["world_state"], opening)
+
     def test_absent_subject_move_failure_adds_enter_retry_hint(self):
         hint = minimax._director_state_action_retry_hint(
             "move action move: subject_not_known_present: The subject is not explicitly recorded as present."

@@ -31,6 +31,10 @@ PLACEMENT_KINDS = {"held", "located", "unknown"}
 CONTENT_AMOUNTS = {"none", "some", UNKNOWN}
 MECHANISM_STATES = {"open", "closed", "locked", "unlocked", UNKNOWN}
 CAPABILITY_FIELDS = {"container", "consumable", "openable", "lockable"}
+DIRECTOR_REQUEST1_FIELDS = {
+    "raw_scene", "finite_activity_complete", "named_beneficiaries_complete",
+    "activity_tools_settled", "beat_complete", "state_actions",
+}
 ACTION_FIELDS = {
     "pickup": {"actor_subject_id", "prop_id"},
     "place": {"actor_subject_id", "prop_id", "location_id", "support_id"},
@@ -722,6 +726,63 @@ def register_explicit_persistent_props(
         if existing is not None and existing != prop:
             raise ValueError(f"Explicit prop registration conflicts for {name!r}.")
         candidate["props"][prop_id] = prop
+    return _changed_revision(before, candidate)
+
+
+def seed_mechanism_action_preconditions(
+    world_state: dict[str, Any],
+    action_facts: list[dict[str, Any]],
+    *,
+    segment_number: int,
+) -> dict[str, Any]:
+    """Seed only unknown mechanism state logically implied before an authored action.
+
+    An explicit open action entails a closed pre-action state; an explicit close
+    action entails an open pre-action state. Existing known state is preserved so
+    the reducer can continue to reject contradictory authored actions.
+    """
+    validate_world_state(world_state)
+    if not isinstance(action_facts, list):
+        raise ValueError("Mechanism action preconditions must be an array.")
+    if (
+        isinstance(segment_number, bool)
+        or not isinstance(segment_number, int)
+        or segment_number < 1
+    ):
+        raise ValueError("segment_number must be a positive integer.")
+    before = deepcopy(world_state)
+    candidate = deepcopy(world_state)
+    prior_state = {"open": "closed", "close": "open"}
+    for fact in action_facts:
+        if (
+            not isinstance(fact, dict)
+            or set(fact) != {"prop_id", "op", "evidence"}
+        ):
+            raise ValueError("Mechanism action precondition facts have an invalid shape.")
+        prop_id = fact.get("prop_id")
+        op = fact.get("op")
+        evidence = fact.get("evidence")
+        if op not in prior_state:
+            raise ValueError("Mechanism precondition operation must be open or close.")
+        if not isinstance(evidence, str) or not evidence.strip():
+            raise ValueError("Mechanism precondition evidence must be non-empty.")
+        prop = candidate["props"].get(prop_id)
+        if not isinstance(prop, dict):
+            raise ValueError(f"Mechanism precondition references unknown prop {prop_id!r}.")
+        if prop["capabilities"]["openable"] is not True:
+            raise ValueError(
+                f"Mechanism precondition target {prop_id!r} "
+                "is not explicitly openable."
+            )
+        if prop["mechanism_state"] != UNKNOWN:
+            continue
+        prop["mechanism_state"] = prior_state[op]
+        prop.setdefault("provenance", {})["mechanism_state"] = {
+            "authority": "authored_action_logical_precondition",
+            "segment_number": segment_number,
+            "operation": op,
+            "evidence": " ".join(evidence.split()),
+        }
     return _changed_revision(before, candidate)
 
 
@@ -1863,11 +1924,7 @@ def parse_and_dry_run_director_state_actions(
             raise ValueError(f"Director response is not valid JSON: {error}") from error
     else:
         response = raw_result
-    expected = {
-        "raw_scene", "finite_activity_complete", "named_beneficiaries_complete",
-        "activity_tools_settled", "beat_complete", "state_actions",
-    }
-    if not isinstance(response, dict) or set(response) != expected:
+    if not isinstance(response, dict) or set(response) != DIRECTOR_REQUEST1_FIELDS:
         if isinstance(response, dict):
             actual_shape = "keys=" + ",".join(sorted(map(str, response.keys())))
         else:

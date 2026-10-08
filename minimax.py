@@ -50,12 +50,14 @@ from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
 from story_planner import StoryPlan, build_story_plan
 from world_state import (
+    DIRECTOR_REQUEST1_FIELDS,
     empty_world_state,
     new_world_state,
     build_director_state_action_contract,
     parse_and_dry_run_director_state_actions,
     reduce_world_state,
     register_explicit_persistent_props,
+    seed_mechanism_action_preconditions,
     seed_canonical_static_location_state,
     seed_canonical_wardrobes,
     seed_current_segment_subject_identities,
@@ -4197,22 +4199,29 @@ def prepare_segment_world_state_for_director(
     """Seed current-beat identities/wardrobes before Request 1, never presence."""
     if llm_request is None:
         llm_request = ask_llm
-    state = world_state
+    # All pre-Director registration is built on a private candidate. If any
+    # bounded extractor exhausts its retries, none of its partial work escapes.
+    state = copy.deepcopy(world_state)
     registered_names = [
         subject.get("name", "")
         for subject in state["subjects"].values()
         if isinstance(subject, dict)
     ]
-    candidates = extract_current_segment_subjects(
-        current_beat,
-        assigned_source,
-        registered_names,
-        llm_request=llm_request,
-        history_metadata={
-            **dict(history_metadata or {}),
-            "segment": int(segment_number),
-        },
-    )
+    try:
+        candidates = extract_current_segment_subjects(
+            current_beat,
+            assigned_source,
+            registered_names,
+            llm_request=llm_request,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "segment": int(segment_number),
+            },
+        )
+    except ValueError as error:
+        raise CurrentSegmentWorldStatePreparationExhaustedError(
+            segment_number, "Subject extraction", error
+        ) from error
     before_names = {
         " ".join(subject.get("name", "").split()).casefold()
         for subject in state["subjects"].values()
@@ -4232,34 +4241,112 @@ def prepare_segment_world_state_for_director(
             "physical_form": subject.get("physical_form", "unknown"),
             "source_description": subject.get("source_description", "unknown"),
         }
-        clothing = extract_subject_canonical_wardrobe(
-            story_context,
-            name,
-            subject.get("source_description", ""),
-            canonical_record,
+        try:
+            clothing = extract_subject_canonical_wardrobe(
+                story_context,
+                name,
+                subject.get("source_description", ""),
+                canonical_record,
+                llm_request=llm_request,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "segment": int(segment_number),
+                    "authority": "pre_director_current_segment_subject",
+                },
+            )
+        except ValueError as error:
+            raise CurrentSegmentWorldStatePreparationExhaustedError(
+                segment_number, f"{name} wardrobe extraction", error
+            ) from error
+        wardrobe_updates[name] = _world_state_wardrobe_from_canonical_text(clothing)
+    if wardrobe_updates:
+        state = seed_canonical_wardrobes(state, wardrobe_updates)
+    try:
+        extracted_props = extract_current_segment_persistent_props(
+            current_beat,
+            assigned_source,
+            state,
             llm_request=llm_request,
             history_metadata={
                 **dict(history_metadata or {}),
                 "segment": int(segment_number),
-                "authority": "pre_director_current_segment_subject",
             },
         )
-        wardrobe_updates[name] = _world_state_wardrobe_from_canonical_text(clothing)
-    if wardrobe_updates:
-        state = seed_canonical_wardrobes(state, wardrobe_updates)
-    extracted_props = extract_current_segment_persistent_props(
-        current_beat,
-        assigned_source,
-        state,
-        llm_request=llm_request,
-        history_metadata={
-            **dict(history_metadata or {}),
-            "segment": int(segment_number),
-        },
-    )
+    except ValueError as error:
+        raise CurrentSegmentWorldStatePreparationExhaustedError(
+            segment_number, "persistent-prop extraction", error
+        ) from error
     if extracted_props:
         state = register_extracted_persistent_props(state, extracted_props)
+    mechanism_facts = _explicit_current_segment_mechanism_preconditions(
+        current_beat, assigned_source, state
+    )
+    if mechanism_facts:
+        state = seed_mechanism_action_preconditions(
+            state, mechanism_facts, segment_number=int(segment_number)
+        )
     return state, [item["name"] for item in added]
+
+
+def _explicit_current_segment_mechanism_preconditions(
+    current_beat, assigned_source, world_state
+):
+    """Bind explicit authored open/close verbs to one registered openable prop."""
+    text = "\n".join((str(current_beat or ""), str(assigned_source or "")))
+    facts = []
+    seen_props = set()
+    action_pattern = re.compile(
+        r"\b(open|opens|opened|opening|close|closes|closed|closing|shut|shuts)\b",
+        re.I,
+    )
+    for match in action_pattern.finditer(text):
+        prefix = text[max(0, match.start() - 32):match.start()]
+        if re.search(
+            r"\b(?:try|tries|attempt|attempts|plan|plans)\s+to\s*$",
+            prefix,
+            re.I,
+        ):
+            continue
+        if re.search(
+            r"\b(?:does\s+not|do\s+not|did\s+not|doesn't|don't|didn't|"
+            r"never|cannot|can't|won't|will|might|could|would|should)\s*$",
+            prefix,
+            re.I,
+        ):
+            continue
+        op = "open" if match.group(1).casefold().startswith("open") else "close"
+        target_start = match.end()
+        target_end = len(text)
+        boundary = re.search(
+            r"[,.;!?\n]|\b(?:and|then|while|before|after|as|of|on|in|at|"
+            r"near|beside|by|from|with|under|over|through|against)\b",
+            text[target_start:], re.I,
+        )
+        if boundary:
+            target_end = target_start + boundary.start()
+        target = text[target_start:target_end]
+        matches = []
+        for prop_id, prop in world_state.get("props", {}).items():
+            if prop.get("capabilities", {}).get("openable") is not True:
+                continue
+            name = " ".join(str(prop.get("name") or "").split()).strip()
+            if not name:
+                continue
+            name_pattern = r"(?<![\w])" + r"\s+".join(
+                re.escape(part) for part in name.split()
+            ) + r"(?![\w])"
+            if re.search(name_pattern, target, re.I):
+                matches.append(prop_id)
+        matches = list(dict.fromkeys(matches))
+        if len(matches) != 1 or matches[0] in seen_props:
+            continue
+        prop_id = matches[0]
+        seen_props.add(prop_id)
+        evidence_start = match.start()
+        evidence_end = target_end
+        evidence = " ".join(text[evidence_start:evidence_end].split())
+        facts.append({"prop_id": prop_id, "op": op, "evidence": evidence})
+    return facts
 
 
 def build_current_segment_persistent_prop_response_format():
@@ -10433,6 +10520,41 @@ class DirectorRawRepairExhaustedError(BeatGenerationError):
             f"Director RAW Segment {self.segment} exhausted ten repairs: "
             f"{self.issue}"
         )
+
+
+class CurrentSegmentWorldStatePreparationExhaustedError(
+    DirectorRawRepairExhaustedError
+):
+    """Typed signal to step back from Director when bounded seed extraction fails."""
+
+    def __init__(self, segment, stage, diagnostic):
+        self.stage = str(stage)
+        self.attempts = 3
+        issue = (
+            f"Current-Segment {self.stage} exhausted its 3 attempts: "
+            f"{diagnostic}"
+        )
+        self.segment = int(segment)
+        self.issue = issue
+        self.rejected_raw_scene = ""
+        BeatGenerationError.__init__(
+            self,
+            f"Current-Segment WorldState preparation for Segment "
+            f"{self.segment} failed during {self.stage}: {self.issue}",
+        )
+
+
+def retry_current_beat_after_seed_exhaustion(
+    initial_failure, rebuild_after_recovery, restore_opening_state
+):
+    """Retry the current-Beat recovery stage after strict seed extraction exhaustion."""
+    failure = initial_failure
+    while True:
+        try:
+            return rebuild_after_recovery(failure)
+        except CurrentSegmentWorldStatePreparationExhaustedError as error:
+            restore_opening_state(error)
+            failure = error
 
 
 # Repair a narrow local-model error such as ``"growl" snarls``.
@@ -38208,30 +38330,32 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
         return messages
 
+    def preserve_external_director_candidate(response):
+        """Copy only a valid, exact Request-1 envelope across repair boundaries."""
+        if isinstance(response, str):
+            response = json.loads(response)
+        if not isinstance(response, dict) or set(response) != DIRECTOR_REQUEST1_FIELDS:
+            raise ValueError(
+                "Cannot preserve a Director repair candidate outside the exact "
+                "six-field Request-1 response contract."
+            )
+        return copy.deepcopy(response)
+
     def queue_state_action_repair(rejected_response, failure):
         """Repair only state_actions while retaining the rejected RAW candidate."""
         nonlocal state_action_repair_attempts
         current_failure = str(failure or "").strip()
-        if isinstance(rejected_response, str):
-            try:
-                rejected_response = parse_llm_json_content(
-                    rejected_response, repair_on_failure=False
-                )
-            except (TypeError, ValueError, json.JSONDecodeError) as error:
-                raise DirectorRawRepairExhaustedError(
-                    segment_number,
-                    "The rejected Director response cannot be preserved for "
-                    f"state-action-only repair: {error}",
-                    "",
-                ) from error
-        if not isinstance(rejected_response, dict):
+        try:
+            rejected_response = preserve_external_director_candidate(
+                rejected_response
+            )
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
             raise DirectorRawRepairExhaustedError(
                 segment_number,
                 "The rejected Director response cannot be preserved for "
-                "state-action-only repair because it is not an object.",
+                f"state-action-only repair: {error}",
                 "",
-            )
-        rejected_response = copy.deepcopy(rejected_response)
+            ) from error
         rejected_scene = str(rejected_response.get("raw_scene") or "")
         validator_failure = current_failure
         repair_output_failure = ""
@@ -38312,6 +38436,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     def queue_raw_scene_repair(issue, rejected_result):
         """Repair the rejected RAW candidate without regenerating its action plan."""
         nonlocal request1_repair_attempts
+        rejected_result = preserve_external_director_candidate(rejected_result)
         previous_shot_end = (
             bundle.get("previous_final_frame", "")
             if segment_number > 1
@@ -38465,16 +38590,20 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 raw_scene_result, state_action_failure
             )
             continue
-        request1_result = _parse_director_raw_scene_result(raw_scene_result)
-        request1_result["state_actions"] = copy.deepcopy(
+        request1_external_candidate = preserve_external_director_candidate(
+            raw_scene_result
+        )
+        request1_external_candidate["state_actions"] = copy.deepcopy(
             state_action_dry_run["state_actions"]
         )
+        request1_result = copy.deepcopy(request1_external_candidate)
         request1_result["state_actions_dry_run_accepted"] = True
         raw_scene = _normalize_director_raw_scene_structure(
             request1_result.get("raw_scene", ""),
             segment_seconds=duration,
         ).strip()
         if raw_scene and raw_scene != "N/A":
+            request1_external_candidate["raw_scene"] = raw_scene
             request1_result["raw_scene"] = raw_scene
 
             structure_errors = _director_raw_scene_structure_errors(
@@ -38497,7 +38626,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 )
                 pending_raw_scene_repair = queue_raw_scene_repair(
                     "; ".join(structure_errors),
-                    request1_result,
+                    request1_external_candidate,
                 )
                 continue
 
@@ -38519,7 +38648,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     flush=True,
                 )
                 pending_raw_scene_repair = queue_raw_scene_repair(
-                    dialogue_issue, request1_result
+                    dialogue_issue, request1_external_candidate
                 )
                 continue
 
@@ -38577,7 +38706,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         flush=True,
                     )
                     pending_raw_scene_repair = queue_raw_scene_repair(
-                        issue, request1_result
+                        issue, request1_external_candidate
                     )
                     continue
 
@@ -38617,7 +38746,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         flush=True,
                     )
                     pending_raw_scene_repair = queue_raw_scene_repair(
-                        issue, request1_result
+                        issue, request1_external_candidate
                     )
                     continue
 
@@ -38660,7 +38789,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         flush=True,
                     )
                     pending_raw_scene_repair = queue_raw_scene_repair(
-                        issue, request1_result
+                        issue, request1_external_candidate
                     )
                     continue
 
@@ -38706,7 +38835,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     flush=True,
                 )
                 pending_raw_scene_repair = queue_raw_scene_repair(
-                    issue, request1_result
+                    issue, request1_external_candidate
                 )
                 continue
             request1_result["predicted_end_world_state"] = copy.deepcopy(
@@ -41113,8 +41242,26 @@ def _run_main(
                 except DirectorRawRepairExhaustedError as error:
                     if not beats or not 1 <= error.segment <= len(beats):
                         raise
-                    segment_bundle = regenerate_current_beat_after_raw_failure(
-                        error
+                    def restore_opening_after_seed_exhaustion(seed_error):
+                        failed_segment = int(seed_error.segment)
+                        pre_seed = world_state_before_segment_seed.get(
+                            failed_segment
+                        )
+                        if not isinstance(pre_seed, dict):
+                            raise RuntimeError(
+                                "Cannot restore the pre-Segment WorldState after "
+                                "current-Segment extraction exhaustion."
+                            ) from seed_error
+                        generation_state["world_state"] = copy.deepcopy(pre_seed)
+                        prepared_world_state_segments.discard(failed_segment)
+                        prepared_world_state_subject_names.pop(failed_segment, None)
+                        world_state_before_segment_seed.pop(failed_segment, None)
+                        checkpoint_generation_state()
+
+                    segment_bundle = retry_current_beat_after_seed_exhaustion(
+                        error,
+                        regenerate_current_beat_after_raw_failure,
+                        restore_opening_after_seed_exhaustion,
                     )
                     opening_world_state = copy.deepcopy(
                         segment_bundle["world_state_opening"]

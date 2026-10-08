@@ -17,6 +17,7 @@ from world_state import (
     seed_canonical_static_location_state,
     seed_canonical_wardrobes,
     seed_predefined_subject_identities,
+    seed_mechanism_action_preconditions,
     seed_story_start_presence,
     stable_world_state_id,
     validate_state_actions,
@@ -1113,6 +1114,70 @@ class WorldStateReducerTests(unittest.TestCase):
         )
         self.assertTrue(all(outcome.accepted for outcome in result.outcomes))
         self.assertEqual(result.world_state["props"]["prop_door"]["mechanism_state"], "closed")
+
+    def test_authored_open_close_actions_seed_only_unknown_logical_preconditions(self):
+        state = make_reducer_state()
+        state["props"]["prop_door"]["mechanism_state"] = UNKNOWN
+        opened = seed_mechanism_action_preconditions(
+            state,
+            [{"prop_id": "prop_door", "op": "open", "evidence": "opens the door"}],
+            segment_number=1,
+        )
+        self.assertEqual(opened["props"]["prop_door"]["mechanism_state"], "closed")
+        open_result = reduce_world_state(
+            opened,
+            [{"action_id": "open-door", "op": "open", "actor_subject_id": "subject_1", "prop_id": "prop_door"}],
+            segment_number=1,
+        )
+        self.assertTrue(open_result.committed)
+        self.assertEqual(open_result.world_state["props"]["prop_door"]["mechanism_state"], "open")
+
+        state["props"]["prop_door"]["mechanism_state"] = UNKNOWN
+        closed = seed_mechanism_action_preconditions(
+            state,
+            [{"prop_id": "prop_door", "op": "close", "evidence": "shuts the door"}],
+            segment_number=2,
+        )
+        self.assertEqual(closed["props"]["prop_door"]["mechanism_state"], "open")
+        close_result = reduce_world_state(
+            closed,
+            [{"action_id": "close-door", "op": "close", "actor_subject_id": "subject_1", "prop_id": "prop_door"}],
+            segment_number=2,
+        )
+        self.assertTrue(close_result.committed)
+        self.assertEqual(close_result.world_state["props"]["prop_door"]["mechanism_state"], "closed")
+
+        established_open = copy.deepcopy(state)
+        established_open["props"]["prop_door"]["mechanism_state"] = "open"
+        preserved = seed_mechanism_action_preconditions(
+            established_open,
+            [{"prop_id": "prop_door", "op": "open", "evidence": "opens the door"}],
+            segment_number=3,
+        )
+        self.assertEqual(preserved["props"]["prop_door"]["mechanism_state"], "open")
+        contradiction = reduce_world_state(
+            preserved,
+            [{"action_id": "open-again", "op": "open", "actor_subject_id": "subject_1", "prop_id": "prop_door"}],
+            segment_number=3,
+        )
+        self.assertFalse(contradiction.committed)
+        self.assertEqual(contradiction.outcomes[0].code, "mechanism_prerequisite_not_met")
+
+        established_closed = copy.deepcopy(state)
+        established_closed["props"]["prop_door"]["mechanism_state"] = "closed"
+        preserved = seed_mechanism_action_preconditions(
+            established_closed,
+            [{"prop_id": "prop_door", "op": "close", "evidence": "closes the door"}],
+            segment_number=4,
+        )
+        self.assertEqual(preserved["props"]["prop_door"]["mechanism_state"], "closed")
+        contradiction = reduce_world_state(
+            preserved,
+            [{"action_id": "close-again", "op": "close", "actor_subject_id": "subject_1", "prop_id": "prop_door"}],
+            segment_number=4,
+        )
+        self.assertFalse(contradiction.committed)
+        self.assertEqual(contradiction.outcomes[0].code, "mechanism_prerequisite_not_met")
 
     def test_unknown_ids_and_generic_patch_operations_are_rejected(self):
         state = make_reducer_state()
