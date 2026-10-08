@@ -1,0 +1,65 @@
+{
+  "version": 3,
+  "source_sha256": "059a155305fa58e4facc7376e0d2e95bae1a5e25118d01699b4b9c77cf8d99c5",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "floor_walking",
+    "table_cleaning",
+    "goblin_service",
+    "elf_service",
+    "dragon_greeting",
+    "bar_cleaning",
+    "closing_tavern",
+    "skin_color",
+    "hands",
+    "hair_color",
+    "seat_location",
+    "scales_color",
+    "eyes",
+    "wing_position",
+    "mood"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "28",
+      "clothing": "Amy wears a rough‑spun tunic of faded green wool that reaches her mid‑thigh and shows faint scuffs from frequent use; the tunic is layered over a pair of loose linen leggings in off‑white with frayed hems at the knees, providing both comfort and protection while she moves about the tavern. Over this, she dons a sturdy leather apron—brown, thick‑cut, and heavily scuffed around the cuffs where her hands often touch ale barrels—that hangs from a wide belt cinched at her waist; the belt holds small pouches for tools and coins. Her feet are covered by worn brown leather boots with low heels, laced up to mid‑calf, showing signs of wear on the toes and soles from walking across wooden floors. She keeps her silver hair loosely tied back in a simple knot at the nape of her neck, allowing it to fall freely over her shoulders when she works. No additional headwear is worn",
+      "gender": "female",
+      "floor_walking": "wooden floor creaks as she walks",
+      "table_cleaning": "wipes a polished table with a cloth soaked in ale-scented oil",
+      "goblin_service": "refills goblin's chipped mug from barrel beside hearth",
+      "elf_service": "pours steaming cup into crystal chalice for the elf and sets it gently on wood",
+      "dragon_greeting": "greet dragon with warm smile, pours special brew",
+      "bar_cleaning": "wipes bar with fresh cloth smoothing out drips of ale",
+      "closing_tavern": "turns off lanterns at each table, pulls wooden latch on back door, steps outside to close and lock tavern for night"
+    },
+    {
+      "name": "Goblin",
+      "age": "25",
+      "clothing": "N/A",
+      "gender": "male",
+      "skin_color": "green skin",
+      "hands": "tiny hands clutching a chipped mug"
+    },
+    {
+      "name": "Elf",
+      "age": "30",
+      "clothing": "N/A",
+      "gender": "female",
+      "hair_color": "silver hair streaming down shoulders",
+      "seat_location": "takes a seat at the back table"
+    },
+    {
+      "name": "Dragon",
+      "age": "300",
+      "clothing": "N/A",
+      "gender": "male",
+      "scales_color": "glittering like polished obsidian",
+      "eyes": "amber eyes that scan the room",
+      "wing_position": "wings unfurl",
+      "mood": "exhales contentedly after sipping brew"
+    }
+  ]
+}
