@@ -1,4 +1,6 @@
+import contextlib
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
@@ -67,6 +69,70 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
                 Path("files") / "developer_log.stderr.log",
             )
 
+    def test_exec_worktree_fetches_branch_tip_and_resets_to_exact_sha(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "repo"
+            remote = Path(temp) / "origin.git"
+            root.mkdir()
+            bridge.run_git(["init", "--bare", str(remote)], root.parent)
+            bridge.run_git(["init", "-b", "main"], root)
+            bridge.run_git(["config", "user.name", "Bridge Test"], root)
+            bridge.run_git(
+                ["config", "user.email", "bridge-test@example.invalid"], root
+            )
+            (root / "source.txt").write_text("old\n", encoding="utf-8")
+            bridge.run_git(["add", "source.txt"], root)
+            bridge.run_git(["commit", "-m", "initial"], root)
+            bridge.run_git(["remote", "add", "origin", str(remote)], root)
+            branch = "feature/execution-sync"
+            bridge.run_git(
+                ["push", "origin", f"HEAD:refs/heads/{branch}"], root
+            )
+            tracking_ref = f"refs/remotes/origin/{branch}"
+            bridge.run_git(
+                [
+                    "fetch",
+                    "origin",
+                    f"+refs/heads/{branch}:{tracking_ref}",
+                ],
+                root,
+            )
+            stale_sha = bridge.run_git(
+                ["rev-parse", tracking_ref], root
+            ).stdout.strip()
+
+            (root / "source.txt").write_text("new\n", encoding="utf-8")
+            bridge.run_git(["add", "source.txt"], root)
+            bridge.run_git(["commit", "-m", "advance remote branch"], root)
+            bridge.run_git(
+                ["push", "origin", f"HEAD:refs/heads/{branch}"], root
+            )
+            remote_sha = bridge.run_git(
+                ["rev-parse", "HEAD"], root
+            ).stdout.strip()
+            self.assertNotEqual(stale_sha, remote_sha)
+
+            log_output = io.StringIO()
+            with contextlib.redirect_stderr(log_output):
+                worktree = bridge.ensure_exec_worktree(root, branch)
+
+            execution_sha = bridge.run_git(
+                ["rev-parse", "HEAD"], worktree
+            ).stdout.strip()
+            fetched_sha = bridge.run_git(
+                ["rev-parse", tracking_ref], root
+            ).stdout.strip()
+            symbolic_head = bridge.run_git(
+                ["symbolic-ref", "-q", "HEAD"], worktree, check=False
+            )
+
+            self.assertEqual(fetched_sha, remote_sha)
+            self.assertEqual(execution_sha, remote_sha)
+            self.assertNotEqual(execution_sha, stale_sha)
+            self.assertNotEqual(symbolic_head.returncode, 0)
+            self.assertIn(f"code_branch={branch}", log_output.getvalue())
+            self.assertIn(f"execution_sha={remote_sha}", log_output.getvalue())
+
     @mock.patch.object(bridge.shutil, "which", return_value=None)
     def test_missing_lms_cli_still_publishes_diagnostic_document(self, which):
         with tempfile.TemporaryDirectory() as temp:
@@ -132,7 +198,7 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
 
     def test_acceptance_rejects_nonbaseline_branch(self):
         with tempfile.TemporaryDirectory() as temp:
-            with self.assertRaisesRegex(ValueError, "must run on 'gpt-arc-refresh'"):
+            with self.assertRaisesRegex(ValueError, "approved code branch"):
                 bridge.execute_acceptance(
                     {
                         "job_id": "bad-branch",

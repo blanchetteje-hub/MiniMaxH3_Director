@@ -284,8 +284,22 @@ def local_python(source_root: Path) -> Path:
 def ensure_exec_worktree(source_root: Path, branch: str = DEFAULT_CODE_BRANCH) -> Path:
     """Create/update a detached worktree for unattended test execution."""
 
+    branch = str(branch or "").strip()
+    if not branch:
+        raise ValueError("Execution worktree requires code_branch.")
+    run_git(["check-ref-format", "--branch", branch], source_root)
     worktree = source_root / DEFAULT_EXEC_WORKTREE_NAME
-    run_git(["fetch", "--no-tags", "origin", branch], source_root, timeout=30)
+    remote_ref = f"refs/remotes/origin/{branch}"
+    refspec = f"+refs/heads/{branch}:{remote_ref}"
+    run_git(["fetch", "--no-tags", "origin", refspec], source_root, timeout=30)
+    execution_sha = run_git(
+        ["rev-parse", "--verify", f"{remote_ref}^{{commit}}"],
+        source_root,
+    ).stdout.strip()
+    if not re.fullmatch(r"[0-9a-fA-F]{40,64}", execution_sha):
+        raise RuntimeError(
+            f"Could not resolve fetched code branch {branch!r} to a commit SHA."
+        )
     if not worktree.exists():
         run_git(
             [
@@ -294,7 +308,7 @@ def ensure_exec_worktree(source_root: Path, branch: str = DEFAULT_CODE_BRANCH) -
                 "--detach",
                 "--force",
                 str(worktree),
-                f"origin/{branch}",
+                execution_sha,
             ],
             source_root,
             capture=False,
@@ -305,9 +319,20 @@ def ensure_exec_worktree(source_root: Path, branch: str = DEFAULT_CODE_BRANCH) -
             f"Execution worktree path exists but is not a git worktree: {worktree}"
         )
     run_git(
-        ["reset", "--hard", f"origin/{branch}"],
+        ["checkout", "--detach", "--force", execution_sha],
         worktree,
         timeout=15,
+    )
+    run_git(
+        ["reset", "--hard", execution_sha],
+        worktree,
+        timeout=15,
+    )
+    print(
+        f"Execution worktree synchronized: code_branch={branch} "
+        f"execution_sha={execution_sha}",
+        file=sys.stderr,
+        flush=True,
     )
     return worktree
 

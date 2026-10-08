@@ -50,6 +50,23 @@ Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/
 
 WorldState is the canonical state model for Director actions and Segment transactions. See the dated WorldState entries below for the current implementation, validation results, and remaining work.
 
+## 2026-10-07 — bridge execution worktree branch synchronization (r38)
+
+Acceptance job `acceptance-20261007-object-state-tavern-6x8-r38` requested
+`object-state-work` while the remote branch was at
+`6d0a9d83834f656557d2fb1686c1803a0ede15d5`; its report instead recorded
+`eae2c197faf2ca5d30e46bca704d357d23de5c07`. The bridge fetched a branch name
+without an explicit remote-tracking refspec, then created/reset its execution
+worktree from the potentially stale local `origin/<branch>` ref.
+
+`ensure_exec_worktree()` now fetches
+`+refs/heads/<branch>:refs/remotes/origin/<branch>`, resolves that fetched ref
+to a commit SHA, and explicitly checks out and hard-resets the detached
+execution worktree to that exact SHA. It logs both the requested branch and
+execution SHA before starting the job. A local bare-remote regression advances
+the remote while leaving the local tracking ref stale, then verifies the fetch,
+execution SHA, detached HEAD, and audit log.
+
 Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture or prompt changes.
 
 ## 2026-10-07 — dedicated Director RAW validate/repair loop
