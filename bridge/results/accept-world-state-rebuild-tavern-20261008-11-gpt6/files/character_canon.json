@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "source_sha256": "b438a39fa83b27ad49969f33d8561a9d3267cfe54f25cd5943df2c5849ee66bb",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence",
+    "visual_reference",
+    "skin_color",
+    "hands",
+    "hair_color",
+    "hair_style",
+    "scales_color",
+    "eyes"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy • Tunic – rough‑spun linen/wool, off‑white to light brown, coarse texture, worn as the base layer over leggings. • Leggings (missing normal piece) – rough‑spun linen, dark brown, smooth‑to‑soft feel, snug fit for protection under tunic. • Apron – tanned leather, medium brown, polished with visible scuffs from medieval trade work, worn as the outer protective layer. • Boots (missing normal piece) – sturdy full‑length leather boots, dark brown, ankle‑high, designed to keep feet dry while wiping ale on the wooden counter. • Belt (role‑specific accessory) – simple leather belt tied at waist of tunic and leggings, carrying small pouches for tools",
+      "gender": "Female",
+      "confidence": "confident woman",
+      "visual_reference": "<Picture 1>"
+    },
+    {
+      "name": "Goblin",
+      "age": "25",
+      "clothing": "{\"tunic\":{\"material\":\"rough‑spun wool\",\"color\":\"tan brown\",\"textural_description\":\"coarse knit with visible stitches\",\"layering\":\"single layer over bare torso\",\"role_specific\":false},\"pants\":{\"material\":\"linen\",\"color\":\"light tan\",\"texture\":\"smooth weave\",\"wear\":\"mid‑thigh length, loose fit\",\"layering\":\"single layer under tunic\",\"role_specific\":false},\"boots\":{\"material\":\"leather\",\"color\":\"brown\",\"textural_description\":\"soft yet sturdy leather with worn soles\",\"wear\":\"toes to ankle, snug fit\",\"layering\":\"bottom layer of trousers\",\"role_specific\":false},\"apron\":{\"material\":\"tanned leather\",\"color\":\"dark brown\",\"texture\":\"scuffed and weathered from use\",\"wear\":\"over the tunic, tied at waist\",\"layering\":\"middle layer over pants and tunic\",\"role_specific\":true}}",
+      "gender": "Male",
+      "skin_color": "green",
+      "hands": "tiny hands clutching a chipped mug"
+    },
+    {
+      "name": "Beautiful Female Elf",
+      "age": "120",
+      "clothing": "[{\"item\":\"tunica\",\"material\":\"linen\",\"color\":\"emerald green\",\"length\":\"knee‑long\",\"details\":\"light weight with embroidered leaf patterns\"},{\"item\":\"belt\",\"material\":\"leather\",\"color\":\"brown\",\"buckle\":\"silver\",\"details\":\"simple waist belt\"},{\"item\":\"breeches\",\"material\":\"wool\",\"color\":\"dark brown\",\"style\":\"fitted\",\"length\":\"knee‑high\"},{\"item\":\"boots\",\"material\":\"soft leather\",\"color\":\"brown\",\"height\":\"ankle\"},{\"item\":\"hair clasp\",\"material\":\"silver leaf shape\",\"details\":\"pins hair back\"}]",
+      "gender": "Female",
+      "hair_color": "silver",
+      "hair_style": "streaming down shoulders"
+    },
+    {
+      "name": "Dragon-shaped Creature",
+      "age": "500",
+      "clothing": "N/A",
+      "gender": "Male",
+      "scales_color": "polished obsidian",
+      "eyes": "amber"
+    }
+  ]
+}
