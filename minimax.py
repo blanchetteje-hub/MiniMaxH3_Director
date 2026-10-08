@@ -549,7 +549,7 @@ SMART_EXTRACTOR_LLM_SETTINGS = {
     "frequency_penalty": None,
     "repeat_penalty": 1.15,
     "seed": BENCHMARK_SEED,
-    "reasoning_effort": "medium",
+    "reasoning_effort": "high",
     "thinking_budget_tokens": 1024,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
@@ -578,6 +578,7 @@ MUSIC_GENERATION_LLM_PURPOSES = frozenset({
 
 SMART_EXTRACTOR_LLM_PURPOSES = frozenset({
     "story_setting_extract",
+    "director_raw_scene_subject_resolution",
 })
 
 SLIGHTLY_CREATIVE_LLM_PURPOSES = frozenset({
@@ -850,22 +851,15 @@ INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT = {
         "strict": True,
         "schema": {
             "type": "object",
-            "properties": {
-                "subjects": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "name": {"type": "string", "minLength": 1},
-                            "initial_state": {"type": "string", "minLength": 1},
-                        },
-                        "required": ["name", "initial_state"],
-                        "additionalProperties": False,
-                    },
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "present": {"type": "boolean"},
+                    "reason": {"type": "string", "minLength": 1},
                 },
+                "required": ["present", "reason"],
+                "additionalProperties": False,
             },
-            "required": ["subjects"],
-            "additionalProperties": False,
         },
     },
 }
@@ -3744,7 +3738,7 @@ def authoritative_world_state_seed_from_subject_definitions(
 
 
 def build_registered_subject_story_start_response_format():
-    """Return the one-Subject story-start classification schema."""
+    """Return the one-Subject story-start status schema."""
     return {
         "type": "json_schema",
         "json_schema": {
@@ -3753,14 +3747,14 @@ def build_registered_subject_story_start_response_format():
             "schema": {
                 "type": "object",
                 "properties": {
-                    "classification": {
+                    "subject": {"type": "string", "minLength": 1},
+                    "status": {
                         "type": "string",
                         "enum": ["present", "absent", "unknown"],
                     },
-                    "evidence": {"type": "string"},
                     "initial_state": {"type": "string"},
                 },
-                "required": ["classification", "evidence", "initial_state"],
+                "required": ["subject", "status", "initial_state"],
                 "additionalProperties": False,
             },
         },
@@ -3785,18 +3779,20 @@ def build_registered_subject_story_start_messages(subject, story, beats):
         {
             "role": "system",
             "content": (
-                "Classify only this already-registered Subject's story-start status. "
-                "Return present when the Subject is already in Beat 1, including "
-                "performing a starting action such as Amy wiping a table, without "
-                "an entrance. Return absent only when the source explicitly says the Subject "
-                "enters later, establishing it was absent at story start. Return unknown "
-                "when neither is explicit; do not infer absence from omission or from a "
-                "late first mention. For present/absent, copy a short verbatim "
-                "substring from STORY SOURCE or NUMBERED BEATS as evidence: "
-                "do not paraphrase. For present, give a concise "
-                "starting-state phrase supported by that evidence. For absent or unknown, "
-                "initial_state must be empty. Classify only the named Subject, not the cast. "
-                "Return JSON only."
+                "Classify a single Subject's story-start status. \n"
+                "- Return present when the Subject is already in Beat 1.\n"
+                "- Return absent only when the source explicitly says the Subject enters later, "
+                "establishing it was absent at story start. \n"
+                "- Return unknown when neither is explicit; do not infer absence from omission "
+                "or from a late first mention. \n\n"
+                "For present/absent, copy a short verbatim substring from STORY SOURCE or "
+                "BEATS as evidence: do not paraphrase. \n"
+                "- For present, give a concise starting-state phrase supported by that evidence. \n"
+                "- For absent or unknown, initial_state must be empty. \n\n"
+                "Use the BEATS as the primary source, use the STORY SOURCE as secondary.\n\n"
+                "Classify only the named Subject, not the cast. \n"
+                "- Return JSON {\"subject\": \"<name>\", \"status\": "
+                "\"present|absent|unknown\", \"initial_state\": \"<state or empty>\"}"
             ),
         },
         {
@@ -3804,9 +3800,9 @@ def build_registered_subject_story_start_messages(subject, story, beats):
             "content": (
                 f"REGISTERED SUBJECT\n{subject.get('name', '')}\n"
                 f"IDENTITY FACTS\n{identity_text}\n\n"
+                f"BEATS\n{numbered_beats or 'N/A'}\n\n"
                 f"STORY SOURCE\n{str(story or '').strip() or 'N/A'}\n\n"
-                f"NUMBERED BEATS\n{numbered_beats or 'N/A'}\n\n"
-                "Return one classification for this Subject only."
+                "Return subject, status, and initial_state for this Subject only."
             ),
         },
     ]
@@ -3817,31 +3813,23 @@ def parse_registered_subject_story_start_result(raw_result, subject, story, beat
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
     if not isinstance(candidate, dict) or set(candidate) != {
-        "classification", "evidence", "initial_state",
+        "subject", "status", "initial_state",
     }:
         raise ValueError("Registered Subject story-start result has an invalid shape.")
-    classification = candidate["classification"]
-    evidence = " ".join(str(candidate["evidence"] or "").split()).strip()
+    returned_subject = " ".join(str(candidate["subject"] or "").split()).strip()
+    if returned_subject.casefold() != str(subject.get("name") or "").casefold():
+        raise ValueError("Registered Subject story-start result names the wrong Subject.")
+    status = candidate["status"]
     initial_state = " ".join(str(candidate["initial_state"] or "").split()).strip()
-    if classification not in {"present", "absent", "unknown"}:
-        raise ValueError("Registered Subject story-start result has an invalid classification.")
-    if classification == "unknown":
-        if initial_state:
-            raise ValueError("Unknown story-start classification cannot include an initial state.")
-        return {
-            "name": subject["name"], "classification": "unknown",
-            "evidence": evidence, "initial_state": "",
-        }
-    source_text = " ".join("\n".join((str(story or ""), *(str(beat) for beat in beats or []))).split())
-    if not evidence or evidence.casefold() not in source_text.casefold():
-        raise ValueError("Explicit story-start classification requires exact source evidence.")
-    if classification == "present" and not initial_state:
+    if status not in {"present", "absent", "unknown"}:
+        raise ValueError("Registered Subject story-start result has an invalid status.")
+    if status == "present" and not initial_state:
         raise ValueError("Present story-start classification requires an initial state.")
-    if classification == "absent" and initial_state:
-        raise ValueError("Absent story-start classification cannot include an initial state.")
+    if status in {"absent", "unknown"} and initial_state:
+        raise ValueError(f"{status.title()} story-start status cannot include an initial state.")
     return {
-        "name": subject["name"], "classification": classification,
-        "evidence": evidence, "initial_state": initial_state,
+        "name": subject["name"], "status": status,
+        "initial_state": initial_state,
     }
 
 
@@ -3869,8 +3857,9 @@ def extract_registered_subject_story_start_presence(
             attempt_messages = copy.deepcopy(messages)
             if attempt > 1:
                 attempt_messages[-1]["content"] += (
-                    "\n\nFIX: return only present, absent, or unknown for this one Subject; "
-                    "unknown is required when explicit source evidence is missing. "
+                    "\n\nFIX: return only subject, status, and initial_state for this "
+                    "registered Subject. Use unknown and an empty initial_state when "
+                    "the source does not make the status explicit. "
                     f"Prior validation error: {last_error}"
                 )
             try:
@@ -3886,9 +3875,16 @@ def extract_registered_subject_story_start_presence(
                         "attempt": attempt,
                     },
                 )
-                classifications.append(
-                    parse_registered_subject_story_start_result(raw, subject, story, beats)
+                classification = parse_registered_subject_story_start_result(
+                    raw, subject, story, beats
                 )
+                console_log(
+                    "Registered Subject story-start classification: "
+                    f"{classification['name']} status={classification['status']}; "
+                    f"initial_state={classification['initial_state'] or 'N/A'}",
+                    flush=True,
+                )
+                classifications.append(classification)
                 break
             except LLMConnectionError:
                 raise
@@ -19127,7 +19123,7 @@ def build_story_location_messages(expanded_story):
 
 
 def build_initial_location_subjects_messages(beats, subject_definitions=""):
-    """Build a tiny beat-plan-wide extractor for Subjects present before Beat 1."""
+    """Build the beat-plan-wide Subject story-start presence classifier."""
     numbered_beats = "\n".join(
         f"Beat {index}: {str(beat).strip()}"
         for index, beat in enumerate(beats or [], start=1)
@@ -19137,18 +19133,14 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
         {
             "role": "system",
             "content": (
-                'Return only Subjects already in the opening scene; check every candidate\'s first appearance, '
-                'and exclude Subjects who step in, enter, or arrive later, even when later seated.\n\n'
-                'Example 1: "Beat 2: Jim leered over at Daisy from his seat." - Jim is '
-                'already there, so add Jim.\n'
-                'Example 2: "Beat 2: William walked in from the rain." - William enters '
-                'the scene, so don\'t add William.\n'
-                'Example 3: Beat 3 elf steps in and sits at a table: do NOT add the elf.\n\n'
-                '- do not return a subject defined in EXISTING SUBJECT DEFINITIONS.\n'
-                '- include a one sentence initial_state. initial_state must be the minimal '
-                'physical location/pose supported by the beats; do not invent appearance, '
-                'clothing, motives, actions, or plot facts.\n'
-                '- Return JSON.'
+                "Your job is to examine all beats AFTER Beat 1 and determine which of those "
+                "Subjects were actually in the scene from the beginning.  Each Subject that "
+                "appears, you need to validate two things:\n"
+                "1) are they entering the scene: walked in, opened the door and entered, etc.?\n"
+                "2) are they performing an action while already in the scene: picked up a cup, "
+                "kicked the wall, etc.?\n\n"
+                "- List the Subject, present:{true:false},  and one-sentence reasoning.\n"
+                "- Return JSON."
             ),
         },
         {
@@ -19158,36 +19150,33 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
                 + (str(subject_definitions or "").strip() or "N/A")
                 + "\n\nALL BEATS\n"
                 + (numbered_beats or "N/A")
-                + "\n\nReturn exactly subjects."
+                + "\n\nReturn a JSON object keyed by each Subject name. Each value must contain "
+                "exactly present (a boolean) and reason (one sentence)."
             ),
         },
     ]
 
 
 def parse_initial_location_subjects(raw_result):
-    """Normalize beat-plan inference for Subjects already present at story start."""
+    """Normalize name-keyed Subject presence classifications."""
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
-    if not isinstance(candidate, dict) or set(candidate) != {"subjects"}:
-        raise ValueError(
-            "Initial-location Subject extraction must contain only subjects."
-        )
-    raw_subjects = candidate.get("subjects")
-    if not isinstance(raw_subjects, list):
-        raise ValueError("Initial-location subjects must be an array.")
-
+    if not isinstance(candidate, dict):
+        raise ValueError("Subject presence extraction must return a JSON object.")
     normalized = []
     seen = set()
-    for item in raw_subjects:
-        if not isinstance(item, dict) or set(item) != {"name", "initial_state"}:
+    for raw_name, item in candidate.items():
+        name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
+        if not isinstance(item, dict) or set(item) != {"present", "reason"}:
             raise ValueError(
-                "Each initial-location Subject requires only name and initial_state."
+                f"Subject presence entry for {name or raw_name!r} must contain only present and reason."
             )
-        name = " ".join(str(item.get("name") or "").split()).strip(" ,.;:-")
-        initial_state = " ".join(
-            str(item.get("initial_state") or "").split()
-        ).strip(" ,.;")
+        if not isinstance(item.get("present"), bool):
+            raise ValueError(f"Subject presence for {name!r} must be a boolean.")
+        reason = " ".join(str(item.get("reason") or "").split()).strip()
+        if not reason:
+            raise ValueError(f"Subject presence reason for {name!r} must not be empty.")
         if (
             name
             and name == name.casefold()
@@ -19197,34 +19186,13 @@ def parse_initial_location_subjects(raw_result):
             role_tokens = re.findall(r"[a-z0-9]+", name)
             if role_tokens:
                 name = "".join(token[:1].upper() + token[1:] for token in role_tokens) + "1"
-        # If the extractor includes a held prop in an otherwise valid opening
-        # pose/location, keep the correct Subject classification and strip only
-        # the held-prop tail. Prop ownership is handled by the normal beat/prop
-        # pipeline rather than this story-start presence extractor.
-        held_prop_tail = re.search(
-            r"(?i)\s+(?:while\s+)?(?:hold|holds|holding|held|clutch|clutches|"
-            r"clutching|carry|carries|carrying|carried|grip|grips|gripping|gripped)\b",
-            initial_state,
-        )
-        if held_prop_tail:
-            pose_only = initial_state[:held_prop_tail.start()].strip(" ,.;")
-            if pose_only:
-                initial_state = pose_only
-        if re.search(
-            r"(?i)\b(?:hold|holds|holding|held|clutch|clutches|clutching|"
-            r"carry|carries|carrying|carried|grip|grips|gripping|gripped)\b",
-            initial_state,
-        ):
-            raise ValueError(
-                "Initial-location Subject state must contain location/pose only, not held props."
-            )
-        if not name or not initial_state or not _subject_name_is_promotable(name):
+        if not name or not _subject_name_is_promotable(name):
             raise ValueError("Initial-location Subject contains unusable data.")
         key = _subject_identity_key(name)
         if key in seen:
-            continue
+            raise ValueError(f"Duplicate Subject presence classification for {name!r}.")
         seen.add(key)
-        normalized.append({"name": name, "initial_state": initial_state})
+        normalized.append({"name": name, "present": item["present"], "reason": reason})
     return normalized
 
 
@@ -19251,9 +19219,8 @@ def extract_initial_location_subjects(
         messages = [dict(message) for message in base_messages]
         if attempt > 1:
             messages[-1]["content"] += (
-                "\n\nRETRY: Return strict JSON only. Include only Subjects proven to "
-                "already be present before Beat 1; do not include later arrivals. Keep "
-                "initial_state to location/pose only with no held props."
+                "\n\nRETRY: Return a JSON object keyed by Subject name. Every value must "
+                "contain only a boolean present field and a one-sentence reason field."
             )
         try:
             raw = llm_request(
@@ -19261,7 +19228,9 @@ def extract_initial_location_subjects(
                 response_format=INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT,
                 parse_json_response=False,
                 max_tokens=512,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+                context_token_budget=SMART_EXTRACTOR_LLM_SETTINGS[
+                    "context_token_budget"
+                ],
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "director_raw_scene_subject_resolution",
@@ -19273,7 +19242,33 @@ def extract_initial_location_subjects(
                 f"(attempt {attempt}/{max_attempts}):\n{raw}",
                 flush=True,
             )
-            return parse_initial_location_subjects(raw)
+            classifications = parse_initial_location_subjects(raw)
+            defined_names = {
+                _subject_identity_key(name)
+                for _number, name in parse_defined_subjects(subject_definitions)
+            }
+            selected = []
+            for item in classifications:
+                console_log(
+                    "Story-start Subject classification: "
+                    f"{item['name']} present={item['present']}; reason={item['reason']}",
+                    flush=True,
+                )
+                if not item["present"]:
+                    continue
+                if _subject_identity_key(item["name"]) in defined_names:
+                    console_log(
+                        "Story-start Subject classification omitted from dynamic seed "
+                        f"because {item['name']} is already defined in subjects.txt.",
+                        flush=True,
+                    )
+                    continue
+                selected.append({
+                    "name": item["name"],
+                    "initial_state": "present in the opening scene",
+                    "reason": item["reason"],
+                })
+            return selected
         except LLMConnectionError:
             raise
         except (TypeError, ValueError) as error:

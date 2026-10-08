@@ -552,7 +552,7 @@ def seed_registered_subject_story_start_presence(
     seen: set[str] = set()
     for item in classifications:
         if not isinstance(item, dict) or set(item) != {
-            "name", "classification", "evidence", "initial_state",
+            "name", "status", "initial_state",
         }:
             raise ValueError("Registered Subject presence classification has an invalid shape.")
         name = " ".join(str(item.get("name") or "").split()).strip()
@@ -565,31 +565,27 @@ def seed_registered_subject_story_start_presence(
             raise ValueError(f"Presence classification references unregistered Subject {name!r}.")
         if subject.get("provenance", {}).get("identity", {}).get("authority") != "user_authored_subject_definitions":
             raise ValueError(f"Only authored Subject definitions may use this presence authority: {name!r}.")
-        classification = item["classification"]
-        if classification not in {"present", "absent", "unknown"}:
+        status = item["status"]
+        if status not in {"present", "absent", "unknown"}:
             raise ValueError(f"Invalid story-start classification for {name!r}.")
-        if classification == "unknown":
+        if status == "unknown":
             continue
-        evidence = " ".join(str(item.get("evidence") or "").split()).strip()
-        if not evidence:
-            raise ValueError(f"Explicit story-start classification for {name!r} requires evidence.")
         initial_state = " ".join(str(item.get("initial_state") or "").split()).strip()
-        if classification == "present" and not initial_state:
+        if status == "present" and not initial_state:
             raise ValueError(f"Present Subject {name!r} requires an initial state.")
-        if classification == "absent" and initial_state:
+        if status == "absent" and initial_state:
             raise ValueError(f"Absent Subject {name!r} cannot have an initial state.")
         prior_presence = subject["presence"]
-        if prior_presence not in {UNKNOWN, classification}:
+        if prior_presence not in {UNKNOWN, status}:
             raise ValueError(f"Story-start presence classification conflicts for Subject {name!r}.")
-        if prior_presence == classification:
+        if prior_presence == status:
             continue
-        subject["presence"] = classification
-        subject["location_id"] = location_id if classification == "present" else UNKNOWN
-        subject["support_id"] = None if classification == "present" else UNKNOWN
+        subject["presence"] = status
+        subject["location_id"] = location_id if status == "present" else UNKNOWN
+        subject["support_id"] = None if status == "present" else UNKNOWN
         subject["provenance"].setdefault("presence", {})
         subject["provenance"]["presence"] = {
             "authority": "registered_subject_story_start_classifier",
-            "evidence": evidence,
             "initial_state": initial_state or UNKNOWN,
         }
     return _changed_revision(before, candidate)
