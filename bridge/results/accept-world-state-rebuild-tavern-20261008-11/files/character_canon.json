@@ -1,0 +1,63 @@
+{
+  "version": 3,
+  "source_sha256": "da2aed01ccd7e315a56b7db5cf66533f0e5c6c977722a5091d1dc761846bef72",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "facial_identity",
+    "facial_structure",
+    "hair",
+    "body_proportions",
+    "distinguishing_features",
+    "skin_color",
+    "hand_size",
+    "mug_status",
+    "hair_color",
+    "hair_length",
+    "scale_appearance",
+    "wing_state",
+    "eye_color",
+    "mouth_action"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "Amy",
+      "gender": "female",
+      "facial_identity": "defined in Picture 1",
+      "facial_structure": "defined in Picture 1",
+      "hair": "defined in Picture 1",
+      "body_proportions": "defined in Picture 1",
+      "distinguishing_features": "defined in Picture 1"
+    },
+    {
+      "name": "Goblin",
+      "age": "N/A",
+      "clothing": "N/A",
+      "gender": "male",
+      "skin_color": "green",
+      "hand_size": "tiny",
+      "mug_status": "chipped"
+    },
+    {
+      "name": "Beautiful female elf",
+      "age": "200",
+      "clothing": "N/A",
+      "gender": "female",
+      "hair_color": "silver",
+      "hair_length": "streaming down shoulders"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "1000",
+      "clothing": "N/A",
+      "gender": "male",
+      "scale_appearance": "glittering like polished obsidian",
+      "wing_state": "unfurled",
+      "eye_color": "amber",
+      "mouth_action": "licks lips and takes slow sip"
+    }
+  ]
+}
