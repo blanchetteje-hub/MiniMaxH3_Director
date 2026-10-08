@@ -61,14 +61,21 @@ RAW, and the concrete issue. It does not restart from the original creation
 prompt. Python carries forward the reducer-accepted `state_actions`, then runs
 the repaired RAW through the same structure, dialogue, physical, prop-state,
 timing, and RAW/WorldState checks. The repair cap is ten per segment; malformed
-reducer actions and RAW/WorldState action-plan mismatches still use the
-state-action correction path.
+reducer actions use a separate ten-attempt state-action-only repair that
+preserves the rejected RAW. Exhaustion of either Director repair path regenerates
+the current Beat and restarts Request 1. RAW/WorldState mismatches use the RAW
+repair path so the accepted reducer plan remains fixed during that repair.
 
 Implementation was syntax-checked with `python -m py_compile minimax.py` and
 `git diff --check`; focused tests were not run in this change. Upstream Beat
-regeneration after exhausting ten RAW repairs is not yet connected to this
-request path and remains follow-up work. The automation checkout's `minimax.py`
-was overwritten from `automate_git` and verified byte-identical.
+regeneration is now connected after ten RAW repairs: the rejected RAW issue and
+scene are passed to a one-Beat repair, the new Beat is structurally and
+semantically validated, persisted, and its beat-derived WorldState seed is
+rolled back and recomputed before Request 1 restarts. Repeated RAW exhaustion
+steps back to the current Beat again. If the regenerated Beat itself exhausts
+its own ten validation attempts, it raises the existing Beat validation
+recovery signal. The automation checkout's `minimax.py` was overwritten from
+`automate_git` and verified byte-identical.
 
 ## 2026-10-06 — WorldState foundation, review gates A and B
 

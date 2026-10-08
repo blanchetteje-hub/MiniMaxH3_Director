@@ -411,6 +411,7 @@ BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
 DIRECTOR_RAW_SCENE_ATTEMPTS = 5
 DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS = 10
+DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS = 10
 
 BEAT_VALIDATION_STATE_VERSION = 3
 
@@ -573,6 +574,7 @@ CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
 DIRECTOR_RAW_SCENE_LLM_PURPOSES = frozenset({
     "director_raw_scene",
     "director_raw_scene_repair",
+    "director_state_action_repair",
 })
 
 MUSIC_GENERATION_LLM_PURPOSES = frozenset({
@@ -10398,6 +10400,19 @@ class LLMConnectionError(RuntimeError):
 
 class BeatGenerationError(RuntimeError):
     """Legacy beat-generation exception retained for import compatibility."""
+
+
+class DirectorRawRepairExhaustedError(BeatGenerationError):
+    """Signal that RAW exhausted its repair budget and needs a Beat rewrite."""
+
+    def __init__(self, segment, issue, rejected_raw_scene):
+        self.segment = int(segment)
+        self.issue = str(issue or "").strip()
+        self.rejected_raw_scene = str(rejected_raw_scene or "").strip()
+        super().__init__(
+            f"Director RAW Segment {self.segment} exhausted ten repairs: "
+            f"{self.issue}"
+        )
 
 
 # Repair a narrow local-model error such as ``"growl" snarls``.
@@ -38122,6 +38137,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     pending_raw_scene_repair = None
     request1_create_attempts = 0
     request1_repair_attempts = 0
+    state_action_repair_attempts = 0
 
     def build_request1_retry_messages(requirement):
         """Retry from the clean base while retaining every observed blocker."""
@@ -38142,69 +38158,130 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
         return messages
 
-    def build_request1_state_action_retry_messages(failure):
-        """Retry from the immutable base with only the first reducer failure."""
-        messages = copy.deepcopy(request1_base_messages)
-        messages.append({
-            "role": "user",
-            "content": (
-                "STATE ACTION RETRY — correct the state_actions batch using the "
-                "same opening WorldState and registered IDs. The reducer rejected "
-                "the first failing action with this concrete diagnostic:\n"
-                f"{failure}\n"
-                + _director_state_action_retry_hint(failure)
-                + "\nFix this first failure and return the complete corrected action "
-                "batch. Do not carry forward other validation feedback from earlier "
-                "attempts."
-            ),
-        })
-        return messages
+    def queue_state_action_repair(rejected_response, failure):
+        """Repair only state_actions while retaining the rejected RAW candidate."""
+        nonlocal state_action_repair_attempts
+        current_failure = str(failure or "").strip()
+        while state_action_repair_attempts < DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS:
+            state_action_repair_attempts += 1
+            messages = copy.deepcopy(request1_base_messages)
+            messages.append({
+                "role": "user",
+                "content": (
+                    "STATE ACTION REPAIR\nCorrect only state_actions using the same "
+                    "opening WorldState and registered IDs. Preserve the rejected RAW "
+                    "SCENE and its visible actions unchanged. The reducer's first concrete "
+                    "failure is:\n"
+                    f"{current_failure}\n"
+                    + _director_state_action_retry_hint(current_failure)
+                    + "\nReturn the complete corrected Director response. Do not invent "
+                    "IDs or carry forward feedback from earlier rejected attempts."
+                    "\n\nREJECTED DIRECTOR RESPONSE\n"
+                    + json.dumps(
+                        rejected_response, ensure_ascii=False, separators=(",", ":")
+                    )
+                ),
+            })
+            response = ask_llm(
+                messages,
+                response_format=state_action_contract["response_format"],
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": (run_config or {}).get("source_sha256"),
+                    "purpose": "director_state_action_repair",
+                    "segment": segment_number,
+                    "attempt": state_action_repair_attempts,
+                    "conditioning_mode": conditioning_mode,
+                    "opening_state_sha256": bundle.get("opening_state_sha256"),
+                },
+            )
+            try:
+                if isinstance(response, str):
+                    response = parse_llm_json_content(
+                        response, repair_on_failure=False
+                    )
+                if not isinstance(response, dict) or not isinstance(
+                    response.get("state_actions"), list
+                ):
+                    raise ValueError(
+                        "Director state-action repair returned an invalid response."
+                    )
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                current_failure = (
+                    "invalid_state_action_repair_response: "
+                    + " ".join(str(error).split())
+                )
+                continue
+            repaired = copy.deepcopy(rejected_response)
+            repaired["state_actions"] = copy.deepcopy(response["state_actions"])
+            return repaired
+        rejected_scene = _parse_director_raw_scene_result(
+            rejected_response
+        ).get("raw_scene", "")
+        raise DirectorRawRepairExhaustedError(
+            segment_number, current_failure, rejected_scene
+        )
 
     def queue_raw_scene_repair(issue, rejected_result):
         """Repair the rejected RAW candidate without regenerating its action plan."""
         nonlocal request1_repair_attempts
-        if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
-            return None
-        request1_repair_attempts += 1
         previous_shot_end = (
             bundle.get("previous_final_frame", "")
             if segment_number > 1
             else ""
         )
-        messages = build_director_raw_scene_repair_messages(
-            current_beat=bundle.get("current_beat_text", ""),
-            known_subject_state=bundle.get("registry_state"),
-            previous_shot_end=previous_shot_end,
-            static_setting_authority=bundle.get(
-                "static_setting_description", ""
-            ),
-            raw_scene=rejected_result.get("raw_scene", ""),
-            issue=issue,
+        current_issue = str(issue or "").strip()
+        while request1_repair_attempts < DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
+            request1_repair_attempts += 1
+            messages = build_director_raw_scene_repair_messages(
+                current_beat=bundle.get("current_beat_text", ""),
+                known_subject_state=bundle.get("registry_state"),
+                previous_shot_end=previous_shot_end,
+                static_setting_authority=bundle.get(
+                    "static_setting_description", ""
+                ),
+                raw_scene=rejected_result.get("raw_scene", ""),
+                issue=current_issue,
+            )
+            repair_metadata = {
+                "run_id": run_id,
+                "source_sha256": (run_config or {}).get("source_sha256"),
+                "purpose": "director_raw_scene_repair",
+                "segment": segment_number,
+                "attempt": request1_repair_attempts,
+                "conditioning_mode": conditioning_mode,
+                "opening_state_sha256": bundle.get("opening_state_sha256"),
+            }
+            repaired_result = ask_llm(
+                messages,
+                response_format=DIRECTOR_RAW_SCENE_REPAIR_RESPONSE_FORMAT,
+                history_metadata=repair_metadata,
+            )
+            try:
+                repaired_scene = _parse_director_raw_scene_repair(
+                    repaired_result
+                )
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                current_issue = (
+                    "invalid_raw_scene_repair_response: "
+                    + " ".join(str(error).split())
+                )
+                continue
+            pending = copy.deepcopy(rejected_result)
+            pending["raw_scene"] = repaired_scene
+            return pending
+        raise DirectorRawRepairExhaustedError(
+            segment_number,
+            current_issue,
+            rejected_result.get("raw_scene", ""),
         )
-        repair_metadata = {
-            "run_id": run_id,
-            "source_sha256": (run_config or {}).get("source_sha256"),
-            "purpose": "director_raw_scene_repair",
-            "segment": segment_number,
-            "attempt": request1_repair_attempts,
-            "conditioning_mode": conditioning_mode,
-            "opening_state_sha256": bundle.get("opening_state_sha256"),
-        }
-        repaired_result = ask_llm(
-            messages,
-            response_format=DIRECTOR_RAW_SCENE_REPAIR_RESPONSE_FORMAT,
-            history_metadata=repair_metadata,
-        )
-        repaired_scene = _parse_director_raw_scene_repair(repaired_result)
-        pending = copy.deepcopy(rejected_result)
-        pending["raw_scene"] = repaired_scene
-        return pending
 
     request1_messages = request1_base_messages
     for request1_attempt in range(
         1,
         DIRECTOR_RAW_SCENE_ATTEMPTS
         + DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS
+        + DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS
         + 1,
     ):
         if pending_raw_scene_repair is not None:
@@ -38259,20 +38336,22 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     else "invalid_state_action_batch: reducer rejected the batch."
                 )
         if state_action_failure:
-            if request1_create_attempts >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                raise BeatGenerationError(
-                    f"Director Request 1 state_actions failed for Segment "
-                    f"{segment_number}: {state_action_failure}"
+            if state_action_repair_attempts >= DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS:
+                rejected_scene = _parse_director_raw_scene_result(
+                    raw_scene_result
+                ).get("raw_scene", "")
+                raise DirectorRawRepairExhaustedError(
+                    segment_number, state_action_failure, rejected_scene
                 )
             console_log(
-                f"Director Request 1 state_actions failed "
-                f"(create attempt {request1_create_attempts}/"
-                f"{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                f"retrying from the same opening WorldState: {state_action_failure}",
+                f"Director state-action repair "
+                f"({state_action_repair_attempts + 1}/"
+                f"{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS}): "
+                f"{state_action_failure}",
                 flush=True,
             )
-            request1_messages = build_request1_state_action_retry_messages(
-                state_action_failure
+            pending_raw_scene_repair = queue_state_action_repair(
+                raw_scene_result, state_action_failure
             )
             continue
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
@@ -38293,9 +38372,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
             if structure_errors:
                 if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
-                    raise BeatGenerationError(
-                        f"Director Request 1 returned malformed shot script for "
-                        f"Segment {segment_number}: " + "; ".join(structure_errors)
+                    raise DirectorRawRepairExhaustedError(
+                        segment_number,
+                        "; ".join(structure_errors),
+                        raw_scene,
                     )
                 console_log(
                     f"Director RAW repair needed for shot-script structure "
@@ -38317,9 +38397,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
             if dialogue_issue:
                 if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
-                    raise BeatGenerationError(
-                        f"Director Request 1 never rendered required direct dialogue "
-                        f"for Segment {segment_number}: {dialogue_issue}"
+                    raise DirectorRawRepairExhaustedError(
+                        segment_number, dialogue_issue, raw_scene
                     )
                 console_log(
                     f"Director RAW repair needed for dialogue contract "
@@ -38377,9 +38456,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "RAW SCENE has an impossible subject movement or action order."
                     )
                     if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
-                        raise BeatGenerationError(
-                            f"Director Request 1 remained physically incoherent for "
-                            f"Segment {segment_number}: {issue}"
+                        raise DirectorRawRepairExhaustedError(
+                            segment_number, issue, raw_scene
                         )
                     console_log(
                         f"Director RAW physical/spatial repair "
@@ -38418,9 +38496,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "RAW SCENE has inconsistent prop, transfer, or final object state."
                     )
                     if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
-                        raise BeatGenerationError(
-                            f"Director Request 1 remained prop/state incoherent for "
-                            f"Segment {segment_number}: {issue}"
+                        raise DirectorRawRepairExhaustedError(
+                            segment_number, issue, raw_scene
                         )
                     console_log(
                         f"Director RAW prop/state repair "
@@ -38462,9 +38539,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         or "RAW SCENE compresses a physical transition into too little visible time."
                     )
                     if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
-                        raise BeatGenerationError(
-                            f"Director Request 1 remained physically over-compressed for "
-                            f"Segment {segment_number}: {issue}"
+                        raise DirectorRawRepairExhaustedError(
+                            segment_number, issue, raw_scene
                         )
                     console_log(
                         f"Director RAW timing repair "
@@ -38508,20 +38584,18 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 issue = state_consistency["issue"] or (
                     "RAW SCENE and state_actions do not describe the same persistent changes."
                 )
-                if request1_create_attempts >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                    raise BeatGenerationError(
-                        f"Director Request 1 WorldState consistency failed for "
-                        f"Segment {segment_number}: {issue}"
+                if request1_repair_attempts >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
+                    raise DirectorRawRepairExhaustedError(
+                        segment_number, issue, raw_scene
                     )
                 console_log(
-                    f"Director Request 1 RAW/WorldState consistency failed "
-                    f"(create attempt {request1_create_attempts}/"
-                    f"{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                    f"retrying from the same opening state: {issue}",
+                    f"Director RAW/WorldState consistency repair "
+                    f"({request1_repair_attempts + 1}/"
+                    f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS}): {issue}",
                     flush=True,
                 )
-                request1_messages = build_request1_state_action_retry_messages(
-                    "RAW/WorldState consistency: " + issue
+                pending_raw_scene_repair = queue_raw_scene_repair(
+                    issue, request1_result
                 )
                 continue
             request1_result["predicted_end_world_state"] = copy.deepcopy(
@@ -40231,6 +40305,7 @@ def _run_main(
 
     prepared_world_state_segments = set()
     prepared_world_state_subject_names = {}
+    world_state_before_segment_seed = {}
 
     def prepare_current_segment_world_state(segment_number):
         """Register beat-established identities/props before Request 1."""
@@ -40240,6 +40315,9 @@ def _run_main(
         world_state = generation_state.get("world_state")
         if not isinstance(world_state, dict):
             world_state = empty_world_state("pre_director_world_state_unavailable")
+        world_state_before_segment_seed.setdefault(
+            segment_number, copy.deepcopy(world_state)
+        )
         current_beat = (
             str(beats[segment_number - 1])
             if beats and 1 <= segment_number <= len(beats)
@@ -40570,6 +40648,288 @@ def _run_main(
             raise RuntimeError(
                 f"Segment {segment} WorldState opening snapshot changed while building Request 1."
             )
+
+        def regenerate_current_beat_after_raw_failure(raw_failure):
+            """Step back from RAW, repair/validate its assigned Beat, then rebuild Request 1."""
+            beat_number = int(segment)
+            rejected_beat = str(beats[beat_number - 1]).strip()
+            next_beat = (
+                str(beats[beat_number]).strip()
+                if beat_number < len(beats) else "N/A"
+            )
+            previous_beats = [
+                str(beat).strip() for beat in beats[:beat_number - 1]
+            ]
+            beat_job = str(
+                segment_bundle.get("assigned_source") or rejected_beat
+            ).strip()
+            assigned_effects = segment_bundle.get(
+                "assigned_state_effects", []
+            )
+            checkpoint_path = get_beat_validation_state_path(BEATS_FILE)
+            beat_checkpoint = load_beat_validation_state(checkpoint_path)
+            current_beat_state = new_beat_canonical_state()
+            if beat_number > 1 and isinstance(beat_checkpoint, dict):
+                previous_state = (beat_checkpoint.get("beat_state_after") or {}).get(
+                    str(beat_number - 1)
+                )
+                if isinstance(previous_state, dict):
+                    current_beat_state = normalize_beat_canonical_state(
+                        previous_state
+                    )
+            current_beat_state = _seed_known_beat_characters(
+                current_beat_state,
+                macro_arc=macro_arc,
+                subject_information=subject_information,
+            )
+            correction = (
+                "RAW validator issue: "
+                + str(raw_failure.issue or "").strip()
+                + "\nRejected RAW scene for diagnostic context:\n"
+                + str(raw_failure.rejected_raw_scene or "N/A").strip()
+            )
+            accepted_candidate = None
+            last_beat_issue = correction
+
+            for beat_attempt in range(1, BEAT_RETRY_ATTEMPTS + 1):
+                candidate = rejected_beat
+                repair_raw = ask_llm(
+                    build_story_beat_repair_messages(
+                        expanded_story_context or story,
+                        beat_number,
+                        total_segments,
+                        rejected_beat,
+                        correction,
+                        previous_beats,
+                        next_beat,
+                    ),
+                    response_format=build_story_beat_repair_response_format(
+                        beat_number
+                    ),
+                    parse_json_response=False,
+                    max_tokens=1024,
+                    history_metadata={
+                        "run_id": run_id,
+                        "source_sha256": run_config.get("source_sha256"),
+                        "purpose": "beat_repair",
+                        "attempt": beat_attempt,
+                        "segment": beat_number,
+                        "escalated_from": "director_raw_scene",
+                    },
+                )
+                try:
+                    candidate = parse_story_beat_repair_result(
+                        repair_raw, beat_number, llm_request=ask_llm
+                    )
+                    structural_issues = validate_generated_beat_exclusions(
+                        [candidate], phrase_exclusions, beat_start=beat_number
+                    )
+                    structural_issues.extend(
+                        validate_beat_planning_metadata(candidate)
+                    )
+                    structural_issues.extend(
+                        validate_generated_beat_instructions(
+                            [
+                                candidate
+                                if index == beat_number - 1 else beat
+                                for index, beat in enumerate(beats)
+                            ],
+                            beat_instructions,
+                        )
+                    )
+                    structural_issues.extend(
+                        _missing_named_job_subjects(
+                            beat_job, candidate, subject_information
+                        )
+                    )
+                    parse_generated_beats(
+                        {"beats": [candidate]},
+                        1,
+                        expected_start=beat_number,
+                        phrase_exclusions=phrase_exclusions,
+                    )
+                    if structural_issues:
+                        raise ValueError("; ".join(structural_issues))
+
+                    semantic_raw = ask_llm(
+                        build_beat_validation_messages(
+                            previous_final_beat=(
+                                previous_beats[-1] if previous_beats else ""
+                            ),
+                            current_state=current_beat_state,
+                            beat_job=beat_job,
+                            next_beat_job=next_beat,
+                            candidate_beat=candidate,
+                            assigned_state_effects=assigned_effects,
+                        ),
+                        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+                        parse_json_response=False,
+                        history_metadata={
+                            "run_id": run_id,
+                            "source_sha256": run_config.get("source_sha256"),
+                            "purpose": "beat_validation",
+                            "validation_attempt": beat_attempt,
+                            "segment": beat_number,
+                            "escalated_from": "director_raw_scene",
+                        },
+                    )
+                    semantic = parse_beat_validation_result(semantic_raw)
+                    if not semantic["valid"]:
+                        raise ValueError(semantic["issue"])
+
+                    endpoint = parse_beat_finite_endpoint_result(
+                        ask_llm(
+                            build_beat_finite_endpoint_messages(
+                                beat_job, candidate
+                            ),
+                            response_format=BEAT_FINITE_ENDPOINT_RESPONSE_FORMAT,
+                            parse_json_response=False,
+                            history_metadata={
+                                "run_id": run_id,
+                                "purpose": "beat_finite_endpoint_extract",
+                                "validation_attempt": beat_attempt,
+                                "segment": beat_number,
+                                "escalated_from": "director_raw_scene",
+                            },
+                        )
+                    )
+                    if endpoint == "ONGOING":
+                        raise ValueError(
+                            "Finite assigned activity is still underway and has no observable completion endpoint."
+                        )
+
+                    coherence = parse_beat_validation_result(
+                        ask_llm(
+                            build_beat_coherence_validation_messages(
+                                current_state=current_beat_state,
+                                beat_job=beat_job,
+                                candidate_beat=candidate,
+                                previous_beat=(
+                                    previous_beats[-1] if previous_beats else ""
+                                ),
+                            ),
+                            response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+                            parse_json_response=False,
+                            history_metadata={
+                                "run_id": run_id,
+                                "purpose": "beat_coherence_validation",
+                                "validation_attempt": beat_attempt,
+                                "segment": beat_number,
+                                "escalated_from": "director_raw_scene",
+                            },
+                        )
+                    )
+                    if not coherence["valid"]:
+                        raise ValueError(coherence["issue"])
+                    accepted_candidate = candidate
+                    break
+                except (LLMConnectionError, requests.RequestException, OSError):
+                    raise
+                except (ValueError, TypeError, json.JSONDecodeError) as error:
+                    last_beat_issue = str(error)
+                    correction = last_beat_issue
+                    rejected_beat = candidate
+                    console_log(
+                        f"Escalated Beat {beat_number} validation failed "
+                        f"({beat_attempt}/{BEAT_RETRY_ATTEMPTS}); repairing: "
+                        f"{last_beat_issue}",
+                        flush=True,
+                    )
+
+            if accepted_candidate is None:
+                # The Beat stage has its own established recovery supervisor.
+                # Returning this signal lets the normal run recovery restart
+                # from the durable checkpoint rather than pretending RAW passed.
+                raise BeatValidationExhaustedError(
+                    beat_number,
+                    last_beat_issue or correction,
+                )
+
+            prior_beat_definition = beats[beat_number - 1]
+            parsed_beat_definition = parse_beat_definition(accepted_candidate)
+            beat_loras = tuple(dict.fromkeys(
+                list(getattr(prior_beat_definition, "loras", ()))
+                + list(getattr(parsed_beat_definition, "loras", ()))
+            ))
+            beats[beat_number - 1] = BeatDefinition(
+                str(parsed_beat_definition),
+                loras=beat_loras,
+                phase_number=getattr(prior_beat_definition, "phase_number", None),
+                phase_start=getattr(prior_beat_definition, "phase_start", False),
+            )
+            try:
+                _parsed_beats, beat_file_lora = parse_beats_content(
+                    load_text_file(BEATS_FILE, required=True)
+                )
+            except (OSError, ValueError):
+                beat_file_lora = ""
+            save_generated_beats(
+                beats,
+                BEATS_FILE,
+                lora_directive=beat_file_lora,
+                macro_arc=macro_arc,
+            )
+            refreshed_run_config = build_run_config(
+                segment_length,
+                total_length,
+                megapixels,
+                total_segments,
+                story,
+                beats,
+                subject_definitions,
+                global_loras,
+                refresh_interval,
+                vision_continuity=args.vision_continuity,
+                trim_frames=trim_frames,
+                retention=retention,
+                test_prompt_generation=test_prompt_generation,
+                no_music=getattr(args, "no_music", False),
+                disable_subject_removal=bool(
+                    getattr(args, "disable_subject_removal", False)
+                ),
+                visual_style=visual_style,
+                world_state_seed=run_config.get("world_state_seed", {}),
+            )
+            run_config.clear()
+            run_config.update(refreshed_run_config)
+            generation_state["config"] = copy.deepcopy(run_config)
+            if isinstance(beat_checkpoint, dict):
+                finalized = beat_checkpoint.get("finalized_beats")
+                if (
+                    isinstance(finalized, list)
+                    and len(finalized) >= beat_number
+                    and isinstance(finalized[beat_number - 1], dict)
+                ):
+                    finalized[beat_number - 1]["beat_text"] = accepted_candidate
+                    save_beat_validation_state(beat_checkpoint, checkpoint_path)
+
+            pre_seed_state = world_state_before_segment_seed.get(beat_number)
+            if not isinstance(pre_seed_state, dict):
+                raise RuntimeError(
+                    f"Cannot roll back Segment {beat_number} pre-Director WorldState seed."
+                )
+            generation_state["world_state"] = copy.deepcopy(pre_seed_state)
+            prepared_world_state_segments.discard(beat_number)
+            prepared_world_state_subject_names.pop(beat_number, None)
+            world_state_before_segment_seed.pop(beat_number, None)
+            checkpoint_generation_state()
+            prepare_current_segment_world_state(beat_number)
+            new_opening = copy.deepcopy(generation_state["world_state"])
+            rebuilt = build_segment_bundle(
+                beat_number,
+                completed_beat_ids,
+                recent_results,
+                continuity_state,
+                continuity_summary,
+                recent_dialogue_exclusions,
+                world_state_opening=new_opening,
+            )
+            console_log(
+                f"Regenerated and validated Beat {beat_number} after RAW "
+                "repair exhaustion; restarting Director from the new Beat.",
+                flush=True,
+            )
+            return rebuilt
         if prefetched_next is not None and not stateful_transactions_active:
             if prefetched_next["segment"] != segment:
                 prefetched_next["cancellation_event"].set()
@@ -40630,12 +40990,36 @@ def _run_main(
                         save_generation_state(generation_state)
                 prefetched_next = None
         if payload is None:
-            payload = request_segment_llm(
-                segment_bundle,
-                beats,
-                run_id,
-                run_config,
-            )
+            while True:
+                try:
+                    payload = request_segment_llm(
+                        segment_bundle,
+                        beats,
+                        run_id,
+                        run_config,
+                    )
+                    break
+                except DirectorRawRepairExhaustedError as error:
+                    if not beats or not 1 <= error.segment <= len(beats):
+                        raise
+                    segment_bundle = regenerate_current_beat_after_raw_failure(
+                        error
+                    )
+                    opening_world_state = copy.deepcopy(
+                        segment_bundle["world_state_opening"]
+                    )
+                    opening_world_state_revision = int(
+                        opening_world_state["revision"]
+                    )
+                    opening_world_state_hash = world_state_sha256(
+                        opening_world_state
+                    )
+                    payload = None
+                    console_log(
+                        f"Retrying Segment {segment} after one-stage-back Beat "
+                        "regeneration.",
+                        flush=True,
+                    )
 
         request1_for_transaction = payload.get("request1_result", {})
         accepted_actions = (
