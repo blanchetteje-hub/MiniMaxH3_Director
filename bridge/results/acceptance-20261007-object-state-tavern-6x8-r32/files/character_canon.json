@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "3a79d900e89377bd808a0f4f2ce5230ee98da2cd9680861713d35db441b0d028",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence",
+    "occupation",
+    "role"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "A sturdy, earth‑tone linen tunic reaching mid‑thigh, slightly worn at the cuffs from frequent use, paired with dark brown leather breeches that tuck neatly into calf‑high woolen socks. Over this she wears a thick, cream‑colored canvas apron tied snugly around her waist; the apron is lined with a faded green cotton interior and features a small pocket on the left side where she keeps a damp cloth. A worn leather belt cinches the tunic at the waist, holding a silver keychain that doubles as a tool for locking doors. She wears no hat or headgear, keeping her hair pulled back in a simple braid to keep it out of the way while serving ale",
+      "gender": "female",
+      "confidence": "confident",
+      "occupation": "tavern barkeep",
+      "role": "takes care of a tavern for magical humanoid creatures"
+    }
+  ]
+}
