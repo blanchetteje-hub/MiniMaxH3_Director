@@ -1,0 +1,634 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+LLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).
+LLM request finished: character_canon (15.5s, finish_reason=stop).
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~606 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (2.6s, finish_reason=stop).
+Canonical appropriate attire for Amy: Amy wears a worn leather apron over a simple linen shirt dyed deep burgundy. The shirt is long‑sleeved, buttoned at the collar with brass buttons, and tucked into sturdy brown woolen breeches that reach her knees. Her boots are heavy canvas with iron toes, scuffed from years of service behind the bar. A faded red bandana tied around her neck adds a touch of color, while a small silver chain hangs from her belt to hold a pocketknife. The apron is patched in places and bears faint scorch marks from the woodsmoke
+LLM request started: story_location_extract (attempt 1/10, ~445 input tokens, max 256 output tokens).
+LLM request finished: story_location_extract (2.0s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~702 input tokens, max 512 output tokens).
+LLM request finished: static_setting_extract (1.9s, finish_reason=stop).
+Static setting extractor response: 'Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls'
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~281 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (6.2s, finish_reason=stop).
+Spatial setting refiner response: 'Stone Tavern – 30\u202fft. wide (east–west) by 20\u202fft. deep (north–south).  \nNorth wall: a single door, 7\u202fft. tall and 4\u202fft. wide, centered on the north side; above it a carved wooden sign reads “The Rough‑Hewn”.  \n\nEast wall: two stone pillars, each 3\u202fft. high, spaced 10\u202fft. apart, supporting a low ceiling of timber beams.\n\nWest wall: a long counter, 20\u202fft. along the west side, 4\u202fft. wide and 2\u202fft. tall; at its westernmost end sits a crystal goblet on a small pedestal (1\u202fft. high).  \n\nSouth wall: a stone archway leading to an adjoining kitchen.\n\nBar: located at the eastern end of the counter, 6\u202fft. long, 3\u202fft. wide and 4\u202fft. tall; made of rough‑hewn oak planks. A wide stool sits beside it, 2\u202fft. high and 1.5\u202fft. deep.\n\nFloor: timbered with oak boards, each board 0.75\u202fin. thick, laid in a north–south pattern.\n\nChair: a low wooden chair positioned centrally on the floor; seat width 2\u202fft., depth 3\u202fft., back height 4\u202fft.\n\nRack of barrels: east side of the room, 10\u202fft. long and 5\u202fft. wide; holds five oak barrels (each barrel 6\u202fin. tall, 4\u202fft. diameter) capped with iron lids. Barrels are spaced 1\u202fft. apart to allow passage.\n\nTorches: four stone torch holders mounted on the walls—two east wall at mid‑height, two west wall near the counter; each holds a flickering torch that casts warm light across the room.\n\nAll objects are placed so no overlap occurs and every door or entrance is accessible from any point in the tavern. The layout preserves the medieval/fantasy atmosphere of the stone tavern.'
+LLM request started: story_setting_extract (attempt 1/10, ~1164 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (34.3s, finish_reason=stop).
+Static location boundary omitted ungrounded fixture/support entries: 'north_door', 'east_pillar_1', 'east_pillar_2', 'south_archway', 'counter_goblet_pedestal', 'east_wall_torch_holder_1', 'east_wall_torch_holder_2', 'west_wall_torch_holder_1', 'west_wall_torch_holder_2'
+Structured story setting extractor response: 'Location: Stone Tavern\n\n{\n  "location": {\n    "name": "Stone Tavern",\n    "width_ft": 30,\n    "depth_ft": 20\n  },\n  "anchors": [\n    { "name": "north_door", "type": "door", "wall": "north", "world_state_role": "fixture", "mobility": "fixed" },\n    { "name": "east_pillar_1", "type": "pillar", "position": "10 ft east of west wall", "height_ft": 3, "world_state_role": "support", "mobility": "fixed" },\n    { "name": "east_pillar_2", "type": "pillar", "position": "20 ft east of west wall", "height_ft": 3, "world_state_role": "support", "mobility": "fixed" },\n    { "name": "west_counter", "type": "counter", "wall": "west", "length_ft": 20, "width_ft": 4, "height_ft": 2, "world_state_role": "fixture", "mobility": "fixed" },\n    { "name": "south_archway", "type": "archway", "wall": "south", "world_state_role": "fixture", "mobility": "fixed" }\n  ],\n  "objects": [\n    {\n      "name": "bar",\n      "type": "wooden_bar",\n      "position": "east end of west_counter",\n      "length_ft": 6,\n      "width_ft": 3,\n      "height_ft": 4,\n      "world_state_role": "fixture",\n      "mobility": "fixed"\n    },\n    {\n      "name": "wide_stool",\n      "type": "stool",\n      "position": "beside bar, east of west_counter",\n      "width_ft": 1.5,\n      "height_ft": 2,\n      "world_state_role": "untracked",\n      "mobility": "movable"\n    },\n    {\n      "name": "low_chair",\n      "type": "chair",\n      "position": "center of floor",\n      "seat_width_ft": 2,\n      "seat_depth_ft": 3,\n      "back_height_ft": 4,\n      "world_state_role": "untracked",\n      "mobility": "movable"\n    },\n    {\n      "name": "counter_goblet_pedestal",\n      "type": "pedestal",\n      "position": "west end of west_counter",\n      "height_ft": 1,\n      "world_state_role": "support",\n      "mobility": "fixed"\n    },\n    {\n      "name": "crystal_goblet",\n      "type": "goblet",\n      "position": "on counter_goblet_pedestal",\n      "world_state_role": "untracked",\n      "mobility": "movable"\n    },\n    {\n      "name": "barrel_rack",\n      "type": "rack",\n      "position": "east side of room, 10 ft long along east wall",\n      "length_ft": 10,\n      "width_ft": 5,\n      "world_state_role": "support",\n      "mobility": "fixed"\n    },\n    {\n      "name": "oak_barrel_1",\n      "type": "barrel",\n      "position": "on barrel_rack, first from west",\n      "diameter_ft": 4,\n      "height_in": 6,\n      "world_state_role": "untracked",\n      "mobility": "movable"\n    },\n    {\n      "name": "oak_barrel_2",\n      "type": "barrel",\n      "position": "on barrel_rack, second from west",\n      "diameter_ft": 4,\n      "height_in": 6,\n      "world_state_role": "untracked",\n      "mobility": "movable"\n    },\n    {\n      "name": "oak_barrel_3",\n      "type": "barrel",\n      "position": "on barrel_rack, third from west",\n      "diameter_ft": 4,\n      "height_in": 6,\n      "world_state_role": "untracked",\n      "mobility": "movable"\n    },\n    {\n      "name": "oak_barrel_4",\n      "type": "barrel",\n      "position": "on barrel_rack, fourth from west",\n      "diameter_ft": 4,\n      "height_in": 6,\n      "world_state_role": "untracked",\n      "mobility": "movable"\n    },\n    {\n      "name": "oak_barrel_5",\n      "type": "barrel",\n      "position": "on barrel_rack, fifth from west",\n      "diameter_ft": 4,\n      "height_in": 6,\n      "world_state_role": "untracked",\n      "mobility": "movable"\n    },\n    {\n      "name": "east_wall_torch_holder_1",\n      "type": "torch_holder",\n      "position": "mid-height east wall, near pillar 1",\n      "world_state_role": "fixture",\n      "mobility": "fixed"\n    },\n    {\n      "name": "east_wall_torch_holder_2",\n      "type": "torch_holder",\n      "position": "mid-height east wall, near pillar 2",\n      "world_state_role": "fixture",\n      "mobility": "fixed"\n    },\n    {\n      "name": "west_wall_torch_holder_1",\n      "type": "torch_holder",\n      "position": "near counter on west wall",\n      "world_state_role": "fixture",\n      "mobility": "fixed"\n    },\n    {\n      "name": "west_wall_torch_holder_2",\n      "type": "torch_holder",\n      "position": "next to first, on west wall",\n      "world_state_role": "fixture",\n      "mobility": "fixed"\n    },\n    {\n      "name": "north_sign_post",\n      "type": "wooden_sign",\n      "position": "above north_door",\n      "text": "\\"The Rough‑Hewn\\"",\n      "world_state_role": "untracked",\n      "mobility": "unknown"\n    }\n  ]\n}\n\nStone Tavern is a 30\u202fft wide by 20\u202fft deep stone room. The north wall has a single door centered on the north side, above which hangs a wooden sign reading “The Rough‑Hewn”. Two low stone pillars stand along the east wall at 10\u202fft and 20\u202fft from the west wall, supporting timber beams of the low ceiling. On the west wall runs a long counter that is 20\u202fft long, 4\u202fft wide, and 2\u202fft tall; its westernmost end holds a crystal goblet on a small pedestal. At the eastern end of this counter sits a rough‑hewn oak bar, 6\u202fft long, 3\u202fft wide, and 4\u202fft tall, beside which is a wide stool. A low wooden chair occupies the center of the floor. East of the room, along the east wall, a rack stretches 10\u202fft in length and 5\u202fft in width; it holds five oak barrels, each 6\u202fin tall and 4\u202fft in diameter, capped with iron lids. Four stone torch holders are mounted on walls—two mid‑height on the east wall near the pillars, two near the counter on the west wall—each holding a flickering torch that casts warm light across the timbered oak floor laid in a north–south pattern. The south wall features an archway leading to an adjoining kitchen. All fixtures are fixed; furniture and barrels are movable or untracked as appropriate.'
+Story location metadata: overall='a stone tavern'; starting='behind the rough-hewn wooden bar'; setting='Stone Tavern Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls west counter is on the west wall. wooden_bar (bar) position: east end of west_counter. barrel rack position: east side of room, 10 ft long along east wall.'; location_state={'location': {'name': 'Stone Tavern', 'width_ft': 30, 'depth_ft': 20, 'description': 'Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls'}, 'anchors': [{'name': 'west_counter', 'type': 'counter', 'wall': 'west', 'length_ft': 20, 'width_ft': 4, 'height_ft': 2, 'world_state_role': 'fixture', 'mobility': 'fixed'}], 'objects': [{'name': 'bar', 'type': 'wooden_bar', 'position': 'east end of west_counter', 'length_ft': 6, 'width_ft': 3, 'height_ft': 4, 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'wide_stool', 'type': 'stool', 'position': 'beside bar, east of west_counter', 'width_ft': 1.5, 'height_ft': 2, 'world_state_role': 'untracked', 'mobility': 'movable'}, {'name': 'low_chair', 'type': 'chair', 'position': 'center of floor', 'seat_width_ft': 2, 'seat_depth_ft': 3, 'back_height_ft': 4, 'world_state_role': 'untracked', 'mobility': 'movable'}, {'name': 'crystal_goblet', 'type': 'goblet', 'position': 'on counter_goblet_pedestal', 'world_state_role': 'untracked', 'mobility': 'movable'}, {'name': 'barrel_rack', 'type': 'rack', 'position': 'east side of room, 10 ft long along east wall', 'length_ft': 10, 'width_ft': 5, 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'oak_barrel_1', 'type': 'barrel', 'position': 'on barrel_rack, first from west', 'diameter_ft': 4, 'height_in': 6, 'world_state_role': 'untracked', 'mobility': 'movable'}, {'name': 'oak_barrel_2', 'type': 'barrel', 'position': 'on barrel_rack, second from west', 'diameter_ft': 4, 'height_in': 6, 'world_state_role': 'untracked', 'mobility': 'movable'}, {'name': 'oak_barrel_3', 'type': 'barrel', 'position': 'on barrel_rack, third from west', 'diameter_ft': 4, 'height_in': 6, 'world_state_role': 'untracked', 'mobility': 'movable'}, {'name': 'oak_barrel_4', 'type': 'barrel', 'position': 'on barrel_rack, fourth from west', 'diameter_ft': 4, 'height_in': 6, 'world_state_role': 'untracked', 'mobility': 'movable'}, {'name': 'oak_barrel_5', 'type': 'barrel', 'position': 'on barrel_rack, fifth from west', 'diameter_ft': 4, 'height_in': 6, 'world_state_role': 'untracked', 'mobility': 'movable'}, {'name': 'north_sign_post', 'type': 'wooden_sign', 'position': 'above north_door', 'text': '"The Rough‑Hewn"', 'world_state_role': 'untracked', 'mobility': 'unknown'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~501 input tokens, max 512 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (1.9s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (attempt 1/3):
+{
+  "subjects": [
+    {
+      "name": "Unicorn",
+      "initial_state": "Sitting on a low chair in the middle of the tavern, holding a clear crystal cup."
+    }
+  ]
+}
+Subjects inferred as already present at story start: Unicorn (present in the story's starting location; exact position and pose unknown)
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~706 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (2.6s, finish_reason=stop).
+Canonical appropriate attire for Unicorn: {"upper":"light linen tunic, color:white, material:linen, texture:smooth, wear:slightly worn at cuffs","lower":"brown leather breeches, color:brown, material:leather, texture:soft with slight creases","footwear":"sturdy brown leather boots, color:brown, material:leather, texture:smooth, wear:well‑shod","other":"silver circlet around mane, color:silver, material:metal, texture:polished"}
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~363 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_subjects (1.3s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~979 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (1.2s, finish_reason=stop).
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 2340/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+LLM request started: director_raw_scene (attempt 1/10, ~2805 input tokens, max 5259 output tokens).
+LLM request finished: director_raw_scene (19.9s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~945 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (1.2s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~745 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (2.1s, finish_reason=stop).
+LLM request started: director_raw_scene_timing (attempt 1/10, ~800 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_timing (0.8s, finish_reason=stop).
+LLM request started: director_raw_world_state_consistency (attempt 1/10, ~2035 input tokens, max 384 output tokens).
+LLM request finished: director_raw_world_state_consistency (2.4s, finish_reason=stop).
+Director Request 1 RAW/WorldState consistency failed (attempt 1/5); retrying from the same opening state: RAW references the location as "location_behind_the_rough_hewn_w" while the registered WorldState uses the ID "location_behind_the_rough_hewn_w5afc1199d68e", causing a persistent location inconsistency.
+LLM request started: director_raw_scene (attempt 1/10, ~2964 input tokens, max 5100 output tokens).
+LLM request finished: director_raw_scene (19.2s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1002 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (1.2s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~802 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (1.9s, finish_reason=stop).
+LLM request started: director_raw_scene_timing (attempt 1/10, ~857 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_timing (1.0s, finish_reason=stop).
+LLM request started: director_raw_world_state_consistency (attempt 1/10, ~2092 input tokens, max 384 output tokens).
+LLM request finished: director_raw_world_state_consistency (0.7s, finish_reason=stop).
+Checking pronouns segment:
+LLM request started: director_raw_scene_pronoun_resolution (attempt 1/10, ~700 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_pronoun_resolution (4.4s, finish_reason=stop).
+Checking pronouns segment: LLM result=At 00:00.000, the camera is positioned at mid‑range behind the rough‑hewn wooden bar, slightly angled toward the front of the Stone Tavern. The stone walls are visible with flickering torches casting warm light; a faint scent of woodsmoke and stew lingers in the air.
+
+Amy stands upright behind the bar, her worn leather apron over a deep burgundy linen shirt, tucked into sturdy brown woolen breeches that reach her knees. Heavy canvas boots with iron toes scuff at her feet, a faded red bandana ties around her neck, and a small silver chain hangs from her belt.
+
+At 00:02.000, the camera pans left to reveal Unicorn in the background near the far end of the bar; it remains still, its horn catching the torchlight.
+
+At 00:04.000, Amy lifts her right hand slightly to adjust a strap on her apron and then sets it back down, maintaining her stance behind the bar.
+
+At 00:06.500, the camera pulls out a touch to show a wider view of the tavern interior with timbered floorboards and oak barrels along the east wall, while Amy continues standing behind the bar.
+Checking pronouns segment: no replacements.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.000, the camera is positioned at mid‑range behind the rough‑hewn wooden bar, slightly angled toward the front of the Stone Tavern. The stone walls are visible with flickering torches casting warm light; a faint scent of woodsmoke and stew lingers in the air.
+
+Amy stands upright behind the bar, her worn leather apron over a deep burgundy linen shirt, tucked into sturdy brown woolen breeches that reach her knees. Heavy canvas boots with iron toes scuff at her feet, a faded red bandana ties around her neck, and a small silver chain hangs from her belt.
+
+At 00:02.000, the camera pans left to reveal Unicorn in the background near the far end of the bar; it remains still, its horn catching the torchlight.
+
+At 00:04.000, Amy lifts her right hand slightly to adjust a strap on her apron and then sets it back down, maintaining her stance behind the bar.
+
+At 00:06.500, the camera pulls out a touch to show a wider view of the tavern interior with timbered floorboards and oak barrels along the east wall, while Amy continues standing behind the bar.
+End continuity state: the camera pulls out a touch to show a wider view of the tavern interior with timbered floorboards and oak barrels along the east wall, while Amy continues standing behind the bar.
+================================================================
+
+================================================================
+H3 SOUNDSCAPE REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_soundscape (attempt 1/10, ~769 input tokens, max 512 output tokens).
+LLM request finished: director_h3_soundscape (2.3s, finish_reason=stop).
+H3 soundscape segment 1: 'scuffing of heavy canvas boots with iron toes on timbered floorboards'
+H3 MUSIC REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_music (attempt 1/10, ~642 input tokens, max 512 output tokens).
+LLM request finished: director_h3_music (3.1s, finish_reason=stop).
+H3 music segment 1: 'Soft woodwinds and gentle acoustic guitar weave an inviting hearth tone, rising slightly in warmth as the camera pulls back to reveal the bustling tavern.'
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1654 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (3.2s, finish_reason=stop).
+Checking RAW Subjects segment: <Subject 3> Unicorn_1
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~701 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (1.4s, finish_reason=stop).
+Canonical appropriate attire for <Subject 3> Unicorn_1: upper:N/A;lower:N/A;footwear:N/A;other:N/A
+Registered new Subject definition(s) before H3 prompt:
+  <Subject 2> is Unicorn (S2), present at story start. Last known state: Unicorn was present in the story's starting location; exact position and pose unknown, wearing {"upper":"light linen tunic, "lower":"brown leather breeches, and "footwear":"sturdy brown leather boots.
+  <Subject 3> is <Subject 3> Unicorn_1 (S3), continued from <Video 1>. unicorn with a horn catching torchlight
+WARNING: Subject identity field gender for Subject ID 2 was passed as 'N/A' in current state; keeping the original value 'unknown'.
+WARNING: Subject identity field gender for Subject ID 2 was passed as 'N/A' in current state; keeping the original value 'unknown'.
+Planned character reference(s): Amy, <Subject 3> Unicorn_1
+WARNING: Final H3 prompt retained unresolved Subject identity issue(s); continuing with the repaired prompt:
+- <Subject 3> is paired with unregistered name 'Unicorn_1', but the registry assigns '<Subject 3> Unicorn_1'.
+LLM request started: final_h3_world_state_plan_validation (attempt 1/10, ~2747 input tokens, max 384 output tokens).
+LLM request finished: final_h3_world_state_plan_validation (1.4s, finish_reason=stop).
+Saved finalized H3 prompt 1/6 to generated_prompts.txt.
+Combined continuity requested for segment 1 during prompt generation.
+Added States: 
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 1: Amy stands behind a rough‑hewn wooden bar inside a stone tavern that smells of woodsmoke and stew.
+Next required after this prompt:
+  Beat 2: A large dragon with bronze scales steps onto the far end of the bar, claws tapping the floor as it settles on a wide stool.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 1
+subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.
+<Picture 2> references only the clothing that Amy is currently wearing.
+Amy is a 30-year-old female wearing an Amy wears a worn leather apron over a simple linen shirt dyed deep burgundy. The shirt is long‑sleeved, buttoned at the collar with brass buttons, and tucked into sturdy brown woolen breeches that reach her knees. Her boots are heavy canvas with iron toes, scuffed from years of service behind the bar. A faded red bandana tied around her neck adds a touch of color, while a small silver chain hangs from her belt to hold a pocketknife. The apron is patched in places and bears faint scorch marks from the woodsmoke.
+
+detailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (Stone Tavern Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls west counter is on the west wall. wooden_bar (bar) position: east end of west_counter. barrel rack position: east side of room, 10 ft long along east wall). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, The scene starts in behind the rough-hewn wooden bar. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.
+
+At 00:00.000, the camera is positioned at mid‑range behind the rough‑hewn wooden bar, slightly angled toward the front of the Stone Tavern. The stone walls are visible with flickering torches casting warm light; a faint scent of woodsmoke and stew lingers in the air. Amy stands upright behind the bar, her worn leather apron over a deep burgundy linen shirt, tucked into sturdy brown woolen breeches that reach her knees. Heavy canvas boots with iron toes scuff at her feet, a faded red bandana ties around her neck, and a small silver chain hangs from her belt.
+
+At 00:02.000, the camera pans left to reveal <Subject 3> Unicorn_1 in the background near the far end of the bar; it remains still, its horn catching the torchlight.
+
+At 00:04.000, Amy lifts her right hand slightly to adjust a strap on her apron and then sets it back down, maintaining her stance behind the bar.
+
+At 00:06.500, the camera pulls out a touch to show a wider view of the tavern interior with timbered floorboards and oak barrels along the east wall, while Amy continues standing behind the bar.
+
+overall_soundscape: scuffing of heavy canvas boots with iron toes on timbered floorboards
+
+non_diegetic_music: Soft woodwinds and gentle acoustic guitar weave an inviting hearth tone, rising slightly in warmth as the camera pulls back to reveal the bustling tavern.
+
+No intelligible spoken dialogue is heard in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 1
+
+ComfyUI render skipped for segment 1; continuing with prompt-derived continuity only.
+LLM request started: continuity_combined_reduced_state (attempt 1/10, ~1865 input tokens, max 6000 output tokens).
+LLM request finished: continuity_combined_reduced_state (4.6s, finish_reason=stop).
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "Stone Tavern",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "standing behind the bar",
+  "ongoing_audio": "scuffing of heavy canvas boots with iron toes on timbered floorboards",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "canonical_description": "",
+      "position": "behind the bar",
+      "pose_action": "standing upright, right hand lifted briefly to adjust apron strap then set down",
+      "wardrobe": {
+        "upper": "deep burgundy linen shirt buttoned at collar with brass buttons",
+        "lower": "brown woolen breeches reaching knees",
+        "footwear": "heavy canvas boots with iron toes scuffed",
+        "other": "worn leather apron patched and scorched, faded red bandana tied around neck, silver chain on belt holding pocketknife"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "behind the bar"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Unicorn": {
+      "name": "Unicorn",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "N/A",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": 0,
+      "persistent_structural_change": false,
+      "canonical_description": "",
+      "position": "present in the story's starting location; exact position and pose unknown",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "{\"upper\":\"light linen tunic",
+        "lower": "\"lower\":\"brown leather breeches",
+        "footwear": "\"footwear\":\"sturdy brown leather boots",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "<Subject 3> Unicorn_1": {
+      "name": "<Subject 3> Unicorn_1",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "unknown",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": 1,
+      "persistent_structural_change": false,
+      "canonical_description": "unicorn with a horn catching torchlight",
+      "position": "N/A",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "footwear:N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+[Props] persistent ledger: {}
+Combined continuity completed for segment 1; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+Registered video-created subject definition(s) internally:
+  <Subject 3> is <Subject 3> Unicorn_1 (S3), continued from <Video 1>. unicorn with a horn catching torchlight Last known state: <Subject 3> Unicorn_1 was wearing footwear:N/A.
+Segment 1 completed Beat 1.
+WARNING: Subject identity field gender for Subject ID 2 was passed as 'N/A' in current state; keeping the original value 'unknown'.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 1.
+WARNING: Subject identity field gender for Subject ID 2 was passed as 'N/A' in current state; keeping the original value 'unknown'.
+Completed prompt generation for segment 1; no ComfyUI request was sent.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~371 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_subjects (3.3s, finish_reason=stop).
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~640 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (0.9s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1009 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (4.6s, finish_reason=stop).
+Pre-Director WorldState registered Segment 2 Subject(s): Dragon_1
+
+================================================================
+SEGMENT 2/6 (8 seconds)
+================================================================
+Estimated LLM input context: 2196/4500 tokens (recent exact segments: 0)
+Segment 2 Director continuity source: prompt
+LLM request started: director_raw_scene (attempt 1/10, ~2690 input tokens, max 5374 output tokens).
+LLM request finished: director_raw_scene (21.3s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1007 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (0.9s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~807 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (1.0s, finish_reason=stop).
+LLM request started: director_raw_scene_timing (attempt 1/10, ~805 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_timing (2.1s, finish_reason=stop).
+LLM request started: director_raw_world_state_consistency (attempt 1/10, ~2346 input tokens, max 384 output tokens).
+LLM request finished: director_raw_world_state_consistency (2.4s, finish_reason=stop).
+Checking pronouns segment:
+LLM request started: director_raw_scene_pronoun_resolution (attempt 1/10, ~730 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_pronoun_resolution (3.5s, finish_reason=stop).
+Checking pronouns segment: LLM result=At 00:00.000, The shot continues exactly from the supplied opening guide, preserving its camera composition, currently visible subjects, positions, poses, props, lighting, and ongoing motion.
+
+At 00:02.417, A large dragon with bronze scales enters the frame from the west side of the tavern, its massive wings beating softly against the stone walls.
+
+At 00:03.667, The dragon steps onto the far (east) end of the rough‑hewn wooden bar; its claws tap rhythmically on the timbered floor as it moves along the bar’s length toward the wide stool beside it.
+
+At 00:05.167, Reaching the edge, the dragon settles onto the wide stool next to the bar, its hooves resting firmly and its bronze scales glinting in the torchlight.
+
+At 00:07.417, The dragon sits upright on the stool, tail flicking lightly; its claws rest against the bar’s wood as it gazes toward Amy behind the counter.
+Checking pronouns segment: no replacements.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 2
+================================================================
+At 00:00.000, The shot continues exactly from the supplied opening guide, preserving its camera composition, currently visible subjects, positions, poses, props, lighting, and ongoing motion.
+
+At 00:02.417, A large dragon with bronze scales enters the frame from the west side of the tavern, its massive wings beating softly against the stone walls.
+
+At 00:03.667, The dragon steps onto the far (east) end of the rough‑hewn wooden bar; its claws tap rhythmically on the timbered floor as it moves along the bar’s length toward the wide stool beside it.
+
+At 00:05.167, Reaching the edge, the dragon settles onto the wide stool next to the bar, its hooves resting firmly and its bronze scales glinting in the torchlight.
+
+At 00:07.417, The dragon sits upright on the stool, tail flicking lightly; its claws rest against the bar’s wood as it gazes toward Amy behind the counter.
+End continuity state: The dragon sits upright on the stool, tail flicking lightly; its claws rest against the bar’s wood as it gazes toward Amy behind the counter.
+================================================================
+
+================================================================
+H3 SOUNDSCAPE REQUEST - SEGMENT 2
+================================================================
+LLM request started: director_h3_soundscape (attempt 1/10, ~705 input tokens, max 512 output tokens).
+LLM request finished: director_h3_soundscape (1.5s, finish_reason=stop).
+H3 soundscape segment 2 invalid (attempt 1/2); retrying: H3 soundscape response must contain natural-language audible content.
+LLM request started: director_h3_soundscape (attempt 1/10, ~744 input tokens, max 512 output tokens).
+LLM request finished: director_h3_soundscape (1.1s, finish_reason=stop).
+H3 soundscape segment 2: 'soft wingbeats against stone walls; rhythmic claw taps on timbered floor; hooves settling onto wide stool; light tail flicks'
+H3 MUSIC REQUEST - SEGMENT 2
+================================================================
+LLM request started: director_h3_music (attempt 1/10, ~758 input tokens, max 512 output tokens).
+LLM request finished: director_h3_music (4.5s, finish_reason=stop).
+H3 music segment 2: "Continue the established score seamlessly, adding deep brass and gentle timpani under the warm guitar to reflect the dragon's grand arrival."
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1690 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (6.0s, finish_reason=stop).
+Checking RAW Subjects segment: dragon_1
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~707 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (1.6s, finish_reason=stop).
+Canonical appropriate attire for dragon_1: dragon_1
+Registered new Subject definition(s) before H3 prompt:
+  <Subject 4> is dragon_1 (S4), continued from <Video 1>. A large dragon with bronze scales, massive wings, hooves, and a flicking tail.
+WARNING: Subject identity field gender for Subject ID 2 was passed as 'N/A' in current state; keeping the original value 'unknown'.
+WARNING: Subject identity field gender for Subject ID 2 was passed as 'N/A' in current state; keeping the original value 'unknown'.
+Planned character reference(s): dragon_1
+LLM request started: final_h3_world_state_plan_validation (attempt 1/10, ~2864 input tokens, max 384 output tokens).
+LLM request finished: final_h3_world_state_plan_validation (2.0s, finish_reason=stop).
+Saved finalized H3 prompt 2/6 to generated_prompts.txt.
+Combined continuity requested for segment 2 during prompt generation.
+Added States: 
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 2: A large dragon with bronze scales steps onto the far end of the bar, claws tapping the floor as it settles on a wide stool.
+Next required after this prompt:
+  Beat 3: Amy lifts a heavy oak barrel from its rack, opens the iron lid, pours amber ale into a crystal goblet, letting the liquid spill over the rim onto the counter.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 2
+subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features. Amy's opening pose, position, and physical state are anchored by the supplied opening guide.
+<Subject 4> is dragon_1 (S4). A large dragon with bronze scales, massive wings, hooves, and a flicking tail. dragon_1 is referenced in <Picture 3> for identity and current appearance.
+<Picture 2> references only the clothing that Amy is currently wearing.
+<Picture 3> defines dragon_1's identity, physical appearance, species/distinguishing traits, and current clothing.
+
+detailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (Stone Tavern Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls west counter is on the west wall. wooden_bar (bar) position: east end of west_counter. barrel rack position: east side of room, 10 ft long along east wall). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, seamless continuation. Continuing Subjects: Unicorn remains present in the story's starting location; exact position and pose unknown. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.
+
+At 00:00.000, The shot continues exactly from the supplied opening guide, preserving its camera composition, currently visible subjects, positions, poses, props, lighting, and ongoing motion.
+
+At 00:02.417, dragon_1 enters the frame from the west side of the tavern, its massive wings beating softly against the stone walls.
+
+At 00:03.667, dragon_1 steps onto the far (east) end of the rough‑hewn wooden bar; its claws tap rhythmically on the timbered floor as it moves along the bar’s length toward the wide stool beside it.
+
+At 00:05.167, Reaching the edge, dragon_1 settles onto the wide stool next to the bar, its hooves resting firmly and its bronze scales glinting in the torchlight.
+
+At 00:07.417, dragon_1 sits upright on the stool, tail flicking lightly; its claws rest against the bar’s wood as it gazes toward Amy behind the counter.
+
+overall_soundscape: soft wingbeats against stone walls; rhythmic claw taps on timbered floor; hooves settling onto wide stool; light tail flicks
+
+non_diegetic_music: Continue the established score seamlessly, adding deep brass and gentle timpani under the warm guitar to reflect the dragon's grand arrival.
+
+No intelligible spoken dialogue is heard in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 2
+
+ComfyUI render skipped for segment 2; continuing with prompt-derived continuity only.
+LLM request started: continuity_combined_reduced_state (attempt 1/10, ~1777 input tokens, max 6000 output tokens).
+LLM request finished: continuity_combined_reduced_state (6.7s, finish_reason=stop).
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "dragon_1 sits upright on the stool, tail flicking lightly; its claws rest against the bar’s wood as it gazes toward Amy behind the counter.",
+  "ongoing_audio": "soft wingbeats against stone walls; rhythmic claw taps on timbered floor; hooves settling onto wide stool; light tail flicks",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "canonical_description": "",
+      "position": "N/A",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "behind the counter"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Unicorn": {
+      "name": "Unicorn",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "N/A",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": 0,
+      "persistent_structural_change": false,
+      "canonical_description": "",
+      "position": "present in the story's starting location; exact position and pose unknown",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "{\"upper\":\"light linen tunic",
+        "lower": "\"lower\":\"brown leather breeches",
+        "footwear": "\"footwear\":\"sturdy brown leather boots",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "<Subject 3> Unicorn_1": {
+      "name": "<Subject 3> Unicorn_1",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "unknown",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": 1,
+      "persistent_structural_change": false,
+      "canonical_description": "unicorn with a horn catching torchlight",
+      "position": "N/A",
+      "pose_action": "N/A",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "footwear:N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "dragon_1": {
+      "name": "dragon_1",
+      "id": "Subject 4",
+      "speaker_id": "(S4)",
+      "subject_id": 4,
+      "gender": "N/A",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": 2,
+      "persistent_structural_change": false,
+      "canonical_description": "A large dragon with bronze scales, massive wings, hooves, and a flicking tail.",
+      "position": "wide stool beside bar",
+      "pose_action": "sits upright on stool, tail flicking lightly; claws rest against bar’s wood",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "gazes toward Amy behind counter"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+[Props] persistent ledger: {}
+Combined continuity completed for segment 2; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+Registered video-created subject definition(s) internally:
+  <Subject 4> is dragon_1 (S4), continued from <Video 1>. A large dragon with bronze scales, massive wings, hooves, and a flicking tail. Last known state: dragon_1 was wearing dragon_1.
+Segment 2 completed Beat 2.
+WARNING: Subject identity field gender for Subject ID 2 was passed as 'N/A' in current state; keeping the original value 'unknown'.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 2.
+WARNING: Subject identity field gender for Subject ID 2 was passed as 'N/A' in current state; keeping the original value 'unknown'.
+Completed prompt generation for segment 2; no ComfyUI request was sent.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~384 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_subjects (1.0s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1019 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (6.6s, finish_reason=stop).
+
+================================================================
+SEGMENT 3/6 (8 seconds)
+================================================================
+Estimated LLM input context: 2259/4500 tokens (recent exact segments: 0)
+Segment 3 Director continuity source: prompt
+LLM request started: director_raw_scene (attempt 1/10, ~2659 input tokens, max 5405 output tokens).
+LLM request finished: director_raw_scene (20.5s, finish_reason=stop).
+Director Request 1 state_actions failed (attempt 1/5); retrying from the same opening WorldState: move action move: movement_not_representable: Movement within one registered location has no distinct position field.
+LLM request started: director_raw_scene (attempt 1/10, ~2856 input tokens, max 5208 output tokens).
+LLM request finished: director_raw_scene (22.5s, finish_reason=stop).
+Director Request 1 state_actions failed (attempt 2/5); retrying from the same opening WorldState: move action move: movement_not_representable: Movement within one registered location has no distinct position field.
+LLM request started: director_raw_scene (attempt 1/10, ~2856 input tokens, max 5208 output tokens).
+LLM request finished: director_raw_scene (19.3s, finish_reason=stop).
+Director Request 1 shot-script structure failed (attempt 3/5); retrying: Every RAW SCENE timed micro-beat must begin directly with its timestamp on a new line; do not wrap timestamps in labels such as 'Frame 0 (...)'.
+LLM request started: director_raw_scene (attempt 1/10, ~2740 input tokens, max 5324 output tokens).
+LLM request finished: director_raw_scene (35.1s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1100 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (1.3s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~864 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (2.0s, finish_reason=stop).
+Director Request 1 prop/state validation failed (attempt 4/5); retrying: Amy ends holding a barrel, yet the script shows her setting it down on the counter.
+LLM request started: director_raw_scene (attempt 1/10, ~2776 input tokens, max 5288 output tokens).
+LLM request finished: director_raw_scene (20.2s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1038 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (1.6s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~802 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (1.3s, finish_reason=stop).
+LLM request started: director_raw_scene_timing (attempt 1/10, ~800 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_timing (1.9s, finish_reason=stop).
+LLM request started: director_raw_world_state_consistency (attempt 1/10, ~2025 input tokens, max 384 output tokens).
+LLM request finished: director_raw_world_state_consistency (2.8s, finish_reason=stop).
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Director Request 1 WorldState consistency failed for Segment 3: RAW describes Amy pouring amber ale from the oak barrel into a crystal goblet, but STATE ACTIONS only records her holding the barrel; it omits a required `pour` action (and opening the lid).
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-64zrao8c\repo\minimax.py", line 42048, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-64zrao8c\repo\minimax.py", line 40503, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-64zrao8c\repo\minimax.py", line 38384, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Director Request 1 WorldState consistency failed for Segment 3: RAW describes Amy pouring amber ale from the oak barrel into a crystal goblet, but STATE ACTIONS only records her holding the barrel; it omits a required `pour` action (and opening the lid).
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-64zrao8c\repo\minimax.py", line 42113, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-64zrao8c\repo\minimax.py", line 42048, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-64zrao8c\repo\minimax.py", line 40503, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-64zrao8c\repo\minimax.py", line 38384, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Director Request 1 WorldState consistency failed for Segment 3: RAW describes Amy pouring amber ale from the oak barrel into a crystal goblet, but STATE ACTIONS only records her holding the barrel; it omits a required `pour` action (and opening the lid).

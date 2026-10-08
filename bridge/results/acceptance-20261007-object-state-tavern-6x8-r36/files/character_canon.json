@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "d8fc45e23f89a8967d5213dc8d190831578a4a03eab0fa4cc5a15fedc39f8197",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy wears a worn leather apron over a simple linen shirt dyed deep burgundy. The shirt is long‑sleeved, buttoned at the collar with brass buttons, and tucked into sturdy brown woolen breeches that reach her knees. Her boots are heavy canvas with iron toes, scuffed from years of service behind the bar. A faded red bandana tied around her neck adds a touch of color, while a small silver chain hangs from her belt to hold a pocketknife. The apron is patched in places and bears faint scorch marks from the woodsmoke",
+      "gender": "female"
+    }
+  ]
+}

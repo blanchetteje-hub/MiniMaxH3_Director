@@ -1,0 +1,629 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_medieval_tavern_six",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_medieval_tavern_six.json",
+  "benchmark_sha256": "32005716893a2c76f7b3c9eda3a6991cd2ba1a1615d4f1c166f596e39307851a",
+  "repository_revision": "33786849d5f7e2fa4949086b0749ee4e44b238a7",
+  "created_at_utc": "2026-10-08T00:19:33Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "8",
+    "6",
+    "0.5",
+    "--test-prompt-generation",
+    "--vision-continuity",
+    "0",
+    "--model",
+    "gpt",
+    "--image1",
+    "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+    "--temp",
+    "0.4",
+    "--refresh",
+    "999999",
+    "--director-only"
+  ],
+  "exit_code": 1,
+  "capture_status": {
+    "complete": false,
+    "mode": "full_prompt_generation",
+    "expected_segments": 6,
+    "captured_segments": [
+      1,
+      2
+    ],
+    "missing_segments": [
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 6,
+        "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+        "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+        "characters_introduced": [],
+        "location": "As established by the expanded story.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "Amy stands behind a rough‑hewn wooden bar inside a stone tavern that smells of woodsmoke and stew.",
+            "beat_number": 1,
+            "state_effects": []
+          },
+          {
+            "id": "E2",
+            "event": "A large dragon with bronze scales steps onto the far end of the bar, claws tapping the floor as it settles on a wide stool.",
+            "beat_number": 2,
+            "state_effects": [],
+            "depends_on": [
+              "E1"
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "Amy lifts a heavy oak barrel from its rack, opens the iron lid, pours amber ale into a crystal goblet, letting the liquid spill over the rim onto the counter.",
+            "beat_number": 3,
+            "state_effects": [],
+            "depends_on": [
+              "E2"
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "A unicorn with a silver mane saunters to the middle of the tavern, steps onto a low chair, and drinks from a clear crystal cup that Amy places on the table in front of it.",
+            "beat_number": 4,
+            "state_effects": [],
+            "depends_on": [
+              "E3"
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "Amy wipes down the bar with a damp cloth, smoothing the wood until it gleams under the flickering torches.",
+            "beat_number": 5,
+            "state_effects": [],
+            "depends_on": [
+              "E4"
+            ]
+          },
+          {
+            "id": "E6",
+            "event": "The room fills with laughter as more magical humanoid creatures—elves, goblins, centaurs, and fairies—enter, sit at tables, and chat over mugs of ale.",
+            "beat_number": 6,
+            "state_effects": [],
+            "depends_on": [
+              "E5"
+            ]
+          }
+        ],
+        "required_end_state": "End at the expanded story's stated conclusion."
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. Amy stands behind a rough‑hewn wooden bar inside a stone tavern that smells of woodsmoke and stew.\n2. A large dragon with bronze scales steps onto the far end of the bar, claws tapping the floor as it settles on a wide stool.\n3. Amy lifts a heavy oak barrel from its rack, opens the iron lid, pours amber ale into a crystal goblet, letting the liquid spill over the rim onto the counter.\n4. A unicorn with a silver mane saunters to the middle of the tavern, steps onto a low chair, and drinks from a clear crystal cup that Amy places on the table in front of it.\n5. Amy wipes down the bar with a damp cloth, smoothing the wood until it gleams under the flickering torches.\n6. The room fills with laughter as more magical humanoid creatures—elves, goblins, centaurs, and fairies—enter, sit at tables, and chat over mugs of ale.\n",
+  "segments": [
+    {
+      "segment_number": 1,
+      "gold_mode": "initial",
+      "pipeline_mode": "initial",
+      "gold_target": {
+        "beat": 1,
+        "mode": "initial",
+        "length_seconds": 8,
+        "must_happen": [
+          "Amy wipes a polished table with an ale-scented cloth.",
+          "Amy's medieval work clothing is visible.",
+          "Goblin may already be present because it has no entry point."
+        ],
+        "must_not_happen": [
+          "Elf must not already be present.",
+          "Dragon must not already be present.",
+          "No invented dialogue."
+        ],
+        "expected_end_state": [
+          "Amy remains inside the tavern near the wiped table.",
+          "Goblin is the only later-beat Subject eligible to have been present from story start."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.\n<Picture 2> references only the clothing that Amy is currently wearing.\nAmy is a 30-year-old female wearing an Amy wears a worn leather apron over a simple linen shirt dyed deep burgundy. The shirt is long‑sleeved, buttoned at the collar with brass buttons, and tucked into sturdy brown woolen breeches that reach her knees. Her boots are heavy canvas with iron toes, scuffed from years of service behind the bar. A faded red bandana tied around her neck adds a touch of color, while a small silver chain hangs from her belt to hold a pocketknife. The apron is patched in places and bears faint scorch marks from the woodsmoke.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (Stone Tavern Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls west counter is on the west wall. wooden_bar (bar) position: east end of west_counter. barrel rack position: east side of room, 10 ft long along east wall). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, The scene starts in behind the rough-hewn wooden bar. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, the camera is positioned at mid‑range behind the rough‑hewn wooden bar, slightly angled toward the front of the Stone Tavern. The stone walls are visible with flickering torches casting warm light; a faint scent of woodsmoke and stew lingers in the air. Amy stands upright behind the bar, her worn leather apron over a deep burgundy linen shirt, tucked into sturdy brown woolen breeches that reach her knees. Heavy canvas boots with iron toes scuff at her feet, a faded red bandana ties around her neck, and a small silver chain hangs from her belt.\n\nAt 00:02.000, the camera pans left to reveal <Subject 3> Unicorn_1 in the background near the far end of the bar; it remains still, its horn catching the torchlight.\n\nAt 00:04.000, Amy lifts her right hand slightly to adjust a strap on her apron and then sets it back down, maintaining her stance behind the bar.\n\nAt 00:06.500, the camera pulls out a touch to show a wider view of the tavern interior with timbered floorboards and oak barrels along the east wall, while Amy continues standing behind the bar.\n\noverall_soundscape: scuffing of heavy canvas boots with iron toes on timbered floorboards\n\nnon_diegetic_music: Soft woodwinds and gentle acoustic guitar weave an inviting hearth tone, rising slightly in warmth as the camera pulls back to reveal the bustling tavern.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, the camera is positioned at mid‑range behind the rough‑hewn wooden bar, slightly angled toward the front of the Stone Tavern. The stone walls are visible with flickering torches casting warm light; a faint scent of woodsmoke and stew lingers in the air. Amy stands upright behind the bar, her worn leather apron over a deep burgundy linen shirt, tucked into sturdy brown woolen breeches that reach her knees. Heavy canvas boots with iron toes scuff at her feet, a faded red bandana ties around her neck, and a small silver chain hangs from her belt. At 00:02.000, the camera pans left to reveal <Subject 3> Unicorn_1 in the background near the far end of the bar; it remains still, its horn catching the torchlight. At 00:04.000, Amy lifts her right hand slightly to adjust a strap on her apron and then sets it back down, maintaining her stance behind the bar. At 00:06.500, the camera pulls out a touch to show a wider view of the tavern interior with timbered floorboards and oak barrels along the east wall, while Amy continues standing behind the bar.",
+        "overall_soundscape": "scuffing of heavy canvas boots with iron toes on timbered floorboards",
+        "non_diegetic_music": "Soft woodwinds and gentle acoustic guitar weave an inviting hearth tone, rising slightly in warmth as the camera pulls back to reveal the bustling tavern.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "the camera pulls out a touch to show a wider view of the tavern interior with timbered floorboards and oak barrels along the east wall, while Amy continues standing behind the bar."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "Stone Tavern",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "standing behind the bar",
+        "ongoing_audio": "scuffing of heavy canvas boots with iron toes on timbered floorboards",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "canonical_description": "",
+            "position": "behind the bar",
+            "pose_action": "standing upright, right hand lifted briefly to adjust apron strap then set down",
+            "wardrobe": {
+              "upper": "deep burgundy linen shirt buttoned at collar with brass buttons",
+              "lower": "brown woolen breeches reaching knees",
+              "footwear": "heavy canvas boots with iron toes scuffed",
+              "other": "worn leather apron patched and scorched, faded red bandana tied around neck, silver chain on belt holding pocketknife"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "behind the bar"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Unicorn": {
+            "name": "Unicorn",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "N/A",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": 0,
+            "persistent_structural_change": false,
+            "canonical_description": "",
+            "position": "present in the story's starting location; exact position and pose unknown",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "{\"upper\":\"light linen tunic",
+              "lower": "\"lower\":\"brown leather breeches",
+              "footwear": "\"footwear\":\"sturdy brown leather boots",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "<Subject 3> Unicorn_1": {
+            "name": "<Subject 3> Unicorn_1",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "unknown",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": 1,
+            "persistent_structural_change": false,
+            "canonical_description": "unicorn with a horn catching torchlight",
+            "position": "N/A",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "footwear:N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Unicorn",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "unknown",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": 0
+        },
+        "3": {
+          "name": "<Subject 3> Unicorn_1",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "unknown",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": 1
+        }
+      },
+      "completed_beat_ids": [
+        1
+      ]
+    },
+    {
+      "segment_number": 2,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 2,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Goblin is already at the counter with one chipped mug.",
+          "Amy refills that mug from the barrel beside the hearth."
+        ],
+        "must_not_happen": [
+          "Goblin must not newly enter.",
+          "Mug must not change identity.",
+          "Elf and Dragon must not enter early."
+        ],
+        "expected_end_state": [
+          "Goblin remains in the tavern with the same mug.",
+          "Amy has completed the refill."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features. Amy's opening pose, position, and physical state are anchored by the supplied opening guide.\n<Subject 4> is dragon_1 (S4). A large dragon with bronze scales, massive wings, hooves, and a flicking tail. dragon_1 is referenced in <Picture 3> for identity and current appearance.\n<Picture 2> references only the clothing that Amy is currently wearing.\n<Picture 3> defines dragon_1's identity, physical appearance, species/distinguishing traits, and current clothing.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (Stone Tavern Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls west counter is on the west wall. wooden_bar (bar) position: east end of west_counter. barrel rack position: east side of room, 10 ft long along east wall). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, seamless continuation. Continuing Subjects: Unicorn remains present in the story's starting location; exact position and pose unknown. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, The shot continues exactly from the supplied opening guide, preserving its camera composition, currently visible subjects, positions, poses, props, lighting, and ongoing motion.\n\nAt 00:02.417, dragon_1 enters the frame from the west side of the tavern, its massive wings beating softly against the stone walls.\n\nAt 00:03.667, dragon_1 steps onto the far (east) end of the rough‑hewn wooden bar; its claws tap rhythmically on the timbered floor as it moves along the bar’s length toward the wide stool beside it.\n\nAt 00:05.167, Reaching the edge, dragon_1 settles onto the wide stool next to the bar, its hooves resting firmly and its bronze scales glinting in the torchlight.\n\nAt 00:07.417, dragon_1 sits upright on the stool, tail flicking lightly; its claws rest against the bar’s wood as it gazes toward Amy behind the counter.\n\noverall_soundscape: soft wingbeats against stone walls; rhythmic claw taps on timbered floor; hooves settling onto wide stool; light tail flicks\n\nnon_diegetic_music: Continue the established score seamlessly, adding deep brass and gentle timpani under the warm guitar to reflect the dragon's grand arrival.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, The shot continues exactly from the supplied opening guide, preserving its camera composition, currently visible subjects, positions, poses, props, lighting, and ongoing motion. At 00:02.417, dragon_1 enters the frame from the west side of the tavern, its massive wings beating softly against the stone walls. At 00:03.667, dragon_1 steps onto the far (east) end of the rough‑hewn wooden bar; its claws tap rhythmically on the timbered floor as it moves along the bar’s length toward the wide stool beside it. At 00:05.167, Reaching the edge, dragon_1 settles onto the wide stool next to the bar, its hooves resting firmly and its bronze scales glinting in the torchlight. At 00:07.417, dragon_1 sits upright on the stool, tail flicking lightly; its claws rest against the bar’s wood as it gazes toward Amy behind the counter.",
+        "overall_soundscape": "soft wingbeats against stone walls; rhythmic claw taps on timbered floor; hooves settling onto wide stool; light tail flicks",
+        "non_diegetic_music": "Continue the established score seamlessly, adding deep brass and gentle timpani under the warm guitar to reflect the dragon's grand arrival.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "The dragon_1 sits upright on the stool, tail flicking lightly; its claws rest against the bar’s wood as it gazes toward Amy behind the counter."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "dragon_1 sits upright on the stool, tail flicking lightly; its claws rest against the bar’s wood as it gazes toward Amy behind the counter.",
+        "ongoing_audio": "soft wingbeats against stone walls; rhythmic claw taps on timbered floor; hooves settling onto wide stool; light tail flicks",
+        "subjects": {
+          "Amy": {
+            "name": "Amy",
+            "id": "Subject 1",
+            "speaker_id": "(S1)",
+            "subject_id": 1,
+            "gender": "female",
+            "picture_ids": [
+              1
+            ],
+            "picture_id": 1,
+            "origin_segment": null,
+            "persistent_structural_change": false,
+            "canonical_description": "",
+            "position": "N/A",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "behind the counter"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "Unicorn": {
+            "name": "Unicorn",
+            "id": "Subject 2",
+            "speaker_id": "(S2)",
+            "subject_id": 2,
+            "gender": "N/A",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": 0,
+            "persistent_structural_change": false,
+            "canonical_description": "",
+            "position": "present in the story's starting location; exact position and pose unknown",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "{\"upper\":\"light linen tunic",
+              "lower": "\"lower\":\"brown leather breeches",
+              "footwear": "\"footwear\":\"sturdy brown leather boots",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "<Subject 3> Unicorn_1": {
+            "name": "<Subject 3> Unicorn_1",
+            "id": "Subject 3",
+            "speaker_id": "(S3)",
+            "subject_id": 3,
+            "gender": "unknown",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": 1,
+            "persistent_structural_change": false,
+            "canonical_description": "unicorn with a horn catching torchlight",
+            "position": "N/A",
+            "pose_action": "N/A",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "footwear:N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [],
+            "persistent_effects": [],
+            "held_props": []
+          },
+          "dragon_1": {
+            "name": "dragon_1",
+            "id": "Subject 4",
+            "speaker_id": "(S4)",
+            "subject_id": 4,
+            "gender": "N/A",
+            "picture_ids": [],
+            "picture_id": null,
+            "origin_segment": 2,
+            "persistent_structural_change": false,
+            "canonical_description": "A large dragon with bronze scales, massive wings, hooves, and a flicking tail.",
+            "position": "wide stool beside bar",
+            "pose_action": "sits upright on stool, tail flicking lightly; claws rest against bar’s wood",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "topology": "N/A",
+            "body_state": "N/A",
+            "physical_condition": "N/A",
+            "attached_objects": [],
+            "injuries": [],
+            "substances": [],
+            "spatial_relationships": [
+              "gazes toward Amy behind counter"
+            ],
+            "persistent_effects": [],
+            "held_props": []
+          }
+        }
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "2": {
+          "name": "Unicorn",
+          "id": "Subject 2",
+          "speaker_id": "(S2)",
+          "subject_id": 2,
+          "gender": "unknown",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": 0
+        },
+        "4": {
+          "name": "dragon_1",
+          "id": "Subject 4",
+          "speaker_id": "(S4)",
+          "subject_id": 4,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": 2
+        },
+        "3": {
+          "name": "<Subject 3> Unicorn_1",
+          "id": "Subject 3",
+          "speaker_id": "(S3)",
+          "subject_id": 3,
+          "gender": "unknown",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": 1
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2
+      ]
+    },
+    {
+      "segment_number": 3,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 3,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Elf visibly steps into the tavern.",
+          "Elf takes a seat at the back table.",
+          "Amy serves the elf in a crystal chalice."
+        ],
+        "must_not_happen": [
+          "Elf must not have been present from frame zero.",
+          "No modern athletic clothing for the elf.",
+          "No duplicated serving container."
+        ],
+        "expected_end_state": [
+          "Elf is seated at the back table with the served chalice."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 4,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 4,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Dragon visibly enters from the doorway.",
+          "Dragon moves onto the high bar stool.",
+          "Amy serves the dragon a special brew in one crystal cup."
+        ],
+        "must_not_happen": [
+          "Dragon must not have been present from story start.",
+          "Dragon must not teleport to the stool.",
+          "Do not invent clothing when appropriate attire is naturally unclothed."
+        ],
+        "expected_end_state": [
+          "Dragon is established at the high bar stool with its drink."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 5,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 5,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Dragon takes a slow sip and exhales contentedly.",
+          "Amy wipes the bar with a fresh cloth."
+        ],
+        "must_not_happen": [
+          "Drink container must not change identity.",
+          "No extra hands or duplicated glasses.",
+          "No invented dialogue."
+        ],
+        "expected_end_state": [
+          "Dragon remains with the same drink container.",
+          "Amy has wiped the bar."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    },
+    {
+      "segment_number": 6,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 6,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Amy turns off the lanterns.",
+          "Amy operates the back-door latch.",
+          "Amy steps outside and closes/locks the tavern for the night."
+        ],
+        "must_not_happen": [
+          "No teleportation.",
+          "No invented unseen room geometry.",
+          "No reverse-walking patrons caused by continuity drift."
+        ],
+        "expected_end_state": [
+          "Amy is outside after closing and locking the tavern.",
+          "The tavern is shut for the night."
+        ]
+      },
+      "generated_h3_prompt": null,
+      "generated_request2_result": null,
+      "generated_continuity_state": null,
+      "generated_subject_identity_snapshot": null,
+      "completed_beat_ids": null
+    }
+  ],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "character_canon.json": "generated\\character_canon.json",
+    "generation_state.json": "generated\\generation_state.json",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
