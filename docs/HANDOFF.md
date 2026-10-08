@@ -37,7 +37,8 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
 - Tavern acceptance #03 at 5b897f2 reached all six accepted Beats but emitted no H3 prompts. It stopped before Director Request 1: authored Amy story-start classification exhausted 3 retries with `Explicit story-start classification requires exact source evidence`.
 - The beat-wide extractor incorrectly classified Elf as present despite the explicit Beat-3 entrance.
 - KISS-only changes within the existing minimax.py extractors: clarify that performing the initial Beat 1 action establishes presence; request short verbatim evidence; normalize whitespace before exact quote comparison; explicitly exclude later entrants from initial-state inference. No new LLM stage, state subsystem, or validator. Code f239381e; regression 0f2078e4.
-- Next: run focused tests and one fresh six-segment tavern acceptance via gpt-runtime, inspect earliest live Director failure, and avoid speculative changes. The beat-ledger's hostile goblin and incorrect chalice ownership are later potential issues, not current blockers.
+- Acceptance #04 attempted focused tests and prompt generation, but both stopped immediately on a prompt string literal typo introduced in `f239381e`. Corrected only the newline syntax in commit `14fe4527` (no semantic changes to the fix). The #04 failures are **not** meaningful LLM/Director evidence.
+- Full tavern acceptance #05 is queued on `gpt-runtime` at corrected branch head. The separate #05 focused-test job has not been successfully queued. Examine the #05 result before further code changes. The beat-ledger's hostile goblin and incorrect chalice ownership are later potential issues, not current blockers.
 
 ## 2026-10-08 — WorldState rollback and bridge acceptance
 
