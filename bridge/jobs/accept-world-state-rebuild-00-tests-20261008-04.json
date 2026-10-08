@@ -1,0 +1,10 @@
+{
+  "job_id": "accept-world-state-rebuild-00-tests-20261008-04",
+  "kind": "run_tests",
+  "code_branch": "world-state-rebuild",
+  "tests": [
+    "tests/test_world_state_foundation.py",
+    "tests/test_director_retry.py"
+  ],
+  "timeout_seconds": 1200
+}
