@@ -731,6 +731,39 @@ class WorldStateReducerTests(unittest.TestCase):
         self.assertTrue(empty.committed)
         self.assertTrue(valid.committed)
 
+    def test_subject_can_enter_location_then_take_registered_support(self):
+        state = make_reducer_state()
+        subject = state["subjects"]["subject_2"]
+        subject.update({
+            "presence": "unknown",
+            "location_id": None,
+            "support_id": None,
+            "posture": UNKNOWN,
+        })
+
+        result = reduce_world_state(
+            state,
+            [
+                self.action(
+                    "subject-enters", "enter",
+                    subject_id="subject_2", location_id="location_b",
+                ),
+                self.action(
+                    "subject-sits", "set_support",
+                    subject_id="subject_2", support_id="prop_support_b",
+                    resulting_posture="seated",
+                ),
+            ],
+            segment_number=1,
+        )
+
+        self.assertTrue(result.committed)
+        entered = result.world_state["subjects"]["subject_2"]
+        self.assertEqual(entered["presence"], "present")
+        self.assertEqual(entered["location_id"], "location_b")
+        self.assertEqual(entered["support_id"], "prop_support_b")
+        self.assertEqual(entered["posture"], "seated")
+
     def test_pickup_rejects_fixed_object_and_unknown_mobility(self):
         state = make_reducer_state()
         state["props"]["prop_mobile_unknown"] = copy.deepcopy(state["props"]["prop_movable"])

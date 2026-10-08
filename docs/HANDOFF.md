@@ -2213,3 +2213,26 @@ to the stool, and give the Director narrow retry guidance for that pairing.
 Keep `enter` presence validation, support validation, and malformed-RAW
 rejection intact. The static selector still emits action-linked facts in prose;
 registered fixtures/supports remain guarded by Python WorldState.
+
+## 2026-10-07 — Entry plus support action guidance
+
+The r35 retry sequence showed that the Director conflated the destination
+location with the stool support and omitted the Subject presence change when a
+new entrant sat down. The registered wide stool was a valid WorldState support;
+the reducer correctly requires an `enter` action using the room's location ID
+and a separate `set_support` action using the stool's prop ID. Added this
+operation pairing to the Request 1 vocabulary contract without changing
+reducer validation. Added a reducer regression proving an unknown Subject can
+enter a location and then take a registered support in one ordered batch, and
+extended prompt assertions to protect the guidance.
+
+Validation:
+- WorldState foundation + location reference: 97 passed.
+- Focused Director prompt/presence/move tests: 3 passed, 121 deselected.
+- Acceptance-runner suite: 10 passed.
+- `py_compile` and `git diff --check` passed.
+
+Next: push the prompt guidance and queue r36 against the same captured Unicorn
+plan. The r35 result already verified Segment 1 and failed in Segment 2; the
+next run should test whether the correct enter/support action pairing reduces
+those retries. RAW timestamp formatting remains fail-closed.

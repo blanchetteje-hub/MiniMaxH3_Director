@@ -892,6 +892,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("REGISTERED WORLDSTATE VOCABULARY", prompt)
         self.assertIn(mug_id, prompt)
         self.assertIn("Never invent a source prop", prompt)
+        self.assertIn("Use enter with a registered location ID", prompt)
+        self.assertIn("follow enter with set_support", prompt)
+        self.assertIn("never use a prop/support ID as enter's location ID", prompt)
         action_schemas = request1.kwargs["response_format"]["json_schema"]["schema"]["properties"]["state_actions"]["items"]["oneOf"]
         self.assertEqual(
             {schema["properties"]["op"]["const"] for schema in action_schemas},

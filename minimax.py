@@ -38008,6 +38008,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         "state changes. Use fill only when RAW explicitly puts a substance "
         "into a registered container and no source prop is established; if a "
         "registered source exists, use pour. Never invent a source prop. "
+        "Use enter with a registered location ID to establish an absent or "
+        "unknown Subject's presence. If that entry ends with the Subject on a "
+        "registered support, follow enter with set_support using the support's "
+        "prop ID; never use a prop/support ID as enter's location ID. "
         "The response schema restricts operations and IDs to "
         "the registered vocabulary."
     )
