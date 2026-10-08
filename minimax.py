@@ -646,7 +646,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
 
 # Exceptional per-purpose limits belong here rather than at request call sites.
 LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
-    "director_raw_scene_subject_resolution": 512,
+    "director_raw_scene_subject_resolution": 1024,
     "story_to_beats_repair": 1024,
     "macro_arc_majority_tail_repair": 1000,
 })
