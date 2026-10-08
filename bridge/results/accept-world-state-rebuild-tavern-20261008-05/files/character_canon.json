@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "34dc837ba2cad6a35fdb9ab5bd05304530a7dd959dfa4dc5e88eb061385e6b77",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "occupation",
+    "confidence_level"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ".",
+      "clothing": "tunic (scuffed from years of work), leather apron (marked by scratches and dirt)",
+      "gender": "female",
+      "occupation": "tavern keeper",
+      "confidence_level": "confident woman"
+    }
+  ]
+}
