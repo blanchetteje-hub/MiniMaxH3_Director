@@ -77,6 +77,14 @@ detailed_description: world
         self.assertEqual(env["PYTHONUTF8"], "1")
         self.assertEqual(env["PYTHONIOENCODING"], "utf-8")
 
+    def test_acceptance_child_env_uses_isolated_video_output(self):
+        workspace = Path("temporary_workspace")
+        env = run_acceptance.acceptance_child_env(workspace)
+        self.assertEqual(
+            env["MINIMAX_VIDEO_OUTPUT"],
+            str(workspace / "output" / "video"),
+        )
+
     def test_console_echo_replaces_unencodable_host_characters(self):
         class FakeConsole:
             encoding = "cp1252"
