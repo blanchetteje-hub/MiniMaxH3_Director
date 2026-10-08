@@ -31,6 +31,14 @@ State/subject/action continuity -> active work
 
 Fix observed failures in order. Explain the failure and proposed fix before making substantive architecture/prompt changes.
 
+## 2026-10-08 — acceptance #03: opening Subject classification
+
+- Bridge preflight accept-world-state-rebuild-00-preflight-20261008-03: 10/10 passed.
+- Tavern acceptance #03 at 5b897f2 reached all six accepted Beats but emitted no H3 prompts. It stopped before Director Request 1: authored Amy story-start classification exhausted 3 retries with `Explicit story-start classification requires exact source evidence`.
+- The beat-wide extractor incorrectly classified Elf as present despite the explicit Beat-3 entrance.
+- KISS-only changes within the existing minimax.py extractors: clarify that performing the initial Beat 1 action establishes presence; request short verbatim evidence; normalize whitespace before exact quote comparison; explicitly exclude later entrants from initial-state inference. No new LLM stage, state subsystem, or validator. Code f239381e; regression 0f2078e4.
+- Next: run focused tests and one fresh six-segment tavern acceptance via gpt-runtime, inspect earliest live Director failure, and avoid speculative changes. The beat-ledger's hostile goblin and incorrect chalice ownership are later potential issues, not current blockers.
+
 ## 2026-10-08 — WorldState rollback and bridge acceptance
 
 - **Current code branch:** `world-state-rebuild`, created from Gate C checkpoint `33a56bb5a5b8a79c72b8acbeff86268b3709d9eb` rather than continuing the 78 later commits on `object-state-work`.
