@@ -1,0 +1,9 @@
+{
+  "job_id": "accept-world-state-rebuild-tavern-20261008-12",
+  "kind": "run_acceptance",
+  "code_branch": "world-state-rebuild",
+  "benchmark": "tests/acceptance/gold/amy_medieval_tavern_six.json",
+  "model": "gpt",
+  "image1": "amy.jpg",
+  "timeout_seconds": 7200
+}
