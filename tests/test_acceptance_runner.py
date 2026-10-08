@@ -7,6 +7,30 @@ from tests.acceptance import run_acceptance
 
 
 class AcceptanceRunnerTests(unittest.TestCase):
+    def test_director_plan_copy_preserves_expanded_story_context(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            plan_dir = Path(temporary) / "plan"
+            workspace = Path(temporary) / "workspace"
+            plan_dir.mkdir()
+            workspace.mkdir()
+            for name, content in (
+                ("story_arc.json", "{}\n"),
+                ("beats.txt", "Beat 1\n"),
+                ("character_canon.json", "{}\n"),
+                ("expanded_story.txt", "Amy stands in the tavern.\n"),
+            ):
+                (plan_dir / name).write_text(content, encoding="utf-8")
+
+            run_acceptance.copy_director_plan(plan_dir, workspace)
+
+            self.assertEqual(
+                (workspace / "expanded_story.txt").read_text(encoding="utf-8"),
+                "Amy stands in the tavern.\n",
+            )
+            self.assertTrue((workspace / "story_arc.json").is_file())
+            self.assertTrue((workspace / "beats.txt").is_file())
+            self.assertTrue((workspace / "character_canon.json").is_file())
+
     def test_locked_amy_benchmark_loads(self):
         benchmark = run_acceptance.load_benchmark(
             run_acceptance.DEFAULT_BENCHMARK
@@ -72,7 +96,8 @@ detailed_description: world
         self.assertEqual(prompts[2], "detailed_description: world")
 
     def test_acceptance_child_env_forces_unbuffered_utf8_output(self):
-        env = run_acceptance.acceptance_child_env()
+        with tempfile.TemporaryDirectory() as temporary:
+            env = run_acceptance.acceptance_child_env(Path(temporary))
         self.assertEqual(env["PYTHONUNBUFFERED"], "1")
         self.assertEqual(env["PYTHONUTF8"], "1")
         self.assertEqual(env["PYTHONIOENCODING"], "utf-8")

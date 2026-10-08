@@ -2163,3 +2163,26 @@ reproduced against the pose fix in `79d3ee76`; this isolates the behavior that
 r32's newly generated story did not exercise. Inspect its child process status,
 captured segment count, WorldState, and RAW/resolver evidence before considering
 it successful.
+
+## 2026-10-07 — r33 fixed-plan setup failure and runner correction
+
+Queued r33 against the r31 captured plan. The run reached story-start
+Subject extraction and logged the corrected Unicorn state as “present in the
+story's starting location; exact position and pose unknown,” confirming the
+new deterministic normalization. It then stopped before Segment 1 because
+director-plan mode supplied beats and arc but not `expanded_story.txt`, leaving
+no canonical starting-location metadata. This was an acceptance harness setup
+failure; it did not test the Director behavior end-to-end and produced no H3
+prompt.
+
+Updated `tests/acceptance/run_acceptance.py` so director-plan mode also copies
+an available `expanded_story.txt`. Added a regression for that copy path and
+fixed the existing acceptance-child-environment test to pass its required
+workspace path. Validation: `python -m pytest tests/test_acceptance_runner.py
+tests/test_location_state_reference.py tests/test_world_state_foundation.py
+-q` — 106 passed; `py_compile` and `git diff --check` passed.
+
+Next: queue r34 with a captured expanded story alongside the r31 plan, then
+confirm Segment 1 behavior and continue through the acceptance run. The r32
+Subject-resolver failure remains separately unresolved: exact bad response
+spans were not captured, so do not speculate at the resolver boundary.

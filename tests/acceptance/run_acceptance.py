@@ -153,6 +153,21 @@ def prepare_workspace(repo_root: Path, workspace: Path, benchmark: dict) -> None
             shutil.rmtree(path)
 
 
+def copy_director_plan(plan_dir: Path, workspace: Path) -> None:
+    """Copy fixed-plan inputs, including expanded story context when captured."""
+    for filename in ("story_arc.json", "beats.txt"):
+        source = plan_dir / filename
+        if not source.is_file():
+            raise FileNotFoundError(
+                f"Director plan is missing required file: {source}"
+            )
+        shutil.copy2(source, workspace / filename)
+    for filename in ("character_canon.json", "expanded_story.txt"):
+        source = plan_dir / filename
+        if source.is_file():
+            shutil.copy2(source, workspace / filename)
+
+
 def git_revision(repo_root: Path) -> str | None:
     try:
         result = subprocess.run(
@@ -495,16 +510,7 @@ def main(argv=None) -> int:
         prepare_workspace(REPO_ROOT, workspace, benchmark)
         if args.director_plan_dir is not None:
             plan_dir = args.director_plan_dir.resolve()
-            for filename in ("story_arc.json", "beats.txt"):
-                source = plan_dir / filename
-                if not source.is_file():
-                    raise FileNotFoundError(
-                        f"Director plan is missing required file: {source}"
-                    )
-                shutil.copy2(source, workspace / filename)
-            canon_source = plan_dir / "character_canon.json"
-            if canon_source.is_file():
-                shutil.copy2(canon_source, workspace / "character_canon.json")
+            copy_director_plan(plan_dir, workspace)
         command, refresh_interval = build_command(
             args.python,
             benchmark,
