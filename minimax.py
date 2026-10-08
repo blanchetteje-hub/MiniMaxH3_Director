@@ -57,6 +57,7 @@ from world_state import (
     parse_and_dry_run_director_state_actions,
     reduce_world_state,
     register_explicit_persistent_props,
+    normalize_canonical_static_location_state,
     seed_mechanism_action_preconditions,
     seed_canonical_static_location_state,
     seed_canonical_wardrobes,
@@ -20785,6 +20786,7 @@ def parse_story_setting_description(raw_result, *, static_setting=""):
         location_state,
         static_setting,
     ) if static_setting else []
+    location_state = normalize_canonical_static_location_state(location_state)
     if static_setting:
         location_state["location"]["description"] = " ".join(
             str(static_setting).split()

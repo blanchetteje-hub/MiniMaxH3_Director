@@ -86,6 +86,34 @@ The tavern is rectangular. The entrance is on the north wall.
             "The tavern is rectangular. The entrance is on the north wall.",
         )
 
+    def test_spatial_description_parser_merges_compatible_static_duplicates(self):
+        raw = '''Location: Tavern
+{
+  "location": {"name": "Tavern"},
+  "anchors": [{"name": "counter", "type": "wooden counter",
+    "wall": "west", "world_state_role": "fixture_support", "mobility": "fixed"}],
+  "objects": [{"name": "counter", "type": "wooden counter",
+    "near": ["rack", "bar"], "world_state_role": "fixture_support", "mobility": "fixed"}]
+}
+Text description based on JSON
+A medieval tavern with a wooden counter on the west wall near a rack and bar.
+'''
+        parsed = minimax.parse_story_setting_description(
+            raw,
+            static_setting="A medieval tavern has a fixed wooden counter.",
+        )
+        state = parsed["location_state"]
+        self.assertEqual(len(state["anchors"]), 1)
+        self.assertEqual(state["objects"], [])
+        counter = state["anchors"][0]
+        self.assertEqual(counter["wall"], "west")
+        self.assertEqual(counter["near"], ["bar", "rack"])
+        seeded, _location_id = minimax.seed_canonical_static_location_state(
+            minimax.new_world_state({}), state,
+            location_name=parsed["location_name"],
+        )
+        self.assertEqual(len(seeded["props"]), 1)
+
     def test_static_boundary_drops_action_only_prop_before_worldstate_registration(self):
         static_setting = (
             "A medieval tavern has a fixed oak bar, an entrance door, and a hearth."

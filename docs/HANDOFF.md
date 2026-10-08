@@ -4,6 +4,44 @@ Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This fi
 
 ## CURRENT HANDOFF — 2026-10-07 (read first)
 
+**Latest acceptance:** r42 ran revision
+`3f349756137f0c897fec14730430488e3a3fb031` and failed before Segment 1 while
+seeding canonical static location state: the same `counter` was declared in
+both `anchors` and `objects`, producing a stable fixture ID collision. The
+previous stable ID included role and type, and the seeder compared complete
+records including provenance, so equivalent records were treated as fatal
+duplicates; different metadata could also produce separate IDs for one named
+entity.
+
+Static location state is now normalized after the existing static-setting
+grounding filter and again inside the seeder as a defensive boundary. Entries
+are grouped by normalized name within their canonical location. Compatible
+records merge complementary metadata, including `wall` and `near`; compatible
+type refinement keeps the more specific type, and fixture/support facets combine
+as `fixture_support`. Mobility and placement contradictions, incompatible
+types, and contradictory metadata fail closed. Unclassified objects remain
+unregistered, and the grounding filter was not changed. Stable fixture IDs now
+derive from location plus canonical name, independent of source array, role, or
+type. When resuming a WorldState with an earlier canonical fixture ID, the
+seeder reuses that registered ID after compatibility checks.
+
+New regression coverage includes duplicate counter declarations with
+complementary placement metadata, exact duplicate idempotence, compatible role
+combination, mobility/type/placement conflicts, and deterministic IDs across
+`anchors`, `objects`, or both. The location-reference parser test confirms the
+grounding boundary still drops ungrounded fixtures before normalization.
+`tests.test_world_state_foundation` passes **77/77**;
+`tests.test_location_state_reference` passes **29/29**. Python syntax and
+`git diff --check` pass. Do not queue an acceptance bridge job from Codex.
+
+**Code revision before this change:**
+`3f349756137f0c897fec14730430488e3a3fb031` on `object-state-work`.
+
+**Next:** review the committed r42 fix and run a fresh acceptance through the
+user-operated bridge. Codex does not queue bridge jobs.
+
+---
+
 **Latest acceptance:** r41 ran revision
 `058833dbb095cd3699d8db9d5e3b628ac0de66a6` and failed after Segment 1 RAW
 passed Director physical/prop/timing/WorldState validation. The visible-Subject

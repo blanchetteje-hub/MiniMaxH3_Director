@@ -494,6 +494,158 @@ class WorldStateSeedTests(unittest.TestCase):
             stable_world_state_id("location", "  hall  "),
         )
 
+    def test_duplicate_static_counter_merges_complementary_metadata_once(self):
+        state, location_id = seed_canonical_static_location_state(
+            empty_world_state(),
+            {
+                "location": {"name": "Tavern"},
+                "anchors": [{
+                    "name": "counter", "type": "wooden counter",
+                    "wall": "west", "world_state_role": "fixture_support",
+                    "mobility": "fixed",
+                }],
+                "objects": [{
+                    "name": "counter", "type": "wooden counter",
+                    "near": ["rack", "bar"],
+                    "world_state_role": "fixture_support", "mobility": "fixed",
+                }],
+            },
+        )
+        self.assertEqual(len(state["props"]), 1)
+        counter_id = stable_world_state_id("prop", "counter", scope=location_id)
+        self.assertEqual(set(state["props"]), {counter_id})
+        counter = state["props"][counter_id]
+        registration = counter["provenance"]["registration"]
+        self.assertEqual(counter["kind"], "fixture_support")
+        self.assertEqual(counter["mobility"], "fixed")
+        self.assertEqual(registration["source_fields"], ["anchors", "objects"])
+        self.assertEqual(registration["source_type"], "wooden counter")
+
+    def test_exact_duplicate_static_declaration_is_idempotent(self):
+        declaration = {
+            "name": "front door", "type": "door",
+            "world_state_role": "fixture", "mobility": "fixed",
+        }
+        source = {
+            "location": {"name": "Hall"},
+            "anchors": [declaration, dict(declaration)],
+            "objects": [],
+        }
+        first, location_id = seed_canonical_static_location_state(
+            empty_world_state(), source
+        )
+        second, second_location_id = seed_canonical_static_location_state(
+            first, source
+        )
+        self.assertEqual(location_id, second_location_id)
+        self.assertEqual(first, second)
+        self.assertEqual(len(second["props"]), 1)
+
+    def test_static_fixture_and_support_roles_merge_to_combined_role(self):
+        state, location_id = seed_canonical_static_location_state(
+            empty_world_state(),
+            {
+                "location": {"name": "Room"},
+                "anchors": [{
+                    "name": "work table", "type": "table",
+                    "world_state_role": "fixture", "mobility": "fixed",
+                }],
+                "objects": [{
+                    "name": "work table", "type": "wooden table",
+                    "world_state_role": "support", "mobility": "fixed",
+                }],
+            },
+        )
+        self.assertEqual(len(state["props"]), 1)
+        table_id = stable_world_state_id("prop", "work table", scope=location_id)
+        self.assertEqual(state["props"][table_id]["kind"], "fixture_support")
+        self.assertEqual(state["props"][table_id]["mobility"], "fixed")
+        self.assertEqual(
+            state["props"][table_id]["provenance"]["registration"]["source_type"],
+            "wooden table",
+        )
+
+    def test_duplicate_static_identity_with_conflicting_mobility_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "Conflicting canonical fixture mobility"):
+            seed_canonical_static_location_state(
+                empty_world_state(),
+                {
+                    "location": {"name": "Room"},
+                    "anchors": [{
+                        "name": "counter", "type": "counter",
+                        "world_state_role": "fixture_support", "mobility": "fixed",
+                    }],
+                    "objects": [{
+                        "name": "counter", "type": "counter",
+                        "world_state_role": "fixture_support", "mobility": "movable",
+                    }],
+                },
+            )
+
+    def test_duplicate_static_identity_with_incompatible_type_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "Conflicting canonical fixture types"):
+            seed_canonical_static_location_state(
+                empty_world_state(),
+                {
+                    "location": {"name": "Room"},
+                    "anchors": [{
+                        "name": "counter", "type": "wooden counter",
+                        "world_state_role": "fixture_support", "mobility": "fixed",
+                    }],
+                    "objects": [{
+                        "name": "counter", "type": "door",
+                        "world_state_role": "fixture_support", "mobility": "fixed",
+                    }],
+                },
+            )
+
+    def test_duplicate_static_identity_with_conflicting_placement_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "Conflicting canonical fixture wall"):
+            seed_canonical_static_location_state(
+                empty_world_state(),
+                {
+                    "location": {"name": "Room"},
+                    "anchors": [{
+                        "name": "front door", "type": "door", "wall": "north",
+                        "world_state_role": "fixture", "mobility": "fixed",
+                    }],
+                    "objects": [{
+                        "name": "front door", "type": "door", "wall": "south",
+                        "world_state_role": "fixture", "mobility": "fixed",
+                    }],
+                },
+            )
+
+    def test_static_fixture_id_is_independent_of_source_array(self):
+        anchor_only = {
+            "location": {"name": "Hall"},
+            "anchors": [{
+                "name": "bench", "type": "wooden bench",
+                "world_state_role": "fixture_support", "mobility": "fixed",
+            }],
+            "objects": [],
+        }
+        object_only = {
+            "location": {"name": "Hall"}, "anchors": [],
+            "objects": [{
+                "name": "bench", "type": "wooden bench",
+                "world_state_role": "fixture_support", "mobility": "fixed",
+            }],
+        }
+        both = {
+            "location": {"name": "Hall"},
+            "anchors": [dict(anchor_only["anchors"][0])],
+            "objects": [dict(object_only["objects"][0])],
+        }
+        seeded = [
+            seed_canonical_static_location_state(empty_world_state(), source)[0]
+            for source in (anchor_only, object_only, both)
+        ]
+        ids = [next(iter(state["props"])) for state in seeded]
+        self.assertEqual(ids[0], ids[1])
+        self.assertEqual(ids[1], ids[2])
+        self.assertTrue(all(len(state["props"]) == 1 for state in seeded))
+
     def test_explicit_persistent_prop_registration_requires_and_sets_one_placement(self):
         state, location_id = seed_canonical_static_location_state(
             empty_world_state(),

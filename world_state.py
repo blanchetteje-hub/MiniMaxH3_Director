@@ -258,6 +258,181 @@ def _seed_prop_record(
     }
 
 
+_STATIC_LOCATION_ROLES = {"fixture", "support", "fixture_support"}
+
+
+def _static_value_key(value: Any) -> str:
+    return " ".join(str(value or "").split()).strip().casefold()
+
+
+def _compatible_static_type(left: Any, right: Any, name: str) -> str:
+    left_text = " ".join(str(left or "").split()).strip()
+    right_text = " ".join(str(right or "").split()).strip()
+    if left_text.casefold() == UNKNOWN:
+        left_text = ""
+    if right_text.casefold() == UNKNOWN:
+        right_text = ""
+    if not left_text:
+        return right_text
+    if not right_text:
+        return left_text
+    left_tokens = set(re.findall(r"[\w]+", left_text.casefold()))
+    right_tokens = set(re.findall(r"[\w]+", right_text.casefold()))
+    if left_tokens == right_tokens:
+        return min(
+            (left_text, right_text),
+            key=lambda value: (len(value), value.casefold()),
+        )
+    if left_tokens.issubset(right_tokens):
+        return right_text
+    if right_tokens.issubset(left_tokens):
+        return left_text
+    raise ValueError(
+        f"Conflicting canonical fixture types for {name!r}: "
+        f"{left_text!r} vs {right_text!r}."
+    )
+
+
+def _merge_static_metadata_value(left: Any, right: Any, *, name: str, field: str) -> Any:
+    """Merge complementary metadata; reject contradictory canonical facts."""
+    if left is None or left == "" or left == UNKNOWN or left == [] or left == {}:
+        return deepcopy(right)
+    if right is None or right == "" or right == UNKNOWN or right == [] or right == {}:
+        return deepcopy(left)
+    if isinstance(left, dict) and isinstance(right, dict):
+        merged = deepcopy(left)
+        for key, value in right.items():
+            if key in merged:
+                merged[key] = _merge_static_metadata_value(
+                    merged[key], value, name=name, field=f"{field}.{key}"
+                )
+            else:
+                merged[key] = deepcopy(value)
+        return merged
+    if isinstance(left, list) and isinstance(right, list):
+        keyed = {_static_value_key(value): deepcopy(value) for value in left}
+        keyed.update({_static_value_key(value): deepcopy(value) for value in right})
+        return [keyed[key] for key in sorted(keyed)]
+    if _static_value_key(left) == _static_value_key(right):
+        return deepcopy(left)
+    raise ValueError(
+        f"Conflicting canonical fixture {field} facts for {name!r}: "
+        f"{left!r} vs {right!r}."
+    )
+
+
+def normalize_canonical_static_location_state(
+    location_state: dict[str, Any],
+) -> dict[str, Any]:
+    """Deduplicate compatible fixture/support records by location-local identity.
+
+    This runs after the static-setting grounding boundary. It does not promote
+    unclassified objects. Conflicting role, type, mobility, or placement facts
+    fail closed rather than creating a second entity with a nearby stable ID.
+    """
+    if not isinstance(location_state, dict):
+        raise ValueError("Canonical location state must be an object.")
+    anchors = location_state.get("anchors", [])
+    objects = location_state.get("objects", [])
+    if not isinstance(anchors, list) or not isinstance(objects, list):
+        raise ValueError("Canonical location anchors and objects must be arrays.")
+
+    groups: dict[str, list[tuple[str, dict[str, Any], str]]] = {}
+    passthrough: dict[str, list[Any]] = {"anchors": [], "objects": []}
+    for source_field, entries in (("anchors", anchors), ("objects", objects)):
+        for entry in entries:
+            if not isinstance(entry, dict):
+                passthrough[source_field].append(deepcopy(entry))
+                continue
+            name = " ".join(str(entry.get("name") or "").split()).strip()
+            if not name:
+                passthrough[source_field].append(deepcopy(entry))
+                continue
+            role = entry.get("world_state_role")
+            if source_field == "anchors" and role is None:
+                role = "fixture"
+            if role not in _STATIC_LOCATION_ROLES:
+                passthrough[source_field].append(deepcopy(entry))
+                continue
+            key = _name_key(name)
+            groups.setdefault(key, []).append((source_field, deepcopy(entry), role))
+
+    normalized_anchors = list(passthrough["anchors"])
+    normalized_objects = list(passthrough["objects"])
+    for key in sorted(groups):
+        declarations = groups[key]
+        name = min(
+            (entry["name"].strip() for _, entry, _ in declarations),
+            key=lambda value: (value.casefold(), value),
+        )
+        merged: dict[str, Any] = {"name": name}
+        roles = set()
+        mobility_values = set()
+        source_fields = sorted({source for source, _, _ in declarations})
+        for _source, entry, role in declarations:
+            roles.add(role)
+            mobility = entry.get("mobility")
+            if mobility is None and role in {"fixture", "fixture_support"}:
+                mobility = "fixed"
+            elif mobility not in MOBILITY_VALUES:
+                mobility = UNKNOWN
+            if mobility != UNKNOWN:
+                mobility_values.add(mobility)
+            for field, value in entry.items():
+                if field in {"name", "world_state_role", "mobility", "source_fields"}:
+                    continue
+                if field == "type":
+                    merged[field] = _compatible_static_type(
+                        merged.get(field), value, name
+                    )
+                    continue
+                if field == "near" and isinstance(value, list):
+                    combined = {
+                        _static_value_key(item): deepcopy(item)
+                        for item in [
+                            *(
+                                merged.get(field, [])
+                                if isinstance(merged.get(field), list)
+                                else []
+                            ),
+                            *value,
+                        ]
+                    }
+                    merged[field] = [combined[item] for item in sorted(combined)]
+                    continue
+                if field in merged:
+                    merged[field] = _merge_static_metadata_value(
+                        merged[field], value, name=name, field=field
+                    )
+                else:
+                    merged[field] = deepcopy(value)
+        if len(mobility_values) > 1:
+            raise ValueError(
+                f"Conflicting canonical fixture mobility for {name!r}: "
+                + ", ".join(sorted(mobility_values))
+                + "."
+            )
+        merged["mobility"] = next(iter(mobility_values), UNKNOWN)
+        if roles == {"fixture"}:
+            merged_role = "fixture"
+        elif roles == {"support"}:
+            merged_role = "support"
+        else:
+            # The combined role explicitly preserves both fixture and support
+            # semantics when declarations provide either facet.
+            merged_role = "fixture_support"
+        merged["world_state_role"] = merged_role
+        merged["source_fields"] = source_fields
+        # Prefer anchors when present, independent of declaration order.
+        target = normalized_anchors if "anchors" in source_fields else normalized_objects
+        target.append(merged)
+
+    result = deepcopy(location_state)
+    result["anchors"] = normalized_anchors
+    result["objects"] = normalized_objects
+    return result
+
+
 def seed_predefined_subject_identities(
     world_state: dict[str, Any],
     subject_definitions_seed: dict[str, Any],
@@ -381,6 +556,9 @@ def seed_canonical_static_location_state(
     objects = location_state.get("objects", [])
     if not isinstance(anchors, list) or not isinstance(objects, list):
         raise ValueError("Canonical location anchors and objects must be arrays.")
+    location_state = normalize_canonical_static_location_state(location_state)
+    anchors = location_state.get("anchors", [])
+    objects = location_state.get("objects", [])
 
     before = deepcopy(world_state)
     candidate = deepcopy(world_state)
@@ -410,8 +588,7 @@ def seed_canonical_static_location_state(
         if mobility not in MOBILITY_VALUES:
             mobility = "fixed" if role in {"fixture", "fixture_support"} else UNKNOWN
         type_name = " ".join(str(item.get("type") or "").split()).strip()
-        identity = "|".join((location_id, prop_kind, item_name, type_name))
-        prop_id = stable_world_state_id("prop", identity)
+        prop_id = stable_world_state_id("prop", item_name, scope=location_id)
         placement = {"kind": "located", "location_id": location_id}
         capabilities = item.get("capabilities")
         if not isinstance(capabilities, dict):
@@ -420,6 +597,13 @@ def seed_canonical_static_location_state(
             key: value for key, value in capabilities.items()
             if key in CAPABILITY_FIELDS
         }
+        raw_source_fields = item.get("source_fields")
+        source_fields = sorted({
+            value for value in raw_source_fields
+            if isinstance(value, str) and value in {"anchors", "objects"}
+        }) if isinstance(raw_source_fields, list) else [source_field]
+        if not source_fields:
+            source_fields = [source_field]
         prop = _seed_prop_record(
             prop_id,
             item_name,
@@ -430,12 +614,76 @@ def seed_canonical_static_location_state(
             provenance={"registration": {
                 "authority": "canonical_location_state",
                 "source_field": source_field,
+                "source_fields": source_fields,
                 "source_type": type_name or UNKNOWN,
             }},
         )
+        same_identity = [
+            (registered_id, registered)
+            for registered_id, registered in candidate["props"].items()
+            if _name_key(registered.get("name")) == _name_key(item_name)
+            and registered.get("placement", {}).get("kind") == "located"
+            and registered.get("placement", {}).get("location_id") == location_id
+            and registered.get("provenance", {}).get("registration", {}).get("authority")
+            == "canonical_location_state"
+        ]
+        if len(same_identity) > 1:
+            raise ValueError(
+                f"Multiple registered WorldState fixtures already share identity {item_name!r}."
+            )
+        if same_identity:
+            existing_id, existing_prop = same_identity[0]
+            if existing_prop["kind"] != prop["kind"]:
+                roles = {existing_prop["kind"], prop["kind"]}
+                if roles.issubset({"fixture", "support", "fixture_support"}):
+                    prop["kind"] = (
+                        "fixture"
+                        if roles == {"fixture"}
+                        else "support"
+                        if roles == {"support"}
+                        else "fixture_support"
+                    )
+                else:
+                    raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
+            if existing_prop["mobility"] not in {UNKNOWN, prop["mobility"]} and prop["mobility"] != UNKNOWN:
+                raise ValueError(
+                    f"Conflicting canonical fixture mobility for {item_name!r}."
+                )
+            if existing_prop["mobility"] != UNKNOWN:
+                prop["mobility"] = existing_prop["mobility"]
+            existing_registration = existing_prop.get("provenance", {}).get("registration", {})
+            existing_type = existing_registration.get("source_type", UNKNOWN)
+            merged_type = _compatible_static_type(existing_type, type_name, item_name)
+            prop["provenance"]["registration"]["source_type"] = merged_type or UNKNOWN
+            prior_source_fields = existing_registration.get("source_fields")
+            if not isinstance(prior_source_fields, list):
+                prior_source_fields = [existing_registration.get("source_field", "")]
+            prop["provenance"]["registration"]["source_fields"] = sorted(
+                {
+                    value for value in [
+                        *prior_source_fields,
+                        *prop["provenance"]["registration"]["source_fields"],
+                    ]
+                    if isinstance(value, str) and value in {"anchors", "objects"}
+                }
+            )
+            if not prop["provenance"]["registration"]["source_fields"]:
+                prop["provenance"]["registration"]["source_fields"] = [source_field]
+            prop["provenance"]["registration"]["source_field"] = prop["provenance"]["registration"]["source_fields"][0]
+            for capability, value in existing_prop.get("capabilities", {}).items():
+                if value != UNKNOWN:
+                    current = prop["capabilities"].get(capability, UNKNOWN)
+                    if current not in {UNKNOWN, value}:
+                        raise ValueError(
+                            f"Conflicting canonical fixture capability {capability!r} for {item_name!r}."
+                        )
+                    prop["capabilities"][capability] = value
+            prop_id = existing_id
+            del candidate["props"][existing_id]
         existing_prop = candidate["props"].get(prop_id)
-        if existing_prop is not None and existing_prop != prop:
-            raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
+        if existing_prop is not None:
+            if existing_prop != prop:
+                raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
         candidate["props"][prop_id] = prop
 
     return _changed_revision(before, candidate), location_id
