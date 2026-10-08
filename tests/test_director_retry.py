@@ -1612,6 +1612,106 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("Reuse a KNOWN SUBJECT when RAW continues", text)
         self.assertIn("Do not label interchangeable background crowds/groups", text)
         self.assertIn("KNOWN SUBJECTS", text)
+        self.assertIn("KNOWN CANONICAL SUBJECT MENTIONS", text)
+
+    def test_registered_subject_repeated_in_timed_and_end_state_needs_no_mapping(self):
+        original = (
+            "At 00:00.000, Unicorn turns toward the entrance.\n"
+            "At 00:04.200, Unicorn's head lowers beside the table.\n"
+            "At 00:05.500, Unicorn looks toward the door.\n"
+            "End continuity state: Unicorn is positioned near the table."
+        )
+        request = mock.Mock(return_value={
+            "mappings": [],
+            "subject_descriptions": {},
+            "subject_wardrobes": {},
+        })
+        result, names = minimax.resolve_director_raw_scene_subjects(
+            original,
+            "<Subject 2> is Unicorn.",
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(result, original)
+        self.assertEqual(names, [])
+        prompt = request.call_args.args[0][1]["content"]
+        self.assertIn("KNOWN CANONICAL SUBJECT MENTIONS\nUnicorn", prompt)
+
+    def test_registered_subject_mapping_is_ignored_without_duplicate_identity(self):
+        original = (
+            "At 00:00.000, Unicorn turns toward the door.\n"
+            "At 00:04.200, Unicorn's head lowers.\n"
+            "At 00:05.500, Unicorn looks toward the door.\n"
+            "End continuity state: Unicorn is positioned near the door."
+        )
+        request = mock.Mock(return_value={
+            "mappings": [{
+                "timestamp": "00:04.200",
+                "surface_form": "Unicorn",
+                "identity_span": "Unicorn",
+                "subject_name": "<Subject 2>",
+            }],
+            "subject_descriptions": {},
+            "subject_wardrobes": {},
+        })
+        result, names = minimax.resolve_director_raw_scene_subjects(
+            original,
+            "<Subject 2> is Unicorn.",
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(result, original)
+        self.assertEqual(names, [])
+        self.assertNotIn("Unicorn_1", result)
+
+    def test_repeated_unresolved_surface_is_substituted_only_in_timestamp_block(self):
+        original = (
+            "At 00:00.000, a goblin enters the room.\n"
+            "At 00:04.200, a goblin waves from the doorway.\n"
+            "At 00:05.500, the figure stops beside the door.\n"
+            "End continuity state: the participant remains near the door."
+        )
+        request = mock.Mock(return_value={
+            "mappings": [{
+                "timestamp": "00:00.000",
+                "surface_form": "a goblin",
+                "identity_span": "goblin",
+                "subject_name": "Goblin1",
+            }],
+            "subject_descriptions": {},
+            "subject_wardrobes": {},
+        })
+        result, names = minimax.resolve_director_raw_scene_subjects(
+            original, "", llm_request=request, segment_seconds=6.0
+        )
+        self.assertEqual(
+            result,
+            "At 00:00.000, a Goblin1 enters the room.\n"
+            "At 00:04.200, a goblin waves from the doorway.\n"
+            "At 00:05.500, the figure stops beside the door.\n"
+            "End continuity state: the participant remains near the door.",
+        )
+        self.assertEqual(names, ["Goblin1"])
+
+    def test_repeated_surface_inside_one_timestamp_block_fails_closed(self):
+        original = (
+            "At 00:00.000, a goblin enters while a goblin waves.\n"
+            "End continuity state: a goblin remains near the door."
+        )
+        request = mock.Mock(return_value={
+            "mappings": [{
+                "timestamp": "00:00.000",
+                "surface_form": "a goblin",
+                "identity_span": "goblin",
+                "subject_name": "Goblin1",
+            }],
+            "subject_descriptions": {},
+            "subject_wardrobes": {},
+        })
+        with self.assertRaisesRegex(ValueError, "surface_form must match exactly once"):
+            minimax.resolve_director_raw_scene_subjects(
+                original, "", llm_request=request, segment_seconds=6.0
+            )
 
     def test_raw_subject_resolution_accepts_only_identity_labeling(self):
         original = (
@@ -1825,7 +1925,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                         original, "", llm_request=request, segment_seconds=6.0,
                     )
 
-    def test_raw_subject_resolution_normalized_timestamp_must_match_one_raw_line(self):
+    def test_raw_subject_resolution_normalized_timestamp_must_match_one_raw_block(self):
         original = (
             "At 00:00.000, a guard enters the room.\n"
             "End continuity state: the guard remains in the room."
@@ -1839,7 +1939,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             }],
             "subject_descriptions": {}, "subject_wardrobes": {},
         })
-        with self.assertRaisesRegex(ValueError, "must identify one accepted RAW line"):
+        with self.assertRaisesRegex(ValueError, "must identify one accepted RAW block"):
             minimax.resolve_director_raw_scene_subjects(
                 original, "", llm_request=request, segment_seconds=6.0,
             )
@@ -1859,10 +1959,109 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             }],
             "subject_descriptions": {}, "subject_wardrobes": {},
         })
-        with self.assertRaisesRegex(ValueError, "must identify one accepted RAW line"):
+        with self.assertRaisesRegex(ValueError, "must identify one accepted RAW block"):
             minimax.resolve_director_raw_scene_subjects(
                 original, "", llm_request=request, segment_seconds=6.0,
             )
+
+    def test_subject_resolver_exhaustion_is_typed_and_invokes_raw_repair_callback(self):
+        scene = (
+            "At 00:00.000, a goblin enters the room.\n"
+            "At 00:04.500, the goblin stops by the door.\n"
+            "End continuity state: the goblin remains by the door."
+        )
+        repaired_scene = scene.replace("stops by", "stands near")
+        candidate = director_response(scene)
+        payload = {
+            "raw_scene": scene,
+            "current_duration": 6.0,
+            "request1_external_candidate": copy.deepcopy(candidate),
+        }
+        resolver = mock.Mock(side_effect=[
+            ValueError("surface_form is ambiguous in timestamp block"),
+            ValueError("surface_form is ambiguous in timestamp block"),
+            (repaired_scene, ["Goblin1"], {}, {}),
+        ])
+        repair_calls = []
+
+        def repair(failure):
+            repair_calls.append(failure)
+            repaired_candidate = copy.deepcopy(failure.external_candidate)
+            repaired_candidate["raw_scene"] = repaired_scene
+            return {
+                "raw_scene": repaired_scene,
+                "current_duration": 6.0,
+                "request1_external_candidate": repaired_candidate,
+            }
+
+        resolved_payload, resolution = minimax.resolve_payload_subjects_with_raw_repair(
+            payload,
+            segment_number=1,
+            subject_definitions="<Subject 1> is Amy.",
+            story_context="N/A",
+            current_beat="An unnamed participant enters.",
+            history_metadata={"run_id": "r41-test"},
+            raw_repair_callback=repair,
+            resolver=resolver,
+        )
+        self.assertEqual(len(repair_calls), 1)
+        failure = repair_calls[0]
+        self.assertIsInstance(
+            failure, minimax.DirectorRawSubjectResolutionExhaustedError
+        )
+        self.assertEqual(failure.issue, "surface_form is ambiguous in timestamp block")
+        self.assertEqual(failure.rejected_raw_scene, scene)
+        self.assertEqual(set(failure.external_candidate), set(candidate))
+        self.assertEqual(resolved_payload["raw_scene"], repaired_scene)
+        self.assertEqual(resolution[1], ["Goblin1"])
+        self.assertEqual(payload["raw_scene"], scene)
+
+    def test_resolver_seeded_candidate_uses_existing_raw_repair_validation_path(self):
+        bundle = goblin_mug_bundle()
+        scene = (
+            "At 00:00.000, Goblin1 holds the mug.\n"
+            "At 00:04.500, Goblin1 remains beside the table.\n"
+            "End continuity state: Goblin1 holds the mug."
+        )
+        repaired_scene = scene.replace("remains beside", "stands beside")
+        candidate = director_response(scene)
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            {"raw_scene": repaired_scene},
+        ]))
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle,
+                [],
+                "run-r41-subject-repair",
+                {"source_sha256": "source"},
+                seeded_external_candidate=candidate,
+                seeded_raw_scene_issue="RAW Subject resolver mapping is ambiguous.",
+            )
+        raw_repair_call = next(
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene_repair"
+        )
+        self.assertIn(
+            "RAW Subject resolver mapping is ambiguous.",
+            raw_repair_call.args[0][1]["content"],
+        )
+        self.assertFalse(any(
+            call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene"
+            for call in request.call_args_list
+        ))
+        self.assertEqual(payload["raw_scene"], repaired_scene)
+        self.assertEqual(payload["raw_scene_repair_attempts"], 1)
+        self.assertEqual(set(payload["request1_external_candidate"]), set(candidate))
+        self.assertEqual(payload["request1_external_candidate"]["raw_scene"], repaired_scene)
+        self.assertEqual(payload["request1_result"]["state_actions"], [])
 
     def test_raw_pronoun_resolution_prompt_is_narrow(self):
         messages = minimax.build_director_pronoun_resolution_messages(

@@ -4,6 +4,50 @@ Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This fi
 
 ## CURRENT HANDOFF — 2026-10-07 (read first)
 
+**Latest acceptance:** r41 ran revision
+`058833dbb095cd3699d8db9d5e3b628ac0de66a6` and failed after Segment 1 RAW
+passed Director physical/prop/timing/WorldState validation. The visible-Subject
+resolver tried to remap the already-registered `Unicorn`, which appeared in a
+timestamped action and again in End continuity. Its old exact-once check was
+scoped to a line, so repeated identity mentions could incorrectly reject the
+mapping and stop generation even though Python already owned that identity.
+
+The resolver prompt now lists canonical registered Subject mentions and says
+not to map them. Python also ignores an unnecessary mapping whose identity span
+is already a registered canonical name, without creating a duplicate Subject.
+For genuine unresolved actors, substitution is now scoped to the exact block
+identified by the returned timestamp: the timestamp must identify one block,
+and the quoted surface and identity spans must each be unique inside it. Only
+that span is replaced; missing, invalid, duplicate, or ambiguous timestamps or
+spans still fail closed. End continuity no longer creates false ambiguity for
+a timestamped actor mention.
+
+After two resolver attempts fail, the code raises a typed recoverable failure
+carrying the accepted RAW, exact diagnostic, and preserved Request-1 candidate.
+That failure enters the existing RAW-only repair contract, which keeps the
+current Beat and opening WorldState. The repaired Director response is validated
+again, then Subject resolution reruns. The existing ten RAW-repair exhaustion
+path still steps back to regenerate only the current Beat. No story or arc
+regeneration is introduced by resolver recovery.
+
+Focused resolver tests pass (**16 passed, 3 subtests passed**), and
+`tests.test_world_state_foundation` passes (**70/70**). The full
+`tests.test_director_retry` suite reports **5 failures and 7 errors**: the
+failures are stale prompt-length/legacy retry-contract assertions, and the
+errors are existing tavern prop-extractor mocks whose evidence does not match
+the current fixture source. The new resolver and recovery tests pass. Python
+syntax compilation and `git diff --check` pass; the required automation copy
+of `minimax.py` is byte-identical. Do not queue an acceptance bridge job from
+Codex.
+
+**Code revision before this change:**
+`058833dbb095cd3699d8db9d5e3b628ac0de66a6` on `object-state-work`.
+
+**Next:** inspect the committed r41 fix and run a fresh acceptance through the
+user-operated bridge. Codex does not queue bridge jobs.
+
+---
+
 **Latest acceptance:** r40 ran revision `7b337d2ac4180ff55767d7469560fc3dbb7e56f5`
 and exposed three issues before a Segment could complete: Python's
 `state_actions_dry_run_accepted` annotation leaked into RAW repair and violated

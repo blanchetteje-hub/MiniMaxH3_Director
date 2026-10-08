@@ -10522,6 +10522,28 @@ class DirectorRawRepairExhaustedError(BeatGenerationError):
         )
 
 
+class DirectorRawSubjectResolutionExhaustedError(BeatGenerationError):
+    """Carry accepted RAW and its exact resolver issue into RAW-only repair."""
+
+    def __init__(self, segment, issue, rejected_raw_scene, external_candidate):
+        self.segment = int(segment)
+        self.issue = str(issue or "").strip()
+        self.rejected_raw_scene = str(rejected_raw_scene or "").strip()
+        if (
+            not isinstance(external_candidate, dict)
+            or set(external_candidate) != DIRECTOR_REQUEST1_FIELDS
+        ):
+            raise ValueError(
+                "Subject resolver recovery requires the exact external "
+                "Director Request-1 candidate."
+            )
+        self.external_candidate = copy.deepcopy(external_candidate)
+        super().__init__(
+            f"RAW Subject resolution for Segment {self.segment} exhausted its "
+            f"bounded attempts: {self.issue}"
+        )
+
+
 class CurrentSegmentWorldStatePreparationExhaustedError(
     DirectorRawRepairExhaustedError
 ):
@@ -10555,6 +10577,80 @@ def retry_current_beat_after_seed_exhaustion(
         except CurrentSegmentWorldStatePreparationExhaustedError as error:
             restore_opening_state(error)
             failure = error
+
+
+def resolve_payload_subjects_with_raw_repair(
+    payload,
+    *,
+    segment_number,
+    subject_definitions,
+    story_context,
+    current_beat,
+    history_metadata,
+    raw_repair_callback,
+    resolver=None,
+):
+    """Resolve accepted RAW; after bounded resolver failure, repair RAW and retry."""
+    if resolver is None:
+        resolver = resolve_director_raw_scene_subjects
+    current_payload = payload
+    while True:
+        accepted_raw = str(current_payload.get("raw_scene") or "").strip()
+        last_error = None
+        for attempt in range(1, 3):
+            try:
+                beat_text = (
+                    current_beat()
+                    if callable(current_beat) else current_beat
+                )
+                resolution = resolver(
+                    accepted_raw,
+                    subject_definitions=subject_definitions,
+                    return_subject_bootstrap=True,
+                    story_context=story_context,
+                    current_beat=beat_text,
+                    history_metadata={
+                        **dict(history_metadata or {}),
+                        "attempt": attempt,
+                    },
+                    segment_seconds=current_payload.get(
+                        "duration", current_payload.get("current_duration")
+                    ),
+                )
+                return current_payload, resolution
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+            ) as error:
+                last_error = error
+                if attempt < 2:
+                    console_log(
+                        f"RAW Subject resolution failed for Segment "
+                        f"{segment_number} (attempt {attempt}/2); retrying: "
+                        f"{error}",
+                        flush=True,
+                    )
+        external_candidate = current_payload.get(
+            "request1_external_candidate"
+        )
+        failure = DirectorRawSubjectResolutionExhaustedError(
+            segment_number,
+            last_error,
+            accepted_raw,
+            external_candidate,
+        )
+        current_payload = raw_repair_callback(failure)
+        if (
+            not isinstance(current_payload, dict)
+            or not isinstance(current_payload.get("request1_external_candidate"), dict)
+            or not isinstance(current_payload.get("raw_scene"), str)
+        ):
+            raise RuntimeError(
+                "RAW repair callback did not return an accepted Director payload."
+            )
 
 
 # Repair a narrow local-model error such as ``"growl" snarls``.
@@ -36633,6 +36729,7 @@ def build_director_raw_subject_resolution_messages(
     subject_definitions="",
     story_context="",
     current_beat="",
+    registered_subject_mentions=(),
 ):
     """Build the narrow post-RAW dynamic Subject identity pass."""
     return [
@@ -36645,7 +36742,9 @@ def build_director_raw_subject_resolution_messages(
                 "surface_form quoted from that timestamp's line, and the smallest exact "
                 "identity_span within that phrase that names the actor, plus its "
                 "subject_name. Python applies only that identity substitution to accepted "
-                "RAW. Do not map action, camera, object, location, sound, dialogue, or "
+                "RAW. Never return a mapping for a registered canonical Subject named "
+                "under KNOWN CANONICAL SUBJECT MENTIONS; Python preserves those names "
+                "unchanged. Do not map action, camera, object, location, sound, dialogue, or "
                 "background-group words. Keep already-named Subjects unchanged. For each "
                 "distinct unnamed foreground animate participant who acts or is acted on, "
                 "map every reference that identifies that participant to one stable "
@@ -36695,6 +36794,8 @@ def build_director_raw_subject_resolution_messages(
                 f"{str(story_context or '').strip() or 'N/A'}\n\n"
                 "KNOWN SUBJECTS\n"
                 f"{str(subject_definitions or '').strip() or 'N/A'}\n\n"
+                "KNOWN CANONICAL SUBJECT MENTIONS\n"
+                f"{', '.join(str(name) for name in registered_subject_mentions) or 'N/A'}\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
                 "Return mappings, subject_descriptions, and subject_wardrobes. Each "
@@ -36898,12 +36999,21 @@ def resolve_director_raw_scene_subjects(
     timed_original = original[:end_match.start()].rstrip()
     end_state_original = original[end_match.start():].strip()
 
+    defined_names = [
+        name for _subject_number, name in parse_defined_subjects(subject_definitions)
+    ]
+    known_subject_mentions = [
+        name for name in defined_names
+        if re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", timed_original, re.I)
+    ]
+
     result = llm_request(
         build_director_raw_subject_resolution_messages(
             timed_original,
             subject_definitions=subject_definitions,
             story_context=story_context,
             current_beat=current_beat,
+            registered_subject_mentions=known_subject_mentions,
         ),
         response_format=DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT,
         history_metadata={
@@ -36941,25 +37051,21 @@ def resolve_director_raw_scene_subjects(
 
     # Resolve only exact, timestamp-anchored spans. The model has no output field
     # capable of replacing accepted scene text, and an ambiguous mapping fails closed.
-    lines = timed_original.splitlines(keepends=True)
-    line_offsets = []
-    cursor = 0
-    timestamp_lines = {}
-    for index, line in enumerate(lines):
-        line_offsets.append(cursor)
-        cursor += len(line)
-        stamp_matches = list(_DIRECTOR_TIMESTAMP_RE.finditer(line))
-        for stamp_match in stamp_matches:
-            stamp = (
-                f"{int(stamp_match.group('minutes')):02d}:"
-                f"{stamp_match.group('seconds')}."
-                f"{(stamp_match.group('fraction') or '0').ljust(3, '0')}"
-            )
-            timestamp_lines.setdefault(stamp, []).append(index)
+    timestamp_blocks = {}
+    timestamp_matches = list(_DIRECTOR_TIMESTAMP_RE.finditer(timed_original))
+    for index, stamp_match in enumerate(timestamp_matches):
+        stamp = (
+            f"{int(stamp_match.group('minutes')):02d}:"
+            f"{stamp_match.group('seconds')}."
+            f"{(stamp_match.group('fraction') or '0').ljust(3, '0')}"
+        )
+        block_start = stamp_match.end()
+        block_end = (
+            timestamp_matches[index + 1].start()
+            if index + 1 < len(timestamp_matches) else len(timed_original)
+        )
+        timestamp_blocks.setdefault(stamp, []).append((block_start, block_end))
 
-    defined_names = [
-        name for _subject_number, name in parse_defined_subjects(subject_definitions)
-    ]
     protected_names = set(defined_names)
     protected_names.update(
         re.findall(r"(?<![\w])([A-Z][A-Za-z'\u2019-]*\d+)(?![\w])", timed_original)
@@ -37007,28 +37113,31 @@ def resolve_director_raw_scene_subjects(
     substitutions = []
     resolved_subject_names = []
     metadata_name_map = {}
+    registered_identity_keys = {name.casefold() for name in defined_names}
     mapping_keys = {"timestamp", "surface_form", "identity_span", "subject_name"}
     for mapping in mappings:
         if not isinstance(mapping, dict) or set(mapping) != mapping_keys:
             raise ValueError("RAW Subject resolver returned an invalid identity mapping.")
+        surface_form = str(mapping.get("surface_form") or "").strip()
+        identity_span = str(mapping.get("identity_span") or "").strip()
+        if not surface_form or not identity_span:
+            raise ValueError("RAW Subject resolver mapping spans must be nonempty.")
         timestamp = _normalize_director_subject_mapping_timestamp(
             mapping.get("timestamp")
         )
         if timestamp is None:
             raise ValueError("RAW Subject resolver mapping has an invalid timestamp.")
-        line_indexes = timestamp_lines.get(timestamp, [])
-        if len(line_indexes) != 1:
+        blocks = timestamp_blocks.get(timestamp, [])
+        if len(blocks) != 1:
             raise ValueError(
-                "RAW Subject resolver mapping timestamp must identify one accepted RAW line."
+                "RAW Subject resolver mapping timestamp must identify one accepted RAW block."
             )
-        line_index = line_indexes[0]
-        line = lines[line_index]
-        surface_form = str(mapping.get("surface_form") or "").strip()
-        identity_span = str(mapping.get("identity_span") or "").strip()
-        if not surface_form or not identity_span:
-            raise ValueError("RAW Subject resolver mapping spans must be nonempty.")
-        surface_start, surface_end = unique_span(line, surface_form, "surface_form")
-        surface = line[surface_start:surface_end]
+        block_start, block_end = blocks[0]
+        block = timed_original[block_start:block_end]
+        surface_start, surface_end = unique_span(
+            block, surface_form, "surface_form"
+        )
+        surface = block[surface_start:surface_end]
         identity_start, identity_end = unique_span(
             surface, identity_span, "identity_span"
         )
@@ -37036,9 +37145,16 @@ def resolve_director_raw_scene_subjects(
         # punctuation outside the span prevents edits to timing or scene structure.
         if not re.fullmatch(r"[\w'’ -]+", identity_span, flags=re.UNICODE):
             raise ValueError("RAW Subject resolver identity_span is not a name span.")
+        if identity_span.casefold() in registered_identity_keys:
+            console_log(
+                "Ignoring unnecessary RAW Subject mapping for already-registered "
+                f"canonical Subject {identity_span!r}.",
+                flush=True,
+            )
+            continue
         target = canonical_subject_name(mapping.get("subject_name"))
-        absolute_start = line_offsets[line_index] + surface_start + identity_start
-        absolute_end = line_offsets[line_index] + surface_start + identity_end
+        absolute_start = block_start + surface_start + identity_start
+        absolute_end = block_start + surface_start + identity_end
         substitutions.append((absolute_start, absolute_end, target))
         resolved_subject_names.append(target)
         metadata_name_map[str(mapping.get("subject_name") or "").strip()] = target
@@ -38197,7 +38313,16 @@ def commit_world_state_transaction(generation_state, transaction, metadata):
 
 
 # Run the two-stage Director micro-prompt pipeline for one segment.
-def request_segment_llm(bundle, beats, run_id, run_config):
+def request_segment_llm(
+    bundle,
+    beats,
+    run_id,
+    run_config,
+    *,
+    seeded_external_candidate=None,
+    seeded_raw_scene_issue="",
+    raw_repair_attempt_offset=0,
+):
     """Run the two-stage Director pipeline with baseline-first acceptance.
 
     ARC/BEATS own story semantics. Request 1 creates a scene. Existing Director
@@ -38308,7 +38433,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     request1_retry_requirements = []
     pending_raw_scene_repair = None
     request1_create_attempts = 0
-    request1_repair_attempts = 0
+    request1_repair_attempts = int(raw_repair_attempt_offset or 0)
+    if not 0 <= request1_repair_attempts <= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
+        raise ValueError("RAW repair attempt offset is outside its allowed budget.")
     state_action_repair_attempts = 0
 
     def build_request1_retry_messages(requirement):
@@ -38487,6 +38614,20 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             current_issue,
             rejected_result.get("raw_scene", ""),
         )
+
+    if seeded_external_candidate is not None:
+        try:
+            pending_raw_scene_repair = queue_raw_scene_repair(
+                seeded_raw_scene_issue,
+                seeded_external_candidate,
+            )
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            raise DirectorRawRepairExhaustedError(
+                segment_number,
+                "Cannot begin resolver-triggered RAW repair from its preserved "
+                f"external candidate: {error}",
+                "",
+            ) from error
 
     request1_messages = request1_base_messages
     for request1_attempt in range(
@@ -39170,6 +39311,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     payload = dict(bundle)
     payload["raw_scene"] = raw_scene
     payload["request1_result"] = copy.deepcopy(request1_result)
+    request1_external_candidate = {
+        field: copy.deepcopy(request1_result[field])
+        for field in DIRECTOR_REQUEST1_FIELDS
+    }
+    request1_external_candidate["raw_scene"] = raw_scene
+    payload["request1_external_candidate"] = request1_external_candidate
+    payload["raw_scene_repair_attempts"] = request1_repair_attempts
     payload["h3_mode"] = mode
     payload["authoritative_opening_state"] = h3_opening_summary or (
         bundle.get("opening_state") or bundle.get("h3_opening_summary") or ""
@@ -41170,6 +41318,83 @@ def _run_main(
                 flush=True,
             )
             return rebuilt
+
+        def request_segment_with_recovery(
+            *,
+            seeded_external_candidate=None,
+            seeded_raw_scene_issue="",
+            raw_repair_attempt_offset=0,
+        ):
+            """Run Request 1/2 and reuse the one-Beat recovery on RAW exhaustion."""
+            nonlocal segment_bundle
+            nonlocal opening_world_state
+            nonlocal opening_world_state_revision
+            nonlocal opening_world_state_hash
+            active_candidate = seeded_external_candidate
+            active_issue = seeded_raw_scene_issue
+            active_offset = raw_repair_attempt_offset
+            while True:
+                try:
+                    if (
+                        active_candidate is None
+                        and not active_issue
+                        and not active_offset
+                    ):
+                        return request_segment_llm(
+                            segment_bundle, beats, run_id, run_config
+                        )
+                    return request_segment_llm(
+                        segment_bundle,
+                        beats,
+                        run_id,
+                        run_config,
+                        seeded_external_candidate=active_candidate,
+                        seeded_raw_scene_issue=active_issue,
+                        raw_repair_attempt_offset=active_offset,
+                    )
+                except DirectorRawRepairExhaustedError as error:
+                    if not beats or not 1 <= error.segment <= len(beats):
+                        raise
+
+                    def restore_opening_after_seed_exhaustion(seed_error):
+                        failed_segment = int(seed_error.segment)
+                        pre_seed = world_state_before_segment_seed.get(
+                            failed_segment
+                        )
+                        if not isinstance(pre_seed, dict):
+                            raise RuntimeError(
+                                "Cannot restore the pre-Segment WorldState after "
+                                "current-Segment extraction exhaustion."
+                            ) from seed_error
+                        generation_state["world_state"] = copy.deepcopy(pre_seed)
+                        prepared_world_state_segments.discard(failed_segment)
+                        prepared_world_state_subject_names.pop(failed_segment, None)
+                        world_state_before_segment_seed.pop(failed_segment, None)
+                        checkpoint_generation_state()
+
+                    segment_bundle = retry_current_beat_after_seed_exhaustion(
+                        error,
+                        regenerate_current_beat_after_raw_failure,
+                        restore_opening_after_seed_exhaustion,
+                    )
+                    opening_world_state = copy.deepcopy(
+                        segment_bundle["world_state_opening"]
+                    )
+                    opening_world_state_revision = int(
+                        opening_world_state["revision"]
+                    )
+                    opening_world_state_hash = world_state_sha256(
+                        opening_world_state
+                    )
+                    active_candidate = None
+                    active_issue = ""
+                    active_offset = 0
+                    console_log(
+                        f"Retrying Segment {segment} after one-stage-back Beat "
+                        "regeneration.",
+                        flush=True,
+                    )
+
         if prefetched_next is not None and not stateful_transactions_active:
             if prefetched_next["segment"] != segment:
                 prefetched_next["cancellation_event"].set()
@@ -41230,54 +41455,43 @@ def _run_main(
                         save_generation_state(generation_state)
                 prefetched_next = None
         if payload is None:
-            while True:
-                try:
-                    payload = request_segment_llm(
-                        segment_bundle,
-                        beats,
-                        run_id,
-                        run_config,
-                    )
-                    break
-                except DirectorRawRepairExhaustedError as error:
-                    if not beats or not 1 <= error.segment <= len(beats):
-                        raise
-                    def restore_opening_after_seed_exhaustion(seed_error):
-                        failed_segment = int(seed_error.segment)
-                        pre_seed = world_state_before_segment_seed.get(
-                            failed_segment
-                        )
-                        if not isinstance(pre_seed, dict):
-                            raise RuntimeError(
-                                "Cannot restore the pre-Segment WorldState after "
-                                "current-Segment extraction exhaustion."
-                            ) from seed_error
-                        generation_state["world_state"] = copy.deepcopy(pre_seed)
-                        prepared_world_state_segments.discard(failed_segment)
-                        prepared_world_state_subject_names.pop(failed_segment, None)
-                        world_state_before_segment_seed.pop(failed_segment, None)
-                        checkpoint_generation_state()
+            payload = request_segment_with_recovery()
 
-                    segment_bundle = retry_current_beat_after_seed_exhaustion(
-                        error,
-                        regenerate_current_beat_after_raw_failure,
-                        restore_opening_after_seed_exhaustion,
-                    )
-                    opening_world_state = copy.deepcopy(
-                        segment_bundle["world_state_opening"]
-                    )
-                    opening_world_state_revision = int(
-                        opening_world_state["revision"]
-                    )
-                    opening_world_state_hash = world_state_sha256(
-                        opening_world_state
-                    )
-                    payload = None
-                    console_log(
-                        f"Retrying Segment {segment} after one-stage-back Beat "
-                        "regeneration.",
-                        flush=True,
-                    )
+        resolver_raw_repair_offset = int(
+            payload.get("raw_scene_repair_attempts", 0)
+        )
+
+        def repair_raw_after_subject_resolution_failure(failure):
+            nonlocal payload, resolver_raw_repair_offset
+            payload = request_segment_with_recovery(
+                seeded_external_candidate=failure.external_candidate,
+                seeded_raw_scene_issue=failure.issue,
+                raw_repair_attempt_offset=resolver_raw_repair_offset,
+            )
+            resolver_raw_repair_offset = int(
+                payload.get("raw_scene_repair_attempts", 0)
+            )
+            return payload
+
+        payload, subject_resolution = resolve_payload_subjects_with_raw_repair(
+            payload,
+            segment_number=segment,
+            subject_definitions=subject_definitions,
+            story_context=expanded_story_context,
+            current_beat=lambda: segment_bundle.get("current_beat_text", ""),
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": run_config["source_sha256"],
+                "segment": segment,
+            },
+            raw_repair_callback=repair_raw_after_subject_resolution_failure,
+        )
+        (
+            resolved_raw_scene,
+            raw_subject_names,
+            raw_subject_descriptions,
+            raw_subject_wardrobes,
+        ) = subject_resolution
 
         request1_for_transaction = payload.get("request1_result", {})
         accepted_actions = (
@@ -41303,55 +41517,6 @@ def _run_main(
 
         request2_result_for_fixture = copy.deepcopy(payload["llm_result"])
         llm_result = dict(payload["llm_result"])
-        raw_subject_names = []
-        raw_subject_descriptions = {}
-        raw_subject_wardrobes = {}
-        accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
-        resolved_raw_scene = accepted_raw_scene
-        subject_resolution_error = None
-        subject_resolution_succeeded = False
-        for subject_attempt in range(1, 3):
-            try:
-                (
-                    resolved_raw_scene,
-                    raw_subject_names,
-                    raw_subject_descriptions,
-                    raw_subject_wardrobes,
-                ) = resolve_director_raw_scene_subjects(
-                    accepted_raw_scene,
-                    subject_definitions=subject_definitions,
-                    return_subject_bootstrap=True,
-                    story_context=expanded_story_context,
-                    current_beat=segment_bundle.get("current_beat_text", ""),
-                    history_metadata={
-                        "run_id": run_id,
-                        "source_sha256": run_config["source_sha256"],
-                        "segment": segment,
-                        "attempt": subject_attempt,
-                    },
-                    segment_seconds=segment_bundle["current_duration"],
-                )
-                subject_resolution_succeeded = True
-                break
-            except (
-                LLMConnectionError,
-                requests.RequestException,
-                OSError,
-                ValueError,
-                TypeError,
-            ) as error:
-                subject_resolution_error = error
-                if subject_attempt < 2:
-                    console_log(
-                        f"RAW Subject resolution failed for Segment {segment} "
-                        f"(attempt {subject_attempt}/2); retrying: {error}",
-                        flush=True,
-                    )
-        if not subject_resolution_succeeded:
-            raise BeatGenerationError(
-                f"RAW Subject resolution failed for Segment {segment} after "
-                f"2 attempts: {subject_resolution_error}"
-            )
         resolved_raw_scene, carried_final_subjects = (
             _director_carry_forward_final_subjects(
                 resolved_raw_scene,
@@ -41368,6 +41533,8 @@ def _run_main(
         payload["raw_scene"] = resolved_raw_scene
         if isinstance(payload.get("request1_result"), dict):
             payload["request1_result"]["raw_scene"] = resolved_raw_scene
+        if isinstance(payload.get("request1_external_candidate"), dict):
+            payload["request1_external_candidate"]["raw_scene"] = resolved_raw_scene
         llm_result["detailed_description"] = inject_persistent_state_into_description(
             _raw_scene_timed_description(resolved_raw_scene),
         )
