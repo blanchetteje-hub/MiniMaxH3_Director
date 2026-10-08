@@ -1,0 +1,4 @@
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-karnf0te\repo\minimax.py", line 19145
+    'the scene, so don\'t add William.\n'\n                'Example 3: Beat 3 elf steps in and sits at a table: do NOT add the elf.\n\n'
+                                          ^
+SyntaxError: unexpected character after line continuation character
