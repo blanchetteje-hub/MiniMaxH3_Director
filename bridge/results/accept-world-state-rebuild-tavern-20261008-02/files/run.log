@@ -1,0 +1,15 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-kab901hc\repo\minimax.py", line 40900, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-kab901hc\repo\minimax.py", line 40807, in main
+    clear_state_media_output()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-kab901hc\repo\minimax.py", line 37968, in clear_state_media_output
+    os.makedirs(state_directory, exist_ok=True)
+  File "<frozen os>", line 215, in makedirs
+  File "<frozen os>", line 215, in makedirs
+  File "<frozen os>", line 215, in makedirs
+  [Previous line repeated 1 more time]
+  File "<frozen os>", line 225, in makedirs
+FileNotFoundError: [WinError 3] The system cannot find the path specified: 'H:\\'
