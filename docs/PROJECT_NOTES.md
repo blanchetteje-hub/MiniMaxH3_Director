@@ -61,6 +61,24 @@ A local pipeline expands the source story into filmable detail, plans source-own
 
 **The user owns** narrative/prompt intent, feature priorities, permissions, and the final decision to adopt or reject proposed changes. Coding assistants implement only authorized scope.
 
+### GPT-6 vs. Codex — delegation boundary
+
+**GPT-6 owns architecture and project-level reasoning; Codex executes narrowly scoped implementation work.** Delegate by the amount of project context and cross-system judgment required, not simply by task size.
+
+| GPT-6 — retain ownership | Codex — preferred delegation |
+| --- | --- |
+| Architecture, design tradeoffs, scope, and complexity control | Focused code changes with an already-decided design |
+| Cross-system continuity/WorldState authority and integration | Isolated, low-context bugs and mechanical refactors |
+| Interpreting actual bridge/LLM output, acceptance failures, and root causes | Unit/regression tests and straightforward fixes with clear acceptance criteria |
+| Deciding whether to add, remove, or revert a subsystem | Implementing a precise, bounded specification |
+| Reviewing correctness, integration impact, and production acceptance | Reporting diff, tests, and unresolved issues |
+
+- **GPT-6 decides what and why; Codex implements the agreed how.** GPT-6 may implement context-heavy work directly when delegation would lose essential understanding.
+- Whenever Codex is used, **give the user a concise, ready-to-paste Codex prompt** with exact scope, constraints, expected tests, and a prohibition on unrelated changes. Do not assume Codex has this conversation's context or access to the local bridge.
+- Codex must **not** independently redesign architecture, expand the task, change LLM prompts, submit bridge jobs, or interpret an implementation request as approval for additional work. Escalate discoveries that require such decisions back to GPT-6 and the user.
+- **GPT-6 remains accountable**: inspect Codex's actual diff and latest branch, assess integration/authority effects, review test evidence, and decide whether the result warrants local-20B acceptance. Do not accept Codex's summary as verification.
+- Both assistants remain subject to the same explicit user approval and prompt-ownership gates below.
+
 ### Approval and prompt ownership — non-negotiable
 
 - **All runtime system/user LLM prompts are user-owned**: story, Beat, Director, extractor, validator, repair, and retry. GPT-6, Codex, and other assistants must **not** create, edit, rewrite, append to, or simplify these prompts without **separate explicit user authorization for the specific prompt change**. Approval to change code is **not** approval to edit prompts.
