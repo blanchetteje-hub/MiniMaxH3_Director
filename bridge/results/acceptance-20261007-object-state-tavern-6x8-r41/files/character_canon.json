@@ -1,0 +1,27 @@
+{
+  "version": 3,
+  "source_sha256": "d8fc45e23f89a8967d5213dc8d190831578a4a03eab0fa4cc5a15fedc39f8197",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "facial_identity",
+    "facial_structure",
+    "hair",
+    "body_proportions",
+    "distinguishing_features"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "A sturdy leather apron dyed deep brown with worn patches at the elbows and cuffs, cinched to her waist by a thick hemp belt holding a silver brass buckle. Underneath, she wears a plain linen shirt in muted cream, sleeves rolled up to mid‑bicep, paired with dark woolen trousers tucked into calf‑high leather boots polished from frequent use. A faded red scarf loosely drapes around her neck for warmth and style",
+      "gender": "female",
+      "facial_identity": "defined in Picture 1",
+      "facial_structure": "defined in Picture 1",
+      "hair": "defined in Picture 1",
+      "body_proportions": "defined in Picture 1",
+      "distinguishing_features": "defined in Picture 1"
+    }
+  ]
+}
