@@ -892,6 +892,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("REGISTERED WORLDSTATE VOCABULARY", prompt)
         self.assertIn(mug_id, prompt)
         self.assertIn("Never invent a source prop", prompt)
+        self.assertIn("Record explicit opening of a registered prop with open", prompt)
+        self.assertIn("include pour as well as any separate opening action", prompt)
         self.assertIn("Use enter with a registered location ID", prompt)
         self.assertIn("follow enter with set_support", prompt)
         self.assertIn("never use a prop/support ID as enter's location ID", prompt)

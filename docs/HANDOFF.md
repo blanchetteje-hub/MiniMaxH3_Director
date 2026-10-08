@@ -4,6 +4,18 @@ Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This fi
 
 ## CURRENT HANDOFF — 2026-10-07 (read first)
 
+**Latest iteration:** r36 used `fixed-plan-r31-unicorn` on `object-state-work`
+revision `33786849d5f7e2fa4949086b0749ee4e44b238a7`. It captured H3 prompts
+for Segments 1 and 2, then exited 1 in Segment 3 after the RAW/WorldState
+consistency validator found that explicit barrel opening and ale pouring were
+not represented in `state_actions`. The reducer/validator correctly failed
+closed. A focused prompt clarification now maps explicit opening to `open` and
+source-to-target pouring to `pour`, including both actions when both occur.
+Prompt regression and focused Director tests passed (12 passed). The update is
+being committed to `object-state-work`; next queue the same fixed plan as r37
+and inspect whether it gets past Segment 3. This instruction does not authorize
+weakening consistency validation.
+
 **Most recent verified code head before this documentation update:** `f1610fa455` on `object-state-work` (fixed-prop canonical location ownership). A documentation-only operating-contract update followed at `f12d4b9986`.
 
 **Bridge:** `gpt-runtime` is active. The user says **"go"** when a queued job has finished. ChatGPT must inspect `bridge/results/<job_id>/result.json`, determine actual success from nested process return code and generated artifacts, then diagnose/queue next bridge job as appropriate. Codex does not use the bridge; delegate only bounded repo-local implementation and local tests. Do not tell the user to give Codex a bridge job.
@@ -2236,3 +2248,35 @@ Next: push the prompt guidance and queue r36 against the same captured Unicorn
 plan. The r35 result already verified Segment 1 and failed in Segment 2; the
 next run should test whether the correct enter/support action pairing reduces
 those retries. RAW timestamp formatting remains fail-closed.
+
+## 2026-10-07 — r36 fixed-plan result and r37 action guidance
+
+Queued r36 on `gpt-runtime` at `27f1b889` against code revision
+`33786849d5f7e2fa4949086b0749ee4e44b238a7`, replaying the fixed r31 plan. The
+worker completed with child exit code 1. Its acceptance report captured
+Segments 1 and 2 of 6; Segment 3 and later prompts were not produced. The
+previous entry-plus-support guidance was exercised successfully enough for the
+run to complete Segment 2 and reach Segment 3. Segment 1 also passed the
+earlier Unicorn opening-pose conflict, although the captured Subject ledger
+contains a duplicate `<Subject 3> Unicorn_1` alongside the pre-registered
+`Unicorn`; track that identity issue separately.
+
+For Segment 3, RAW explicitly depicts Amy opening the barrel and pouring ale
+from it into a goblet. The state actions recorded barrel possession but omitted
+both `open` and `pour`; the independent consistency validator rejected the
+scene. This is a clear action-serialization omission, not a reason to weaken
+physical validation. Other retries in the same segment included two
+same-location `move` rejections (correctly fail-closed), one malformed `Frame`
+timestamp label, and an inconsistent end state where Amy held the barrel while
+RAW showed her setting it down. These are separate Director output failures.
+
+Added concise Request 1 guidance to record an explicit opening as `open` and a
+source-to-target pour as `pour`, retaining both when RAW shows both events.
+Extended the existing prompt-contract regression. Focused validation:
+`python -m pytest tests/test_director_retry.py -q -k 'request_one or
+state_action_contract or same_location_move_failure_adds_staging_retry_hint'`
+— 12 passed, 112 deselected (2 subtests passed).
+
+Next: queue r37 with the same fixed plan, verify Segment 3's action sequence,
+and continue inspecting full-run artifact count/exit status. Do not modify the
+strict action or state consistency rules to get past the run.
