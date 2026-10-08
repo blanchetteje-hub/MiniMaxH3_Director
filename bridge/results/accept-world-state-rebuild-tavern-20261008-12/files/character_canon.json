@@ -1,0 +1,55 @@
+{
+  "version": 3,
+  "source_sha256": "19752f7092bec48691c1f09a1575bc4c9d3cc796e60d36aafa3a572488997ef0",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman",
+    "wipes_polished_table_with_cloth_soaked_in_ale_scented_oil",
+    "green_skin",
+    "tiny_hands_clutching_a_chipped_mug",
+    "leans_over_the_counter",
+    "beautiful_female_elf",
+    "silver_hair_streaming_down_its_shoulders",
+    "scales_glittering_like_polished_obsidian",
+    "wings_unfurl_to_reveal_amber_eyes_that_scan_room",
+    "sits_on_high_bar_stool"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ":30",
+      "clothing": "Amy",
+      "gender": "female",
+      "confident_woman": "true",
+      "wipes_polished_table_with_cloth_soaked_in_ale_scented_oil": "true"
+    },
+    {
+      "name": "Goblin",
+      "age": ":25",
+      "clothing": "N/A",
+      "gender": "male",
+      "green_skin": "true",
+      "tiny_hands_clutching_a_chipped_mug": "true",
+      "leans_over_the_counter": "true"
+    },
+    {
+      "name": "Elf",
+      "age": ":120",
+      "clothing": "N/A",
+      "gender": "female",
+      "beautiful_female_elf": "true",
+      "silver_hair_streaming_down_its_shoulders": "true"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": ":500",
+      "clothing": "N/A",
+      "gender": "unknown",
+      "scales_glittering_like_polished_obsidian": "true",
+      "wings_unfurl_to_reveal_amber_eyes_that_scan_room": "true",
+      "sits_on_high_bar_stool": "true"
+    }
+  ]
+}
