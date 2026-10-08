@@ -897,14 +897,15 @@ INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT = {
         "name": "director_raw_scene_subject_resolution",
         "strict": True,
         "schema": {
-            "type": "object",
-            "additionalProperties": {
+            "type": "array",
+            "items": {
                 "type": "object",
                 "properties": {
+                    "subject": {"type": "string", "minLength": 1},
                     "present": {"type": "boolean"},
                     "reason": {"type": "string", "minLength": 1},
                 },
-                "required": ["present", "reason"],
+                "required": ["subject", "present", "reason"],
                 "additionalProperties": False,
             },
         },
@@ -19168,18 +19169,14 @@ def build_initial_location_subjects_messages(possible_subjects, beat_text):
         {
             "role": "system",
             "content": (
-                "Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in "
-                "that beat, you need to validate two things:\n"
-                "Are they entering the scene: walked in, opened the door and entered, etc., "
-                "making present = false.\n"
+                "Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in that beat, you need to validate two things:\n"
+                "Are they entering the scene: walked in, opened the door and entered, etc., making present = false.\n"
                 "OR\n"
-                "Are they performing an action while already in the scene: picked up a cup, "
-                "kicked the wall, etc., making present=true.\n\n"
-                "Use the above determination to determine if they were present in the scene "
-                "before this story beat or not.\n\n"
+                "Are they performing an action while already in the scene: picked up a cup, kicked the wall, etc., making present=true.\n\n"
+                "Use the above determination to determine if they were present in the scene before this story beat or not.\n\n"
                 "- if the POSSIBLE SUBJECT isn't referenced at all, don't return it.\n"
-                "- List the Subject, present:{true:false},  and one-sentence reasoning.\n"
-                "- Return JSON."
+                "- List the Subject (no adjectives), present:{true:false},  and one-sentence reasoning.\n"
+                "- Return a JSON array of Subjects."
             ),
         },
         {
@@ -19195,12 +19192,12 @@ def build_initial_location_subjects_messages(possible_subjects, beat_text):
 
 
 def parse_initial_location_subjects(raw_result, possible_subject_names=None):
-    """Normalize name-keyed Subject presence classifications."""
+    """Normalize an array of Subject presence classifications."""
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
-    if not isinstance(candidate, dict):
-        raise ValueError("Subject presence extraction must return a JSON object.")
+    if not isinstance(candidate, list):
+        raise ValueError("Subject presence extraction must return a JSON array.")
     normalized = []
     seen = set()
     canonical_names = {
@@ -19221,12 +19218,14 @@ def parse_initial_location_subjects(raw_result, possible_subject_names=None):
     for alias_key, targets in role_aliases.items():
         if len(targets) == 1:
             canonical_names[alias_key] = next(iter(targets))
-    for raw_name, item in candidate.items():
-        name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
-        if not isinstance(item, dict) or set(item) != {"present", "reason"}:
+    for item in candidate:
+        if not isinstance(item, dict) or set(item) != {"subject", "present", "reason"}:
             raise ValueError(
-                f"Subject presence entry for {name or raw_name!r} must contain only present and reason."
+                "Each Subject presence entry must contain only subject, present, and reason."
             )
+        name = " ".join(str(item.get("subject") or "").split()).strip(" ,.;:-")
+        if not name:
+            raise ValueError("Subject presence entry must name a Subject.")
         if not isinstance(item.get("present"), bool):
             raise ValueError(f"Subject presence for {name!r} must be a boolean.")
         reason = " ".join(str(item.get("reason") or "").split()).strip()

@@ -29,6 +29,12 @@ Continuity
 Location continuity -> 3-second persistent 360-orbit room reference is accepted; covered geometry stayed ~99% consistent in the latest tavern run
 State/subject/action continuity -> active work
 
+## 2026-10-08 — Subject resolver array response
+
+- Updated the `director_raw_scene_subject_resolution` system prompt to the approved wording: classify each referenced possible Subject as entering (`present=false`) or already present and acting (`present=true`), omit unreferenced Subjects, return Subject names without adjectives, and return a JSON array.
+- Updated the existing structured response schema and parser to accept only an array of `{subject, present, reason}` records. Canonical-name enforcement, strict rejection of unregistered names, and earliest-valid-classification behavior remain in place.
+- Verification: `python -m pytest -q tests/test_location_state_reference.py` (28 passed), `python -m py_compile minimax.py tests/test_location_state_reference.py`, and `git diff --check` passed.
+
 ## 2026-10-08 — acceptance -12 Subject identity and wardrobe coverage
 
 - Registered every `character_canon` identity in WorldState before canonical wardrobe seeding. This reuses the existing identity-only registration API and leaves presence/location unknown unless a separate authority establishes them.

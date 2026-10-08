@@ -135,6 +135,14 @@ A rectangular tavern interior.
         self.assertIn("making present = false", messages[0]["content"])
         self.assertIn("making present=true", messages[0]["content"])
         self.assertIn("if the POSSIBLE SUBJECT isn't referenced at all", messages[0]["content"])
+        self.assertIn("List the Subject (no adjectives)", messages[0]["content"])
+        self.assertIn("Return a JSON array of Subjects", messages[0]["content"])
+        schema = minimax.INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT["json_schema"]["schema"]
+        self.assertEqual(schema["type"], "array")
+        self.assertEqual(
+            set(schema["items"]["properties"]),
+            {"subject", "present", "reason"},
+        )
         self.assertEqual(
             messages[1]["content"],
             "POSSIBLE SUBJECTS\nAmy, Goblin1\n\nSTORY BEAT\n" + beat,
@@ -147,12 +155,12 @@ A rectangular tavern interior.
             "The goblin enters from outside, and the elf is already seated.",
         ]
         responses = [
-            '{"Amy":{"present":true,"reason":"Amy wipes the counter."},'
-            '"Elf":{"present":false,"reason":"The elf waits by the door."}}',
-            '{"goblin":{"present":true,"reason":"The goblin asks for a pint."},'
-            '"Elf":{"present":false,"reason":"The elf steps into the tavern."}}',
-            '{"Goblin1":{"present":false,"reason":"The goblin enters from outside."},'
-            '"Elf":{"present":true,"reason":"The elf is already seated."}}',
+            '[{"subject":"Amy","present":true,"reason":"Amy wipes the counter."},'
+            '{"subject":"Elf","present":false,"reason":"The elf waits by the door."}]',
+            '[{"subject":"goblin","present":true,"reason":"The goblin asks for a pint."},'
+            '{"subject":"Elf","present":false,"reason":"The elf steps into the tavern."}]',
+            '[{"subject":"Goblin1","present":false,"reason":"The goblin enters from outside."},'
+            '{"subject":"Elf","present":true,"reason":"The elf is already seated."}]',
         ]
         request = mock.Mock(side_effect=responses)
         result = minimax.extract_initial_location_subjects(
@@ -188,8 +196,8 @@ A rectangular tavern interior.
     def test_initial_location_subject_retry_repeats_only_current_beat(self):
         request = mock.Mock(side_effect=[
             '{"wrong":[]}',
-            '{"goblin":{"present":true,"reason":"The goblin asks for ale."}}',
-            "{}",
+            '[{"subject":"goblin","present":true,"reason":"The goblin asks for ale."}]',
+            "[]",
         ])
         result = minimax.extract_initial_location_subjects(
             ["The goblin asks for ale.", "Amy serves the goblin."],
@@ -222,7 +230,7 @@ A rectangular tavern interior.
         )
 
     def test_initial_location_subject_exact_canon_name_survives_role_normalization(self):
-        request = mock.Mock(return_value='{"goblin":{"present":true,"reason":"The goblin asks for ale."}}')
+        request = mock.Mock(return_value='[{"subject":"goblin","present":true,"reason":"The goblin asks for ale."}]')
         result = minimax.extract_initial_location_subjects(
             ["The goblin asks for ale."],
             possible_subjects=["Goblin"],
@@ -239,8 +247,8 @@ A rectangular tavern interior.
 
     def test_initial_location_subject_retries_unrecognized_keys(self):
         request = mock.Mock(side_effect=[
-            '{"subjects":{"present":true,"reason":"Unknown wrapper key."}}',
-            '{"Amy":{"present":true,"reason":"Amy opens the curtains."}}',
+            '[{"subject":"Unknown","present":true,"reason":"Unknown Subject."}]',
+            '[{"subject":"Amy","present":true,"reason":"Amy opens the curtains."}]',
         ])
         result = minimax.extract_initial_location_subjects(
             ["Amy opens the curtains."],
@@ -260,7 +268,7 @@ A rectangular tavern interior.
     def test_initial_location_subject_parser_rejects_unknown_canon_key(self):
         with self.assertRaisesRegex(ValueError, "unrecognized Subject key"):
             minimax.parse_initial_location_subjects(
-                {"Unknown": {"present": True, "reason": "It acts."}},
+                [{"subject": "Unknown", "present": True, "reason": "It acts."}],
                 possible_subject_names=["Amy"],
             )
 
@@ -394,12 +402,13 @@ A rectangular tavern interior.
         self.assertIn("may remain stationary", prompt)
 
     def test_initial_location_subject_parser_normalizes_role_name(self):
-        result = minimax.parse_initial_location_subjects({
-            "goblin": {
+        result = minimax.parse_initial_location_subjects([
+            {
+                "subject": "goblin",
                 "present": True,
                 "reason": "The goblin leans over the counter clutching a chipped mug.",
             },
-        })
+        ])
         self.assertEqual(
             result,
             [{
