@@ -40,6 +40,13 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
 - The test-only llama client no longer accepts `H3_LLM_TEMPERATURE`; endpoint, model, and request timeout remain configurable.
 - Verification: `python -m py_compile minimax.py desktop_app.py tests/LLM/llama_client.py`, frontend production build, and `git diff --check` passed. Focused profile/desktop/story tests passed (50 tests, 22 subtests). A broader mixed run reported stale reasoning-profile and prompt-text assertions; those failures were outside this settings change.
 
+## 2026-10-08 — per-beat Subject presence classification
+
+- Changed `director_raw_scene_subject_resolution` from one story-wide pass to one call for each nonempty beat, in chronological order. Each user prompt contains only that beat's text; the system prompt asks for each Subject's presence determination and one-sentence reason.
+- Python keeps the first classification for each normalized Subject identity and ignores later conflicting results. A Subject omitted from a beat is not classified by that beat. Existing authored Subjects are filtered deterministically after the beat passes.
+- The extractor continues returning the existing `initial_location_subjects` seed structure, so downstream Subject registration and prompts keep their contract.
+- Verification: `python -m py_compile minimax.py`, `python -m pytest -q tests/test_location_state_reference.py` (25 passed), and `git diff --check` passed.
+
 ## 2026-10-08 — acceptance #03: opening Subject classification
 
 - Bridge preflight accept-world-state-rebuild-00-preflight-20261008-03: 10/10 passed.

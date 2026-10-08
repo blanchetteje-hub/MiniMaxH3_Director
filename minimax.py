@@ -19127,37 +19127,28 @@ def build_story_location_messages(expanded_story):
     ]
 
 
-def build_initial_location_subjects_messages(beats, subject_definitions=""):
-    """Build the beat-plan-wide Subject story-start presence classifier."""
-    numbered_beats = "\n".join(
-        f"Beat {index}: {str(beat).strip()}"
-        for index, beat in enumerate(beats or [], start=1)
-        if str(beat).strip()
-    )
+def build_initial_location_subjects_messages(beat_text):
+    """Build one Subject story-start presence request for a single beat."""
     return [
         {
             "role": "system",
             "content": (
-                "Your job is to examine all beats AFTER Beat 1 and determine which of those "
-                "Subjects were actually in the scene from the beginning.  Each Subject that "
-                "appears, you need to validate two things:\n"
-                "1) are they entering the scene: walked in, opened the door and entered, etc.?\n"
-                "2) are they performing an action while already in the scene: picked up a cup, "
-                "kicked the wall, etc.?\n\n"
-                "- List the Subject, present:{true:false},  and one-sentence reasoning.\n"
+                "Your job is to examine a story beat.  Each Subject that appears in that beat, "
+                "you need to validate two things:\n"
+                "Are they entering the scene: walked in, opened the door and entered, etc.?\n"
+                "OR\n"
+                "Are they performing an action while already in the scene: picked up a cup, "
+                "kicked the wall, etc.\n\n"
+                "Use the above determination to determine if they were present in the scene "
+                "before this story beat or not.\n\n"
+                "- List the Subject (no adjectives), present:{true:false},  and one-sentence "
+                "reasoning.\n"
                 "- Return JSON."
             ),
         },
         {
             "role": "user",
-            "content": (
-                "EXISTING SUBJECT DEFINITIONS\n"
-                + (str(subject_definitions or "").strip() or "N/A")
-                + "\n\nALL BEATS\n"
-                + (numbered_beats or "N/A")
-                + "\n\nReturn a JSON object keyed by each Subject name. Each value must contain "
-                "exactly present (a boolean) and reason (one sentence)."
-            ),
+            "content": str(beat_text or "").strip(),
         },
     ]
 
@@ -19209,82 +19200,100 @@ def extract_initial_location_subjects(
     history_metadata=None,
     attempts=3,
 ):
-    """Infer only Subjects whose beat-plan state proves story-start presence."""
+    """Classify each beat in order; keep each Subject's earliest result."""
     if llm_request is None:
         llm_request = ask_llm
     if not beats:
         return []
-    last_error = None
-    base_messages = build_initial_location_subjects_messages(
-        beats,
-        subject_definitions=subject_definitions,
-    )
     max_attempts = max(1, int(attempts))
-    for attempt in range(1, max_attempts + 1):
-        messages = [dict(message) for message in base_messages]
-        if attempt > 1:
-            messages[-1]["content"] += (
-                "\n\nRETRY: Return a JSON object keyed by Subject name. Every value must "
-                "contain only a boolean present field and a one-sentence reason field."
-            )
-        try:
-            raw = llm_request(
-                messages,
-                response_format=INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT,
-                parse_json_response=False,
-                history_metadata={
-                    **dict(history_metadata or {}),
-                    "purpose": "director_raw_scene_subject_resolution",
-                    "attempt": attempt,
-                },
-            )
-            console_log(
-                "director_raw_scene_subject_resolution LLM result "
-                f"(attempt {attempt}/{max_attempts}):\n{raw}",
-                flush=True,
-            )
-            classifications = parse_initial_location_subjects(raw)
-            defined_names = {
-                _subject_identity_key(name)
-                for _number, name in parse_defined_subjects(subject_definitions)
-            }
-            selected = []
-            for item in classifications:
+    first_classification_by_subject = {}
+    for beat_index, beat in enumerate(beats, start=1):
+        beat_text = str(beat or "").strip()
+        if not beat_text:
+            continue
+        last_error = None
+        base_messages = build_initial_location_subjects_messages(beat_text)
+        for attempt in range(1, max_attempts + 1):
+            messages = [dict(message) for message in base_messages]
+            try:
+                raw = llm_request(
+                    messages,
+                    response_format=INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT,
+                    parse_json_response=False,
+                    history_metadata={
+                        **dict(history_metadata or {}),
+                        "purpose": "director_raw_scene_subject_resolution",
+                        "beat_index": beat_index,
+                        "attempt": attempt,
+                    },
+                )
                 console_log(
-                    "Story-start Subject classification: "
-                    f"{item['name']} present={item['present']}; reason={item['reason']}",
+                    "director_raw_scene_subject_resolution LLM result "
+                    f"(Beat {beat_index}, attempt {attempt}/{max_attempts}):\n{raw}",
                     flush=True,
                 )
-                if not item["present"]:
-                    continue
-                if _subject_identity_key(item["name"]) in defined_names:
+                classifications = parse_initial_location_subjects(raw)
+                for item in classifications:
+                    key = _subject_identity_key(item["name"])
+                    previous = first_classification_by_subject.get(key)
+                    if previous is not None:
+                        console_log(
+                            "Ignoring later story-start Subject classification for "
+                            f"{item['name']} in Beat {beat_index}; first classified in "
+                            f"Beat {previous['beat_index']} as "
+                            f"present={previous['present']}.",
+                            flush=True,
+                        )
+                        continue
+                    first_classification_by_subject[key] = {
+                        **item,
+                        "beat_index": beat_index,
+                    }
                     console_log(
-                        "Story-start Subject classification omitted from dynamic seed "
-                        f"because {item['name']} is already defined in subjects.txt.",
+                        "First story-start Subject classification: "
+                        f"{item['name']} in Beat {beat_index} "
+                        f"present={item['present']}; reason={item['reason']}",
                         flush=True,
                     )
-                    continue
-                selected.append({
-                    "name": item["name"],
-                    "initial_state": "present in the opening scene",
-                    "reason": item["reason"],
-                })
-            return selected
-        except LLMConnectionError:
-            raise
-        except (TypeError, ValueError) as error:
-            last_error = error
-            if attempt < max_attempts:
-                console_log(
-                    f"Initial-location Subject extractor returned unusable output "
-                    f"(attempt {attempt}/{max_attempts}); retrying only this "
-                    f"extractor: {error}",
-                    flush=True,
-                )
-    raise ValueError(
-        "Could not extract initial-location Subjects: "
-        + str(last_error or "unknown initial Subject extraction error")
-    )
+                break
+            except LLMConnectionError:
+                raise
+            except (TypeError, ValueError) as error:
+                last_error = error
+                if attempt < max_attempts:
+                    console_log(
+                        f"Initial-location Subject extractor returned unusable output "
+                        f"for Beat {beat_index} (attempt {attempt}/{max_attempts}); "
+                        f"retrying this beat: {error}",
+                        flush=True,
+                    )
+        else:
+            raise ValueError(
+                f"Could not extract initial-location Subjects for Beat {beat_index}: "
+                + str(last_error or "unknown initial Subject extraction error")
+            )
+
+    defined_names = {
+        _subject_identity_key(name)
+        for _number, name in parse_defined_subjects(subject_definitions)
+    }
+    selected = []
+    for item in first_classification_by_subject.values():
+        if not item["present"]:
+            continue
+        if _subject_identity_key(item["name"]) in defined_names:
+            console_log(
+                "Story-start Subject classification omitted from dynamic seed "
+                f"because {item['name']} is already defined in subjects.txt.",
+                flush=True,
+            )
+            continue
+        selected.append({
+            "name": item["name"],
+            "initial_state": "present in the opening scene",
+            "reason": item["reason"],
+        })
+    return selected
 
 
 def seed_initial_location_subjects(

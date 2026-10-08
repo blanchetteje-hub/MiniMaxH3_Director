@@ -124,49 +124,83 @@ A rectangular tavern interior.
         )
 
 
-    def test_initial_location_subject_extractor_reads_all_beats(self):
-        beats = [
-            "Amy wipes the tavern counter.",
-            "A goblin already seated near the hearth asks Amy for a pint.",
-            "Amy serves the goblin.",
-        ]
-        messages = minimax.build_initial_location_subjects_messages(
-            beats,
-            "<Subject 1> is Amy (S1).",
-        )
-        system = messages[0]["content"]
-        user = messages[1]["content"]
-        self.assertIn("Return subjects defined in beats that have no entry point", system)
-        self.assertIn("Jim is already there, so add Jim", system)
-        self.assertIn("William enters the scene, so don't add William", system)
-        self.assertIn("do not return a subject defined in EXISTING SUBJECT DEFINITIONS", system)
-        self.assertNotIn("The result is exhaustive", system)
-        self.assertIn("initial_state must be the minimal physical location/pose", system)
-        self.assertIn("do not invent appearance, clothing, motives, actions, or plot facts", system)
-        self.assertIn("Beat 2: A goblin already seated near the hearth", user)
+    def test_initial_location_subject_prompt_contains_only_one_beat(self):
+        beat = "A goblin already seated near the hearth asks Amy for a pint."
+        messages = minimax.build_initial_location_subjects_messages(beat)
+        self.assertIn("examine a story beat", messages[0]["content"])
+        self.assertIn("(no adjectives)", messages[0]["content"])
+        self.assertEqual(messages[1]["content"], beat)
 
-    def test_initial_location_subject_extractor_retries_only_itself(self):
-        request = mock.Mock(side_effect=[
-            '{"wrong":[]}',
-            '{"subjects":[{"name":"goblin","initial_state":"seated near the hearth"}]}',
-        ])
+    def test_initial_location_subject_extractor_uses_first_classification_per_subject(self):
+        beats = [
+            "Amy wipes the counter while the elf waits by the door.",
+            "The goblin asks Amy for a pint; the elf steps into the tavern.",
+            "The goblin enters from outside, and the elf is already seated.",
+        ]
+        responses = [
+            '{"Amy":{"present":true,"reason":"Amy wipes the counter."},'
+            '"Elf":{"present":false,"reason":"The elf waits by the door."}}',
+            '{"goblin":{"present":true,"reason":"The goblin asks for a pint."},'
+            '"Elf":{"present":false,"reason":"The elf steps into the tavern."}}',
+            '{"Goblin1":{"present":false,"reason":"The goblin enters from outside."},'
+            '"Elf":{"present":true,"reason":"The elf is already seated."}}',
+        ]
+        request = mock.Mock(side_effect=responses)
         result = minimax.extract_initial_location_subjects(
-            ["Amy wipes the counter.", "A goblin already seated near the hearth asks for ale."],
+            beats,
             "<Subject 1> is Amy (S1).",
             llm_request=request,
         )
         self.assertEqual(
             result,
-            [{"name": "Goblin1", "initial_state": "seated near the hearth"}],
+            [{
+                "name": "Goblin1",
+                "initial_state": "present in the opening scene",
+                "reason": "The goblin asks for a pint.",
+            }],
         )
-        self.assertEqual(request.call_count, 2)
-        self.assertEqual(
-            request.call_args_list[0].kwargs["history_metadata"]["purpose"],
-            "director_raw_scene_subject_resolution",
+        self.assertEqual(request.call_count, len(beats))
+        for index, beat in enumerate(beats):
+            call = request.call_args_list[index]
+            self.assertEqual(call.args[0][-1]["content"], beat)
+            self.assertEqual(
+                call.kwargs["history_metadata"]["beat_index"], index + 1
+            )
+            self.assertEqual(
+                call.kwargs["history_metadata"]["purpose"],
+                "director_raw_scene_subject_resolution",
+            )
+
+    def test_initial_location_subject_retry_repeats_only_current_beat(self):
+        request = mock.Mock(side_effect=[
+            '{"wrong":[]}',
+            '{"goblin":{"present":true,"reason":"The goblin asks for ale."}}',
+            "{}",
+        ])
+        result = minimax.extract_initial_location_subjects(
+            ["The goblin asks for ale.", "Amy serves the goblin."],
+            llm_request=request,
         )
         self.assertEqual(
-            request.call_args_list[1].kwargs["history_metadata"]["attempt"],
-            2,
+            result,
+            [{
+                "name": "Goblin1",
+                "initial_state": "present in the opening scene",
+                "reason": "The goblin asks for ale.",
+            }],
+        )
+        self.assertEqual(request.call_count, 3)
+        first_messages = request.call_args_list[0].args[0]
+        retry_messages = request.call_args_list[1].args[0]
+        self.assertEqual(first_messages, retry_messages)
+        self.assertEqual(first_messages[-1]["content"], "The goblin asks for ale.")
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["beat_index"] for call in request.call_args_list],
+            [1, 1, 2],
+        )
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["attempt"] for call in request.call_args_list],
+            [1, 2, 1],
         )
 
     def test_location_state_prompt_labels_only_needed_fixtures_and_supports(self):
@@ -298,30 +332,21 @@ A rectangular tavern interior.
         self.assertIn("show each Subject at least once", prompt)
         self.assertIn("may remain stationary", prompt)
 
-    def test_initial_location_subject_strips_held_prop_tail_without_losing_subject(self):
+    def test_initial_location_subject_parser_normalizes_role_name(self):
         result = minimax.parse_initial_location_subjects({
-            "subjects": [{
-                "name": "goblin",
-                "initial_state": "leaning over the counter clutching a chipped mug",
-            }],
+            "goblin": {
+                "present": True,
+                "reason": "The goblin leans over the counter clutching a chipped mug.",
+            },
         })
         self.assertEqual(
             result,
-            [{"name": "Goblin1", "initial_state": "leaning over the counter"}],
+            [{
+                "name": "Goblin1",
+                "present": True,
+                "reason": "The goblin leans over the counter clutching a chipped mug.",
+            }],
         )
-
-    def test_initial_location_subject_retry_does_not_force_generic_role_name(self):
-        request = mock.Mock(side_effect=[
-            '{"wrong":[]}',
-            '{"subjects":[{"name":"goblin","initial_state":"leaning over the counter"}]}',
-        ])
-        minimax.extract_initial_location_subjects(
-            ["Amy wipes the counter.", "A goblin leans over the counter."],
-            "<Subject 1> is Amy (S1).",
-            llm_request=request,
-        )
-        retry_prompt = request.call_args_list[1].args[0][-1]["content"]
-        self.assertNotIn("Role1", retry_prompt)
 
     def test_physical_validator_prompt_knows_existing_offscreen_subject(self):
         state = minimax.new_continuity_state()
