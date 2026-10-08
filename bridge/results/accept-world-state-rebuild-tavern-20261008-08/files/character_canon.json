@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "source_sha256": "45b836cbdd46346182e2f3f71f864c052d7f4e69f47edc575ba873877e1cbe46",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman",
+    "skin_color",
+    "hand_size",
+    "hair_color",
+    "appearance",
+    "scales_appearance",
+    "eye_color",
+    "wing_status"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "Rough‑spun tunic (top) with scuffs from medieval trade; leather apron over the tunic also showing wear; woolen breeches tucked into sturdy leather boots; a simple linen waist belt holding pouches",
+      "gender": "female",
+      "confident_woman": "yes"
+    },
+    {
+      "name": "Goblin with green skin",
+      "age": "25",
+      "clothing": "N/A",
+      "gender": "male",
+      "skin_color": "green",
+      "hand_size": "tiny"
+    },
+    {
+      "name": "Beautiful female elf",
+      "age": "200",
+      "clothing": "N/A",
+      "gender": "female",
+      "hair_color": "silver",
+      "appearance": "beautiful"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "500",
+      "clothing": "N/A",
+      "gender": "male",
+      "scales_appearance": "glittering like polished obsidian",
+      "eye_color": "amber",
+      "wing_status": "unfurled"
+    }
+  ]
+}
