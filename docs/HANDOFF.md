@@ -38,6 +38,7 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
 - Long-input extraction purposes select explicit immutable long-context profiles. All runtime LLM profile mappings are read-only.
 - Removed the mutable story-temperature CLI/GUI override. Story expansion now uses its fixed profile value of 0.8.
 - The test-only llama client no longer accepts `H3_LLM_TEMPERATURE`; endpoint, model, and request timeout remain configurable.
+- Verification: `python -m py_compile minimax.py desktop_app.py tests/LLM/llama_client.py`, frontend production build, and `git diff --check` passed. Focused profile/desktop/story tests passed (50 tests, 22 subtests). A broader mixed run reported stale reasoning-profile and prompt-text assertions; those failures were outside this settings change.
 
 ## 2026-10-08 — acceptance #03: opening Subject classification
 
