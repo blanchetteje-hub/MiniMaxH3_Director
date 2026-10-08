@@ -1,0 +1,145 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+LLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).
+LLM request finished: character_canon (15.4s, finish_reason=stop).
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~606 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (1.8s, finish_reason=stop).
+Canonical appropriate attire for Amy: Amy wears a sturdy brown leather apron over a plain white linen shirt, dark green woolen breeches tucked into worn leather knee‑high boots. The apron is patched at the shoulders from years of use, its front pockets lined with faded blue cloth for holding tools
+LLM request started: story_location_extract (attempt 1/10, ~445 input tokens, max 256 output tokens).
+LLM request finished: story_location_extract (2.0s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~702 input tokens, max 512 output tokens).
+LLM request finished: static_setting_extract (1.9s, finish_reason=stop).
+Static setting extractor response: 'Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls'
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~281 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (4.7s, finish_reason=stop).
+Spatial setting refiner response: 'Stone tavern – 30\u202fft wide by 40\u202fft long.\n\n**North wall (anchor):** A rough‑hewn wooden bar stretches from the north corner to the east side of the room, measuring 12\u202fft in length and 3\u202fft high. Beside the bar on its west side sits a single wide stool, 2\u202fft deep by 1.5\u202fft wide.\n\n**East wall:** A counter runs along the entire east wall, 8\u202fft long and 4\u202fft high. On this counter rests a crystal goblet positioned at the midpoint of the counter (east‑west).\n\n**South wall:** Oak barrels are arranged in two rows on the south side, each row holding five barrels. Each barrel is 3\u202fft tall by 2\u202fft wide; iron lids cap them.\n\n**West wall:** A low chair sits centered along the west wall, 1\u202fft deep and 1\u202fft wide, positioned 5\u202fft from the north corner.\n\n**Floor:** Timbered floorboards span the entire space. The central area (10\u202fft by 12\u202fft) is free of furniture for easy movement.\n\n**Lighting:** Four flickering torches are mounted on stone wall sconces—two on the east wall at 4\u202fft height, two on the west wall at 3\u202fft height—providing warm illumination across all walls. The light falls evenly over the bar, counter, barrels, and chair without overlapping shadows.\n\nAll objects are placed so that doors (if any) would be accessible from the north entrance, with clear paths around each piece of furniture. No two items overlap in space.'
+LLM request started: story_setting_extract (attempt 1/10, ~1114 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (19.7s, finish_reason=stop).
+Static location boundary omitted ungrounded fixture/support entries: 'entrance', 'torch east 1', 'torch east 2', 'torch west 1', 'torch west 2'
+Structured story setting extractor response: 'Location: Stone Tavern  \n```json\n{\n  "location": {\n    "name": "Stone Tavern",\n    "dimensions_ft": {"width":30,"length":40}\n  },\n  "anchors": [\n    { "name":"entrance", "type":"door", "wall":"north", "world_state_role":"fixture", "mobility":"fixed" },\n    { "name":"bar", "type":"wooden bar", "wall":"north", "world_state_role":"fixture", "mobility":"fixed" },\n    { "name":"counter", "type":"stone counter", "wall":"east", "world_state_role":"fixture_support", "mobility":"fixed" }\n  ],\n  "objects": [\n    { "name":"wide stool", "type":"stool", "near":["bar"], "world_state_role":"untracked", "mobility":"unknown" },\n    { "name":"low chair", "type":"chair", "position":{"wall":"west","distance_from_north_ft":5}, "world_state_role":"untracked", "mobility":"unknown" },\n    { "name":"crystal goblet", "type":"goblet", "near":["counter"], "world_state_role":"untracked", "mobility":"unknown" },\n    { "name":"oak barrels", "type":"barrel rack", "rows":2, "count_per_row":5, "size_ft":{"height":3,"width":2}, "position":"south wall", "world_state_role":"untracked", "mobility":"unknown" },\n    { "name":"iron lids", "type":"lid", "attached_to":"oak barrels", "world_state_role":"untracked", "mobility":"fixed" },\n    { "name":"torch east 1", "type":"torch", "position":{"wall":"east","height_ft":4}, "world_state_role":"fixture", "mobility":"fixed" },\n    { "name":"torch east 2", "type":"torch", "position":{"wall":"east","height_ft":4}, "world_state_role":"fixture", "mobility":"fixed" },\n    { "name":"torch west 1", "type":"torch", "position":{"wall":"west","height_ft":3}, "world_state_role":"fixture", "mobility":"fixed" },\n    { "name":"torch west 2", "type":"torch", "position":{"wall":"west","height_ft":3}, "world_state_role":"fixture", "mobility":"fixed" }\n  ]\n}\n```\nThe stone tavern is a rectangular room, thirty feet wide and forty feet long. A rough‑hewn wooden bar stretches along the north wall from its corner to the east side; beside it on the west side sits a single wide stool. The entire east wall hosts an eight‑foot counter that rises four feet high, with a crystal goblet resting at its midpoint. Oak barrels, each three feet tall and two feet wide, line the south wall in two rows of five, capped by iron lids. Centered on the west wall, five feet from the north corner, sits a low chair. Timbered floorboards cover the whole space, leaving a ten‑by‑twelve foot central area free for movement. Four flickering torches—two mounted at four feet high on the east wall and two at three feet high on the west wall—provide warm illumination across all walls without casting overlapping shadows. The north entrance door offers clear access to the room, with paths around each piece of furniture unobstructed.'
+Story location metadata: overall='a stone tavern'; starting='behind the rough-hewn wooden bar'; setting='Stone Tavern Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls wooden bar (bar) is on the north wall. stone counter (counter) is on the east wall.'; location_state={'location': {'name': 'Stone Tavern', 'dimensions_ft': {'width': 30, 'length': 40}, 'description': 'Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls'}, 'anchors': [{'name': 'bar', 'type': 'wooden bar', 'wall': 'north', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'counter', 'type': 'stone counter', 'wall': 'east', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}], 'objects': [{'name': 'wide stool', 'type': 'stool', 'near': ['bar'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'low chair', 'type': 'chair', 'position': {'wall': 'west', 'distance_from_north_ft': 5}, 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'crystal goblet', 'type': 'goblet', 'near': ['counter'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'oak barrels', 'type': 'barrel rack', 'rows': 2, 'count_per_row': 5, 'size_ft': {'height': 3, 'width': 2}, 'position': 'south wall', 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'iron lids', 'type': 'lid', 'attached_to': 'oak barrels', 'world_state_role': 'untracked', 'mobility': 'fixed'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~501 input tokens, max 512 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (2.3s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (attempt 1/3):
+{"subjects":[{"name":"Dragon","initial_state":"standing on a wide stool at the far end of the wooden bar"},{"name":"Unicorn","initial_state":"sitting on a low chair in the middle of the tavern"}]}
+Subjects inferred as already present at story start: Dragon (present in the story's starting location; exact position and pose unknown); Unicorn (present in the story's starting location; exact position and pose unknown)
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~706 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (2.8s, finish_reason=stop).
+Canonical appropriate attire for Dragon: Dragon wears a polished bronze-scale body; it has no separate clothing but sports a fitted silver chainmail breastplate that clinks softly as it moves and leather claw guards to protect its talons while seated on the stool
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~706 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (1.5s, finish_reason=stop).
+Canonical appropriate attire for Unicorn: N/A
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~366 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_subjects (0.9s, finish_reason=stop).
+LLM request started: world_state_current_segment_props (attempt 1/10, ~892 input tokens, max 512 output tokens).
+LLM request finished: world_state_current_segment_props (1.2s, finish_reason=stop).
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 2320/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+LLM request started: director_raw_scene (attempt 1/10, ~2879 input tokens, max 5185 output tokens).
+LLM request finished: director_raw_scene (19.9s, finish_reason=stop).
+LLM request started: director_raw_scene_physical (attempt 1/10, ~964 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_physical (1.1s, finish_reason=stop).
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~730 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_prop_state (1.0s, finish_reason=stop).
+LLM request started: director_raw_scene_timing (attempt 1/10, ~806 input tokens, max 384 output tokens).
+LLM request finished: director_raw_scene_timing (1.8s, finish_reason=stop).
+LLM request started: director_raw_world_state_consistency (attempt 1/10, ~2135 input tokens, max 384 output tokens).
+LLM request finished: director_raw_world_state_consistency (1.1s, finish_reason=stop).
+Checking pronouns segment:
+LLM request started: director_raw_scene_pronoun_resolution (attempt 1/10, ~711 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_pronoun_resolution (5.0s, finish_reason=stop).
+Checking pronouns segment: LLM result=At 00:00.000, The camera starts wide on the north wall of the stone tavern, showing the rough‑hewn wooden bar and flickering torches overhead. Dragon and Unicorn are visible in the far end of the bar’s back corner.
+
+At 00:01.500, Amy steps into frame from the left side behind the bar, her sturdy brown leather apron over a plain white linen shirt, dark green woolen breeches tucked into worn leather knee‑high boots. She positions herself at the center of the bar’s rear edge and faces forward.
+
+At 00:03.000, The camera pulls in slightly to frame Amy from waist up, Amy's hands resting in the faded blue cloth pockets of the apron as she stands still.
+
+At 00:05.500, A gentle tilt down reveals the timbered floor beneath Amy’s boots and the stone tavern’s ambient woodsmoke scent implied by the warm torch light.
+
+At 00:07.000, Amy takes a slow, deliberate breath, Amy's eyes scanning the bar area before settling on the flickering torches above.
+Checking pronouns segment: replaced At 00:03.000, The camera pulls in slightly to frame Amy from waist up, her hands resting in the faded blue cloth pockets of the apron as she stands still. -> At 00:03.000, The camera pulls in slightly to frame Amy from waist up, Amy's hands resting in the faded blue cloth pockets of the apron as she stands still.
+Checking pronouns segment: replaced At 00:07.000, Amy takes a slow, deliberate breath, her eyes scanning the bar area before settling on the flickering torches above. -> At 00:07.000, Amy takes a slow, deliberate breath, Amy's eyes scanning the bar area before settling on the flickering torches above.
+Segment 1 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.000, The camera starts wide on the north wall of the stone tavern, showing the rough‑hewn wooden bar and flickering torches overhead. Dragon and Unicorn are visible in the far end of the bar’s back corner.
+
+At 00:01.500, Amy steps into frame from the left side behind the bar, her sturdy brown leather apron over a plain white linen shirt, dark green woolen breeches tucked into worn leather knee‑high boots. She positions herself at the center of the bar’s rear edge and faces forward.
+
+At 00:03.000, The camera pulls in slightly to frame Amy from waist up, Amy's hands resting in the faded blue cloth pockets of the apron as she stands still.
+
+At 00:05.500, A gentle tilt down reveals the timbered floor beneath Amy’s boots and the stone tavern’s ambient woodsmoke scent implied by the warm torch light.
+
+At 00:07.000, Amy takes a slow, deliberate breath, Amy's eyes scanning the bar area before settling on the flickering torches above.
+End continuity state: Amy takes a slow, deliberate breath, her eyes scanning the bar area before settling on the flickering torches above.
+================================================================
+
+================================================================
+H3 SOUNDSCAPE REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_soundscape (attempt 1/10, ~719 input tokens, max 512 output tokens).
+LLM request finished: director_h3_soundscape (1.7s, finish_reason=stop).
+H3 soundscape segment 1: "Amy's slow breath; torch flames crackling"
+H3 MUSIC REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_music (attempt 1/10, ~592 input tokens, max 512 output tokens).
+LLM request finished: director_h3_music (4.5s, finish_reason=stop).
+H3 music segment 1: 'Soft cello hum under a hint of flute sets an intimate tavern hush that swells gently as Amy’s breath settles.'
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1666 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (5.3s, finish_reason=stop).
+RAW Subject resolution failed for Segment 1 (attempt 1/2); retrying: RAW Subject resolver identity_span must match exactly once in accepted RAW.
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1666 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (4.5s, finish_reason=stop).
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: RAW Subject resolution failed for Segment 1 after 2 attempts: RAW Subject resolver identity_span must match exactly once in accepted RAW.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8z5vsv_g\repo\minimax.py", line 42051, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8z5vsv_g\repo\minimax.py", line 40582, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: RAW Subject resolution failed for Segment 1 after 2 attempts: RAW Subject resolver identity_span must match exactly once in accepted RAW.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8z5vsv_g\repo\minimax.py", line 42116, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8z5vsv_g\repo\minimax.py", line 42051, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8z5vsv_g\repo\minimax.py", line 40582, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: RAW Subject resolution failed for Segment 1 after 2 attempts: RAW Subject resolver identity_span must match exactly once in accepted RAW.

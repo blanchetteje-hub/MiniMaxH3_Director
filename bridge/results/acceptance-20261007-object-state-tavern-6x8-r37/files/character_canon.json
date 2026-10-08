@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "d8fc45e23f89a8967d5213dc8d190831578a4a03eab0fa4cc5a15fedc39f8197",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "Amy wears a sturdy brown leather apron over a plain white linen shirt, dark green woolen breeches tucked into worn leather knee‑high boots. The apron is patched at the shoulders from years of use, its front pockets lined with faded blue cloth for holding tools",
+      "gender": "female"
+    }
+  ]
+}
