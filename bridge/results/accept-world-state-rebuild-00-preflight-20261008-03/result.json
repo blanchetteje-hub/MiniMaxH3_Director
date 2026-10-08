@@ -1,0 +1,27 @@
+{
+  "job_id": "accept-world-state-rebuild-00-preflight-20261008-03",
+  "kind": "run_tests",
+  "started_at": 1791474890.1448953,
+  "test_run": {
+    "code_branch": "world-state-rebuild",
+    "tests": [
+      "tests\\test_acceptance_runner.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_world-state-rebuild\nconfigfile: pytest.ini\ncollecting ... collected 10 items\n\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_acceptance_child_env_forces_unbuffered_utf8_output PASSED [ 10%]\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_acceptance_child_env_uses_isolated_video_output PASSED [ 20%]\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_console_echo_replaces_unencodable_host_characters PASSED [ 30%]\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_locked_amy_benchmark_loads PASSED [ 40%]\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_parse_h3_prompts PASSED [ 50%]\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_parse_h3_prompts_allows_interleaved_start_marker PASSED [ 60%]\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_parse_h3_prompts_allows_trailing_text_after_end_marker PASSED [ 70%]\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_planning_only_command_uses_generate_beats PASSED [ 80%]\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_video_command_passes_segment_count_instead_of_seconds PASSED [ 90%]\ntests/test_acceptance_runner.py::AcceptanceRunnerTests::test_workspace_uses_gold_story_and_subjects_without_stale_state PASSED [100%]\n\n============================= 10 passed in 3.87s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1791474891.4105234,
+    "finished_at": 1791474896.0198963
+  },
+  "finished_at": 1791474896.0198963,
+  "status": "ok"
+}
