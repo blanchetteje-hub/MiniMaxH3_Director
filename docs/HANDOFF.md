@@ -2186,3 +2186,30 @@ Next: queue r34 with a captured expanded story alongside the r31 plan, then
 confirm Segment 1 behavior and continue through the acceptance run. The r32
 Subject-resolver failure remains separately unresolved: exact bad response
 spans were not captured, so do not speculate at the resolver boundary.
+
+## 2026-10-07 — r34 packaging correction and r35 fixed-plan result
+
+The first r34 queue attempt stopped during plan setup because `.gitignore`
+excluded the copied `beats.txt` and `story_arc.json` from the supplemental
+fixed-plan artifact. Those files were force-added; r35 was queued against the
+complete plan and `object-state-work` revision
+`62c2590dbf9fc51124ef334188564e8ecb4662b9`.
+
+The r35 exact-plan replay confirms the opening-pose fix: Segment 1 generated an
+H3 prompt with Unicorn1 present at the back edge of the room, without importing
+the later low-chair pose, and did not repeat r31's Unicorn position-conflict
+validation. Segment 1 was captured. Segment 2 then exhausted five RAW attempts
+and failed closed before Subject resolution. Attempts 1–4 had WorldState
+consistency errors: Dragon1's entry/presence and stool support were omitted or
+misrepresented; attempt 4 used the stool prop ID as the `enter` destination.
+Attempt 5 was rejected for malformed RAW timing labels (“Frame 0 (...)” rather
+than a timestamp beginning the line). The child exit code was 1 and only
+Segment 1 of 6 was captured; the bridge envelope's `status: ok` is not an
+acceptance pass.
+
+Next deterministic review target: verify whether the registered stool support
+can be expressed as `enter` to the canonical location followed by `set_support`
+to the stool, and give the Director narrow retry guidance for that pairing.
+Keep `enter` presence validation, support validation, and malformed-RAW
+rejection intact. The static selector still emits action-linked facts in prose;
+registered fixtures/supports remain guarded by Python WorldState.
