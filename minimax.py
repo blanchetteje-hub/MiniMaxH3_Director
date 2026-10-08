@@ -534,8 +534,8 @@ DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "frequency_penalty": None,
     "repeat_penalty": 1.15,
     "seed": BENCHMARK_SEED,
-    "reasoning_effort": "low",
-    "thinking_budget_tokens": 128,
+    "reasoning_effort": "medium",
+    "thinking_budget_tokens": 256,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 }
