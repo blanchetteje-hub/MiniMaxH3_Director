@@ -2131,3 +2131,35 @@ the goblet into canonical WorldState support, but it did leave future/action
 objects in static prose. Keep WorldState validation strict and use r32 to check
 whether removing the leaked opening pose resolves the Segment 1 physical
 retries; inspect any remaining reducer or RAW-format failures separately.
+
+## 2026-10-07 — r32 acceptance and fixed-plan r33 queue
+
+After the opening-pose correction, ran `acceptance-20261007-object-state-tavern-6x8-r32`
+against `object-state-work` revision `79d3ee7687a76f8fa21ca321b8d37ce0c4412249`.
+The child process exited 1. It captured Segment 1, then failed Segment 2 after
+five Director attempts and two Subject-resolver attempts. No prompts for
+Segments 2–6 were captured.
+
+The run generated a different six-beat story from r31, so it did not include the
+Unicorn regression. Segment 1 completed successfully. In Segment 2, the
+Director first failed physical validation for Amy nodding toward a distant
+seat without moving there, then omitted an `enter` action for the newly
+registered goblin-sized Subject, and later failed physical validation on a new
+participant reveal. After Director retries, accepted RAW passed to the
+Subject resolver, which failed: attempt 1 had an `identity_span` that was not a
+name span; attempt 2's span did not match exactly once in accepted RAW. The
+bridge artifacts do not preserve either response body, so the exact bad spans
+are unavailable and no resolver normalization is proposed yet.
+
+The r32 static extractor again selected future/action-linked facts into static
+prose (crystal mugs, an empty seat/table, goblin patrons), and the initial prop
+extractor proposed an unregistered door support before retrying. This confirms
+that the Python registration guard remains necessary; r32 did not register the
+mugs as canonical supports. Static-description filtering remains an open issue.
+
+Queued `acceptance-20261007-object-state-tavern-6x8-r33` on `gpt-runtime` as
+`e825abab`. It pins the exact r31 story plan so the r31 Unicorn case is
+reproduced against the pose fix in `79d3ee76`; this isolates the behavior that
+r32's newly generated story did not exercise. Inspect its child process status,
+captured segment count, WorldState, and RAW/resolver evidence before considering
+it successful.
