@@ -1,0 +1,6 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).
+
+Emergency stop requested; exiting immediately.

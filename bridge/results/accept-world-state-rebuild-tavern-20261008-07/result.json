@@ -1,0 +1,37 @@
+{
+  "job_id": "accept-world-state-rebuild-tavern-20261008-07",
+  "kind": "run_acceptance",
+  "started_at": 1791485050.218568,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--benchmark",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\gold\\amy_medieval_tavern_six.json"
+    ],
+    "returncode": 130,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 6 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-3na9pvdy\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261008-144411\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nRun start: cleared files and folders in the video state directory.\nLLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).\n\nEmergency stop requested; exiting immediately.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261008-144411\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6]. Include run.log for diagnosis.\nMiniMax exited with code 130; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": true,
+    "timeout_seconds": null,
+    "started_at": 1791485051.4999256,
+    "finished_at": 1791485055.624941,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "source_result_dir": "tests\\acceptance\\results\\amy_medieval_tavern_six-20261008-144411"
+    }
+  },
+  "local_process_failed": true,
+  "interrupted": true,
+  "bridge_stop_requested": true,
+  "finished_at": 1791485055.6561885,
+  "status": "interrupted"
+}
