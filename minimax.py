@@ -3786,13 +3786,14 @@ def build_registered_subject_story_start_messages(subject, story, beats):
             "role": "system",
             "content": (
                 "Classify only this already-registered Subject's story-start status. "
-                "Return present only when the source explicitly establishes the Subject "
-                "is already in the starting scene before its first action, without an "
-                "entry. Return absent only when the source explicitly says the Subject "
+                "Return present when the Subject is already in Beat 1, including "
+                "performing a starting action such as Amy wiping a table, without "
+                "an entrance. Return absent only when the source explicitly says the Subject "
                 "enters later, establishing it was absent at story start. Return unknown "
                 "when neither is explicit; do not infer absence from omission or from a "
-                "late first mention. Evidence for present/absent must be an exact quote "
-                "from STORY SOURCE or NUMBERED BEATS. For present, give a concise "
+                "late first mention. For present/absent, copy a short verbatim "
+                "substring from STORY SOURCE or NUMBERED BEATS as evidence: "
+                "do not paraphrase. For present, give a concise "
                 "starting-state phrase supported by that evidence. For absent or unknown, "
                 "initial_state must be empty. Classify only the named Subject, not the cast. "
                 "Return JSON only."
@@ -3831,7 +3832,7 @@ def parse_registered_subject_story_start_result(raw_result, subject, story, beat
             "name": subject["name"], "classification": "unknown",
             "evidence": evidence, "initial_state": "",
         }
-    source_text = "\n".join((str(story or ""), *(str(beat) for beat in beats or [])))
+    source_text = " ".join("\n".join((str(story or ""), *(str(beat) for beat in beats or []))).split())
     if not evidence or evidence.casefold() not in source_text.casefold():
         raise ValueError("Explicit story-start classification requires exact source evidence.")
     if classification == "present" and not initial_state:
@@ -19136,12 +19137,12 @@ def build_initial_location_subjects_messages(beats, subject_definitions=""):
         {
             "role": "system",
             "content": (
-                'Return subjects defined in beats that have no entry point (IE entered, '
-                'walked in, etc.).\n\n'
+                'Return only Subjects already in the opening scene; check every candidate\'s first appearance, '
+                'and exclude Subjects who step in, enter, or arrive later, even when later seated.\n\n'
                 'Example 1: "Beat 2: Jim leered over at Daisy from his seat." - Jim is '
                 'already there, so add Jim.\n'
                 'Example 2: "Beat 2: William walked in from the rain." - William enters '
-                'the scene, so don\'t add William.\n\n'
+                'the scene, so don\'t add William.\n'\n                'Example 3: Beat 3 elf steps in and sits at a table: do NOT add the elf.\n\n'
                 '- do not return a subject defined in EXISTING SUBJECT DEFINITIONS.\n'
                 '- include a one sentence initial_state. initial_state must be the minimal '
                 'physical location/pose supported by the beats; do not invent appearance, '
