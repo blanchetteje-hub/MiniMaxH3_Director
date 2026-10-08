@@ -1,0 +1,47 @@
+{
+  "version": 3,
+  "source_sha256": "94aa8747a6f66a2f0c8bbb597087cdba3adadde11b9273044e6960f36719fea7",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "description",
+    "activity",
+    "appearance",
+    "position"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "tunic",
+      "gender": "female",
+      "description": "A confident woman referenced in Picture 1, with a polished face defined by picture details",
+      "activity": "wipes a polished table with a cloth soaked in ale‑scented oil and turns off lanterns at each table before locking the tavern"
+    },
+    {
+      "name": "Goblin",
+      "age": "20",
+      "clothing": "Green‑skin Goblin (20 yr., male) leans over the hearth bar clutching a chipped mug and wears:",
+      "gender": "male",
+      "appearance": "green skin, tiny hands clutching a chipped mug",
+      "position": "leans over the counter beside the hearth"
+    },
+    {
+      "name": "Elf",
+      "age": "120",
+      "clothing": "The elf wears a forest‑green linen tunic with delicate silver trim along the neckline and cuffs. The tunic is layered over a white linen shirt that shows at the collar. Beneath the tunic she has brown leather breeches tucked into soft, knee‑high leather boots of dark tan. Around her shoulders drapes an elven hooded cape in matching forest green made from fine wool. She accessorises with a silver chain necklace and small silver earrings",
+      "gender": "female",
+      "appearance": "beautiful female elf with silver hair streaming down her shoulders",
+      "position": "steps in, takes a seat at the back table and accepts a crystal chalice from Amy"
+    },
+    {
+      "name": "Dragon‑shaped creature",
+      "age": "300",
+      "clothing": "N/A",
+      "gender": "male",
+      "appearance": "scales glittering like polished obsidian, wings unfurl revealing a pair of amber eyes that scan the room",
+      "position": "slides onto a high bar stool and licks its lips before taking a slow sip of a special brew from Amy"
+    }
+  ]
+}
