@@ -1,0 +1,7 @@
+{
+  "job_id": "acceptance-20261007-object-state-tavern-6x8-r34",
+  "status": "error",
+  "error_type": "FileNotFoundError",
+  "error": "Director plan job 'fixed-plan-r31-unicorn' has no saved plan files or acceptance_run.json.",
+  "finished_at": 1791417962.8561356
+}
