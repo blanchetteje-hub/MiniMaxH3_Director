@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "d8fc45e23f89a8967d5213dc8d190831578a4a03eab0fa4cc5a15fedc39f8197",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "occupation",
+    "tavern_clientele"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ".",
+      "clothing": "A sturdy leather apron dyed deep brown, worn over a plain linen shirt of faded white that reaches her mid-thighs. The apron has multiple pockets for tools and a brass buckle at the waist. She wears simple woolen breeches in a muted gray color, tucked into calf‑high leather boots with small metal buckles. A rough‑spun wool cloak hangs from her shoulders, its hem brushing the bar floor, dyed a dark forest green to blend with the stone walls",
+      "gender": "female",
+      "occupation": "medieval barkeep",
+      "tavern_clientele": "magical humanoid creatures"
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+LLM request started: character_canon (attempt 1/10, ~339 input tokens, max 7725 output tokens).
+LLM request finished: character_canon (16.2s, finish_reason=stop).
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~628 input tokens, max 256 output tokens).
+LLM request finished: story_subject_wardrobe_extract (2.0s, finish_reason=stop).
+Canonical appropriate attire for Amy: A sturdy leather apron dyed deep brown, worn over a plain linen shirt of faded white that reaches her mid-thighs. The apron has multiple pockets for tools and a brass buckle at the waist. She wears simple woolen breeches in a muted gray color, tucked into calf‑high leather boots with small metal buckles. A rough‑spun wool cloak hangs from her shoulders, its hem brushing the bar floor, dyed a dark forest green to blend with the stone walls
+LLM request started: story_location_extract (attempt 1/10, ~445 input tokens, max 256 output tokens).
+LLM request finished: story_location_extract (1.9s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~702 input tokens, max 512 output tokens).
+LLM request finished: static_setting_extract (1.8s, finish_reason=stop).
+Static setting extractor response: 'Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls'
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~281 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (5.1s, finish_reason=stop).
+Spatial setting refiner response: 'Stone tavern – 30\u202fft wide by 40\u202fft long (north–south).  \nNorth wall: stone, 10\u202fft high, two large torches mounted on the east and west corners of the north wall.  \n\nEast side: a rough‑hewn wooden bar, 12\u202fft long, extending from the south end to the center of the east wall. The bar is 4\u202fft wide and 3\u202fft tall (counter height). A wide stool sits immediately beside the bar on its west side; the stool measures 2\u202fft by 1.5\u202fft with a seat height of 1\u202fft.\n\nSouth wall: a low chair, centered along the south wall, 4\u202fft long and 3\u202fft deep, seat height 1\u202fft. The chair’s back rests against the stone wall; its legs are spaced 2\u202fft apart to avoid overlap with other objects.\n\nWest side: a counter running from the north end of the west wall down to the south end, 8\u202fft long and 3\u202fft wide. On this counter sits a crystal goblet (diameter 1\u202fft, height 1.5\u202fft) centered at the midpoint of the counter. The counter’s top is flush with the bar’s top.\n\nNorth‑west corner: a rack holding oak barrels; each barrel measures 4\u202fft in diameter and 6\u202fft tall, capped by iron lids. Three barrels are stacked side‑by‑side on the rack, which spans 12\u202fft along the north wall and sits 2\u202fft from the bar.\n\nEast–west floor: timbered planks, 1\u202fin thick, spanning the entire room. The floor is level; no plank overlaps any object. All doors (none specified) would be accessible at the east or west ends of the counter.'
+LLM request started: story_setting_extract (attempt 1/10, ~1130 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (24.5s, finish_reason=stop).
+Spatial setting extractor raw response that failed JSON parsing:
+Location: Stone Tavern
+
+{
+  "location": {
+    "name": "Stone Tavern",
+    "width_ft": 30,
+    "length_ft": 40
+  },
+  "anchors": [
+    { "name": "entrance_east", "type": "door", "wall": "east", "world_state_role": "fixture", "mobility": "fixed" },
+    { "name": "entrance_west", "type": "door", "wall": "west", "world_state_role": "fixture", "mobility": "fixed" }
+  ],
+  "objects": [
+    {
+      "name": "bar",
+      "type": "rough-hewn wooden bar",
+      "position": { "side":"east","from":"south end to center of east wall"},
+      "dimensions_ft":[12,4,3],
+      "world_state_role":"fixture_support",
+      "mobility":"fixed"
+    },
+    {
+      "name":"stool",
+      "type":"wide stool",
+      "position":{"near":"bar west side","side":"east"},
+      "dimensions_ft":[2,1.5,1],
+      "world_state_role":"support",
+      "mobility":"fixed"
+    },
+    {
+      "name":"chair",
+      "type":"low chair",
+      "position":{"side":"south wall","centered":true},
+      "dimensions_ft":[4,3,1],
+      "world_state_role":"fixture_support",
+      "mobility":"fixed"
+    },
+    {
+      "name":"counter",
+      "type":"wooden counter",
+      "position":{"side":"west wall","from":"north to south"},
+      "dimensions_ft":[8,3,"top flush with bar"],
+      "world_state_role":"fixture_support",
+      "mobility":"fixed"
+    },
+    {
+      "name":"goblet",
+      "type":"crystal goblet",
+      "position":{"on":"counter","midpoint":true},
+      "diameter_ft":1,
+      "height_ft":1.5,
+      "world_state_role":"untracked",
+      "mobility":"fixed"
+    },
+    {
+      "name":"rack",
+      "type":"barrel rack",
+      "position":{"north-west corner","along north wall"},
+      "dimensions_ft":[12,2],
+      "world_state_role":"fixture_support",
+      "mobility":"fixed"
+    },
+    {
+      "name":"barrels",
+      "type":"oak barrels",
+      "count":3,
+      "size_ft":[4,6],
+      "capped_by":"iron lids",
+      "position":{"on":"rack","side-by-side"},
+      "world_state_role":"untracked",
+      "mobility":"fixed"
+    },
+    {
+      "name":"torch_east_north_corner",
+      "type":"flickering torch",
+      "position":{"north wall","east corner"},
+      "world_state_role":"fixture",
+      "mobility":"fixed"
+    },
+    {
+      "name":"torch_west_north_corner",
+      "type":"flickering torch",
+      "position":{"north wall","west corner"},
+      "world_state_role":"fixture",
+      "mobility":"fixed"
+    }
+  ]
+}
+
+The stone tavern is a rectangular room, thirty feet wide and forty feet long. The north wall rises ten feet high and bears two large torches at its east and west corners. On the east side runs a rough‑hewn wooden bar twelve feet long from the south end to the center of that wall; it stands four feet wide and three feet tall. A wide stool sits immediately beside the bar on its west side, measuring two by one‑half foot with a seat height of one foot.
+
+The south wall hosts a low chair centered along the wall: four feet long, three deep, with a seat height of one foot; its back rests against the stone. The west side features a wooden counter running from north to south, eight feet long and three wide, flush with the bar’s top. A crystal goblet sits at the midpoint of this counter.
+
+Near the north‑west corner along the north wall is a barrel rack twelve feet long and two feet high; it holds three oak barrels stacked side‑by‑side, each four feet in diameter and six feet tall, capped by iron lids. The floor consists of timbered planks spanning the entire room, level with no plank overlapping any object.
+
+Doors at the east and west ends of the counter serve as entrances to the tavern.
+Spatial setting extractor returned unusable mixed output (attempt 1/3); retrying only this extractor: Spatial setting extractor returned invalid JSON: Expecting ':' delimiter: line 56 column 38 (char 1610)
+LLM request started: story_setting_extract (attempt 1/10, ~1203 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (27.1s, finish_reason=stop).
+Static location boundary omitted ungrounded fixture/support entries: 'torch east corner', 'torch west corner', 'timbered floor', 'oak barrel rack', 'torch east corner', 'torch west corner'
+Structured story setting extractor response: 'Location: Stone Tavern  \n```json\n{\n  "location": {\n    "name": "Stone Tavern",\n    "width_ft": 30,\n    "length_ft": 40,\n    "north_wall_height_ft": 10\n  },\n  "anchors": [\n    { "name": "bar", "type": "rough-hewn wooden bar", "wall": "east", "world_state_role": "fixture", "mobility": "fixed" },\n    { "name": "counter", "type": "wooden counter", "wall": "west", "world_state_role": "fixture_support", "mobility": "fixed" },\n    { "name": "rack", "type": "oak barrel rack", "location": "north-west corner", "world_state_role": "fixture", "mobility": "fixed" },\n    { "name": "low chair", "type": "stone-backed low chair", "wall": "south", "world_state_role": "untracked", "mobility": "unknown" },\n    { "name": "stool", "type": "wide wooden stool", "near": ["bar"], "world_state_role": "untracked", "mobility": "unknown" },\n    { "name": "torch east corner", "type": "flickering torch", "location": "north-east corner of north wall", "world_state_role": "fixture", "mobility": "fixed" },\n    { "name": "torch west corner", "type": "flickering torch", "location": "north-west corner of north wall", "world_state_role": "fixture", "mobility": "fixed" },\n    { "name": "timbered floor", "type": "plank floor", "wall": "east-west", "world_state_role": "support", "mobility": "fixed" }\n  ],\n  "objects": [\n    {\n      "name": "wide stool",\n      "type": "wooden stool",\n      "near": ["bar"],\n      "world_state_role": "untracked",\n      "mobility": "unknown"\n    },\n    {\n      "name": "low chair",\n      "type": "stone-backed low chair",\n      "near": ["south wall"],\n      "world_state_role": "untracked",\n      "mobility": "unknown"\n    },\n    {\n      "name": "counter",\n      "type": "wooden counter",\n      "near": ["rack", "bar"],\n      "world_state_role": "fixture_support",\n      "mobility": "fixed"\n    },\n    {\n      "name": "crystal goblet",\n      "type": "glass goblet",\n      "near": ["counter"],\n      "world_state_role": "untracked",\n      "mobility": "unknown"\n    },\n    {\n      "name": "oak barrel rack",\n      "type": "wooden rack",\n      "near": ["north wall", "bar"],\n      "world_state_role": "fixture",\n      "mobility": "fixed"\n    },\n    {\n      "name": "oak barrels",\n      "type": "cask",\n      "count": 3,\n      "size_ft_diameter": 4,\n      "height_ft": 6,\n      "near": ["rack"],\n      "world_state_role": "untracked",\n      "mobility": "unknown"\n    },\n    {\n      "name": "torch east corner",\n      "type": "flickering torch",\n      "location": "north-east corner of north wall",\n      "world_state_role": "fixture",\n      "mobility": "fixed"\n    },\n    {\n      "name": "torch west corner",\n      "type": "flickering torch",\n      "location": "north-west corner of north wall",\n      "world_state_role": "fixture",\n      "mobility": "fixed"\n    }\n  ]\n}\n```\nThe stone tavern measures thirty feet from east to west and forty feet from north to south. The north wall rises ten feet high, with a flickering torch mounted at each corner—one on the east side of the north wall and one on its west side. On the east side runs a rough‑hewn wooden bar twelve feet long, extending from the south end of the room to the center of the east wall; it is four feet wide and three feet tall. Immediately west of this bar sits a wide stool measuring two by one-and-a-half feet with a seat height of one foot.\n\nThe south wall hosts a low chair centered along its length: four feet long, three feet deep, with a seat height of one foot. The chair’s back rests against the stone wall and its legs are spaced two feet apart to avoid overlap with other objects.\n\nAlong the west side runs an eight‑foot counter from north to south; it is three feet wide. At the midpoint of this counter sits a crystal goblet, one foot in diameter and one-and-a-half feet tall. The counter’s top aligns flush with the bar’s top.\n\nNear the north‑west corner of the room stands an oak barrel rack spanning twelve feet along the north wall and positioned two feet from the bar. Three oak barrels—four feet in diameter and six feet tall, capped by iron lids—are stacked side‑by‑side on this rack. The entire floor is timbered with one‑inch thick planks that span the room without overlapping any of these objects. Doors would be accessible at either end of the counter along the east or west sides.'
+Story location metadata: overall='a stone tavern'; starting='behind the rough-hewn wooden bar'; setting='Stone Tavern Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls rough-hewn wooden bar (bar) is on the east wall. wooden counter (counter) is on the west wall. oak barrel rack (rack) is north-west corner. stone-backed low chair (low chair) is on the south wall. wide wooden stool (stool) is near bar. wooden counter (counter) is near rack, bar.'; location_state={'location': {'name': 'Stone Tavern', 'width_ft': 30, 'length_ft': 40, 'north_wall_height_ft': 10, 'description': 'Stone tavern with a rough‑hewn wooden bar at one end and a wide stool beside it. The floor is timbered; the room contains a low chair in the middle and a counter along which a crystal goblet sits. A rack holds oak barrels capped by iron lids. Flickering torches provide ambient lighting, casting warm light across stone walls'}, 'anchors': [{'name': 'bar', 'type': 'rough-hewn wooden bar', 'wall': 'east', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'counter', 'type': 'wooden counter', 'wall': 'west', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'rack', 'type': 'oak barrel rack', 'location': 'north-west corner', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'low chair', 'type': 'stone-backed low chair', 'wall': 'south', 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'stool', 'type': 'wide wooden stool', 'near': ['bar'], 'world_state_role': 'untracked', 'mobility': 'unknown'}], 'objects': [{'name': 'wide stool', 'type': 'wooden stool', 'near': ['bar'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'low chair', 'type': 'stone-backed low chair', 'near': ['south wall'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'counter', 'type': 'wooden counter', 'near': ['rack', 'bar'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'crystal goblet', 'type': 'glass goblet', 'near': ['counter'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'oak barrels', 'type': 'cask', 'count': 3, 'size_ft_diameter': 4, 'height_ft': 6, 'near': ['rack'], 'world_state_role': 'untracked', 'mobility': 'unknown'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~501 input tokens, max 512 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (1.9s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (attempt 1/3):
+{
+  "subjects": [
+    {
+      "name": "Unicorn",
+      "initial_state": "The unicorn is seated on a low chair in the middle of the tavern, holding and sipping from a clear crystal cup."
+    }
+  ]
+}
+Subjects inferred as already present at story start: Unicorn (present in the story's starting location; exact position and pose unknown)
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+FATAL: prompt-generation run stopped at first real failure: ValueError: Stable fixture ID collision for 'counter'.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-u7vzxxo3\repo\minimax.py", line 42987, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-u7vzxxo3\repo\minimax.py", line 40160, in _run_main
+    world_state, location_id = seed_canonical_static_location_state(
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-u7vzxxo3\repo\world_state.py", line 438, in seed_canonical_static_location_state
+    raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
+ValueError: Stable fixture ID collision for 'counter'.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-u7vzxxo3\repo\minimax.py", line 43052, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-u7vzxxo3\repo\minimax.py", line 42987, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-u7vzxxo3\repo\minimax.py", line 40160, in _run_main
+    world_state, location_id = seed_canonical_static_location_state(
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-u7vzxxo3\repo\world_state.py", line 438, in seed_canonical_static_location_state
+    raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
+ValueError: Stable fixture ID collision for 'counter'.
