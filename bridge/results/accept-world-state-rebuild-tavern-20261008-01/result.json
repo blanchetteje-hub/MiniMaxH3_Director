@@ -1,0 +1,7 @@
+{
+  "job_id": "accept-world-state-rebuild-tavern-20261008-01",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Acceptance jobs must run on 'gpt-arc-refresh'; got 'world-state-rebuild'.",
+  "finished_at": 1791474585.617422
+}
