@@ -50,6 +50,41 @@ Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/
 
 WorldState is the canonical state model for Director actions and Segment transactions. See the dated WorldState entries below for the current implementation, validation results, and remaining work.
 
+## 2026-10-07 — r39 Director state-action repair loop
+
+Acceptance r39 returned `invalid_state_action_response` because the Python
+parser accepts only the exact six-field Request-1 object: `raw_scene`, the four
+boolean completion fields, and `state_actions` as an array of reducer actions.
+The prior repair path classified an invalid outer envelope as an action failure,
+then replaced only `state_actions` in the same rejected envelope. Its next parse
+therefore rejected the unchanged envelope with the same shape error, consuming
+all ten state-action attempts without changing the failing field.
+
+Outer-envelope shape errors now retry Request 1 from the same opening state;
+they are not sent to an operation that can edit only actions. Reducer/action
+failures use a compact dedicated repair prompt with the exact system text
+`Repair only STATE ACTIONS to fix the ISSUE.` The user message contains only
+registered WorldState vocabulary/opening state, immutable RAW, rejected actions,
+the current concrete issue, and the operation hint. Its strict response schema
+contains only `state_actions` and reuses the same dynamic ID-restricted action
+item schema as Request 1. Python replaces only that field in a deep copy of the
+rejected Director envelope and reruns the ordinary parser and reducer. RAW and
+reducer validation rules are unchanged.
+
+The repair uses its own deterministic profile: temperature 0, seed 42, medium
+reasoning, 6144-token context budget, and 1536-token output cap. Malformed repair
+output is logged with a bounded response excerpt; each retry retains the
+original validator issue plus only the latest malformed-output diagnostic.
+Ten failed action repairs still raise `DirectorRawRepairExhaustedError`, which
+the segment loop handles by regenerating the current Beat.
+
+Focused state-action repair regressions (7) and the dedicated profile test pass;
+`tests.test_world_state_foundation` passes 69/69. A broader
+`tests.test_director_retry` + WorldState run reports 1 failure and 11 errors in
+existing mock sequences, tavern prop-extraction fixtures, and a Director prompt
+length assertion; those broader failures are outside this repair contract and
+remain to be triaged separately. `py_compile` and `git diff --check` pass.
+
 ## 2026-10-07 — bridge execution worktree branch synchronization (r38)
 
 Acceptance job `acceptance-20261007-object-state-tavern-6x8-r38` requested

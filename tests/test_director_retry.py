@@ -306,6 +306,10 @@ def pipeline_llm_side_effect(
             )[0].strip()
             return {"raw_scene": raw, "subject_names": []}
         response = next(queued)
+        if purpose == "director_state_action_repair":
+            if isinstance(response, dict) and "raw_scene" in response:
+                return {"state_actions": response.get("state_actions", [])}
+            return response
         if isinstance(response, dict) and "raw_scene" in response:
             response = {**response, "state_actions": response.get("state_actions", [])}
         return response
@@ -1003,8 +1007,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                     call for call in request.call_args_list
                     if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
                 ]
-                self.assertEqual(len(request1_calls), 2)
-                self.assertIn(expected_code, request1_calls[1].args[0][-1]["content"])
+                self.assertEqual(len(request1_calls), 1)
+                state_repair_call = next(
+                    call for call in request.call_args_list
+                    if call.kwargs.get("history_metadata", {}).get("purpose")
+                    == "director_state_action_repair"
+                )
+                self.assertIn(expected_code, state_repair_call.args[0][1]["content"])
                 self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
                 self.assertEqual(
                     bundle["world_state_opening"]["props"][mug_id]["placement"]["kind"],
@@ -1029,11 +1038,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "At 00:01.000, Elf1 attempts to give Amy the mug.",
                 state_actions=wrong_handoff,
             ),
-            director_response(
-                "At 00:01.000, Goblin1 picks up the mug.\n"
-                "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                state_actions=goblin_mug_transfer_actions(mug_id),
-            ),
+            {"state_actions": goblin_mug_transfer_actions(mug_id)},
         ]))
         with (
             mock.patch("minimax.ask_llm", request),
@@ -1049,7 +1054,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             call for call in request.call_args_list
             if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
         ]
-        self.assertIn("giver_not_holder", request1_calls[1].args[0][-1]["content"])
+        repair_call = next(
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_state_action_repair"
+        )
+        self.assertIn("giver_not_holder", repair_call.args[0][1]["content"])
         self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
 
     def test_reducer_retry_contains_only_first_failure_and_no_prior_attempt_junk(self):
@@ -1075,26 +1085,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             director_response(
                 "At 00:01.000, Goblin1 picks up the mug.\n"
                 "At 00:04.500, Goblin1 hands the mug to Elf1.",
-            ),
-            director_response(
-                "At 00:01.000, Goblin1 picks up the mug.\n"
-                "At 00:04.500, Goblin1 hands the mug to Elf1.",
                 state_actions=invalid_batch,
             ),
-            director_response(
-                "At 00:01.000, Goblin1 picks up the mug.\n"
-                "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                state_actions=goblin_mug_transfer_actions(mug_id),
-            ),
+            {"state_actions": goblin_mug_transfer_actions(mug_id)},
         ]))
-        physical = mock.Mock(side_effect=[
-            {"valid": False, "issue": "stale physical failure from attempt one"},
-            {"valid": True, "issue": ""},
-            {"valid": True, "issue": ""},
-        ])
         with (
             mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
             mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
             mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
             mock.patch("builtins.print"),
@@ -1106,12 +1103,211 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             call for call in request.call_args_list
             if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
         ]
-        self.assertEqual(len(request1_calls), 3)
-        reducer_retry_prompt = request1_calls[2].args[0][-1]["content"]
+        self.assertEqual(len(request1_calls), 1)
+        reducer_retry_call = next(
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_state_action_repair"
+        )
+        reducer_retry_prompt = reducer_retry_call.args[0][1]["content"]
         self.assertIn("giver_not_holder", reducer_retry_prompt)
-        self.assertNotIn("stale physical failure from attempt one", reducer_retry_prompt)
         self.assertNotIn("unknown_entity_id", reducer_retry_prompt)
         self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
+
+    def test_state_action_repair_uses_action_only_schema_and_preserves_raw(self):
+        bundle = goblin_mug_bundle()
+        _state, _location_id, mug_id = goblin_mug_world_state()
+        raw_scene = (
+            "At 00:00.000, Goblin1 picks up the chipped mug.\n"
+            "At 00:04.500, Goblin1 hands the chipped mug to Elf1.\n"
+            "End continuity state: Elf1 holds the chipped mug."
+        )
+        invalid_actions = [{
+            "action_id": "unknown-object",
+            "op": "pickup",
+            "actor_subject_id": "subject_1",
+            "prop_id": "unregistered-prop",
+        }]
+        valid_actions = goblin_mug_transfer_actions(mug_id)
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            director_response(raw_scene, state_actions=invalid_actions),
+            {"state_actions": valid_actions},
+        ]))
+        physical_raw_scenes = []
+        physical = mock.Mock(side_effect=lambda _beat, scene, *args, **kwargs: (
+            physical_raw_scenes.append(scene) or {"valid": True, "issue": ""}
+        ))
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-state-action-only-repair", {"source_sha256": "source"}
+            )
+
+        repair_call = next(
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_state_action_repair"
+        )
+        messages = repair_call.args[0]
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(
+            messages[0]["content"], "Repair only STATE ACTIONS to fix the ISSUE."
+        )
+        self.assertIn("unregistered-prop", messages[1]["content"])
+        self.assertIn("ISSUE", messages[1]["content"])
+        self.assertIn(raw_scene, messages[1]["content"])
+        self.assertNotIn("Direct segment 1.", messages[1]["content"])
+        response_schema = repair_call.kwargs["response_format"]["json_schema"]["schema"]
+        self.assertEqual(set(response_schema["properties"]), {"state_actions"})
+        self.assertEqual(response_schema["required"], ["state_actions"])
+        self.assertFalse(response_schema["additionalProperties"])
+        request1_call = next(
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene"
+        )
+        request1_actions_schema = request1_call.kwargs["response_format"][
+            "json_schema"
+        ]["schema"]["properties"]["state_actions"]
+        self.assertEqual(
+            response_schema["properties"]["state_actions"],
+            request1_actions_schema,
+        )
+        self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
+        self.assertEqual(payload["request1_result"]["state_actions"], valid_actions)
+        self.assertEqual(
+            payload["request1_result"]["raw_scene"],
+            minimax._normalize_director_raw_scene_structure(
+                director_response(raw_scene)["raw_scene"], segment_seconds=6
+            ).strip(),
+        )
+        self.assertTrue(physical_raw_scenes)
+        normalized_raw_scene = minimax._normalize_director_raw_scene_structure(
+            director_response(raw_scene)["raw_scene"], segment_seconds=6
+        ).strip()
+        self.assertTrue(all(scene == normalized_raw_scene for scene in physical_raw_scenes))
+
+    def test_state_action_repair_malformed_output_retries_with_original_issue(self):
+        bundle = goblin_mug_bundle()
+        _state, _location_id, mug_id = goblin_mug_world_state()
+        raw_scene = "At 00:00.000, Goblin1 picks up the mug."
+        valid_actions = goblin_mug_transfer_actions(mug_id)
+        malformed = {"state_actions": valid_actions, "extra": "unexpected"}
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            director_response(
+                raw_scene,
+                state_actions=[{
+                    "action_id": "unknown-object",
+                    "op": "pickup",
+                    "actor_subject_id": "subject_1",
+                    "prop_id": "unregistered-prop",
+                }],
+            ),
+            malformed,
+            {"state_actions": valid_actions},
+        ]))
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            mock.patch("builtins.print") as log,
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-malformed-state-repair", {"source_sha256": "source"}
+            )
+
+        repair_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_state_action_repair"
+        ]
+        self.assertEqual(len(repair_calls), 2)
+        first_issue = repair_calls[0].args[0][1]["content"].split("ISSUE\n", 1)[1]
+        second_user = repair_calls[1].args[0][1]["content"]
+        self.assertIn(first_issue.split("\n\n", 1)[0], second_user)
+        self.assertIn("MOST RECENT REPAIR RESPONSE ISSUE", second_user)
+        self.assertIn('"extra":"unexpected"', str(log.call_args_list))
+        self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
+        self.assertEqual(
+            payload["request1_result"]["raw_scene"],
+            minimax._normalize_director_raw_scene_structure(
+                director_response(raw_scene)["raw_scene"], segment_seconds=6
+            ).strip(),
+        )
+
+    def test_r39_outer_shape_mismatch_is_not_repaired_as_state_actions(self):
+        bundle = goblin_mug_bundle()
+        malformed_envelope = director_response(
+            "At 00:00.000, Goblin1 holds the mug.", state_actions=[]
+        )
+        malformed_envelope["extra"] = "unexpected"
+        with self.assertRaisesRegex(ValueError, "invalid shape.*extra"):
+            minimax.parse_and_dry_run_director_state_actions(
+                bundle["world_state_opening"],
+                malformed_envelope,
+                segment_number=1,
+            )
+
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            copy.deepcopy(malformed_envelope) for _ in range(
+                minimax.DIRECTOR_RAW_SCENE_ATTEMPTS
+            )
+        ]))
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaises(minimax.DirectorRawRepairExhaustedError):
+                minimax.request_segment_llm(
+                    bundle, [], "run-r39-shape-regression", {"source_sha256": "source"}
+                )
+        self.assertFalse(any(
+            call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_state_action_repair"
+            for call in request.call_args_list
+        ))
+
+    def test_ten_failed_state_action_repairs_raise_beat_escalation_signal(self):
+        bundle = goblin_mug_bundle()
+        invalid = director_response(
+            "At 00:00.000, Goblin1 picks up the mug.",
+            state_actions=[{
+                "action_id": "unknown-object",
+                "op": "pickup",
+                "actor_subject_id": "subject_1",
+                "prop_id": "unregistered-prop",
+            }],
+        )
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            invalid,
+            *({"state_actions": "malformed"} for _ in range(
+                minimax.DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS
+            )),
+        ]))
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaises(minimax.DirectorRawRepairExhaustedError) as raised:
+                minimax.request_segment_llm(
+                    bundle, [], "run-ten-state-repairs", {"source_sha256": "source"}
+                )
+        repair_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_state_action_repair"
+        ]
+        self.assertEqual(
+            len(repair_calls), minimax.DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS
+        )
+        self.assertEqual(raised.exception.segment, 1)
+        self.assertIn("invalid_state_action_repair_response", raised.exception.issue)
 
     def test_h3_soundscape_prompt_is_extraction_only(self):
         messages = minimax.build_h3_soundscape_messages(

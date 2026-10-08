@@ -233,6 +233,34 @@ class ContinuityCallContractTests(unittest.TestCase):
 
 
 class LLMSamplingRoutingTests(unittest.TestCase):
+    @patch("minimax.requests.post")
+    def test_director_state_action_repair_uses_dedicated_analysis_profile(self, post):
+        response = Mock()
+        response.status_code = 200
+        response.raise_for_status = Mock()
+        response.json.return_value = {
+            "choices": [{
+                "message": {"content": '{"state_actions":[]}'},
+                "finish_reason": "stop",
+            }]
+        }
+        post.return_value = response
+
+        result = minimax.ask_llm(
+            [{"role": "user", "content": "repair actions"}],
+            response_format=None,
+            max_tokens=minimax.DIRECTOR_STATE_ACTION_REPAIR_MAX_TOKENS,
+            context_token_budget=minimax.DIRECTOR_STATE_ACTION_REPAIR_CONTEXT_TOKENS,
+            history_metadata={"purpose": "director_state_action_repair"},
+        )
+
+        self.assertEqual(result, {"state_actions": []})
+        request_json = post.call_args.kwargs["json"]
+        self.assertEqual(request_json["temperature"], 0)
+        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertEqual(request_json["reasoning_effort"], "medium")
+        self.assertEqual(request_json["max_tokens"], minimax.DIRECTOR_STATE_ACTION_REPAIR_MAX_TOKENS)
+
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
     def test_h3_music_uses_narrow_creative_profile(

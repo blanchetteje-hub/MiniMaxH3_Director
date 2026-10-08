@@ -412,6 +412,8 @@ BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 DIRECTOR_RAW_SCENE_ATTEMPTS = 5
 DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS = 10
 DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS = 10
+DIRECTOR_STATE_ACTION_REPAIR_CONTEXT_TOKENS = 6144
+DIRECTOR_STATE_ACTION_REPAIR_MAX_TOKENS = 1536
 
 BEAT_VALIDATION_STATE_VERSION = 3
 
@@ -449,6 +451,21 @@ DIRECTOR_RAW_SCENE_LLM_SETTINGS = {
     "repeat_penalty": 1.15,
     "seed": None,
     "reasoning_effort": "high",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
+}
+
+DIRECTOR_STATE_ACTION_REPAIR_LLM_SETTINGS = {
+    "temperature": 0,
+    "top_p": None,
+    "top_k": None,
+    "min_p": None,
+    "presence_penalty": None,
+    "frequency_penalty": None,
+    "repeat_penalty": 1.15,
+    "seed": BENCHMARK_SEED,
+    "reasoning_effort": "medium",
     "thinking_budget_tokens": 1024,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
@@ -574,6 +591,9 @@ CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
 DIRECTOR_RAW_SCENE_LLM_PURPOSES = frozenset({
     "director_raw_scene",
     "director_raw_scene_repair",
+})
+
+DIRECTOR_STATE_ACTION_REPAIR_LLM_PURPOSES = frozenset({
     "director_state_action_repair",
 })
 
@@ -11015,6 +11035,8 @@ def ask_llm(
         llm_settings = MUSIC_GENERATION_LLM_SETTINGS
     elif history_purpose in BEAT_WRITING_LLM_PURPOSES:
         llm_settings = BEAT_WRITING_LLM_SETTINGS
+    elif history_purpose in DIRECTOR_STATE_ACTION_REPAIR_LLM_PURPOSES:
+        llm_settings = DIRECTOR_STATE_ACTION_REPAIR_LLM_SETTINGS
     elif history_purpose in DIRECTOR_RAW_SCENE_LLM_PURPOSES:
         llm_settings = DIRECTOR_RAW_SCENE_LLM_SETTINGS
     elif history_purpose in CREATIVE_GENERATION_LLM_PURPOSES:
@@ -37982,6 +38004,34 @@ def build_world_state_transaction(opening_world_state, state_actions, *, segment
     }
 
 
+def build_director_state_action_repair_messages(
+    *, vocabulary, raw_scene, rejected_state_actions, issue, retry_hint=""
+):
+    """Build the compact repair request; the accepted RAW remains immutable."""
+    user_parts = [
+        "REGISTERED WORLDSTATE VOCABULARY AND OPENING STATE\n"
+        + json.dumps(vocabulary, ensure_ascii=False, separators=(",", ":")),
+        "RAW SCENE (immutable; do not rewrite)\n" + str(raw_scene or ""),
+        "REJECTED STATE ACTIONS\n"
+        + json.dumps(
+            rejected_state_actions,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+        "ISSUE\n" + str(issue or "").strip(),
+    ]
+    retry_hint = str(retry_hint or "").strip()
+    if retry_hint:
+        user_parts.append("OPERATION GUIDANCE\n" + retry_hint)
+    return [
+        {
+            "role": "system",
+            "content": "Repair only STATE ACTIONS to fix the ISSUE.",
+        },
+        {"role": "user", "content": "\n\n".join(user_parts)},
+    ]
+
+
 def world_state_transaction_metadata(
     transaction, final_h3_prompt, *, completion_mode, artifact=None,
 ):
@@ -38162,29 +38212,52 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         """Repair only state_actions while retaining the rejected RAW candidate."""
         nonlocal state_action_repair_attempts
         current_failure = str(failure or "").strip()
+        if isinstance(rejected_response, str):
+            try:
+                rejected_response = parse_llm_json_content(
+                    rejected_response, repair_on_failure=False
+                )
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                raise DirectorRawRepairExhaustedError(
+                    segment_number,
+                    "The rejected Director response cannot be preserved for "
+                    f"state-action-only repair: {error}",
+                    "",
+                ) from error
+        if not isinstance(rejected_response, dict):
+            raise DirectorRawRepairExhaustedError(
+                segment_number,
+                "The rejected Director response cannot be preserved for "
+                "state-action-only repair because it is not an object.",
+                "",
+            )
+        rejected_response = copy.deepcopy(rejected_response)
+        rejected_scene = str(rejected_response.get("raw_scene") or "")
+        validator_failure = current_failure
+        repair_output_failure = ""
         while state_action_repair_attempts < DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS:
             state_action_repair_attempts += 1
-            messages = copy.deepcopy(request1_base_messages)
-            messages.append({
-                "role": "user",
-                "content": (
-                    "STATE ACTION REPAIR\nCorrect only state_actions using the same "
-                    "opening WorldState and registered IDs. Preserve the rejected RAW "
-                    "SCENE and its visible actions unchanged. The reducer's first concrete "
-                    "failure is:\n"
-                    f"{current_failure}\n"
-                    + _director_state_action_retry_hint(current_failure)
-                    + "\nReturn the complete corrected Director response. Do not invent "
-                    "IDs or carry forward feedback from earlier rejected attempts."
-                    "\n\nREJECTED DIRECTOR RESPONSE\n"
-                    + json.dumps(
-                        rejected_response, ensure_ascii=False, separators=(",", ":")
+            messages = build_director_state_action_repair_messages(
+                vocabulary=state_action_contract["vocabulary"],
+                raw_scene=rejected_scene,
+                rejected_state_actions=rejected_response.get("state_actions", []),
+                issue=(
+                    validator_failure
+                    + (
+                        "\n\nMOST RECENT REPAIR RESPONSE ISSUE\n"
+                        + repair_output_failure
+                        if repair_output_failure else ""
                     )
                 ),
-            })
+                retry_hint=_director_state_action_retry_hint(validator_failure),
+            )
             response = ask_llm(
                 messages,
-                response_format=state_action_contract["response_format"],
+                response_format=state_action_contract[
+                    "state_actions_response_format"
+                ],
+                max_tokens=DIRECTOR_STATE_ACTION_REPAIR_MAX_TOKENS,
+                context_token_budget=DIRECTOR_STATE_ACTION_REPAIR_CONTEXT_TOKENS,
                 history_metadata={
                     "run_id": run_id,
                     "source_sha256": (run_config or {}).get("source_sha256"),
@@ -38200,24 +38273,38 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     response = parse_llm_json_content(
                         response, repair_on_failure=False
                     )
-                if not isinstance(response, dict) or not isinstance(
-                    response.get("state_actions"), list
+                if (
+                    not isinstance(response, dict)
+                    or set(response) != {"state_actions"}
+                    or not isinstance(response.get("state_actions"), list)
                 ):
                     raise ValueError(
-                        "Director state-action repair returned an invalid response."
+                        "Director state-action repair must return exactly one "
+                        "field, state_actions, containing an array."
                     )
             except (TypeError, ValueError, json.JSONDecodeError) as error:
-                current_failure = (
+                try:
+                    diagnostic_response = json.dumps(
+                        response, ensure_ascii=False, separators=(",", ":")
+                    )
+                except (TypeError, ValueError):
+                    diagnostic_response = repr(response)
+                console_log(
+                    "Director state-action repair returned malformed output; "
+                    f"retrying ({state_action_repair_attempts}/"
+                    f"{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS}): "
+                    f"{str(error)[:240]}; response={diagnostic_response[:1200]}",
+                    flush=True,
+                )
+                repair_output_failure = (
                     "invalid_state_action_repair_response: "
                     + " ".join(str(error).split())
                 )
+                current_failure = repair_output_failure
                 continue
             repaired = copy.deepcopy(rejected_response)
             repaired["state_actions"] = copy.deepcopy(response["state_actions"])
             return repaired
-        rejected_scene = _parse_director_raw_scene_result(
-            rejected_response
-        ).get("raw_scene", "")
         raise DirectorRawRepairExhaustedError(
             segment_number, current_failure, rejected_scene
         )
@@ -38336,6 +38423,30 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     else "invalid_state_action_batch: reducer rejected the batch."
                 )
         if state_action_failure:
+            if (
+                state_action_failure.startswith("invalid_state_action_response:")
+                and "invalid shape" in state_action_failure
+            ):
+                rejected_scene = _parse_director_raw_scene_result(
+                    raw_scene_result
+                ).get("raw_scene", "")
+                if request1_create_attempts >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    raise DirectorRawRepairExhaustedError(
+                        segment_number,
+                        state_action_failure,
+                        rejected_scene,
+                    )
+                console_log(
+                    "Director Request 1 returned an invalid outer response shape; "
+                    "state-action-only repair cannot change that envelope. "
+                    f"Retrying Request 1 from the same opening WorldState: "
+                    f"{state_action_failure}",
+                    flush=True,
+                )
+                request1_messages = build_request1_retry_messages(
+                    state_action_failure
+                )
+                continue
             if state_action_repair_attempts >= DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS:
                 rejected_scene = _parse_director_raw_scene_result(
                     raw_scene_result

@@ -1812,8 +1812,27 @@ def build_director_state_action_contract(
             },
         },
     }
+    state_actions_schema = {
+        "type": "array",
+        "items": {"oneOf": deepcopy(action_schemas)} if action_schemas else {},
+        **({} if action_schemas else {"maxItems": 0}),
+    }
+    state_actions_response_format = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "director_state_actions_repair",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {"state_actions": state_actions_schema},
+                "required": ["state_actions"],
+                "additionalProperties": False,
+            },
+        },
+    }
     return {
         "response_format": format_schema,
+        "state_actions_response_format": state_actions_response_format,
         "vocabulary": {
             "subjects": subjects,
             "locations": locations,
@@ -1849,7 +1868,14 @@ def parse_and_dry_run_director_state_actions(
         "activity_tools_settled", "beat_complete", "state_actions",
     }
     if not isinstance(response, dict) or set(response) != expected:
-        raise ValueError("Director action-contract response has an invalid shape.")
+        if isinstance(response, dict):
+            actual_shape = "keys=" + ",".join(sorted(map(str, response.keys())))
+        else:
+            actual_shape = f"type={type(response).__name__}"
+        raise ValueError(
+            "Director action-contract response has an invalid shape "
+            f"({actual_shape[:240]})."
+        )
     if not isinstance(response["raw_scene"], str) or not response["raw_scene"].strip():
         raise ValueError("Director action-contract response requires raw_scene.")
     if any(not isinstance(response[field], bool) for field in (
