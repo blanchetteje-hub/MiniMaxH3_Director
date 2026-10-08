@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "d8fc45e23f89a8967d5213dc8d190831578a4a03eab0fa4cc5a15fedc39f8197",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman",
+    "medieval_barkeep"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy wears a sturdy brown leather apron tied around her waist, its front pockets lined with worn canvas for holding tools. Beneath the apron she sports a simple linen shirt in muted tan, sleeves rolled to mid‑bicep. Over the shirt is a dark woolen vest trimmed with brass buttons that match the iron hinges of the bar’s oak rack. Her trousers are plain brown leather breeches tucked into calf‑high leather boots polished from frequent use. A wide leather belt cinches her waist, holding a small pouch for coins and a silver key to the tavern’s cellar. The ensemble is completed by a faded red scarf tied loosely around her neck, adding a touch of color to the otherwise earthy palette",
+      "gender": "Female",
+      "confident_woman": "Yes",
+      "medieval_barkeep": "Tavern caretaker for magical humanoid creatures"
+    }
+  ]
+}
