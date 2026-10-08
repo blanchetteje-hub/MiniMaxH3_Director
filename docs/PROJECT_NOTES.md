@@ -18,6 +18,13 @@ The pipeline is disposable. Any intermediate representation, LLM call, validator
 
 **KISS / architectural stop rule:** If a fix expands state, validation, retries, reconciliation, or compatibility layers beyond what the observed H3 failure warrants, stop and reconsider the design or revert to a simpler checkpoint. Do not respond to architectural ballooning by stacking another subsystem or validator. Propose the smallest evidenced fix first and measure it with the bridge acceptance run.
 
+## Prompt ownership and change approval (mandatory)
+
+- **All runtime LLM prompts are user-owned.** ChatGPT, Codex, and any other AI coding assistant must **not create, edit, rewrite, expand, simplify, or append instructions** to system or user prompts, including extractor, Director, validator, retry, and repair prompts. A code-change approval is **not** implicit permission to change a prompt. Only a separate, explicit user authorization for the specific prompt change creates an exception; by default the user authors and decides all prompt wording.
+- **When a prompt or its validate -> repair loop fails, investigate and report, do not fix the prompt.** Show the exact system and user messages sent (including dynamic inputs and retry suffixes), the raw LLM response(s) where logged, the validation failure, and the sequence of retry attempts. Clearly distinguish **verbatim captured messages** from messages reconstructed from code and artifacts; identify any unavailable responses. Let the user decide and supply prompt changes.
+- **No new prompt-bearing LLM stages as workarounds** without the user's explicit approval. Prefer diagnosing the existing validator -> repair -> retry loop rather than introducing overlapping extractors or another state subsystem. The goal remains expanded story -> H3 prompts using the existing lean WorldState architecture.
+- **Approval gate for repository work:** investigation and recommendations are allowed; modifying code, prompts, tests, project notes, Git branches, commits, or queueing bridge jobs requires explicit user approval for that action. "Go" means the current bridge results have processed and should be analyzed; it is not authorization to make changes.
+
 **2026-10-08 rebuild checkpoint:** `world-state-rebuild` forks from `33a56bb5a5b8a79c72b8acbeff86268b3709d9eb` (Gate C before Gate D). Director state-action dry-run/retry remains, but reducer candidates are not committed to WorldState; legacy compatibility writers still run. The later Gate D transactional layers on `object-state-work` are intentionally excluded pending simpler evidence-driven design.
 
 ## Project progress checklist
