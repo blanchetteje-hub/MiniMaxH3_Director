@@ -1,0 +1,45 @@
+{
+  "version": 3,
+  "source_sha256": "44afefe71a129237f25387cdc565cee833d0e1bf93bcd4395bb8379dae130946",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "skin_color",
+    "holding",
+    "hair",
+    "scale_color",
+    "eye_color"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy's attire is described as a rough-spun tunic and a leather apron. The tunic has visible scuffs from years of use; it is made of coarse linen in an earth‑tinted brown/olive hue. The apron sits over the tunic, also brown leather with scuffed edges indicating frequent wear while working behind the bar. Missing normal outfit pieces are filled as follows: - **Leggings**: woolen knee-length leggings in a dark green shade worn under the tunic for warmth and protection against spills. The fabric is soft and slightly padded, showing light use but no scuffs. - **Boots**: sturdy leather boots in matching brown, with scuffed toe and heel from regular tavern service. They reach just above the ankle, laced at the top. - **Headwear**: a simple cloth headband or hood tying her hair back, colorting to the tunic’s earth hue; it is smooth linen, lightly worn but functional. All pieces are layered appropriately for a medieval tavern keeper—tunics and leggings form the base layers, the apron functions as the work garment over them, with boots protecting feet, and headwear keeping hair tidy during service",
+      "gender": "female"
+    },
+    {
+      "name": "Goblin",
+      "age": "30",
+      "clothing": "[{\"type\":\"tunic\",\"material\":\"wool\",\"color\":\"brown\",\"texture\":\"coarse\",\"wear\":\"slightly worn with small scuffs on the hem\",\"layers\":1,\"role_specific_garment\":false},{\"type\":\"leggings\",\"material\":\"leather\",\"color\":\"tanned\",\"texture\":\"smooth\",\"wear\":\"light wear, some creases from frequent movement\",\"layers\":1,\"role_specific_garment\":false},{\"type\":\"boots\",\"material\":\"leather\",\"color\":\"brown\",\"texture\":\"weathered\",\"wear\":\"deep laces, scuffed soles from regular use\",\"layers\":1,\"role_specific_garment\":false},{\"type\":\"belt\",\"material\":\"leather\",\"color\":\"dark brown\",\"texture\":\"smooth with a worn buckle\",\"wear\":\"some wear at the edges\",\"layers\":1,\"role_specific_garment\":false}]",
+      "gender": "male",
+      "skin_color": "green",
+      "holding": "chipped mug"
+    },
+    {
+      "name": "Elf",
+      "age": "30",
+      "clothing": "[{\"item\":\"Forest Green Linen Tunic\",\"type\":\"tunic\",\"material\":\"linen\",\"texture\":\"smooth, breathable\",\"color\":\"forest green\",\"wear\":\"neat, no scuffs\",\"layers\":\"top layer over breeches\"},{\"item\":\"Forest Brown Wool Breeches\",\"type\":\"breeches\",\"material\":\"wool\",\"texture\":\"soft, slightly textured\",\"color\":\"forest brown\",\"wear\":\"comfortable fit\",\"layers\":\"bottom layer under tunic\"},{\"item\":\"Black Leather Knee-High Boots\",\"type\":\"boots\",\"material\":\"black leather\",\"texture\":\"polished smooth\",\"color\":\"black\",\"wear\":\"neat, no scuffs\",\"layers\":\"over breeches and tunic\"},{\"item\":\"Silver Leather Belt with Buckle\",\"type\":\"belt\",\"material\":\"silvered leather\",\"texture\":\"smooth leather with silver buckle\",\"color\":\"silver/black\",\"wear\":\"fits snugly across waist\",\"layers\":\"over tunic\"}]",
+      "gender": "female",
+      "hair": "silver"
+    },
+    {
+      "name": "Dragon",
+      "age": "30",
+      "clothing": "N/A",
+      "gender": "male",
+      "scale_color": "obsidian",
+      "eye_color": "amber"
+    }
+  ]
+}
