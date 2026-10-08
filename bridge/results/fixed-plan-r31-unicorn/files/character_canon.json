@@ -1,0 +1,25 @@
+{
+  "version": 3,
+  "source_sha256": "b5fe1c79fff7af200863c77422f161095ff52d7bee7bbc67fd2c00149adc6d61",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "profession",
+    "setting",
+    "customers",
+    "personality_trait"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "Amy wears a sturdy, dark‑brown woolen tunic that reaches her knees, its coarse texture softened by years of use. Over the tunic she dons a worn leather apron tied at the waist, patched in several places where it has caught on mugs and barrels; the apron is deep brown with faded silver stitching. Her feet are covered by heavy, dark‑brown leather boots laced up to mid‑calf, scuffed from standing behind the bar all day. A simple woolen belt cinches her tunic at the waist, holding a small pouch for coins and keys",
+      "gender": "female",
+      "profession": "barkeeper",
+      "setting": "medieval tavern",
+      "customers": "magical humanoid creatures",
+      "personality_trait": "confident"
+    }
+  ]
+}
