@@ -1,0 +1,23 @@
+{
+  "version": 3,
+  "source_sha256": "d8fc45e23f89a8967d5213dc8d190831578a4a03eab0fa4cc5a15fedc39f8197",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "occupation",
+    "setting",
+    "confidence"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "35",
+      "clothing": "A sturdy, earth‑tinted wool tunic reaching mid‑thigh, its coarse fibers giving it a slightly worn texture from years of use. The tunic is belted at the waist with a simple leather strap, and a rough‑hewn wooden bar apron draped over her shoulders—its dark brown canvas patched in places where she has mended spills. She wears plain, sturdy leather boots that reach just below the knee, scuffed from standing on woodsmoke‑stained floors. A wide brimmed hat of woven straw sits atop her hair, its color matching the tunic’s hue",
+      "gender": "woman",
+      "occupation": "barkeep",
+      "setting": "medieval tavern for magical humanoid creatures",
+      "confidence": "confident"
+    }
+  ]
+}
