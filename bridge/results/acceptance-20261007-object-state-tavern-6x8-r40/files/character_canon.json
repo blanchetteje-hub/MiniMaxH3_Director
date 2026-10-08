@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "d8fc45e23f89a8967d5213dc8d190831578a4a03eab0fa4cc5a15fedc39f8197",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ". .",
+      "clothing": "A sturdy leather apron dyed deep brown with worn patches at the elbows and cuffs, cinched to her waist by a thick cord. Underneath, she wears a plain linen shirt in muted cream, sleeves rolled up to mid‑bicep. Her trousers are dark woolen breeches that fall just below the knee, tucked into sturdy leather boots polished to a shine. A simple brass belt holds a small pouch and a wooden mug holder. The apron’s front features a pocket for tools, while her wrists are wrapped in faded blue cloth bands",
+      "gender": "female"
+    }
+  ]
+}
