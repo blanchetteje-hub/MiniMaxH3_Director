@@ -1,5 +1,11 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-09 — reusable six-Beat tavern Director plan
+
+- Preserved the **six accepted Beats** from acceptance 21 and paired them with the supplied one-phase `story_arc.json` at `tests/acceptance/fixtures/tavern_run21_plan/{story_arc.json,beats.txt}`. The arc retains E1–E6, their original source-event wording (including Amy's explicit wardrobe in E1), ordering/dependencies, and empty source state effects; accepted Beat text is copied verbatim from the run log.
+- **Future tavern WorldState/Director/H3 tests:** use the existing `tests/acceptance/run_acceptance.py --director-plan-dir tests/acceptance/fixtures/tavern_run21_plan` mode with the tavern gold benchmark and normal image/model options. This reuses the fixed planning outputs and skips story expansion/Beat generation/Beat validation; do not quietly substitute a fresh plan.
+- The separate `tests/acceptance/fixtures/tavern_run21_accepted_beats.txt` remains as a source record. No production prompt, reducer, or acceptance runner code changed. Re-enable fresh full-pipeline acceptance when testing planning itself.
+
 Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This file describes the current branch implementation, active experiment, latest evidence, and immediate next work.
 
 ## Repository / active branch
