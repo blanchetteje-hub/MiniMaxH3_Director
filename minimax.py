@@ -4398,6 +4398,30 @@ def extract_current_segment_persistent_props(
                 "registered initial location or holder. Do not predict future props. "
                 f"Prior validation error: {last_error}"
             )
+        # Capture the effective per-attempt messages, vocabulary and model output.
+        # This console trace is included in acceptance run.log even when
+        # prompt_history.txt or LM Studio's developer log is unavailable.
+        console_log(
+            "WORLDSTATE PROP EXTRACTION REQUEST "
+            + json.dumps({
+                "purpose": "world_state_current_segment_props",
+                "attempt": attempt,
+                "messages": attempt_messages,
+                "registered_subjects": [
+                    {"id": item["id"], "name": item["name"], "presence": item["presence"]}
+                    for item in world_state["subjects"].values()
+                ],
+                "registered_locations": [
+                    {"id": key, "name": item["name"]}
+                    for key, item in world_state["locations"].items()
+                ],
+                "registered_props": [
+                    {"id": key, "name": item["name"], "kind": item["kind"]}
+                    for key, item in world_state["props"].items()
+                ],
+            }, ensure_ascii=False, default=str),
+            flush=True,
+        )
         try:
             raw = llm_request(
                 attempt_messages,
@@ -4408,13 +4432,29 @@ def extract_current_segment_persistent_props(
                     "attempt": attempt,
                 },
             )
-            return parse_current_segment_persistent_prop_result(
+            console_log(
+                "WORLDSTATE PROP EXTRACTION RESPONSE "
+                + json.dumps({"attempt": attempt, "raw": raw}, ensure_ascii=False, default=str),
+                flush=True,
+            )
+            parsed = parse_current_segment_persistent_prop_result(
                 raw, current_beat, assigned_source, world_state
             )
+            console_log(
+                "WORLDSTATE PROP EXTRACTION ACCEPTED "
+                + json.dumps({"attempt": attempt, "props": parsed}, ensure_ascii=False, default=str),
+                flush=True,
+            )
+            return parsed
         except LLMConnectionError:
             raise
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             last_error = error
+            console_log(
+                "WORLDSTATE PROP EXTRACTION REJECTED "
+                + json.dumps({"attempt": attempt, "error": str(error)}, ensure_ascii=False),
+                flush=True,
+            )
     raise ValueError("Could not extract current-Segment persistent props: " + str(last_error))
 
 
