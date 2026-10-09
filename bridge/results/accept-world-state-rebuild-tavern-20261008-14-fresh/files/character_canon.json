@@ -1,0 +1,59 @@
+{
+  "version": 3,
+  "source_sha256": "612023c86f90f324cc75418cfeb64fac2aa9c5c17266008efa7407558e8fe843",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "wipes_wooden_floor_creaking_as_she_wipes_a_polished_table_with_a_cloth_soaked_in_ale_scented_oil",
+    "pours_steaming_cup_into_crystal_chalice_for_elf",
+    "refills_goblin_s_chipped_mug_from_barrel_beside_hearth",
+    "grabs_crystal_cup_from_shelf_to_serve_dragon",
+    "wipes_bar_with_fresh_cloth_after_dragon_sips",
+    "has_green_skin",
+    "leans_over_counter_with_tiny_hands_clutching_chipped_mug",
+    "beautiful_female_elf_with_silver_hair_streaming_down_shoulders",
+    "takes_seat_at_back_table",
+    "dragon_shaped_creature_slides_onto_high_bar_stool_scales_glittering_like_polished_obsidian",
+    "wings_unfurl_revealing_pair_of_amber_eyes_that_scan_the_room",
+    "takes_slow_sip_from_crystal_cup_and_exhales_contentedly"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy:[{\"item\":\"tunic\",\"material\":\"rough-spun wool\",\"color\":\"dark brown/gray\",\"texture\":\"coarse, scuffed surface\",\"wear\":\"scuffs from medieval trade\"},{\"item\":\"apron\",\"material\":\"leather\",\"color\":\"tan/dark brown\",\"marks\":\"worn work marks\",\"layer\":\"over tunic\"},{\"item\":\"undershirt\",\"material\":\"linen\",\"color\":\"white\",\"texture\":\"smooth, plain\"},{\"item\":\"boots\",\"material\":\"leather\",\"color\":\"dark brown\",\"style\":\"simple sturdy boots\"},{\"item\":\"belt\",\"material\":\"leather\",\"color\":\"tan/dark brown\",\"usage\":\"holds apron, supports tools\"}]",
+      "gender": "female",
+      "wipes_wooden_floor_creaking_as_she_wipes_a_polished_table_with_a_cloth_soaked_in_ale_scented_oil": "true",
+      "pours_steaming_cup_into_crystal_chalice_for_elf": "true",
+      "refills_goblin_s_chipped_mug_from_barrel_beside_hearth": "true",
+      "grabs_crystal_cup_from_shelf_to_serve_dragon": "true",
+      "wipes_bar_with_fresh_cloth_after_dragon_sips": "true"
+    },
+    {
+      "name": "Goblin",
+      "age": "10",
+      "clothing": "Goblin - Tunic: rough‑spun linen dyed in an earthy green that matches his skin tone; the fabric is coarse and has a frayed texture at the cuffs from frequent scuffs. - Trousers: loose brown wool pants that fit comfortably over his small frame, with soft frays along the hems. - Boots: simple tan leather boots reaching just above the ankle, worn soles showing signs of use. - Belt: a plain brown leather belt cinched at the waist, holding a tiny pouch for carrying bits and pieces",
+      "gender": "male",
+      "has_green_skin": "true",
+      "leans_over_counter_with_tiny_hands_clutching_chipped_mug": "true"
+    },
+    {
+      "name": "Elf",
+      "age": "120",
+      "clothing": "The beautiful female elf sits at the back table with silver hair streaming down her shoulders. Her outfit, typical of an elven patron in a medieval tavern, consists of:",
+      "gender": "female",
+      "beautiful_female_elf_with_silver_hair_streaming_down_shoulders": "true",
+      "takes_seat_at_back_table": "true"
+    },
+    {
+      "name": "Dragon",
+      "age": "500",
+      "clothing": "N/A",
+      "gender": "male",
+      "dragon_shaped_creature_slides_onto_high_bar_stool_scales_glittering_like_polished_obsidian": "true",
+      "wings_unfurl_revealing_pair_of_amber_eyes_that_scan_the_room": "true",
+      "takes_slow_sip_from_crystal_cup_and_exhales_contentedly": "true"
+    }
+  ]
+}
