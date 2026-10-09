@@ -2,6 +2,35 @@
 
 This file is for promising ideas, heuristics, and experiments that are **not current production architecture** and should not be treated as implemented requirements.
 
+## TODO — future work / experiments
+
+These are **not approved implementation tasks**. Revisit only when they become relevant; detailed notes remain below.
+
+- [ ] **Minimum local LLM context and long-story chunking:** evaluate **6,044 tokens** as the minimum supported context window; redesign story-dependent requests so expanded stories of **50+ beats** and other large story chunks can be processed in bounded, coherent pieces without losing source coverage, beat ordering, or cross-chunk continuity. See [Minimum-context / long-story scaling](#minimum-context--long-story-scaling).
+- [ ] **Dialogue-density classification:** evaluate a narrow story-type dialogue prior; keep source dialogue authoritative. See [Dialogue-density classification experiment](#dialogue-density-classification-experiment).
+- [ ] **Segment timing / duration fit:** deterministic timing budgets plus narrow extraction for genuinely underspecified action durations. See [Segment timing / duration-fit validation](#segment-timing--duration-fit-validation).
+- [ ] **Structured static-space catalog:** evaluate only if simpler location/relative-label handling fails. See [Structured static-space catalog experiment](#structured-static-space-catalog-experiment).
+- [ ] **RefMod conditioning:** A/B test previous-segment reference compression and reusable location references. See [RefMod reference-conditioning experiment](#refmod-reference-conditioning-experiment).
+- [ ] **Standalone outfit references:** test clothing-only reference assets separately from identity. See [Reusable standalone outfit-reference experiment](#reusable-standalone-outfit-reference-experiment).
+- [ ] **Clothing-state reference refresh:** test short updated reference videos when visible wardrobe condition changes materially. See [Clothing-state reference-video refresh](#clothing-state-reference-video-refresh).
+
+The persistent room geometry / navigable topology item is already marked **SOLVED** below and is intentionally not an open TODO.
+
+## Minimum-context / long-story scaling
+
+**Future requirement / proposal, not implemented:** consider **6,044 tokens** as a bare-minimum local LLM context window. Do not enforce this threshold until tested against actual prompt sizes, schemas, reasoning/output reserves, and representative stories.
+
+For expanded stories with **50+ beats**, and any other stage currently supplied large portions of story text:
+
+- Inventory consumers of the expanded story, full beat lists, prior prompts, and other unbounded narrative context.
+- Break long inputs into **bounded, meaningfully segmented chunks** (for example, ordered contiguous story/beat spans), rather than truncating the story or silently dropping source events.
+- Preserve global source authority, event/beat order, exact coverage, and continuity across boundaries using **Python-owned indexing and compact factual context**. Avoid duplicating an evolving narrative authority or inventing an additional state ledger.
+- Only send the local model the story span and necessary context for the current job; keep end-to-end checks that every required source event is accounted for.
+- Evaluate the real minimum viable context window and the quality/performance tradeoff using longer stories (50+ beats), without adding unnecessary serial LLM calls or ComfyUI downtime.
+- Keep context-window support separate from the four sampling/reasoning profiles, so each task's actual context and output needs can be controlled.
+
+**Status:** TODO for future design/testing; no runtime code or settings changes requested here.
+
 ## Dialogue-density classification experiment
 
 Potential future use: estimate how dialogue-heavy the **type of film** should be before deciding how aggressively dialogue should be requested or inserted into generated beats/scenes.
