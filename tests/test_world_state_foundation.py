@@ -759,9 +759,10 @@ class WorldStateSeedTests(unittest.TestCase):
         self.assertEqual(state["world_state"]["props"], {})
         self.assertEqual(state["world_state"]["locations"], {})
 
-    def test_director_contract_uses_only_registered_ids_and_dry_runs_same_response(self):
+    def test_director_contract_uses_registered_names_and_resolves_them_before_reducer(self):
         state = new_world_state({"subjects": {
             "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
+            "2": {"subject_id": 2, "name": "Baker", "gender": "unknown", "picture_ids": []},
         }})
         state, location_id = seed_canonical_static_location_state(
             state, {"location": {"name": "Room"}, "anchors": [], "objects": []}
@@ -770,32 +771,214 @@ class WorldStateSeedTests(unittest.TestCase):
             state, [{"name": "Amy", "initial_state": "standing"}], location_id=location_id
         )
         contract = build_director_state_action_contract(state)
-        self.assertEqual([item["id"] for item in contract["vocabulary"]["subjects"]], ["subject_1"])
-        self.assertEqual([item["id"] for item in contract["vocabulary"]["locations"]], [location_id])
-        self.assertIn("never invent entity IDs", contract["instruction"])
+        vocabulary = contract["vocabulary"]
+        self.assertEqual(
+            {item["name"] for item in vocabulary["subjects"]}, {"Amy", "Baker"}
+        )
+        self.assertEqual(vocabulary["locations"], [{"name": "Room"}])
+        self.assertIn("exact registered entity names", contract["instruction"])
+
+        def assert_no_id_fields(value):
+            if isinstance(value, dict):
+                for key, nested in value.items():
+                    self.assertNotEqual(key, "id")
+                    self.assertFalse(key.endswith("_id"), key)
+                    assert_no_id_fields(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    assert_no_id_fields(nested)
+
+        assert_no_id_fields(vocabulary)
         schema = contract["response_format"]["json_schema"]["schema"]
         self.assertIn("raw_scene", schema["required"])
         self.assertIn("state_actions", schema["required"])
+        action_schemas = schema["properties"]["state_actions"]["items"]["oneOf"]
+        enter_schema = next(
+            item for item in action_schemas
+            if item["properties"]["op"]["const"] == "enter"
+        )
+        self.assertEqual(
+            enter_schema["properties"]["subject_id"]["enum"], ["Amy", "Baker"]
+        )
+        self.assertEqual(
+            enter_schema["properties"]["location_id"]["enum"], ["Room"]
+        )
 
         response = {
-            "raw_scene": "Amy stays in the room.",
+            "raw_scene": "Baker enters the room.",
             "finite_activity_complete": True,
             "named_beneficiaries_complete": True,
             "activity_tools_settled": True,
             "beat_complete": True,
             "state_actions": [{
-                "action_id": "invented-ref",
+                "action_id": "baker-enters",
                 "op": "enter",
-                "subject_id": "subject_not_registered",
-                "location_id": location_id,
+                "subject_id": "Baker",
+                "location_id": "Room",
             }],
         }
         result = parse_and_dry_run_director_state_actions(
-            state, response, segment_number=1
+            state,
+            response,
+            segment_number=1,
+            name_resolution=contract["name_resolution"],
         )
-        self.assertFalse(result["accepted"])
-        self.assertEqual(result["outcomes"][0].code, "unknown_entity_id")
-        self.assertEqual(state["subjects"]["subject_1"]["presence"], "present")
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["state_actions"][0]["subject_id"], "subject_2")
+        self.assertEqual(result["state_actions"][0]["location_id"], location_id)
+        self.assertEqual(state["subjects"]["subject_2"]["presence"], "unknown")
+
+    def test_director_name_resolution_rejects_unknown_and_out_of_vocabulary_names(self):
+        state = make_reducer_state()
+        contract = build_director_state_action_contract(
+            state,
+            current_segment_text="Subject One Support A",
+        )
+        response = {
+            "raw_scene": "Subject One acts.",
+            "finite_activity_complete": True,
+            "named_beneficiaries_complete": True,
+            "activity_tools_settled": True,
+            "beat_complete": True,
+            "state_actions": [{
+                "action_id": "unknown-prop",
+                "op": "pickup",
+                "actor_subject_id": "Subject One",
+                "prop_id": "Target vessel",
+            }],
+        }
+        # Target vessel is in WorldState, but absent from this request's vocabulary.
+        with self.assertRaisesRegex(ValueError, "unknown_registered_name"):
+            parse_and_dry_run_director_state_actions(
+                state,
+                response,
+                segment_number=1,
+                name_resolution=contract["name_resolution"],
+            )
+        response["state_actions"][0]["prop_id"] = "Unregistered object"
+        with self.assertRaisesRegex(ValueError, "unknown_registered_name"):
+            parse_and_dry_run_director_state_actions(
+                state,
+                response,
+                segment_number=1,
+                name_resolution=contract["name_resolution"],
+            )
+
+    def test_director_name_resolution_rejects_duplicate_registered_names(self):
+        state = make_reducer_state()
+        duplicate = copy.deepcopy(state["props"]["prop_target"])
+        duplicate["id"] = "prop_target_duplicate"
+        state["props"][duplicate["id"]] = duplicate
+        validate_world_state(state)
+        contract = build_director_state_action_contract(
+            state,
+            current_segment_text="Subject One Target vessel",
+        )
+        self.assertEqual(
+            contract["name_resolution"]["prop"]["Target vessel"],
+            ["prop_target", "prop_target_duplicate"],
+        )
+        response = {
+            "raw_scene": "Subject One reaches for the vessel.",
+            "finite_activity_complete": True,
+            "named_beneficiaries_complete": True,
+            "activity_tools_settled": True,
+            "beat_complete": True,
+            "state_actions": [{
+                "action_id": "ambiguous-pickup",
+                "op": "pickup",
+                "actor_subject_id": "Subject One",
+                "prop_id": "Target vessel",
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "ambiguous_registered_name"):
+            parse_and_dry_run_director_state_actions(
+                state,
+                response,
+                segment_number=1,
+                name_resolution=contract["name_resolution"],
+            )
+
+    def test_director_vocabulary_renders_nested_placements_as_registered_names(self):
+        state = make_reducer_state()
+        state["props"]["prop_target"]["placement"] = {
+            "kind": "held", "subject_id": "subject_2",
+        }
+        validate_world_state(state)
+        contract = build_director_state_action_contract(
+            state,
+            current_segment_text="Subject One Movable object Support A Target vessel",
+        )
+        movable = next(
+            prop for prop in contract["vocabulary"]["props"]
+            if prop["name"] == "Movable object"
+        )
+        self.assertEqual(movable["placement"], {
+            "kind": "located", "location": "Area A", "support": "Support A",
+        })
+        target = next(
+            prop for prop in contract["vocabulary"]["props"]
+            if prop["name"] == "Target vessel"
+        )
+        self.assertEqual(target["placement"], {
+            "kind": "held", "subject": "Subject Two",
+        })
+        self.assertEqual(contract["vocabulary"]["supports"], [{
+            "name": "Support A", "location": "Area A",
+        }])
+        self.assertIn(
+            {"name": "Subject Two", "presence": "present", "location": "Area A"},
+            contract["vocabulary"]["subjects"],
+        )
+        self.assertEqual(
+            next(
+                subject for subject in contract["vocabulary"]["subjects"]
+                if subject["name"] == "Subject One"
+            )["location"],
+            "Area A",
+        )
+        response = {
+                "raw_scene": "Subject Two places the vessel on Support A.",
+            "finite_activity_complete": True,
+            "named_beneficiaries_complete": True,
+            "activity_tools_settled": True,
+            "beat_complete": True,
+            "state_actions": [{
+                "action_id": "place-object",
+                "op": "place",
+                "actor_subject_id": "Subject Two",
+                "prop_id": "Target vessel",
+                "location_id": "Area A",
+                "support_id": "Support A",
+            }],
+        }
+        resolved = parse_and_dry_run_director_state_actions(
+            state,
+            response,
+            segment_number=1,
+            name_resolution=contract["name_resolution"],
+        )
+        self.assertTrue(resolved["accepted"])
+        self.assertEqual(resolved["state_actions"][0], {
+            "action_id": "place-object",
+            "op": "place",
+            "actor_subject_id": "subject_2",
+                "prop_id": "prop_target",
+            "location_id": "location_a",
+            "support_id": "prop_support_a",
+        })
+
+        def assert_no_id_fields(value):
+            if isinstance(value, dict):
+                for key, nested in value.items():
+                    self.assertNotEqual(key, "id")
+                    self.assertFalse(key.endswith("_id"), key)
+                    assert_no_id_fields(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    assert_no_id_fields(nested)
+
+        assert_no_id_fields(contract["vocabulary"])
 
 
 def make_reducer_state():

@@ -1696,6 +1696,7 @@ def reduce_world_state(
 
 
 def _string_enum(values: list[str], *, nullable: bool = False) -> dict[str, Any]:
+    values = list(dict.fromkeys(values))
     schema: dict[str, Any] = {"type": ["string", "null"] if nullable else "string"}
     if values:
         schema["enum"] = [*values, *([None] if nullable else [])]
@@ -1724,15 +1725,15 @@ def _director_action_schema(
 
 def _action_field_schema(
     field_contract: dict[str, Any],
-    entity_ids: dict[str, list[str]],
+    entity_names: dict[str, list[str]],
 ) -> dict[str, Any]:
-    """Resolve a declarative StateAction field against this request vocabulary."""
+    """Resolve a StateAction reference schema against registered names."""
     schema = deepcopy(field_contract)
     reference_kind = schema.pop("ref", None)
     if reference_kind is None:
         return schema
     return _string_enum(
-        entity_ids[reference_kind],
+        entity_names[reference_kind],
         nullable=bool(schema.pop("nullable", False)),
     )
 
@@ -1829,9 +1830,18 @@ def build_director_state_action_contract(
         ]
         if segment_text else all_props
     )
+    nested_holder_ids = {
+        item["placement"]["subject_id"]
+        for item in props
+        if item["placement"].get("kind") == "held"
+    }
+    selected_subject_ids = {item["id"] for item in subjects} | nested_holder_ids
+    subjects = [
+        item for item in all_subjects if item["id"] in selected_subject_ids
+    ]
     active_location_ids = {
         item["location_id"] for item in subjects
-        if item["presence"] == "present" and item["location_id"] != UNKNOWN
+        if item["location_id"] != UNKNOWN
     }
     referenced_location_ids = {
         item["id"] for item in all_locations
@@ -1866,15 +1876,11 @@ def build_director_state_action_contract(
                 "location_id": prop["placement"].get("location_id"),
             })
 
-    subject_ids = [item["id"] for item in subjects]
-    location_ids = [item["id"] for item in locations]
-    prop_ids = [item["id"] for item in props]
-    support_ids = [item["id"] for item in supports]
-    entity_ids = {
-        "subject": subject_ids,
-        "location": location_ids,
-        "prop": prop_ids,
-        "support": support_ids,
+    entity_names = {
+        "subject": [item["name"] for item in subjects],
+        "location": [item["name"] for item in locations],
+        "prop": [item["name"] for item in props],
+        "support": [item["name"] for item in supports],
     }
     action_schemas: list[dict[str, Any]] = []
     for op, operation in ACTION_CONTRACT.items():
@@ -1884,10 +1890,10 @@ def build_director_state_action_contract(
             if field_contract.get("ref")
             and not field_contract.get("nullable", False)
         }
-        if not all(entity_ids[category] for category in required_vocabulary):
+        if not all(entity_names[category] for category in required_vocabulary):
             continue
         fields = {
-            field_name: _action_field_schema(field_contract, entity_ids)
+            field_name: _action_field_schema(field_contract, entity_names)
             for field_name, field_contract in operation["fields"].items()
         }
         action_schemas.append(
@@ -1926,17 +1932,83 @@ def build_director_state_action_contract(
             },
         },
     }
+    def names_to_ids(records: list[dict[str, Any]]) -> dict[str, list[str]]:
+        result: dict[str, list[str]] = {}
+        for item in records:
+            result.setdefault(item["name"], []).append(item["id"])
+        return {name: sorted(ids) for name, ids in result.items()}
+
+    location_name_by_id = {item["id"]: item["name"] for item in all_locations}
+    subject_name_by_id = {item["id"]: item["name"] for item in all_subjects}
+    prop_name_by_id = {
+        prop_id: prop["name"]
+        for prop_id, prop in world_state["props"].items()
+    }
+
+    def placement_names(placement: dict[str, Any]) -> dict[str, Any]:
+        kind = placement.get("kind")
+        if kind == "held":
+            return {
+                "kind": kind,
+                "subject": subject_name_by_id[placement["subject_id"]],
+            }
+        if kind == "located":
+            result = {
+                "kind": kind,
+                "location": location_name_by_id[placement["location_id"]],
+            }
+            support_id = placement.get("support_id")
+            if support_id is not None:
+                result["support"] = prop_name_by_id[support_id]
+            return result
+        return {"kind": kind}
+
+    vocabulary = {
+        "subjects": [
+            {
+                "name": item["name"],
+                "presence": item["presence"],
+                "location": location_name_by_id.get(item["location_id"], UNKNOWN),
+            }
+            for item in subjects
+        ],
+        "locations": [{"name": item["name"]} for item in locations],
+        "props": [
+            {
+                "name": item["name"],
+                "kind": item["kind"],
+                "mobility": item["mobility"],
+                "status": item["status"],
+                "placement": placement_names(item["placement"]),
+                "contents": deepcopy(item["contents"]),
+                "capabilities": deepcopy(item["capabilities"]),
+                "mechanism_state": item["mechanism_state"],
+            }
+            for item in props
+        ],
+        "supports": [
+            {
+                "name": item["name"],
+                "location": location_name_by_id.get(item["location_id"], UNKNOWN),
+            }
+            for item in supports
+        ],
+    }
+
+    name_resolution = {
+        "subject": names_to_ids(subjects),
+        "location": names_to_ids(locations),
+        "prop": names_to_ids(props),
+        "support": names_to_ids(supports),
+    }
     return {
         "response_format": format_schema,
-        "vocabulary": {
-            "subjects": subjects,
-            "locations": locations,
-            "props": props,
-            "supports": supports,
-        },
+        "vocabulary": vocabulary,
+        "name_resolution": name_resolution,
         "instruction": (
-            "Return raw_scene and state_actions in this same response. Use only IDs "
-            "listed in the supplied vocabulary; never invent entity IDs. Add an action "
+            "Return raw_scene and state_actions in this same response. Use only exact "
+            "registered entity names listed in the supplied vocabulary; never invent "
+            "or rename an entity. Add an action "
             "only when the scene explicitly changes persistent state. Off-camera is "
             "not an action. Use an empty state_actions array when no represented state "
             "changes."
@@ -1949,8 +2021,9 @@ def parse_and_dry_run_director_state_actions(
     raw_result: str | dict[str, Any],
     *,
     segment_number: int,
+    name_resolution: dict[str, dict[str, list[str]]],
 ) -> dict[str, Any]:
-    """Parse same-response RAW/actions and dry-run actions without committing."""
+    """Resolve request-scoped registered names, then dry-run reducer actions."""
     if isinstance(raw_result, str):
         try:
             response = json.loads(raw_result)
@@ -1971,14 +2044,52 @@ def parse_and_dry_run_director_state_actions(
         "activity_tools_settled", "beat_complete",
     )):
         raise ValueError("Director completion fields must be booleans.")
+    if not isinstance(name_resolution, dict):
+        raise ValueError("Director action response has no request vocabulary for name resolution.")
+
+    resolved_actions = deepcopy(response["state_actions"])
+    if isinstance(resolved_actions, list):
+        for action in resolved_actions:
+            if not isinstance(action, dict):
+                continue
+            operation = ACTION_CONTRACT.get(action.get("op"))
+            if operation is None:
+                continue
+            for field_name, field_contract in operation["fields"].items():
+                reference_kind = field_contract.get("ref")
+                if reference_kind is None or field_name not in action:
+                    continue
+                reference_name = action[field_name]
+                if reference_name is None and field_contract.get("nullable", False):
+                    continue
+                if not isinstance(reference_name, str):
+                    raise ValueError(
+                        f"StateAction {action.get('op')}.{field_name} must be an exact "
+                        f"registered {reference_kind} name."
+                    )
+                matches = name_resolution.get(reference_kind, {}).get(reference_name, [])
+                if not matches:
+                    raise ValueError(
+                        f"unknown_registered_name: StateAction "
+                        f"{action.get('op')}.{field_name} names an "
+                        f"unregistered {reference_kind}: {reference_name!r}."
+                    )
+                if len(matches) != 1:
+                    raise ValueError(
+                        f"ambiguous_registered_name: StateAction "
+                        f"{action.get('op')}.{field_name} has an ambiguous "
+                        f"registered {reference_kind} name: {reference_name!r}."
+                    )
+                action[field_name] = matches[0]
+
     outcomes = validate_state_actions(
         world_state,
-        response["state_actions"],
+        resolved_actions,
         segment_number=segment_number,
     )
     return {
         "raw_scene": response["raw_scene"],
-        "state_actions": deepcopy(response["state_actions"]),
+        "state_actions": resolved_actions,
         "outcomes": outcomes,
         "accepted": all(outcome.accepted for outcome in outcomes),
     }

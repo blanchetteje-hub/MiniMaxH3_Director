@@ -1292,7 +1292,7 @@ COMPLETION CHECK
 - beat_complete: true only when all three checks above are true.
 
 STATE ACTIONS
-- Return state_actions in this same JSON response. Describe only explicit persistent changes staged in RAW SCENE. Use only the Python-supplied registered IDs; never invent or rename an ID. Use [] when this Segment makes no represented persistent change. Off-camera is not a state action.
+- Return state_actions in this same JSON response. Describe only explicit persistent changes staged in RAW SCENE. Use only exact registered entity names supplied by Python; never invent or rename an entity. Use [] when this Segment makes no represented persistent change. Off-camera is not a state action.
 
 RETURN JSON ONLY
 {{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true,"state_actions":[]}}
@@ -37127,8 +37127,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
     registered_vocabulary_prompt = (
-        "REGISTERED WORLDSTATE VOCABULARY — Python-assigned IDs; select only "
-        "IDs shown here:\n"
+        "REGISTERED WORLDSTATE VOCABULARY — select only exact registered entity "
+        "names shown here; Python resolves names to IDs:\n"
         + json.dumps(
             state_action_contract["vocabulary"],
             ensure_ascii=False,
@@ -37137,7 +37137,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         + "\n\nSTATE ACTION CONTRACT — Return state_actions in this same "
         "response as RAW SCENE. Add only explicit persistent changes staged "
         "in RAW SCENE; off-camera is not an action. Use [] if no represented "
-        "state changes. The response schema restricts operations and IDs to "
+        "state changes. The response schema restricts operations and names to "
         "the registered vocabulary."
     )
     if request1_base_messages:
@@ -37194,7 +37194,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             "role": "user",
             "content": (
                 "STATE ACTION RETRY — correct the state_actions batch using the "
-                "same opening WorldState and registered IDs. The reducer rejected "
+                "same opening WorldState and exact registered names. The reducer rejected "
                 "the first failing action with this concrete diagnostic:\n"
                 f"{failure}\n"
                 "Fix this first failure and return the complete corrected action "
@@ -37225,6 +37225,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 world_state_opening,
                 raw_scene_result,
                 segment_number=segment_number,
+                name_resolution=state_action_contract["name_resolution"],
             )
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             state_action_dry_run = {

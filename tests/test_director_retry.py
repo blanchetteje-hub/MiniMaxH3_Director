@@ -176,9 +176,9 @@ def tavern_world_state_from_authorities():
         TAVERN_SEGMENT_BEATS,
         location_id=location_id,
         llm_request=mock.Mock(return_value={
-            "classification": "present",
-            "evidence": "Amy wipes a polished table",
-            "initial_state": "wiping a polished table",
+            "subject": "Amy",
+            "status": "present",
+            "initial_state": "Amy wipes a polished table",
         }),
     )
     return state, location_id
@@ -225,20 +225,24 @@ def prepare_tavern_segment(state, segment_number):
     return state, added_names, list(dict.fromkeys(included_names))
 
 
-def goblin_mug_transfer_actions(mug_id):
+def goblin_mug_transfer_actions(
+    mug_reference="mug",
+    subject_references=("Goblin1", "Elf1"),
+):
+    goblin_reference, elf_reference = subject_references
     return [
         {
             "action_id": "pickup-mug",
             "op": "pickup",
-            "actor_subject_id": "subject_1",
-            "prop_id": mug_id,
+            "actor_subject_id": goblin_reference,
+            "prop_id": mug_reference,
         },
         {
             "action_id": "handoff-mug",
             "op": "handoff",
-            "from_subject_id": "subject_1",
-            "to_subject_id": "subject_2",
-            "prop_id": mug_id,
+            "from_subject_id": goblin_reference,
+            "to_subject_id": elf_reference,
+            "prop_id": mug_reference,
         },
     ]
 
@@ -374,17 +378,17 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             current_segment_text=TAVERN_SEGMENT_BEATS[2] + TAVERN_SEGMENT_SOURCES[2],
             current_segment_subject_names=subject_names,
         )
-        vocabulary_subject_ids = {
-            subject["id"] for subject in contract["vocabulary"]["subjects"]
+        vocabulary_subject_names = {
+            subject["name"] for subject in contract["vocabulary"]["subjects"]
         }
-        self.assertIn(elf_id, vocabulary_subject_ids)
+        self.assertIn("Elf1", vocabulary_subject_names)
         schema = contract["response_format"]["json_schema"]["schema"]
         action_schemas = schema["properties"]["state_actions"]["items"]["oneOf"]
         enter_schema = next(
             item for item in action_schemas
             if item["properties"]["op"]["const"] == "enter"
         )
-        self.assertIn(elf_id, enter_schema["properties"]["subject_id"]["enum"])
+        self.assertIn("Elf1", enter_schema["properties"]["subject_id"]["enum"])
         outcome = validate_state_actions(state, [{
             "action_id": "elf-enters",
             "op": "enter",
@@ -436,7 +440,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             item for item in action_schemas
             if item["properties"]["op"]["const"] == "enter"
         )
-        self.assertIn(dragon_id, enter_schema["properties"]["subject_id"]["enum"])
+        self.assertIn("Dragon1", enter_schema["properties"]["subject_id"]["enum"])
 
     def test_reducer_operation_contract_does_not_depend_on_verb_spelling(self):
         state, _location_id = tavern_world_state_from_authorities()
@@ -481,7 +485,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         bundle = goblin_mug_bundle()
         opening_world_state = copy.deepcopy(bundle["world_state_opening"])
         _state, _location_id, mug_id = goblin_mug_world_state()
-        actions = goblin_mug_transfer_actions(mug_id)
+        actions = goblin_mug_transfer_actions("mug")
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             director_response(
                 "At 00:01.000, Goblin1 picks up the mug.\n"
@@ -506,7 +510,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
 
         self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
-        self.assertEqual(payload["request1_result"]["state_actions"], actions)
+        self.assertEqual(
+            payload["request1_result"]["state_actions"],
+            goblin_mug_transfer_actions(
+                mug_id,
+                subject_references=("subject_1", "subject_2"),
+            ),
+        )
         self.assertEqual(bundle["world_state_opening"], opening_world_state)
         self.assertEqual(
             bundle["world_state_opening"]["props"][mug_id]["placement"],
@@ -516,9 +526,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             call for call in request.call_args_list
             if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
         )
-        prompt = request1.args[0][-1]["content"]
+        prompt = "\n".join(
+            str(message.get("content") or "")
+            for message in request1.args[0]
+        )
         self.assertIn("REGISTERED WORLDSTATE VOCABULARY", prompt)
-        self.assertIn(mug_id, prompt)
+        self.assertIn('"name":"Goblin1"', prompt)
+        self.assertNotIn(mug_id, prompt)
+        self.assertIn("exact registered entity names", prompt)
+        self.assertNotIn("Python-assigned IDs", prompt)
         action_schemas = request1.kwargs["response_format"]["json_schema"]["schema"]["properties"]["state_actions"]["items"]["oneOf"]
         self.assertEqual(
             {schema["properties"]["op"]["const"] for schema in action_schemas},
@@ -528,28 +544,42 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "close", "lock", "unlock",
             },
         )
+        pickup_schema = next(
+            schema for schema in action_schemas
+            if schema["properties"]["op"]["const"] == "pickup"
+        )
+        self.assertIn("Goblin1", pickup_schema["properties"]["actor_subject_id"]["enum"])
+        self.assertIn("mug", pickup_schema["properties"]["prop_id"]["enum"])
+        self.assertNotIn(mug_id, pickup_schema["properties"]["prop_id"]["enum"])
 
-    def test_request_one_rejects_duplicate_or_unknown_prop_id_then_retries(self):
+    def test_director_system_and_retry_instructions_use_names(self):
+        self.assertIn(
+            "exact registered entity names",
+            minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE,
+        )
+        self.assertNotIn(
+            "Python-supplied registered IDs",
+            minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE,
+        )
+
+    def test_request_one_rejects_duplicate_or_unknown_prop_name_then_retries(self):
         for invalid_actions, expected_code in (
             (
                 [
-                    {"action_id": "pickup-one", "op": "pickup", "actor_subject_id": "subject_1", "prop_id": "mug-id"},
-                    {"action_id": "pickup-twice", "op": "pickup", "actor_subject_id": "subject_1", "prop_id": "mug-id"},
+                    {"action_id": "pickup-one", "op": "pickup", "actor_subject_id": "Goblin1", "prop_id": "mug"},
+                    {"action_id": "pickup-twice", "op": "pickup", "actor_subject_id": "Goblin1", "prop_id": "mug"},
                 ],
                 "prop_not_located",
             ),
             (
-                [{"action_id": "pickup-unknown", "op": "pickup", "actor_subject_id": "subject_1", "prop_id": "prop_unregistered"}],
-                "unknown_entity_id",
+                [{"action_id": "pickup-unknown", "op": "pickup", "actor_subject_id": "Goblin1", "prop_id": "Unregistered prop"}],
+                "unknown_registered_name",
             ),
         ):
             with self.subTest(code=expected_code):
                 bundle = goblin_mug_bundle()
                 _state, _location_id, mug_id = goblin_mug_world_state()
                 invalid_actions = copy.deepcopy(invalid_actions)
-                for action in invalid_actions:
-                    if action["prop_id"] == "mug-id":
-                        action["prop_id"] = mug_id
                 request = mock.Mock(side_effect=pipeline_llm_side_effect([
                     director_response(
                         "At 00:01.000, Goblin1 picks up the mug.\n"
@@ -559,7 +589,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                     director_response(
                         "At 00:01.000, Goblin1 picks up the mug.\n"
                         "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                        state_actions=goblin_mug_transfer_actions(mug_id),
+                        state_actions=goblin_mug_transfer_actions("mug"),
                     ),
                 ]))
                 with (
@@ -593,9 +623,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         wrong_handoff = [{
             "action_id": "invalid-handoff",
             "op": "handoff",
-            "from_subject_id": "subject_2",
-            "to_subject_id": "subject_3",
-            "prop_id": mug_id,
+            "from_subject_id": "Amy",
+            "to_subject_id": "Elf1",
+            "prop_id": "mug",
         }]
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             director_response(
@@ -605,7 +635,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             director_response(
                 "At 00:01.000, Goblin1 picks up the mug.\n"
                 "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                state_actions=goblin_mug_transfer_actions(mug_id),
+                state_actions=goblin_mug_transfer_actions("mug"),
             ),
         ]))
         with (
@@ -633,15 +663,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             {
                 "action_id": "wrong-giver",
                 "op": "handoff",
-                "from_subject_id": "subject_2",
-                "to_subject_id": "subject_3",
-                "prop_id": mug_id,
+                "from_subject_id": "Amy",
+                "to_subject_id": "Elf1",
+                "prop_id": "mug",
             },
             {
                 "action_id": "unknown-prop",
                 "op": "pickup",
-                "actor_subject_id": "subject_1",
-                "prop_id": "prop_unregistered",
+                "actor_subject_id": "Goblin1",
+                "prop_id": "mug",
             },
         ]
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
@@ -657,7 +687,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             director_response(
                 "At 00:01.000, Goblin1 picks up the mug.\n"
                 "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                state_actions=goblin_mug_transfer_actions(mug_id),
+                state_actions=goblin_mug_transfer_actions("mug"),
             ),
         ]))
         physical = mock.Mock(side_effect=[
@@ -683,7 +713,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         reducer_retry_prompt = request1_calls[2].args[0][-1]["content"]
         self.assertIn("giver_not_holder", reducer_retry_prompt)
         self.assertNotIn("stale physical failure from attempt one", reducer_retry_prompt)
-        self.assertNotIn("unknown_entity_id", reducer_retry_prompt)
+        self.assertNotIn("unknown_registered_name", reducer_retry_prompt)
         self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
 
     def test_h3_soundscape_prompt_is_extraction_only(self):

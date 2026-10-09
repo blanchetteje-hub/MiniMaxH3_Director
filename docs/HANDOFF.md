@@ -22,6 +22,25 @@ Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/
 - Scope note: with the current unchanged extractor contract, a prop is registered when the current Beat/assigned source explicitly involves it in a supported persistent action such as placement or transfer. A cloth mentioned only as a wiping instrument is not inferred from future handling.
 - Verification: the new focused regression passed. The full `tests/test_world_state_foundation.py` module reported 43 passed and 2 existing stale story-start contract assertions failed; syntax and `git diff --check` passed.
 
+## 2026-10-09 — Director WorldState action contract uses registered names
+
+- Director Request 1 now receives registered Subject, location, prop, and support
+  names in its WorldState vocabulary and action-reference enums. Nested prop
+  placements also use registered holder/location/support names; Python IDs are
+  omitted from the LLM-facing vocabulary.
+- The same canonical `ACTION_CONTRACT` still defines action references. A
+  request-local name-to-ID map is built from only the vocabulary supplied to
+  that Request 1. Python resolves every action reference, including nullable
+  support and nested-placement vocabulary references, before passing the
+  unchanged ID-based actions to the existing reducer. Unknown or duplicate
+  names fail closed; no global registry or alias resolution was added.
+- Updated Director system, Request-1 vocabulary, and retry instructions to
+  require exact registered names. Canonical WorldState, reducer behavior, and
+  diagnostic logging remain unchanged.
+- Added regressions for successful resolution, unknown/out-of-request names,
+  duplicate-name ambiguity, and nested holder/location/support references.
+- Verification: `python -m pytest -q tests/test_world_state_foundation.py::WorldStateSeedTests tests/test_world_state_foundation.py::WorldStateReducerTests tests/test_director_retry.py tests/test_llm_prompt_pipeline.py::DirectorPromptCallContractTests::test_director_response_schema_includes_state_actions` — 151 passed, 4 subtests passed. `py_compile` passed.
+
 ## 2026-10-09 — WorldState extractors use the smart profile
 
 - Routed `world_state_current_segment_props` and `world_state_current_segment_subjects` through immutable `SMART_EXTRACTOR_LLM_SETTINGS`.
