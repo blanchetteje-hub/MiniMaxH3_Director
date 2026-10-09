@@ -415,7 +415,7 @@ def copy_acceptance_artifacts(
             shutil.copy2(source, target)
             copied[filename] = str(target.relative_to(result_dir))
     generated_dir = latest / "generated"
-    for filename in ("story_arc.json", "beats.txt", "character_canon.json"):
+    for filename in ("story_arc.json", "beats.txt", "character_canon.json", "prompt_history.txt", "generation_state.json"):
         source = generated_dir / filename
         if source.is_file():
             target = artifacts_dir / filename
