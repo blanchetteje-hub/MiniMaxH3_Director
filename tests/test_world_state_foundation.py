@@ -619,16 +619,16 @@ class WorldStateSeedTests(unittest.TestCase):
 
     def test_current_segment_prop_extractor_uses_names_and_cloth_id_persists(self):
         state = new_world_state({"subjects": {
-            "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
-            "2": {"subject_id": 2, "name": "Goblin", "gender": UNKNOWN, "picture_ids": []},
+            "1": {"subject_id": 1, "name": "Subject One", "gender": UNKNOWN, "picture_ids": []},
+            "2": {"subject_id": 2, "name": "Subject Two", "gender": UNKNOWN, "picture_ids": []},
         }})
         state, location_id = seed_canonical_static_location_state(
             state,
             {
-                "location": {"name": "Tavern"},
+                "location": {"name": "Room"},
                 "anchors": [],
                 "objects": [{
-                    "name": "bar counter",
+                    "name": "counter",
                     "type": "wooden counter",
                     "world_state_role": "fixture_support",
                     "mobility": "fixed",
@@ -638,18 +638,18 @@ class WorldStateSeedTests(unittest.TestCase):
         state = minimax.seed_story_start_presence(
             state,
             [
-                {"name": "Amy", "initial_state": "behind the counter"},
-                {"name": "Goblin", "initial_state": "near the counter"},
+                {"name": "Subject One", "initial_state": "near the counter"},
+                {"name": "Subject Two", "initial_state": "near the counter"},
             ],
             location_id=location_id,
         )
-        beat = "Amy wipes the counter and hands the cleaning cloth to Goblin."
+        beat = "Subject One wipes the counter and hands the cleaning cloth to Subject Two."
         extracted_entry = {
             "name": "cleaning cloth",
             "kind": "tool",
             "mobility": "movable",
             "initial_location": None,
-            "initial_holder": "Amy",
+            "initial_holder": "Subject One",
             "support_name": None,
             "contents": [],
             "capabilities": {
@@ -658,7 +658,7 @@ class WorldStateSeedTests(unittest.TestCase):
                 "openable": "unknown",
                 "lockable": "unknown",
             },
-            "reason": "The cloth is explicitly handed from Amy to Goblin.",
+            "reason": "The cloth is explicitly handed between the registered Subjects.",
             "evidence": beat,
         }
         captured = {}
@@ -670,12 +670,12 @@ class WorldStateSeedTests(unittest.TestCase):
         extracted = minimax.extract_current_segment_persistent_props(
             beat, beat, state, llm_request=fake_llm
         )
-        self.assertEqual(extracted[0]["initial_holder"], "Amy")
+        self.assertEqual(extracted[0]["initial_holder"], "Subject One")
         prompt_text = "\n".join(message["content"] for message in captured["messages"])
-        self.assertIn('"name":"Amy"', prompt_text)
-        self.assertIn('"name":"Goblin"', prompt_text)
-        self.assertIn('"name":"Tavern"', prompt_text)
-        self.assertIn('"name":"bar counter"', prompt_text)
+        self.assertIn('"name":"Subject One"', prompt_text)
+        self.assertIn('"name":"Subject Two"', prompt_text)
+        self.assertIn('"name":"Room"', prompt_text)
+        self.assertIn('"name":"counter"', prompt_text)
         for entity_id in (
             *state["subjects"], *state["locations"], *state["props"],
         ):
@@ -708,13 +708,13 @@ class WorldStateSeedTests(unittest.TestCase):
         next_prompt = "\n".join(
             message["content"]
             for message in minimax.build_current_segment_persistent_prop_messages(
-                "Goblin places the cloth on the counter.",
-                "Goblin places the cloth on the counter.",
+                "Subject Two places the cloth on the counter.",
+                "Subject Two places the cloth on the counter.",
                 following_state,
             )
         )
         self.assertIn('"name":"cleaning cloth"', next_prompt)
-        self.assertIn('"holder":"Goblin"', next_prompt)
+        self.assertIn('"holder":"Subject Two"', next_prompt)
         for entity_id in (
             *following_state["subjects"], *following_state["locations"],
             *following_state["props"],
@@ -729,7 +729,7 @@ class WorldStateSeedTests(unittest.TestCase):
             "location_id": location_id,
             "support_id": next(
                 prop_id for prop_id, prop in following_state["props"].items()
-                if prop["name"] == "bar counter"
+                if prop["name"] == "counter"
             ),
         }], segment_number=2)
         self.assertTrue(placed.committed)
