@@ -46,6 +46,7 @@ EXPECTED_PROFILE_PURPOSES = {
         "source_unit_visible_responsibility",
         "source_unit_local_relation",
         "director_raw_scene_subject_resolution",
+        "director_raw_scene_repair",
         "registered_subject_story_start_presence",
         "world_state_current_segment_subjects",
         "world_state_current_segment_props",
@@ -142,6 +143,7 @@ def test_purpose_routes_are_a_disjoint_exhaustive_partition_of_text_calls():
     assert actual == EXPECTED_PROFILE_PURPOSES
     assert "visual_end_state" not in minimax.LLM_PURPOSE_PROFILES
     assert minimax.VISION_LLM_SETTINGS["max_output_tokens"] == 2500
+    assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_raw_scene_repair"] == 8192
 
 
 @pytest.mark.parametrize(

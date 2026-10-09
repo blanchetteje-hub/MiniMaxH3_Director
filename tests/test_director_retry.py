@@ -655,7 +655,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("giver_not_holder", request1_calls[1].args[0][-1]["content"])
         self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
 
-    def test_reducer_retry_contains_only_first_failure_and_no_prior_attempt_junk(self):
+    def test_reducer_retry_contains_only_first_failure(self):
         bundle = goblin_mug_bundle()
         opening_world_state = copy.deepcopy(bundle["world_state_opening"])
         bundle["current_beat_text"] += " Amy watches."
@@ -679,6 +679,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             director_response(
                 "At 00:01.000, Goblin1 picks up the mug.\n"
                 "At 00:04.500, Goblin1 hands the mug to Elf1.",
+                state_actions=[{
+                    "action_id": "unknown-prop-first",
+                    "op": "pickup",
+                    "actor_subject_id": "Goblin1",
+                    "prop_id": "not-registered",
+                }],
             ),
             director_response(
                 "At 00:01.000, Goblin1 picks up the mug.\n"
@@ -691,11 +697,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 state_actions=goblin_mug_transfer_actions("mug"),
             ),
         ]))
-        physical = mock.Mock(side_effect=[
-            {"valid": False, "issue": "stale physical failure from attempt one"},
-            {"valid": True, "issue": ""},
-            {"valid": True, "issue": ""},
-        ])
+        physical = mock.Mock(return_value={"valid": True, "issue": ""})
         with (
             mock.patch("minimax.ask_llm", request),
             mock.patch("minimax.validate_director_raw_scene_physical", physical),
@@ -713,7 +715,6 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(len(request1_calls), 3)
         reducer_retry_prompt = request1_calls[2].args[0][-1]["content"]
         self.assertIn("giver_not_holder", reducer_retry_prompt)
-        self.assertNotIn("stale physical failure from attempt one", reducer_retry_prompt)
         self.assertNotIn("unknown_registered_name", reducer_retry_prompt)
         self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
         self.assertEqual(bundle["world_state_opening"], opening_world_state)
@@ -1174,7 +1175,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("Ignore prop identity", text)
 
 
-    def test_request_one_retries_physically_incoherent_raw_scene(self):
+    def test_request_one_repairs_physically_incoherent_raw_scene(self):
         bundle = segment_bundle()
         bundle["current_beat_text"] = (
             "Amy pushes Will into the closet and closes the door behind him."
@@ -1183,13 +1184,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:01.000, Amy closes the closet door.\n"
             "At 00:04.500, Will steps into the closet."
         )
-        good = director_response(
+        good_raw = director_response(
             "At 00:01.000, Will steps into the closet.\n"
             "At 00:04.500, Amy closes the closet door behind him."
-        )
+        )["raw_scene"]
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             bad,
-            good,
+            good_raw,
         ]))
         physical = mock.Mock(side_effect=[
             {"valid": False, "issue": "The door closes before Will enters."},
@@ -1222,17 +1223,102 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(prop_state.call_count, 1)
         self.assertEqual(timing.call_count, 1)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
-        request_prompts = [
-            call.args[0][-1]["content"]
-            for call in semantic_calls
-            if call.args and isinstance(call.args[0], list) and call.args[0]
-            and isinstance(call.args[0][-1], dict)
+        repair_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene_repair"
         ]
-        self.assertTrue(any(
-            "Fix this physical/spatial problem" in prompt
-            and "door closes before Will enters" in prompt
-            for prompt in request_prompts
-        ))
+        self.assertEqual(len(repair_calls), 1)
+        repair_call = repair_calls[0]
+        self.assertIsNone(repair_call.kwargs["response_format"])
+        self.assertFalse(repair_call.kwargs["parse_json_response"])
+        self.assertEqual(repair_call.kwargs["history_metadata"]["attempt"], 1)
+        self.assertIn(
+            "Fix the RAW PROMPT based on the VALIDATOR ERRORS.",
+            repair_call.args[0][0]["content"],
+        )
+        self.assertEqual(
+            repair_call.args[0][-1]["content"],
+            "RAW PROMPT\n"
+            + minimax._normalize_director_raw_scene_structure(
+                bad["raw_scene"], segment_seconds=6.0
+            ).strip()
+            + "\n\nVALIDATOR ERRORS (physical/spatial):\n"
+            "- The door closes before Will enters.",
+        )
+        self.assertEqual(
+            physical.call_args_list[1].args[1],
+            minimax._normalize_director_raw_scene_structure(
+                good_raw, segment_seconds=6.0
+            ).strip(),
+        )
+
+    def test_five_failed_raw_repairs_regenerate_director_raw(self):
+        bundle = segment_bundle()
+        bundle["current_beat_text"] = "Amy pushes Will into the closet and closes the door."
+        bad = director_response(
+            "At 00:01.000, Amy closes the closet door.\n"
+            "At 00:04.500, Will steps into the closet."
+        )
+        good = director_response(
+            "At 00:01.000, Will enters the closet.\n"
+            "At 00:04.500, Amy closes the closet door behind him."
+        )
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            bad,
+            *([bad["raw_scene"]] * minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS),
+            good,
+        ]))
+        physical = mock.Mock(side_effect=[
+            {"valid": False, "issue": "The door closes before Will enters."}
+            for _ in range(minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS + 1)
+        ] + [{"valid": True, "issue": ""}])
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-id", {"source_sha256": "source-hash"}
+            )
+        director_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
+        ]
+        repair_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene_repair"
+        ]
+        self.assertEqual(len(director_calls), 2)
+        self.assertEqual(len(repair_calls), 5)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["attempt"] for call in repair_calls],
+            [1, 2, 3, 4, 5],
+        )
+        self.assertIn("Will enters the closet", payload["raw_scene"])
+
+    def test_director_raw_repair_prompt_matches_requested_contract(self):
+        raw = "At 00:00.000, Mira remains at the doorway."
+        messages = minimax.build_director_raw_scene_repair_messages(
+            raw,
+            ["Mira crosses the room without visible movement.", "The support changes."],
+        )
+        self.assertEqual(
+            messages[0]["content"],
+            "Fix the RAW PROMPT based on the VALIDATOR ERRORS.\n"
+            "Only alter what is needed to fix the error(s).\n"
+            "Return the altered RAW PROMPT.",
+        )
+        self.assertEqual(
+            messages[1]["content"],
+            "RAW PROMPT\n"
+            "At 00:00.000, Mira remains at the doorway.\n\n"
+            "VALIDATOR ERRORS (physical/spatial):\n"
+            "- Mira crosses the room without visible movement.\n"
+            "- The support changes.",
+        )
 
     def test_request_one_retries_prop_state_failure_separately(self):
         bundle = segment_bundle()

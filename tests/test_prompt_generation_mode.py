@@ -203,6 +203,7 @@ def test_director_only_saved_expansion_seeds_location_world_state(tmp_path):
 
 def test_director_raw_scene_retry_budget_is_five():
     assert minimax.DIRECTOR_RAW_SCENE_ATTEMPTS == 5
+    assert minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS == 5
 
 
 @pytest.mark.parametrize("count, render_enabled", [(1, False), (5, False), (1, True)])

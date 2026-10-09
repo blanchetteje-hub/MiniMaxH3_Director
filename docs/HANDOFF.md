@@ -1031,3 +1031,29 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   prompt/response assertions were deselected. Running both files without the
   exclusions reports those same two failures. `py_compile` and
   `git diff --check` passed.
+
+## 2026-10-09 — repair Director RAW physical/spatial validation failures
+
+- Added `director_raw_scene_repair`, routed through
+  `SMART_EXTRACTOR_LLM_SETTINGS`. It receives only the current normalized RAW
+  prompt and physical/spatial validator issue bullets, requests plain altered
+  RAW text, and has an 8192-token output cap for full-scene replacements.
+- After `director_raw_scene` produces an otherwise accepted candidate, a
+  physical/spatial failure now invokes the repair call up to five times. Each
+  non-empty replacement is normalized through the existing RAW structure path
+  and returned to the same physical validator. Existing structure and required
+  dialogue checks run again on repaired output. If all five repairs fail, the
+  current Director retry path goes back one stage and regenerates RAW.
+- Prop-state and timing failures retain their existing Director retry path.
+  The repaired text replaces only `request1_result.raw_scene`; accepted
+  `state_actions` and their reducer dry-run result are preserved. Repair
+  responses are recorded in the existing prompt history and bounded run log.
+- Added regressions for the exact repair prompt, Smart Extractor routing,
+  physical repair acceptance without a second creative RAW call, and five
+  failed repairs followed by RAW regeneration. `docs/LLM_PROMPTS.md` lists the
+  new call.
+- Verification: Director retry and LLM-profile suites plus the RAW retry-budget
+  regression passed (174 passed, 4 subtests); Director RAW prompt-contract
+  tests passed (12 passed). `py_compile` and `git diff --check` passed. A
+  combined run including all prompt-generation
+  tests was interrupted at a socket wait; the focused retry-budget test passed.
