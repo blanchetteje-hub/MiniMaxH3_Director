@@ -1,5 +1,39 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-09 — use WorldState for Director and final H3 continuity
+
+- Bridge job 26 showed physical facts duplicated across the generated
+  `subject_definitions`, legacy `generated_continuity_state`, and final H3
+  inputs. The run's legacy summary described Subject positions, wardrobe, and
+  a held prop independently of the reducer state.
+- Director Request 1 continuity now formats established Subject, wardrobe,
+  location, support, condition, and prop facts from the immutable WorldState
+  opening. Legacy continuity summaries, prop ledgers, and initial-location
+  summaries no longer feed that request. The previous Director end frame is
+  carried separately as choreography context.
+- Final H3 assembly now places WorldState physical facts in the existing
+  Subject-definition content while retaining identity and Picture references,
+  location Video references, soundscape, music, and visual style. Canonical
+  identity descriptions remain; their wardrobe clauses and the redundant raw
+  `canonical_data.txt` insertion are omitted when WorldState is present.
+- Removed the live combined-continuity extraction/Phase-2 update and the
+  visual-observation-to-continuity merge. Rendered observations remain saved
+  as separate diagnostics/media evidence and do not write WorldState. Dynamic
+  Subject identity fallback remains identity-only; deterministic WorldState
+  display references are stable even for string stable IDs.
+- The accepted Director action batch still commits through the existing
+  reducer only after segment acceptance. Checkpoint/resume keeps the canonical
+  WorldState; old continuity and prop fields are read only while normalizing
+  prior checkpoint formats and are reset before prompt construction.
+- No runtime system/user prompt templates or retry suffixes were edited; only
+  their assembled physical-state inputs now come from WorldState.
+- Verification: prompt-authority plus canonical-insertion tests passed (8
+  passed, 2 subtests); prompt-generation mode passed (10); WorldState foundation
+  passed (57 passed, 2 stale story-start response-contract tests deselected,
+  7 subtests); focused Director state-action regressions passed (3 passed, 112
+  deselected, 2 subtests). `py_compile` and `git diff --check` passed. Bridge
+  job 26 was used for diagnosis; no acceptance job was queued.
+
 ## 2026-10-09 — route all Director RAW validators through repair
 
 - Every Director RAW-scene validator now sends its first concrete failure to

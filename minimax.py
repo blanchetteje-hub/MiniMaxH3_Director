@@ -6746,6 +6746,11 @@ def format_authoritative_opening_state(
     used by checkpoint/inspection paths.  The H3 Request 2 path supplies the
     current RAW SCENE, which enables the deterministic relevance projection.
     """
+    if isinstance(state, dict) and "schema_version" in state:
+        return format_world_state_prompt_context(
+            state,
+            heading="CANONICAL WORLDSTATE OPENING",
+        )
     state = continuity_state_for_registry(subject_definitions, state)
     if str(current_scene or "").strip():
         state = _h3_opening_state_for_scene(
@@ -7018,6 +7023,9 @@ def derive_additional_subject_definitions(
         canonical_description = " ".join(
             str(record.get("canonical_description") or "").split()
         ).strip()
+        canonical_description = _strip_character_description_clothing(
+            canonical_description
+        )
         gender_clause = (
             ""
             if canonical_description
@@ -7038,13 +7046,6 @@ def derive_additional_subject_definitions(
             )
         if canonical_description:
             definition += " " + canonical_description
-        state_description = format_subject_state_for_definition(
-            subject_id,
-            name,
-            record,
-        )
-        if state_description:
-            definition += " " + state_description
         definitions.append(definition)
     return definitions
 
@@ -28099,10 +28100,11 @@ def build_segment_request(
 
 # Prefer the previous Director shot ending for adjacent-shot continuity.
 def director_opening_handoff(previous_result, structured_summary=""):
-    """Return the previous explicit shot ending, falling back to structured state."""
+    """Return choreography from the prior shot, never a legacy state summary."""
     previous = previous_result if isinstance(previous_result, dict) else {}
     shot_end = str(previous.get("_director_end_state") or "").strip()
-    return shot_end or str(structured_summary or "").strip()
+    del structured_summary
+    return shot_end
 
 
 # Build Request 1 of the two-stage Director micro-prompt pipeline.
@@ -28127,6 +28129,8 @@ def build_generation_messages(
     static_setting_description="",
     persistent_movable_prop_state=None,
     initial_location_subjects=(),
+    world_state=None,
+    previous_shot_choreography="",
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
@@ -28138,14 +28142,27 @@ def build_generation_messages(
         current_phase,
         current_segment,
     )
-    continuity_text = (
-        str(continuity_summary or "").strip()
-        if int(current_segment) > 1
-        else "N/A"
-    ) or "N/A"
+    # Prior physical facts come only from WorldState. The previous-shot ending
+    # is retained separately as Director-owned choreography.
+    continuity_text = str(previous_shot_choreography or "").strip() or "N/A"
 
     subject_text = str(subject_definitions or "").strip()
-    starting_facts = str(canonical_character_facts or canonical_data or "").strip()
+    if isinstance(world_state, dict) and "schema_version" in world_state:
+        subject_text = "\n".join(
+            _strip_character_description_clothing(line)
+            for line in subject_text.splitlines()
+        ).strip()
+    starting_facts = str(
+        canonical_character_facts
+        if isinstance(world_state, dict) and "schema_version" in world_state
+        else (canonical_character_facts or canonical_data)
+        or ""
+    ).strip()
+    if isinstance(world_state, dict) and "schema_version" in world_state:
+        starting_facts = "\n".join(
+            _strip_character_description_clothing(line)
+            for line in starting_facts.splitlines()
+        ).strip()
     if (
         int(current_segment) == 1
         and starting_facts
@@ -28164,8 +28181,12 @@ def build_generation_messages(
         str(static_setting_description or "").split()
     ).strip()
     sections = [f"SUBJECT DEFINITIONS:\n{subject_text}"]
-    initial_subject_text = format_initial_location_subjects_opening_state(
-        initial_location_subjects
+    initial_subject_text = (
+        ""
+        if isinstance(world_state, dict) and "schema_version" in world_state
+        else format_initial_location_subjects_opening_state(
+            initial_location_subjects
+        )
     )
     if initial_subject_text:
         sections.append(initial_subject_text)
@@ -28201,13 +28222,14 @@ def build_generation_messages(
     ])
     if phrase_exclusion_text:
         sections.append(phrase_exclusion_text)
-    sections.append(
-        "PERSISTENT MOVABLE PROP STATE — authoritative physical state. "
-        "Owner/holder fields are exclusive continuity facts: do not treat another "
-        "subject's owned or held prop as shared inventory unless CURRENT BEAT "
-        "explicitly authorizes that use or transfer:\n"
-        + format_prop_ledger_for_prompt(persistent_movable_prop_state)
-    )
+    if isinstance(world_state, dict) and "schema_version" in world_state:
+        sections.append(
+            "PERSISTENT MOVABLE PROP STATE — authoritative physical state. "
+            "Owner/holder fields are exclusive continuity facts: do not treat another "
+            "subject's owned or held prop as shared inventory unless CURRENT BEAT "
+            "explicitly authorizes that use or transfer:\n"
+            + format_world_state_prompt_context(world_state)
+        )
     sections.append("RETURN only JSON.")
     user_content = "\n\n".join(sections)
 
@@ -30306,6 +30328,7 @@ def build_h3_prompt(
     retained_subject_ids=None,
     visual_style=DEFAULT_VISUAL_STYLE,
     subject_state_ledger=None,
+    world_state=None,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -30392,12 +30415,6 @@ def build_h3_prompt(
                     + (f" {integrated_body}" if integrated_body else "")
                 )
 
-    integrated = reconcile_h3_wardrobe_with_canonical_state(
-        integrated,
-        subject_definitions,
-        continuity_state,
-    )
-
     if conditioning_mode == "continuation":
         subject_text = _append_video_origin_to_h3_subject_definitions(
             str(subject_definitions or "").strip(),
@@ -30431,6 +30448,20 @@ def build_h3_prompt(
             )
             for line in subject_text.splitlines()
         )
+    if isinstance(world_state, dict) and "schema_version" in world_state:
+        subject_text = "\n".join(
+            _strip_character_description_clothing(line)
+            for line in subject_text.splitlines()
+        ).strip()
+    if isinstance(world_state, dict) and "schema_version" in world_state:
+        world_state_context = format_world_state_prompt_context(
+            world_state,
+            heading=None,
+        )
+        if world_state_context:
+            subject_text = "\n\n".join(
+                part for part in (subject_text, world_state_context) if part
+            )
     # The filtering step can discover a registered Subject from its canonical
     # name. Recompute visibility so retention_analysis follows the same Subject
     # set as the final prose.
@@ -30550,29 +30581,33 @@ def build_h3_prompt(
                 )
                 if part
             )
-    if conditioning_mode == "continuation":
-        integrated = ensure_h3_continuing_subject_state(
-            integrated,
-            continuity_state,
-            subject_state_ledger=subject_state_ledger,
-        )
     integrated = ensure_h3_continuous_take_instruction(integrated)
     integrated = ensure_h3_prop_identity_instruction(integrated)
     integrated = inject_h3_visual_style(integrated, visual_style)
     canonical_prompt_text = ""
     if segment_number is not None and int(segment_number) == 1:
+        canonical_sentences = canonical_character_subject_descriptions(
+            character_canon
+        ).values()
+        if isinstance(world_state, dict) and "schema_version" in world_state:
+            canonical_sentences = (
+                _strip_character_description_clothing(sentence)
+                for sentence in canonical_sentences
+            )
         canonical_prompt_text = "\n".join(
-            sentence
-            for sentence in canonical_character_subject_descriptions(character_canon).values()
+            sentence for sentence in canonical_sentences
             if sentence not in subject_text
         )
-        try:
-            with open(CANONICAL_DATA_FILE, "r", encoding="utf-8", newline="") as canonical_file:
-                raw_canonical_data = canonical_file.read()
-            if raw_canonical_data:
-                canonical_prompt_text += ("\n" if canonical_prompt_text else "") + raw_canonical_data
-        except FileNotFoundError:
-            pass
+        if not (isinstance(world_state, dict) and "schema_version" in world_state):
+            try:
+                with open(CANONICAL_DATA_FILE, "r", encoding="utf-8", newline="") as canonical_file:
+                    raw_canonical_data = canonical_file.read()
+                if raw_canonical_data:
+                    canonical_prompt_text += (
+                        "\n" if canonical_prompt_text else ""
+                    ) + raw_canonical_data
+            except FileNotFoundError:
+                pass
     # Insert canon prose and raw data after sanitization and identity repair
     # so the optional raw file retains its whitespace and line endings.
     canonical_marker = "CANONICAL_DATA_VERBATIM_INSERTION_POINT"
@@ -32861,6 +32896,46 @@ def subject_identity_reference_image(subject_record):
     return image_name
 
 
+def _world_state_subject_reference_records(world_state):
+    """Build ephemeral identity/reference inputs from canonical WorldState."""
+    if not isinstance(world_state, dict) or "schema_version" not in world_state:
+        return None
+    validate_world_state(world_state)
+    records = {}
+    for subject in world_state.get("subjects", {}).values():
+        name = str(subject.get("name") or "").strip()
+        if not name:
+            continue
+        identity = subject.get("identity", {})
+        picture_ids = list(identity.get("picture_ids", []))
+        wardrobe = {}
+        for slot in ("upper", "lower", "footwear", "other"):
+            garments = subject.get("wardrobe", {}).get(slot, "unknown")
+            if isinstance(garments, list):
+                wardrobe[slot] = _join_wardrobe_components([
+                    str(item.get("garment") or "").strip()
+                    for item in garments
+                    if isinstance(item, dict) and _world_state_known(item.get("garment"))
+                ]) or "N/A"
+            elif garments == "N/A":
+                wardrobe[slot] = "N/A"
+            else:
+                wardrobe[slot] = "unknown"
+        records[name] = {
+            "name": name,
+            "subject_id": subject.get("subject_id"),
+            "gender": identity.get("gender", "unknown"),
+            "picture_ids": picture_ids,
+            "picture_id": picture_ids[0] if picture_ids else None,
+            "speaker_id": f"S{_world_state_prompt_subject_number(subject, subject.get('id', name))}",
+            "canonical_description": _strip_character_description_clothing(
+                identity.get("canonical_description", "")
+            ),
+            "wardrobe": wardrobe,
+        }
+    return records
+
+
 def character_reference_resolution(
     megapixels,
     *,
@@ -33091,12 +33166,18 @@ def ensure_character_reference_images(
     loras=None,
     prior_detailed_description="",
     visual_style=DEFAULT_VISUAL_STYLE,
+    world_state=None,
 ):
     """Create/update clothing Pictures for visible Subjects before H3 rendering."""
     references = normalize_character_reference_images(character_references)
-    state = continuity_state_for_registry(
-        subject_definitions,
-        copy.deepcopy(continuity_state),
+    world_state_records = _world_state_subject_reference_records(world_state)
+    state = (
+        {"subjects": world_state_records}
+        if world_state_records is not None
+        else continuity_state_for_registry(
+            subject_definitions,
+            copy.deepcopy(continuity_state),
+        )
     )
     visual_text = _h3_visual_identity_text(detailed_description)
     changed = []
@@ -33223,13 +33304,19 @@ def plan_character_reference_images(
     loras=None,
     prior_detailed_description="",
     visual_style=DEFAULT_VISUAL_STYLE,
+    world_state=None,
 ):
     """Plan immutable character-reference renders without contacting ComfyUI."""
     references = normalize_character_reference_images(character_references)
     jobs = reference_jobs if isinstance(reference_jobs, list) else []
-    state = continuity_state_for_registry(
-        subject_definitions,
-        copy.deepcopy(continuity_state),
+    world_state_records = _world_state_subject_reference_records(world_state)
+    state = (
+        {"subjects": world_state_records}
+        if world_state_records is not None
+        else continuity_state_for_registry(
+            subject_definitions,
+            copy.deepcopy(continuity_state),
+        )
     )
     visual_text = _h3_visual_identity_text(detailed_description)
     changed = []
@@ -34765,28 +34852,23 @@ def repair_existing_segment(
         #    )
 
     base_subject_definitions = load_text_file(subjects_path, required=False)
-    registry_state = repair["previous_record"].get(
-        "subject_registry_state",
+    opening_state = repair["previous_record"].get("world_state")
+    if not isinstance(opening_state, dict):
+        opening_state = empty_world_state("repair_previous_world_state_missing")
+    validate_world_state(opening_state)
+    historical_subject_definitions = world_state_subject_definitions(
+        base_subject_definitions,
+        opening_state,
+    )
+    identity_state = continuity_state_for_registry(
+        historical_subject_definitions,
         new_continuity_state(),
     )
-    historical_subject_definitions = subject_definitions_for_state(
-        base_subject_definitions,
-        registry_state,
+    excluded_picture_ids = get_refresh_incompatible_picture_ids(identity_state)
+    director_opening_summary = format_world_state_prompt_context(
+        opening_state,
+        heading="CANONICAL WORLDSTATE OPENING",
     )
-    opening_state = continuity_state_for_registry(
-        historical_subject_definitions,
-        copy.deepcopy(registry_state),
-    )
-    excluded_picture_ids = get_refresh_incompatible_picture_ids(opening_state)
-    director_opening_summary = str(
-        repair["previous_record"].get("continuity_summary", "")
-        or ""
-    ).strip()
-    if not director_opening_summary:
-        director_opening_summary = format_director_opening_state(
-            opening_state,
-            historical_subject_definitions,
-        )
     h3_opening_summary = director_opening_summary
 
     beats_raw = load_text_file(beats_path, required=True)
@@ -34851,6 +34933,10 @@ def repair_existing_segment(
         persistent_movable_prop_state=repair.get("state", {}).get(
             "prop_ledger", {}
         ),
+        world_state=opening_state,
+        previous_shot_choreography=director_opening_handoff(
+            repair["previous_record"].get("llm_result"),
+        ),
     )
     director_bundle = {
         "segment": segment_number,
@@ -34867,28 +34953,21 @@ def repair_existing_segment(
         "is_final_story_segment": segment_number == repair["total_segments"],
         "messages": messages,
         "opening_state": director_opening_summary,
+        "previous_final_frame": director_opening_handoff(
+            repair["previous_record"].get("llm_result"),
+        ),
         "previous_music": str(
             ((repair.get("previous_record") or {}).get("llm_result") or {}).get(
                 "non_diegetic_music"
             )
             or ""
         ).strip(),
-        "registry_state": opening_state,
-        "world_state_opening": copy.deepcopy(
-            repair.get("state", {}).get("world_state")
-            if isinstance(repair.get("state", {}).get("world_state"), dict)
-            else empty_world_state("repair_request1_world_state_unavailable")
-        ),
+        "registry_state": None,
+        "world_state_opening": copy.deepcopy(opening_state),
         "subject_definitions": historical_subject_definitions,
         "dialogue_exclusions": dialogue_exclusions,
         "phrase_exclusions": phrase_exclusions,
-        "opening_state_sha256": hashlib.sha256(
-            json.dumps(
-                opening_state,
-                ensure_ascii=False,
-                sort_keys=True,
-            ).encode("utf-8")
-        ).hexdigest(),
+        "opening_state_sha256": world_state_sha256(opening_state),
     }
     director_run_config = dict(repair["config"])
     if no_music:
@@ -34916,12 +34995,6 @@ def repair_existing_segment(
         get_detailed_description(llm_result, "")
     )
     hard_cut_subject_continuity = ""
-    if is_hard_cut_segment(segment_number):
-        hard_cut_subject_continuity = build_hard_cut_subject_continuity_from_state(
-            historical_subject_definitions,
-            llm_result,
-            opening_state,
-        )
     h3_prompt = build_h3_prompt(
         llm_result,
         historical_subject_definitions,
@@ -34931,9 +35004,10 @@ def repair_existing_segment(
         ff=False,
         conditioning_mode=conditioning_mode,
         excluded_picture_ids=excluded_picture_ids,
-        continuity_state=opening_state,
+        continuity_state=identity_state,
         subject_state_ledger=generation_state.get("subject_state_ledger", {}),
         visual_style=repair_visual_style,
+        world_state=opening_state,
     )
 
     console_log()
@@ -34981,7 +35055,7 @@ def repair_existing_segment(
         loras=loras,
         continuity_summary=director_opening_summary,
         subject_definitions=historical_subject_definitions,
-        continuity_state=opening_state,
+        continuity_state=identity_state,
         segment_length=segment_length,
     )
     repaired_video_path = os.path.abspath(repaired_video_path)
@@ -36008,7 +36082,7 @@ def validate_director_continuity(bundle):
         "prompt_only": "prompt",
         "prompt_plus_visual": "vision",
     }.get(source, source)
-    if source not in {"prompt", "vision"}:
+    if source not in {"prompt", "vision", "world_state"}:
         console_log(
             f"WARNING: Segment {segment_number} Director continuity source is "
             f"invalid ({source or 'missing'!r}); using prompt best effort.",
@@ -36686,6 +36760,11 @@ def apply_visible_subject_bootstrap_metadata(
 
 def format_known_subject_state_for_validator(continuity_state):
     """Render compact durable Subject presence for the physical RAW validator."""
+    if isinstance(continuity_state, dict) and "schema_version" in continuity_state:
+        return format_world_state_prompt_context(
+            continuity_state,
+            heading="CANONICAL WORLDSTATE OPENING",
+        )
     state = continuity_state if isinstance(continuity_state, dict) else {}
     subjects = state.get("subjects")
     if not isinstance(subjects, dict):
@@ -37178,12 +37257,185 @@ def apply_authoritative_prop_state_effects(prop_ledger, effects):
 
 def format_prop_ledger_for_prompt(prop_ledger):
     """Return compact deterministic JSON for Director prop context."""
+    if isinstance(prop_ledger, dict) and "schema_version" in prop_ledger:
+        return json.dumps(
+            prop_ledger,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
     return json.dumps(
         normalize_prop_ledger(prop_ledger),
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
     )
+
+
+def _world_state_known(value):
+    return value not in (None, "", "unknown", "N/A", "na")
+
+
+def world_state_sha256(world_state):
+    """Return a deterministic digest for a canonical WorldState snapshot."""
+    return hashlib.sha256(
+        json.dumps(
+            world_state if isinstance(world_state, dict) else {},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def format_world_state_prompt_context(world_state, *, heading="WORLDSTATE OPENING"):
+    """Render established physical facts from canonical WorldState only.
+
+    This is a presentation of WorldState, not a second state model. Unknown
+    fields are omitted; no legacy continuity, RAW, or visual data is consulted.
+    """
+    if not isinstance(world_state, dict) or "schema_version" not in world_state:
+        return ""
+    validate_world_state(world_state)
+    lines = [str(heading)] if heading is not None else []
+    locations = world_state.get("locations", {})
+    subjects = world_state.get("subjects", {})
+    props = world_state.get("props", {})
+
+    def entity_name(entity_id, collection):
+        record = collection.get(entity_id) if isinstance(collection, dict) else None
+        return str(record.get("name") or "").strip() if isinstance(record, dict) else ""
+
+    for subject_id, subject in sorted(
+        subjects.items(), key=lambda item: (str(item[1].get("subject_id", "")), item[0])
+    ):
+        name = str(subject.get("name") or "").strip()
+        if not name:
+            continue
+        facts = []
+        presence = subject.get("presence")
+        if presence in {"present", "absent"}:
+            facts.append(presence)
+        location = entity_name(subject.get("location_id"), locations)
+        support = entity_name(subject.get("support_id"), props)
+        if location:
+            facts.append(f"at {location}")
+        if support:
+            facts.append(f"supported by {support}")
+        posture = subject.get("posture")
+        if _world_state_known(posture):
+            facts.append(f"posture {posture}")
+        wardrobe = []
+        for slot in ("upper", "lower", "footwear", "other"):
+            garments = subject.get("wardrobe", {}).get(slot, "unknown")
+            if not isinstance(garments, list):
+                continue
+            for garment in garments:
+                if not isinstance(garment, dict) or not _world_state_known(
+                    garment.get("garment")
+                ):
+                    continue
+                description = str(garment["garment"]).strip()
+                if _world_state_known(garment.get("condition")):
+                    description += f" ({garment['condition']})"
+                wardrobe.append(description)
+        if wardrobe:
+            facts.append("wearing " + _english_join(wardrobe))
+        condition = subject.get("persistent_condition")
+        if _world_state_known(condition):
+            facts.append(f"condition {condition}")
+        if facts:
+            lines.append(f"Subject {name}: " + "; ".join(facts) + ".")
+
+    for prop_id, prop in sorted(
+        props.items(), key=lambda item: (item[1].get("name", "").casefold(), item[0])
+    ):
+        if prop.get("status") in {"consumed", "destroyed", "lost"}:
+            lines.append(f"Prop {prop['name']}: {prop['status']}.")
+            continue
+        facts = []
+        placement = prop.get("placement", {})
+        if placement.get("kind") == "held":
+            holder = entity_name(placement.get("subject_id"), subjects)
+            if holder:
+                facts.append(f"held by {holder}")
+        elif placement.get("kind") == "located":
+            location = entity_name(placement.get("location_id"), locations)
+            support = entity_name(placement.get("support_id"), props)
+            if location:
+                facts.append(f"at {location}")
+            if support:
+                facts.append(f"on {support}")
+        condition = prop.get("condition")
+        if _world_state_known(condition):
+            facts.append(f"condition {condition}")
+        mechanism = prop.get("mechanism_state")
+        if _world_state_known(mechanism):
+            facts.append(f"mechanism {mechanism}")
+        for content in prop.get("contents", []):
+            if not isinstance(content, dict) or not _world_state_known(
+                content.get("substance")
+            ) or content.get("amount") in {"none", "unknown"}:
+                continue
+            facts.append(f"contains {content['amount']} {content['substance']}")
+        if facts:
+            lines.append(f"Prop {prop['name']}: " + "; ".join(facts) + ".")
+
+    if len(lines) == 1 and heading is not None:
+        lines.append("No physical facts are established.")
+    if not lines:
+        return ""
+    return "\n".join(lines)
+
+
+def world_state_subject_definitions(base_subject_definitions, world_state):
+    """Append identity-only definitions for Subjects registered in WorldState."""
+    base_text = str(base_subject_definitions or "").strip()
+    base = parse_subject_registry(base_text)
+    known_ids = set(base)
+    known_names = {str(record.get("name") or "").casefold() for record in base.values()}
+    definitions = []
+    used_numbers = {
+        int(value) for value in known_ids
+        if str(value).isdigit() and int(value) > 0
+    }
+    for key, subject in sorted(
+        (world_state or {}).get("subjects", {}).items(),
+        key=lambda item: (str(item[1].get("subject_id", "")), item[0]),
+    ):
+        subject_number = _world_state_prompt_subject_number(subject, key)
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        if not name or subject_number in known_ids or name.casefold() in known_names:
+            continue
+        while subject_number in used_numbers:
+            subject_number += 1
+        used_numbers.add(subject_number)
+        definition = f"<Subject {subject_number}> is {name} (S{subject_number})."
+        identity = subject.get("identity", {})
+        identity_description = str(
+            identity.get("canonical_description")
+            if _world_state_known(identity.get("canonical_description"))
+            else identity.get("source_description", "")
+            or ""
+        ).strip()
+        identity_description = _strip_character_description_clothing(
+            identity_description
+        ).strip()
+        if identity_description:
+            definition += " " + identity_description
+        definitions.append(definition)
+    return combine_subject_definitions(base_text, definitions)
+
+
+def _world_state_prompt_subject_number(subject, key):
+    """Return a stable positive display number for a WorldState Subject."""
+    value = subject.get("subject_id") if isinstance(subject, dict) else None
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    if isinstance(value, str) and value.isdigit() and int(value) > 0:
+        return int(value)
+    digest = hashlib.sha256(str(key).encode("utf-8")).hexdigest()
+    return 1_000_000_000_000 + int(digest[:12], 16)
 
 
 def build_director_raw_scene_timing_messages(raw_scene):
@@ -37406,7 +37658,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             "world_state_current_segment_subject_names", []
         ),
     )
-    prop_ledger = normalize_prop_ledger(bundle.get("prop_ledger", {}))
+    prop_ledger = world_state_opening
 
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
     registered_vocabulary_prompt = (
@@ -37664,7 +37916,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         candidate,
                         previous_shot_end=previous_shot_end,
                         static_setting_description=static_setting_description,
-                        known_subject_state=bundle.get("registry_state"),
+                        known_subject_state=world_state_opening,
                         history_metadata=raw_validator_metadata(repair_attempt),
                     )
                 except (
@@ -38024,21 +38276,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     # context. It is not a semantic validator for Request 1.
     h3_opening_summary = ""
     if segment_number > 1:
-        registry_state = bundle.get("registry_state")
-        if isinstance(registry_state, dict) and registry_state:
+        world_state_opening = bundle.get("world_state_opening")
+        if isinstance(world_state_opening, dict) and "schema_version" in world_state_opening:
             h3_opening_summary = format_authoritative_opening_state(
-                registry_state,
-                bundle.get("subject_definitions", ""),
+                world_state_opening,
                 include_camera=False,
                 current_scene=raw_scene,
                 conditioning_mode=conditioning_mode,
             )
-        else:
-            h3_opening_summary = str(
-                bundle.get("opening_state")
-                or bundle.get("h3_opening_summary")
-                or ""
-            ).strip()
 
     console_log()
     console_log("=" * 64)
@@ -39045,6 +39290,10 @@ def _run_main(
                 world_state_wardrobes_from_character_canon(character_canon),
             )
         generation_state["world_state"] = world_state
+        subject_definitions = world_state_subject_definitions(
+            base_subject_definitions,
+            world_state,
+        )
         additional_subject_definitions = []
         completed_beat_ids = set()
         recent_results = []
@@ -39053,56 +39302,15 @@ def _run_main(
         continuity_summary = ""
         prompt_reduced_continuity_state = {}
         reduced_continuity_state = {}
-        # Keep the old structured object only as an internal Subject registry.
-        # Creative continuity now comes from the combined continuity LLM call.
+        # Retain the identity/reference registry for nonphysical metadata only.
         continuity_state = continuity_state_for_registry(
             subject_definitions,
             new_continuity_state(),
         )
-        continuity_state = seed_canonical_opening_wardrobe(
-            subject_definitions,
-            expanded_story_context or story,
-            character_canon,
-            continuity_state,
-        )
-        continuity_state, initial_added_subjects = seed_initial_location_subjects(
-            continuity_state,
-            subject_definitions,
-            initial_location_subjects,
-        )
-        if initial_added_subjects:
-            additional_subject_definitions = derive_additional_subject_definitions(
-                base_subject_definitions,
-                continuity_state,
-            )
-            subject_definitions = combine_subject_definitions(
-                base_subject_definitions,
-                additional_subject_definitions,
-            )
-            if expanded_story_context:
-                dynamic_world_state_wardrobes = {}
-                continuity_state = apply_story_subject_wardrobes(
-                    continuity_state,
-                    expanded_story_context,
-                    subject_definitions,
-                    initial_added_subjects,
-                    character_canon=character_canon,
-                    history_metadata={"run_id": run_id},
-                    world_state_wardrobe_sink=dynamic_world_state_wardrobes,
-                )
-                if dynamic_world_state_wardrobes:
-                    generation_state["world_state"] = seed_canonical_wardrobes(
-                        generation_state["world_state"],
-                        dynamic_world_state_wardrobes,
-                    )
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
         )
-        generation_state["subject_state_ledger"] = merge_subject_state_ledger(
-            generation_state.get("subject_state_ledger", {}),
-            continuity_state,
-            segment_number=0,
-        )
+        generation_state["subject_state_ledger"] = {}
         generation_state["initial_location_subjects"] = copy.deepcopy(
             initial_location_subjects
         )
@@ -39169,12 +39377,6 @@ def _run_main(
                 subject_definitions,
                 new_continuity_state(),
             )
-            continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                continuity_state,
-            )
             generation_state["subject_registry_state"] = migrate_continuity_state(
                 continuity_state
             )
@@ -39185,34 +39387,35 @@ def _run_main(
             )
         else:
             generation_state = restored["state"]
-            additional_subject_definitions = restored[
-                "additional_subject_definitions"
-            ]
-            subject_definitions = combine_subject_definitions(
+            additional_subject_definitions = []
+            subject_definitions = world_state_subject_definitions(
                 base_subject_definitions,
-                additional_subject_definitions,
+                generation_state.get("world_state"),
             )
             completed_beat_ids = restored["completed_beat_ids"]
             recent_results = restored["recent_results"]
             generated_video_paths = restored["video_paths"]
             previous_video_path = restored["previous_video_path"]
-            continuity_summary = restored["continuity_summary"]
-            reduced_continuity_state = copy.deepcopy(
-                restored.get("continuity_state", {})
-            )
-            prompt_reduced_continuity_state = copy.deepcopy(
-                restored.get("continuity_prompt_state", reduced_continuity_state)
-            )
+            continuity_summary = ""
+            reduced_continuity_state = {}
+            prompt_reduced_continuity_state = {}
             continuity_state = continuity_state_for_registry(
                 subject_definitions,
-                restored["subject_registry_state"],
+                new_continuity_state(),
             )
             generation_state.pop("additional_subject_definitions", None)
 
-    prop_ledger = normalize_prop_ledger(
-        generation_state.get("prop_ledger", {})
+    # Legacy prop ledgers are not inputs to Director or H3 state. Registered
+    # props and their placements live only in WorldState.
+    prop_ledger = {}
+    generation_state["prop_ledger"] = {}
+    generation_state["continuity_state"] = {}
+    generation_state["continuity_prompt_state"] = {}
+    generation_state["continuity_summary"] = ""
+    generation_state["subject_state_ledger"] = {}
+    generation_state["subject_registry_state"] = migrate_continuity_state(
+        continuity_state
     )
-    generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
     character_reference_images = normalize_character_reference_images(
         generation_state.get("character_reference_images", {})
     )
@@ -39243,17 +39446,8 @@ def _run_main(
     ).strip().casefold()
     if resume_segment <= 1:
         continuity_source = "initial"
-    elif continuity_source not in {"prompt", "vision"}:
-        continuity_source = (
-            "vision"
-            if should_run_vision_continuity(
-                resume_segment - 1,
-                getattr(args, "vision_continuity", 1),
-                refresh_interval,
-                macro_arc=macro_arc,
-            )
-            else "prompt"
-        )
+    else:
+        continuity_source = "world_state"
 
     # Serialize the shared checkpoint without racing a prefetch worker.
     def checkpoint_generation_state():
@@ -39496,16 +39690,6 @@ def _run_main(
         checkpoint_generation_state()
 
 
-    # Compute a stable digest of continuity state.
-    def continuity_state_sha(state):
-        return hashlib.sha256(
-            json.dumps(
-                state,
-                ensure_ascii=False,
-                sort_keys=True,
-            ).encode("utf-8")
-        ).hexdigest()
-
     # Build a stable fingerprint for one segment request.
     def build_segment_fingerprint(
         segment_number,
@@ -39531,18 +39715,14 @@ def _run_main(
                 ),
                 "recent_results": list(recent_items),
                 "dialogue_exclusions": list(dialogue_exclusions),
-                "opening_state_sha256": continuity_state_sha(opening_state),
-                "opening_summary_sha256": hashlib.sha256(
-                    str(opening_summary_text or "").encode("utf-8")
-                ).hexdigest(),
+                "world_state_sha256": world_state_sha256(
+                    generation_state.get("world_state")
+                ),
                 "subject_definitions_sha256": hashlib.sha256(
                     str(subject_definitions or "").encode("utf-8")
                 ).hexdigest(),
                 "static_setting_sha256": hashlib.sha256(
                     str(location_setting_description or "").encode("utf-8")
-                ).hexdigest(),
-                "prop_ledger_sha256": hashlib.sha256(
-                    format_prop_ledger_for_prompt(prop_ledger_state).encode("utf-8")
                 ).hexdigest(),
             },
             ensure_ascii=False,
@@ -39554,6 +39734,7 @@ def _run_main(
 
     def prepare_current_segment_world_state(segment_number):
         """Register beat-established identities/props before Request 1."""
+        nonlocal subject_definitions, additional_subject_definitions
         segment_number = int(segment_number)
         if segment_number in prepared_world_state_segments:
             return
@@ -39584,6 +39765,14 @@ def _run_main(
                 "Subject(s): " + ", ".join(added),
                 flush=True,
             )
+        subject_definitions = world_state_subject_definitions(
+            base_subject_definitions,
+            world_state,
+        )
+        additional_subject_definitions = [
+            line for line in subject_definitions.splitlines()
+            if line not in base_subject_definitions.splitlines()
+        ]
         prepared_world_state_segments.add(segment_number)
         present_names = [
             subject["name"] for subject in world_state["subjects"].values()
@@ -39633,66 +39822,12 @@ def _run_main(
             previous_result,
             structured_opening_summary,
         )
-        h3_opening_summary = structured_opening_summary
-        state_metadata = generation_state.get("metadata")
-        starting_location = (
-            str(state_metadata.get("starting_location") or "").strip()
-            if isinstance(state_metadata, dict)
-            else ""
+        # Physical opening facts come from the request's WorldState snapshot.
+        # Keep only the previous Director ending as choreography context.
+        h3_opening_summary = format_world_state_prompt_context(
+            generation_state.get("world_state"),
+            heading="CANONICAL WORLDSTATE OPENING",
         )
-        if segment_number == 1:
-            opening_parts = []
-            if starting_location:
-                opening_parts.append(
-                    "STARTING LOCATION (authoritative)\n"
-                    + format_story_starting_location(starting_location)
-                )
-            initial_subject_context = format_initial_location_subjects_opening_state(
-                generation_state.get("initial_location_subjects", [])
-            )
-            if initial_subject_context:
-                opening_parts.append(initial_subject_context)
-            if opening_parts:
-                director_opening_summary = "\n\n".join(opening_parts)
-                h3_opening_summary = director_opening_summary
-        source_opening_state = format_source_authorized_opening_state(
-            macro_arc,
-            segment_number,
-            subject_information=subject_information,
-        )
-        if source_opening_state:
-            director_context = director_opening_summary or "N/A"
-            h3_context = h3_opening_summary or "N/A"
-            if segment_number == 1:
-                director_opening_summary = (
-                    source_opening_state
-                    + (
-                        "\n\n" + director_context
-                        if director_context != "N/A"
-                        else ""
-                    )
-                )
-                h3_opening_summary = (
-                    source_opening_state
-                    + (
-                        "\n\n" + h3_context
-                        if h3_context != "N/A"
-                        else ""
-                    )
-                )
-            else:
-                director_opening_summary = (
-                    source_opening_state
-                    + "\n\nPREVIOUS SHOT END (primary adjacent-shot continuity; "
-                    "do not override source-authorized facts)\n"
-                    + director_context
-                )
-                h3_opening_summary = (
-                    source_opening_state
-                    + "\n\nRENDERED CONTINUITY (supplemental; do not override "
-                    "source-authorized facts)\n"
-                    + h3_context
-                )
         excluded_picture_ids = (
             get_conditioning_excluded_picture_ids(
                 opening_state,
@@ -39725,6 +39860,12 @@ def _run_main(
                 generation_state.get("initial_location_subjects", [])
                 if segment_number == 1 else []
             ),
+            world_state=(
+                generation_state.get("world_state")
+                if isinstance(generation_state.get("world_state"), dict)
+                else empty_world_state("director_bundle_world_state_unavailable")
+            ),
+            previous_shot_choreography=director_opening_summary,
         )
         return {
             "segment": segment_number,
@@ -39744,12 +39885,15 @@ def _run_main(
             "messages": messages,
             "estimated_tokens": estimated_tokens,
             "recent_count": recent_count,
-            "opening_state": director_opening_summary,
+            "opening_state": format_world_state_prompt_context(
+                generation_state.get("world_state"),
+                heading="CANONICAL WORLDSTATE OPENING",
+            ),
             "previous_final_frame": director_opening_summary,
             "previous_music": str(
                 previous_result.get("non_diegetic_music") or ""
             ).strip(),
-            "registry_state": opening_state,
+            "registry_state": None,
             "world_state_opening": copy.deepcopy(
                 generation_state.get("world_state")
                 if isinstance(generation_state.get("world_state"), dict)
@@ -39758,7 +39902,7 @@ def _run_main(
             "world_state_current_segment_subject_names": list(
                 prepared_world_state_subject_names.get(segment_number, [])
             ),
-            "prop_ledger": prop_ledger_snapshot,
+            "prop_ledger": {},
             "static_setting_description": location_setting_description,
             "opening_summary": director_opening_summary,
             "h3_opening_summary": h3_opening_summary,
@@ -39770,7 +39914,9 @@ def _run_main(
             "phrase_exclusions": list(phrase_exclusions),
             "current_phase": copy.deepcopy(current_phase or {}),
             "subject_definitions": subject_definitions,
-            "opening_state_sha256": continuity_state_sha(opening_state),
+            "opening_state_sha256": world_state_sha256(
+                generation_state.get("world_state")
+            ),
             "fingerprint": build_segment_fingerprint(
                 segment_number,
                 completed_ids,
@@ -40024,29 +40170,6 @@ def _run_main(
         )
         formatter_subject_names = list(formatter_subject_genders)
 
-        continuity_state, enriched_existing_subjects = (
-            apply_visible_subject_bootstrap_metadata(
-                continuity_state,
-                raw_subject_descriptions,
-                raw_subject_wardrobes,
-            )
-        )
-        if enriched_existing_subjects:
-            generation_state["subject_registry_state"] = migrate_continuity_state(
-                continuity_state
-            )
-            generation_state["subject_state_ledger"] = merge_subject_state_ledger(
-                generation_state.get("subject_state_ledger", {}),
-                continuity_state,
-                segment_number=segment,
-            )
-            checkpoint_generation_state()
-            console_log(
-                "Filled missing visible metadata for existing Subject(s): "
-                + ", ".join(enriched_existing_subjects),
-                flush=True,
-            )
-
         registration_subject_genders = dict(formatter_subject_genders)
         registration_subject_genders.update(canonical_subject_genders)
         for subject_name, description in raw_subject_descriptions.items():
@@ -40069,7 +40192,6 @@ def _run_main(
             origin_segment=segment,
             subject_genders=registration_subject_genders,
             subject_descriptions=registration_subject_descriptions,
-            subject_wardrobes=raw_subject_wardrobes,
         )
         newly_registered_names = list(dict.fromkeys(
             dialogue_subject_names + hinted_subject_names
@@ -40089,43 +40211,42 @@ def _run_main(
                 + ", ".join(missing_resolved_subjects)
             )
         if newly_registered_names:
-            previous_dynamic_definitions = list(additional_subject_definitions)
-            additional_subject_definitions, new_subject_lines = (
-                collect_additional_subject_definitions(
-                    base_subject_definitions,
-                    previous_dynamic_definitions,
-                    continuity_state,
-                    segment,
-                )
-            )
-            subject_definitions = combine_subject_definitions(
+            subject_definitions = world_state_subject_definitions(
                 base_subject_definitions,
-                additional_subject_definitions,
+                generation_state.get("world_state"),
             )
+            registered_world_state_names = {
+                str(subject.get("name") or "").casefold()
+                for subject in (generation_state.get("world_state") or {}).get(
+                    "subjects", {}
+                ).values()
+                if isinstance(subject, dict)
+            }
+            identity_fallback_definitions = derive_additional_subject_definitions(
+                base_subject_definitions,
+                continuity_state,
+            )
+            identity_fallback_definitions = [
+                definition
+                for definition in identity_fallback_definitions
+                if not any(
+                    str(record.get("name") or "").casefold()
+                    in registered_world_state_names
+                    for record in parse_subject_registry(definition).values()
+                )
+            ]
+            subject_definitions = combine_subject_definitions(
+                subject_definitions,
+                identity_fallback_definitions,
+            )
+            additional_subject_definitions = [
+                line for line in subject_definitions.splitlines()
+                if line not in base_subject_definitions.splitlines()
+            ]
+            new_subject_lines = additional_subject_definitions
             continuity_state = continuity_state_for_registry(
                 subject_definitions,
                 continuity_state,
-            )
-            if expanded_story_context:
-                continuity_state = apply_story_subject_wardrobes(
-                    continuity_state,
-                    expanded_story_context,
-                    subject_definitions,
-                    newly_registered_names,
-                    character_canon=character_canon,
-                    history_metadata={
-                        "run_id": run_id,
-                        "source_sha256": run_config["source_sha256"],
-                        "segment": segment,
-                    },
-                )
-            generation_state["subject_registry_state"] = migrate_continuity_state(
-                continuity_state
-            )
-            generation_state["subject_state_ledger"] = merge_subject_state_ledger(
-                generation_state.get("subject_state_ledger", {}),
-                continuity_state,
-                segment_number=segment,
             )
             console_log("Registered new Subject definition(s) before H3 prompt:")
             for definition in new_subject_lines:
@@ -40141,12 +40262,6 @@ def _run_main(
         )
 
         hard_cut_subject_continuity = ""
-        if is_hard_cut_segment(segment):
-            hard_cut_subject_continuity = build_hard_cut_subject_continuity_from_state(
-                subject_definitions,
-                llm_result,
-                continuity_state,
-            )
         prior_clothing_reference_description = ""
         if recent_results:
             prior_segment_number, prior_result = recent_results[-1]
@@ -40177,6 +40292,7 @@ def _run_main(
                     loras=global_loras,
                     prior_detailed_description=prior_clothing_reference_description,
                     visual_style=visual_style,
+                    world_state=segment_bundle.get("world_state_opening"),
                 )
             )
         else:
@@ -40193,6 +40309,7 @@ def _run_main(
                     loras=global_loras,
                     prior_detailed_description=prior_clothing_reference_description,
                     visual_style=visual_style,
+                    world_state=segment_bundle.get("world_state_opening"),
                 )
             )
         if changed_character_references:
@@ -40275,6 +40392,7 @@ def _run_main(
                 segment_reference_binding_snapshot.get("active_subject_ids", []),
             ),
             visual_style=visual_style,
+            world_state=segment_bundle.get("world_state_opening"),
         )
         if (
             location_setting_description
@@ -40361,46 +40479,10 @@ def _run_main(
             macro_arc,
             continuity_phase_beat,
         ) or segment_bundle.get("current_phase", {})
-        candidate_future = None
-        continuity_pipeline_result = None
-        if segment < total_segments:
-            candidate_future = summary_executor.submit(
-                request_combined_continuity,
-                h3_prompt,
-                continuity_phase,
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": run_config["source_sha256"],
-                    "purpose": "combined_continuity",
-                    "segment": segment,
-                    "attempt": 1,
-                    "conditioning_mode": segment_bundle["conditioning_mode"],
-                },
-                defer_opening=True,
-                subject_definitions=subject_definitions,
-                committed_state=copy.deepcopy(continuity_state),
-                ending_scene=request1_ending_scene,
-                assigned_state_effects=segment_bundle.get(
-                    "assigned_state_effects", []
-                ),
-                barrier_binding=build_director_barrier_binding_contract(
-                    segment_bundle.get("assigned_state_effects", [])
-                ),
-                committed_prop_ledger=copy.deepcopy(prop_ledger),
-            )
-            console_log(
-                f"Combined continuity requested for segment {segment} "
-                + (
-                    "during prompt generation."
-                    if test_prompt_generation
-                    else "during render."
-                )
-            )
-        else:
-            console_log(
-                f"Skipping continuity for final segment {segment}; "
-                "no later segment needs its state."
-            )
+        console_log(
+            f"Segment {segment} continuity context is sourced from WorldState; "
+            "legacy continuity extraction is disabled."
+        )
 
         prompt_completed_beat_ids, _ = print_minimax_beat_plan(
             beats,
@@ -40507,119 +40589,22 @@ def _run_main(
                     render_future.result()
             console_log(
                 f"ComfyUI render started for segment {segment}; building the "
-                "prompt-derived end-state prediction while the video renders."
+                "accepted segment record while the video renders."
             )
 
-        # The combined continuity call predicts the ending from the prompt while
-        # H3 renders. Phase 2 is deferred until rendered visual facts are
-        # available only when the cadence actually requires a visual check.
-        if candidate_future is not None:
-            try:
-                continuity_pipeline_result = candidate_future.result()
-            except LLMConnectionError:
-                raise
-            except Exception as error:
-                console_log(
-                    f"WARNING: combined continuity for segment {segment} failed: "
-                    f"{error}; retaining the last continuity outputs."
-                )
-                continuity_pipeline_result = {
-                    "reduced_state": continuity_state_for_registry(
-                        subject_definitions,
-                        copy.deepcopy(continuity_state),
-                    ),
-                    "opening_state": "",
-                    "prop_ledger": copy.deepcopy(prop_ledger),
-                }
-
-        if continuity_pipeline_result is not None:
-            prompt_reduced_continuity_state = copy.deepcopy(
-                continuity_pipeline_result["reduced_state"]
-            )
-            prop_ledger = normalize_prop_ledger(
-                continuity_pipeline_result.get("prop_ledger", prop_ledger)
-            )
-            generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
-            # The source story is the only authority for the opening outfit;
-            # restore it when the combined continuity response omitted the
-            # still-unknown slots. Rendered observations below may override it.
-            prompt_reduced_continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                prompt_reduced_continuity_state,
-            )
-            if vision_required:
-                console_log(
-                    f"Combined continuity completed for segment {segment}; "
-                    "Phase 2 is waiting for rendered visual state."
-                )
-            else:
-                console_log(
-                    f"Combined continuity completed for segment {segment}; "
-                    "vision continuity is disabled for this cadence, so Phase 2 "
-                    "uses the prompt-derived state immediately."
-                )
-
-        if segment < total_segments and continuity_pipeline_result is None:
-            continuity_pipeline_result = {
-                "reduced_state": continuity_state_for_registry(
-                    subject_definitions,
-                    copy.deepcopy(continuity_state),
-                ),
-                "opening_state": "",
-                "prop_ledger": copy.deepcopy(prop_ledger),
-            }
+        # No legacy continuity LLM call or predicted physical state is used.
+        # The committed reducer state supplies the next Segment opening.
+        prompt_reduced_continuity_state = continuity_state_for_registry(
+            subject_definitions,
+            new_continuity_state(),
+        )
+        reduced_continuity_state = copy.deepcopy(prompt_reduced_continuity_state)
+        continuity_summary = ""
+        continuity_source = "world_state"
+        if segment < total_segments:
             console_log(
-                f"WARNING: Segment {segment} prompt-derived continuity is "
-                "missing; scheduling the next Director with the last known "
-                "state as best effort."
-            )
-
-        # With visual continuity disabled, serialize only non-wardrobe prompt
-        # continuity before starting the next Director, while leaving the
-        # current ComfyUI render in flight.
-        prompt_only_opening_summary = None
-        if not vision_required and segment < total_segments:
-            # No rendered observation means no wardrobe evidence. Keep the
-            # opening state useful for scene continuity, but do not promote
-            # prompt-requested clothing into current rendered wardrobe.
-            prompt_reduced_continuity_state = clear_unrendered_wardrobes(
-                prompt_reduced_continuity_state
-            )
-            prompt_reduced_continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                prompt_reduced_continuity_state,
-            )
-            prompt_only_opening_summary = request_continuity_opening_state(
-                prompt_reduced_continuity_state,
-                continuity_phase,
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": run_config["source_sha256"],
-                    "purpose": "continuity_phase_2_h3_opening",
-                    "segment": segment,
-                    "attempt": 1,
-                    "conditioning_mode": segment_bundle["conditioning_mode"],
-                    "state_source": "prompt_only",
-                },
-                subject_definitions=subject_definitions,
-                ending_scene=request1_ending_scene,
-            )
-            continuity_summary = prompt_only_opening_summary
-            continuity_source = "prompt"
-            reduced_continuity_state = copy.deepcopy(
-                prompt_reduced_continuity_state
-            )
-            generation_state["continuity_state"] = copy.deepcopy(
-                reduced_continuity_state
-            )
-            generation_state["continuity_summary"] = continuity_summary
-            console_log(
-                f"Segment {segment} continuity source: prompt-derived state; "
-                "opening state is ready before Director prefetch."
+                f"Segment {segment} ending state will come from the accepted "
+                "WorldState reducer actions."
             )
 
         # Dynamic identities still come from explicit Director text and stay in
@@ -40633,25 +40618,36 @@ def _run_main(
                 segment,
             )
         )
-        subject_definitions = combine_subject_definitions(
+        subject_definitions = world_state_subject_definitions(
             base_subject_definitions,
-            additional_subject_definitions,
+            generation_state.get("world_state"),
+        )
+        world_state_names = {
+            str(subject.get("name") or "").casefold()
+            for subject in (generation_state.get("world_state") or {}).get(
+                "subjects", {}
+            ).values()
+            if isinstance(subject, dict)
+        }
+        appended_subject_lines = [
+            line
+            for line in appended_subject_lines
+            if not any(
+                str(record.get("name") or "").casefold() in world_state_names
+                for record in parse_subject_registry(line).values()
+            )
+        ]
+        subject_definitions = combine_subject_definitions(
+            subject_definitions,
+            [
+                line for line in appended_subject_lines
+                if line not in subject_definitions.splitlines()
+            ],
         )
         continuity_state = continuity_state_for_registry(
             subject_definitions,
-            continuity_state,
+            new_continuity_state(),
         )
-        if not vision_required:
-            continuity_state = continuity_state_for_registry(
-                subject_definitions,
-                clear_unrendered_wardrobes(continuity_state),
-            )
-            continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                continuity_state,
-            )
         if appended_subject_lines:
             console_log("Registered video-created subject definition(s) internally:")
             for definition in appended_subject_lines:
@@ -40689,18 +40685,12 @@ def _run_main(
         generation_state["recent_dialogue_exclusions"] = list(
             recent_dialogue_exclusions
         )
-        generation_state["continuity_prompt_state"] = copy.deepcopy(
-            prompt_reduced_continuity_state
-        )
-        generation_state["subject_registry_state"] = migrate_continuity_state(
-            continuity_state
-        )
-        generation_state["subject_state_ledger"] = merge_subject_state_ledger(
-            generation_state.get("subject_state_ledger", {}),
-            continuity_state,
-            segment_number=segment,
-        )
-        generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
+        generation_state["continuity_prompt_state"] = {}
+        generation_state["continuity_state"] = {}
+        generation_state["continuity_summary"] = ""
+        generation_state["subject_registry_state"] = new_continuity_state()
+        generation_state["subject_state_ledger"] = {}
+        generation_state["prop_ledger"] = {}
         generation_state["character_reference_images"] = copy.deepcopy(
             character_reference_images
         )
@@ -40714,32 +40704,16 @@ def _run_main(
         # so an interrupted or failed render is never advertised as resumable.
         checkpoint_generation_state()
         console_log(
-            f"Prompt-derived continuity prediction saved before the ComfyUI "
+            f"WorldState and render metadata checkpointed before the ComfyUI "
             f"response for segment {segment}."
         )
 
         if test_prompt_generation:
-            # Prompt-only runs have no rendered pixels or video path to commit.
-            # Persist the prompt result and prompt-derived continuity so the
-            # run remains inspectable and can be resumed in the same mode.
-            reduced_continuity_state = clear_unrendered_wardrobes(
-                prompt_reduced_continuity_state
-            )
-            reduced_continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                reduced_continuity_state,
-            )
-            continuity_state = continuity_state_for_registry(
-                subject_definitions,
-                reduced_continuity_state,
-            )
-            continuity_source = "prompt"
-            generation_state["continuity_state"] = copy.deepcopy(
-                reduced_continuity_state
-            )
-            generation_state["continuity_source"] = continuity_source
+            # Prompt-only runs commit the accepted reducer candidate; no
+            # prompt-derived continuity state is written alongside it.
+            reduced_continuity_state = new_continuity_state()
+            continuity_state = new_continuity_state()
+            continuity_source = "world_state"
             with generation_state_lock:
                 commit_accepted_director_world_state(
                     generation_state,
@@ -40755,12 +40729,12 @@ def _run_main(
                     completed_beat_ids,
                     continuity_summary,
                     continuity_state=reduced_continuity_state,
-                    prop_ledger=prop_ledger,
+                    prop_ledger={},
                     continuity_summary_pending=False,
                     subject_registry_state=continuity_state,
                 )
                 completed_record["continuity_prompt_state"] = copy.deepcopy(
-                    prompt_reduced_continuity_state
+                    {}
                 )
                 completed_record["continuity_source"] = continuity_source
                 completed_record["h3_prompt"] = h3_prompt
@@ -40771,9 +40745,7 @@ def _run_main(
                 completed_record["reference_bindings"] = copy.deepcopy(
                     segment_reference_binding_snapshot
                 )
-                generation_state["continuity_prompt_state"] = copy.deepcopy(
-                    prompt_reduced_continuity_state
-                )
+                generation_state["continuity_prompt_state"] = {}
                 save_generation_state(generation_state)
             console_log(
                 f"Completed prompt generation for segment {segment}; "
@@ -40845,85 +40817,27 @@ def _run_main(
                     f"failed: {error}. Generation will continue without it."
                 )
 
-            visual_state_for_merge = (
-                visual_result["end_state"] if visual_result is not None else {}
-            )
-            reduced_continuity_state = merge_prompt_and_visual_end_state(
-                prompt_reduced_continuity_state,
-                visual_state_for_merge,
-            )
-            console_log()
-            console_log("=" * 64)
-            console_log(f"MERGED END STATE: SEGMENT {segment} (VISUAL PRECEDENCE)")
-            console_log("=" * 64)
-            console_log(json.dumps(reduced_continuity_state, ensure_ascii=False, indent=2))
-            console_log("=" * 64)
-            state_source = "prompt_plus_visual"
-            continuity_source = "vision" if visual_result is not None else "prompt"
-        else:
-            reduced_continuity_state = clear_unrendered_wardrobes(
-                prompt_reduced_continuity_state
-            )
-            reduced_continuity_state = seed_canonical_opening_wardrobe(
+            # Rendered observations remain separately recorded diagnostics and
+            # media evidence; they never write WorldState or legacy continuity.
+            reduced_continuity_state = continuity_state_for_registry(
                 subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                reduced_continuity_state,
+                new_continuity_state(),
+            )
+        else:
+            reduced_continuity_state = continuity_state_for_registry(
+                subject_definitions,
+                new_continuity_state(),
             )
             console_log(
                 f"Skipping rendered-frame vision continuity for segment {segment} "
-                f"(cadence={getattr(args, 'vision_continuity', 1)}); using the "
-                "non-wardrobe prompt continuity state."
+                f"(cadence={getattr(args, 'vision_continuity', 1)}); "
+                "WorldState remains the physical authority."
             )
-            state_source = "prompt_only"
-            continuity_source = "prompt"
+            continuity_source = "world_state"
 
-        # Keep the internal Subject registry synchronized with the same
-        # rendered/current wardrobe snapshot used by the next Director. This
-        # prevents resume and hard-cut paths from reintroducing stale clothing.
-        continuity_state = continuity_state_for_registry(
-            subject_definitions,
-            reduced_continuity_state,
-        )
-
-        if segment < total_segments:
-            phase2_state_for_opening = copy.deepcopy(reduced_continuity_state)
-            try:
-                phase2_state_for_opening = _phase2_continuity_state_for_scene(
-                    reduced_continuity_state,
-                    subject_definitions=subject_definitions,
-                    ending_scene=request1_ending_scene,
-                )
-                next_opening_summary = request_continuity_opening_state(
-                    reduced_continuity_state,
-                    continuity_phase,
-                    history_metadata={
-                        "run_id": run_id,
-                        "source_sha256": run_config["source_sha256"],
-                        "purpose": "continuity_phase_2_h3_opening",
-                        "segment": segment,
-                        "attempt": 1,
-                        "conditioning_mode": segment_bundle["conditioning_mode"],
-                        "state_source": state_source,
-                    },
-                    subject_definitions=subject_definitions,
-                    ending_scene=request1_ending_scene,
-                )
-                if not _meaningful_director_continuity(next_opening_summary):
-                    next_opening_summary = _best_effort_continuity_opening_state(
-                        phase2_state_for_opening
-                    )
-                continuity_summary = next_opening_summary
-            except LLMConnectionError:
-                raise
-            except Exception as error:
-                continuity_summary = _best_effort_continuity_opening_state(
-                    phase2_state_for_opening
-                )
-                console_log(
-                    f"WARNING: Continuity for Segment {segment} is unavailable; "
-                    f"using serialized best effort and continuing: {error}"
-                )
+        # The next segment formats its opening directly from committed
+        # WorldState. No prose summary or visual merge is synchronized here.
+        continuity_summary = ""
 
         generation_state["continuity_prompt_state"] = copy.deepcopy(
             prompt_reduced_continuity_state
