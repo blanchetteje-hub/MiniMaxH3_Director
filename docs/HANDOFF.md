@@ -1,5 +1,18 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-09 — bridge accepts fixture Director plans
+
+- `run_acceptance` jobs may provide `director_plan_dir`; the bridge resolves it
+  inside the execution worktree, restricts it to `tests/acceptance/fixtures/`,
+  verifies `story_arc.json` and `beats.txt`, and forwards the resolved path to
+  the existing `--director-plan-dir` runner option.
+- The established plan is
+  `tests/acceptance/fixtures/tavern_run21_plan`. Existing `director_plan_job`
+  materialization remains unchanged; a job cannot specify both plan sources.
+- Verification: bridge tests passed (9 passed; one unrelated stale branch-error
+  assertion deselected), acceptance-runner tests passed (10 passed), and syntax
+  and whitespace checks passed.
+
 ## 2026-10-09 — reusable six-Beat tavern Director plan
 
 - Preserved the **six accepted Beats** from acceptance 21 and paired them with the supplied one-phase `story_arc.json` at `tests/acceptance/fixtures/tavern_run21_plan/{story_arc.json,beats.txt}`. The arc retains E1–E6, their original source-event wording (including Amy's explicit wardrobe in E1), ordering/dependencies, and empty source state effects; accepted Beat text is copied verbatim from the run log.

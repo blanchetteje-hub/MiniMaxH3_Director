@@ -130,6 +130,69 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             self.assertIn("--model", command)
             self.assertEqual(command[command.index("--model") + 1], "qwen")
 
+    @mock.patch.object(bridge, "start_lmstudio_developer_log", return_value={})
+    @mock.patch.object(bridge, "stop_lmstudio_developer_log", return_value={})
+    @mock.patch.object(bridge, "copy_acceptance_artifacts", return_value={})
+    @mock.patch.object(bridge, "run_local_process")
+    @mock.patch.object(bridge, "ensure_exec_worktree")
+    def test_acceptance_director_plan_dir_requires_fixture_and_forwards_path(
+        self, ensure_worktree, run_process, _copy, _stop, _start
+    ):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "amy.jpg").write_bytes(b"image")
+            ensure_worktree.return_value = root
+            run_process.return_value = {"returncode": 0}
+
+            plan_dir = (
+                root / "tests" / "acceptance" / "fixtures" / "tavern_run21_plan"
+            )
+            plan_dir.mkdir(parents=True)
+            (plan_dir / "story_arc.json").write_text("{}\n", encoding="utf-8")
+            (plan_dir / "beats.txt").write_text("Beat 1\n", encoding="utf-8")
+
+            job = {
+                "job_id": "director-plan-fixture",
+                "code_branch": bridge.ACCEPTANCE_CODE_BRANCH,
+                "model": "gpt",
+                "director_plan_dir": "tests/acceptance/fixtures/tavern_run21_plan",
+            }
+            bridge.execute_acceptance(job, root, root / "result")
+            command = run_process.call_args.args[0]
+            self.assertIn("--director-plan-dir", command)
+            self.assertEqual(
+                command[command.index("--director-plan-dir") + 1],
+                str(plan_dir.resolve()),
+            )
+
+            outside_dir = root / "tests" / "acceptance" / "gold" / "plan"
+            outside_dir.mkdir(parents=True)
+            (outside_dir / "story_arc.json").write_text("{}\n", encoding="utf-8")
+            (outside_dir / "beats.txt").write_text("Beat 1\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "under tests/acceptance/fixtures"):
+                bridge.execute_acceptance(
+                    {**job, "director_plan_dir": "tests/acceptance/gold/plan"},
+                    root,
+                    root / "result",
+                )
+
+            incomplete_dir = (
+                root / "tests" / "acceptance" / "fixtures" / "incomplete_plan"
+            )
+            incomplete_dir.mkdir()
+            (incomplete_dir / "story_arc.json").write_text("{}\n", encoding="utf-8")
+            with self.assertRaisesRegex(FileNotFoundError, "beats.txt"):
+                bridge.execute_acceptance(
+                    {
+                        **job,
+                        "director_plan_dir": (
+                            "tests/acceptance/fixtures/incomplete_plan"
+                        ),
+                    },
+                    root,
+                    root / "result",
+                )
+
     def test_acceptance_rejects_nonbaseline_branch(self):
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaisesRegex(ValueError, "must run on 'gpt-arc-refresh'"):

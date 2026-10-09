@@ -878,8 +878,38 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     if bool(job.get("planning_only")):
         command.append("--planning-only")
     director_plan_job = str(job.get("director_plan_job") or "").strip()
+    director_plan_dir_raw = str(job.get("director_plan_dir") or "").strip()
+    if director_plan_job and director_plan_dir_raw:
+        raise ValueError(
+            "Specify either director_plan_job or director_plan_dir, not both."
+        )
     materialized_plan_dir = None
-    if director_plan_job:
+    if director_plan_dir_raw:
+        plan_dir = safe_source_path(exec_root, director_plan_dir_raw)
+        fixtures_root = (exec_root / "tests" / "acceptance" / "fixtures").resolve()
+        try:
+            plan_dir.relative_to(fixtures_root)
+        except ValueError as error:
+            raise ValueError(
+                "Director plan directory must be under "
+                "tests/acceptance/fixtures/."
+            ) from error
+        if not plan_dir.is_dir():
+            raise FileNotFoundError(
+                f"Director plan directory not found: {plan_dir}"
+            )
+        required_plan_files = ("story_arc.json", "beats.txt")
+        missing_plan_files = [
+            filename for filename in required_plan_files
+            if not (plan_dir / filename).is_file()
+        ]
+        if missing_plan_files:
+            raise FileNotFoundError(
+                f"Director plan directory is missing required files: "
+                f"{', '.join(missing_plan_files)}"
+            )
+        command.extend(["--director-plan-dir", str(plan_dir)])
+    elif director_plan_job:
         source_files = result_dir.parent / director_plan_job / "files"
         plan_dir = source_files
         if not (
