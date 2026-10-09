@@ -580,25 +580,13 @@ SMART_EXTRACTOR_LLM_SETTINGS = MappingProxyType({
     "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
 })
 
-# Long-input responsibilities get their own immutable settings profiles. This
-# keeps context budgets in the selected profile instead of purpose-level
-# overrides applied after routing.
-LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS = MappingProxyType({
-    **CREATIVE_GENERATION_LLM_SETTINGS,
-    "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-})
+# Long-input analysis retains a separate immutable profile. Creative extractors
+# use their task's standard creative or smart-extractor profile.
 LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_SETTINGS = MappingProxyType({
     **DETERMINISTIC_ANALYSIS_LLM_SETTINGS,
     "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
 })
 
-LONG_CONTEXT_CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
-    "world_state_current_segment_subjects",
-    "world_state_current_segment_props",
-    "story_subject_wardrobe_extract",
-    "story_location_extract",
-    "static_setting_extract",
-})
 LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "registered_subject_story_start_presence",
 })
@@ -613,6 +601,9 @@ CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
     "macro_arc_create",
     "macro_arc_repair",
     "macro_arc_majority_tail_repair",
+    "story_subject_wardrobe_extract",
+    "story_location_extract",
+    "static_setting_extract",
 })
 
 DIRECTOR_RAW_SCENE_LLM_PURPOSES = frozenset({
@@ -626,6 +617,8 @@ MUSIC_GENERATION_LLM_PURPOSES = frozenset({
 SMART_EXTRACTOR_LLM_PURPOSES = frozenset({
     "story_setting_extract",
     "director_raw_scene_subject_resolution",
+    "world_state_current_segment_subjects",
+    "world_state_current_segment_props",
 })
 
 SLIGHTLY_CREATIVE_LLM_PURPOSES = frozenset({
@@ -656,12 +649,7 @@ DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
     "macro_arc_majority_validate",
     "macro_arc_validate",
     "source_unit_state_effects",
-    "story_location_extract",
-    "story_subject_wardrobe_extract",
-    "world_state_current_segment_subjects",
     "registered_subject_story_start_presence",
-    "world_state_current_segment_props",
-    "static_setting_extract",
     "director_raw_scene_visible_subject_resolution",
     "subject_continuity",
     "visual_end_state",
@@ -10626,8 +10614,6 @@ def ask_llm(
         llm_settings = STORY_TO_BEATS_LLM_SETTINGS
     elif history_purpose in LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_PURPOSES:
         llm_settings = LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_SETTINGS
-    elif history_purpose in LONG_CONTEXT_CREATIVE_GENERATION_LLM_PURPOSES:
-        llm_settings = LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS
     elif history_purpose in MUSIC_GENERATION_LLM_PURPOSES:
         llm_settings = MUSIC_GENERATION_LLM_SETTINGS
     elif history_purpose in BEAT_WRITING_LLM_PURPOSES:

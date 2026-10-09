@@ -22,6 +22,12 @@ Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/
 - Scope note: with the current unchanged extractor contract, a prop is registered when the current Beat/assigned source explicitly involves it in a supported persistent action such as placement or transfer. A cloth mentioned only as a wiping instrument is not inferred from future handling.
 - Verification: the new focused regression passed. The full `tests/test_world_state_foundation.py` module reported 43 passed and 2 existing stale story-start contract assertions failed; syntax and `git diff --check` passed.
 
+## 2026-10-09 — WorldState extractors use the smart profile
+
+- Routed `world_state_current_segment_props` and `world_state_current_segment_subjects` through immutable `SMART_EXTRACTOR_LLM_SETTINGS`.
+- Deleted `LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS` and its purpose set. The wardrobe, story-location, and static-setting extractors now use the existing `CREATIVE_GENERATION_LLM_SETTINGS` and its standard context budget; prompt text and call counts are unchanged.
+- Updated the LLM prompt inventory and profile-routing regressions to match. Long-context deterministic routing remains unchanged.
+
 ## Primary goal
 
 `story.txt -> gold-standard MiniMax H3 prompts`

@@ -101,10 +101,8 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
         )
         self.assertNotIn("context_token_budget", calls[0][1])
         self.assertEqual(
-            minimax.LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS[
-                "context_token_budget"
-            ],
-            minimax.STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+            minimax.CREATIVE_GENERATION_LLM_SETTINGS["context_token_budget"],
+            minimax.LLM_CONTEXT_TOKEN_BUDGET,
         )
 
     def test_story_location_parser_strips_sentence_wrapper(self):

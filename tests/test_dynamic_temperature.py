@@ -7,6 +7,7 @@ import minimax
 
 
 def test_llm_profiles_are_immutable():
+    assert not hasattr(minimax, "LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS")
     profiles = (
         minimax.VISION_LLM_SETTINGS,
         minimax.CREATIVE_GENERATION_LLM_SETTINGS,
@@ -18,7 +19,6 @@ def test_llm_profiles_are_immutable():
         minimax.SLIGHTLY_CREATIVE_LLM_SETTINGS,
         minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS,
         minimax.SMART_EXTRACTOR_LLM_SETTINGS,
-        minimax.LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS,
         minimax.LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_SETTINGS,
     )
     for profile in profiles:
@@ -68,6 +68,59 @@ def test_subject_resolution_uses_smart_profile_output_limit():
     request = post.call_args.kwargs["json"]
     assert request["max_tokens"] == \
         minimax.SMART_EXTRACTOR_LLM_SETTINGS["max_output_tokens"] == 4096
+
+
+@pytest.mark.parametrize("purpose", [
+    "world_state_current_segment_props",
+    "world_state_current_segment_subjects",
+])
+def test_world_state_extractors_use_smart_profile(purpose):
+    response = mock.Mock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = {
+        "choices": [{"message": {"content": "{}"}, "finish_reason": "stop"}]
+    }
+    with mock.patch.object(minimax.requests, "post", return_value=response) as post, \
+         mock.patch.object(minimax, "append_prompt_history"):
+        minimax.ask_llm(
+            [{"role": "user", "content": "Extract registered entities."}],
+            response_format=None,
+            history_metadata={"purpose": purpose},
+        )
+
+    request = post.call_args.kwargs["json"]
+    profile = minimax.SMART_EXTRACTOR_LLM_SETTINGS
+    assert request["temperature"] == profile["temperature"] == 0
+    assert request["max_tokens"] <= profile["max_output_tokens"]
+    assert request["seed"] == profile["seed"]
+    assert request["reasoning_effort"] == profile["reasoning_effort"] == "high"
+    assert request["thinking_budget_tokens"] == profile["thinking_budget_tokens"]
+
+
+@pytest.mark.parametrize("purpose", [
+    "story_subject_wardrobe_extract",
+    "story_location_extract",
+    "static_setting_extract",
+])
+def test_other_creative_extractors_use_standard_creative_profile(purpose):
+    response = mock.Mock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = {
+        "choices": [{"message": {"content": "{}"}, "finish_reason": "stop"}]
+    }
+    with mock.patch.object(minimax.requests, "post", return_value=response) as post, \
+         mock.patch.object(minimax, "append_prompt_history"):
+        minimax.ask_llm(
+            [{"role": "user", "content": "Extract the requested facts."}],
+            response_format=None,
+            history_metadata={"purpose": purpose},
+        )
+
+    request = post.call_args.kwargs["json"]
+    profile = minimax.CREATIVE_GENERATION_LLM_SETTINGS
+    assert request["temperature"] == profile["temperature"]
+    assert request["max_tokens"] <= profile["max_output_tokens"]
+    assert request["reasoning_effort"] == profile["reasoning_effort"]
 
 
 def test_desktop_does_not_validate_or_pass_saved_temperature():

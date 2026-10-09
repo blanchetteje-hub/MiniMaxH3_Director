@@ -1,6 +1,6 @@
 # LLM Prompt / Call Inventory
 
-**Branch audited:** `world-state-rebuild` (2026-10-08). **Primary source:** `minimax.py`, including its `ask_llm()` purpose-routing tables and observed call sites. This is an **index of LLM calls, not verbatim user/system prompt text**: runtime prompts remain user-owned in source. Do not edit prompts merely to make the descriptions here match.
+**Branch audited:** `world-state-rebuild` (2026-10-09). **Primary source:** `minimax.py`, including its `ask_llm()` purpose-routing tables and observed call sites. This is an **index of LLM calls, not verbatim user/system prompt text**: runtime prompts remain user-owned in source. Do not edit prompts merely to make the descriptions here match.
 
 **How to read:** `purpose` is the primary `history_metadata.purpose` identifier; settings names are constants, not expanded per-field values. Settings are selected by purpose, with the fallback `DETERMINISTIC_ANALYSIS_LLM_SETTINGS`. A listed purpose does not guarantee execution on every run; some calls are conditional, diagnostic, compatibility, or legacy paths. Where a helper inherits a caller's `history_metadata` instead of assigning a purpose, it uses that inherited identifier (or the fallback settings).
 
@@ -12,15 +12,15 @@
 | `story_to_beats` | `STORY_TO_BEATS_LLM_SETTINGS` | Derive ordered filmable beats | Expanded story and source/beat budget context | Structured beats |
 | `story_to_beats_repair` | `STORY_TO_BEATS_LLM_SETTINGS` | Repair invalid beat derivation | Original story, draft beats, specific validation issue | Corrected beats |
 | `character_canon` | `CREATIVE_GENERATION_LLM_SETTINGS` | Establish stable configurable character facts | Story, predefined Subjects and configured canon fields | Canonical character facts |
-| `story_subject_wardrobe_extract` | `LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS` | Determine one Subject's canonical appropriate wardrobe | Expanded story, Subject identity, appearance and setting | Structured/canonical wardrobe for that Subject |
-| `story_location_extract` | `LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS` | Identify story locations and initial setting | Expanded story and established story context | Overall and opening location information |
-| `static_setting_extract` | `LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS` | Extract permanent location facts without action-only objects | Expanded story and named location context | Static setting description |
+| `story_subject_wardrobe_extract` | `CREATIVE_GENERATION_LLM_SETTINGS` | Determine one Subject's canonical appropriate wardrobe | Expanded story, Subject identity, appearance and setting | Structured/canonical wardrobe for that Subject |
+| `story_location_extract` | `CREATIVE_GENERATION_LLM_SETTINGS` | Identify story locations and initial setting | Expanded story and established story context | Overall and opening location information |
+| `static_setting_extract` | `CREATIVE_GENERATION_LLM_SETTINGS` | Extract permanent location facts without action-only objects | Expanded story and named location context | Static setting description |
 | `story_setting_spatial_refine` | `SLIGHTLY_CREATIVE_LLM_SETTINGS` | Lay out a physically coherent static environment | Extracted setting and location constraints | Spatially refined setting text |
 | `story_setting_extract` | `SMART_EXTRACTOR_LLM_SETTINGS` | Serialize canonical location geometry and text | Refined static layout and source location details | Location-state JSON plus matching literal prose |
 | `director_raw_scene_subject_resolution` | `SMART_EXTRACTOR_LLM_SETTINGS` | Identify animate Subjects present from the beginning | Complete finalized beat list, known Subjects and opening context | Functional names and supported initial states |
 | `registered_subject_story_start_presence` | `LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_SETTINGS` | Classify one authored Subject's opening presence | Full beats/story and one registered Subject with source evidence | Present/absent/unknown classification with evidence |
-| `world_state_current_segment_subjects` | `LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS` | Register identities needed for the current Beat before RAW | Current Beat/source, registered Subject context | New current-segment identity records; no inferred entry/presence |
-| `world_state_current_segment_props` | `LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS` | Identify explicitly needed persistent props for this Beat | Current Beat/source and registered Subject, prop, location/support vocabulary | Narrow prop registration candidates and initial placement |
+| `world_state_current_segment_subjects` | `SMART_EXTRACTOR_LLM_SETTINGS` | Register identities needed for the current Beat before RAW | Current Beat/source, registered Subject context | New current-segment identity records; no inferred entry/presence |
+| `world_state_current_segment_props` | `SMART_EXTRACTOR_LLM_SETTINGS` | Identify explicitly needed persistent props for this Beat | Current Beat/source and registered Subject, prop, location/support vocabulary | Narrow prop registration candidates and initial placement |
 | `source_unit_state_effects` | `DETERMINISTIC_ANALYSIS_LLM_SETTINGS` | Extract explicit durable source effects | One exact source unit and state context | Typed persistent effects, not activity alone |
 | `macro_arc_create` | `CREATIVE_GENERATION_LLM_SETTINGS` | Create a chapter/arc plan | Authoritative story and allocation constraints | Arc/chapter plan |
 | `macro_arc_validate` | `DETERMINISTIC_ANALYSIS_LLM_SETTINGS` | Check arc/source responsibility | Source text and candidate arc | Validity and specific issue |
@@ -55,7 +55,7 @@
 
 ## Routing and coverage notes
 
-- The routing precedence in `ask_llm()` is story expansion; story-to-beats; long-context deterministic; long-context creative; music; beat writing; Director RAW; creative; smart extractor; slightly creative; and finally deterministic fallback. Several identifiers also appear in the generic deterministic purpose registry but are overridden by an earlier, more specific registry.
+- The routing precedence in `ask_llm()` is story expansion; story-to-beats; long-context deterministic; music; beat writing; Director RAW; creative; smart extractor; slightly creative; and finally deterministic fallback. Several identifiers also appear in the generic deterministic purpose registry but are overridden by an earlier, more specific registry.
 - `visual_end_state` uses the separate vision-model request implementation and `VISION_LLM_SETTINGS`, rather than assuming the text `ask_llm()` settings route.
 - `director_raw_scene` now includes WorldState actions in the **same** response. At this checkpoint, state actions are dry-run validated but not committed as the canonical reducer result.
 - Some compatibility helpers (for example recent-results summary, continuity delta/validation or generic JSON repair) can be called through injected `llm_request` and inherited metadata. The table names the stable explicit purposes; helper calls without an explicit identifier are not separate canonical `purpose` names.

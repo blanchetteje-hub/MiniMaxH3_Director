@@ -24,7 +24,12 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertEqual(profile["thinking_budget_tokens"], 1024)
         self.assertEqual(
             minimax.SMART_EXTRACTOR_LLM_PURPOSES,
-            {"story_setting_extract", "director_raw_scene_subject_resolution"},
+            {
+                "story_setting_extract",
+                "director_raw_scene_subject_resolution",
+                "world_state_current_segment_subjects",
+                "world_state_current_segment_props",
+            },
         )
         self.assertEqual(
             minimax.SLIGHTLY_CREATIVE_LLM_PURPOSES,
@@ -32,7 +37,7 @@ class LocationStateReferenceTests(unittest.TestCase):
         )
         self.assertIn(
             "static_setting_extract",
-            minimax.DETERMINISTIC_ANALYSIS_LLM_PURPOSES,
+            minimax.CREATIVE_GENERATION_LLM_PURPOSES,
         )
         self.assertEqual(
             minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["thinking_budget_tokens"],
