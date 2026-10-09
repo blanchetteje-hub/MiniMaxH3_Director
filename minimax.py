@@ -10729,6 +10729,9 @@ def ask_llm(
     response_history_purposes = beat_history_purposes | {
         "director_raw_scene",
         "director_raw_scene_repair",
+        "director_raw_scene_physical",
+        "director_raw_scene_prop_state",
+        "director_raw_scene_timing",
         "director_h3_formatter",
         "director_raw_scene_subject_resolution",
         "continuity_combined_reduced_state",
@@ -14078,6 +14081,37 @@ def parse_beat_validation_result(raw_result):
     if not isinstance(result["issue"], str):
         raise ValueError("Beat validation returned a non-string issue field.")
     return {"valid": result["valid"], "issue": result["issue"].strip()}
+
+
+def log_director_raw_validator_result(
+    validator_name,
+    result,
+    *,
+    segment_number,
+    director_attempt,
+    repair_attempt=None,
+):
+    """Write a compact, structured verdict for each post-RAW validator pass."""
+    diagnostic = {
+        "validator": str(validator_name),
+        "segment": segment_number,
+        "director_attempt": director_attempt,
+        "repair_attempt": repair_attempt,
+        "valid": result.get("valid") if isinstance(result, dict) else None,
+        "issue": (
+            str(result.get("issue") or "")
+            if isinstance(result, dict)
+            else "Validator returned no structured result."
+        ),
+    }
+    console_log(
+        "DIRECTOR RAW VALIDATOR RESULT " + json.dumps(
+            diagnostic,
+            ensure_ascii=False,
+            default=str,
+        ),
+        flush=True,
+    )
 
 
 def _state_value_text(value):
@@ -37613,7 +37647,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     if repair_attempt is not None:
                         metadata["repair_attempt"] = repair_attempt
                     try:
-                        return validate_director_raw_scene_physical(
+                        result = validate_director_raw_scene_physical(
                             current_beat_text,
                             candidate,
                             previous_shot_end=previous_shot_end,
@@ -37628,10 +37662,18 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         ValueError,
                         TypeError,
                     ) as error:
-                        return {
+                        result = {
                             "valid": False,
                             "issue": f"RAW physical validator failed: {error}",
                         }
+                    log_director_raw_validator_result(
+                        "physical/spatial",
+                        result,
+                        segment_number=segment_number,
+                        director_attempt=request1_attempt,
+                        repair_attempt=repair_attempt,
+                    )
+                    return result
 
                 physical = validate_physical_candidate(raw_scene)
                 physical_repair_attempt = 0
@@ -37643,6 +37685,20 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "RAW SCENE has an impossible subject movement or action order."
                     )
                     physical_repair_attempt += 1
+                    console_log(
+                        "DIRECTOR RAW REPAIR DISPATCH " + json.dumps(
+                            {
+                                "purpose": "director_raw_scene_repair",
+                                "segment": segment_number,
+                                "director_attempt": request1_attempt,
+                                "repair_attempt": physical_repair_attempt,
+                                "issue": issue,
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        ),
+                        flush=True,
+                    )
                     repair_metadata = {
                         **validator_metadata,
                         "purpose": "director_raw_scene_repair",
@@ -37770,6 +37826,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "issue": f"RAW prop/state validator failed: {error}",
                     }
 
+                log_director_raw_validator_result(
+                    "prop/state",
+                    prop_state,
+                    segment_number=segment_number,
+                    director_attempt=request1_attempt,
+                )
+
                 if not prop_state["valid"]:
                     issue = prop_state["issue"] or (
                         "RAW SCENE has inconsistent prop, transfer, or final object state."
@@ -37812,6 +37875,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "valid": False,
                         "issue": f"RAW timing validator failed: {error}",
                     }
+
+                log_director_raw_validator_result(
+                    "timing",
+                    timing,
+                    segment_number=segment_number,
+                    director_attempt=request1_attempt,
+                )
 
                 if not timing["valid"]:
                     issue = (

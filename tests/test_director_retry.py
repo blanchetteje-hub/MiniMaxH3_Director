@@ -1212,6 +1212,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "minimax.validate_director_raw_scene_timing",
                 timing,
             ),
+            mock.patch("minimax.console_log") as console_log,
             mock.patch("builtins.print"),
         ):
             payload = minimax.request_segment_llm(
@@ -1223,6 +1224,24 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(prop_state.call_count, 1)
         self.assertEqual(timing.call_count, 1)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
+        log_messages = [
+            str(call.args[0]) for call in console_log.call_args_list if call.args
+        ]
+        physical_verdicts = [
+            json.loads(message.removeprefix("DIRECTOR RAW VALIDATOR RESULT "))
+            for message in log_messages
+            if message.startswith("DIRECTOR RAW VALIDATOR RESULT ")
+        ]
+        self.assertEqual(
+            [item["valid"] for item in physical_verdicts if item["validator"] == "physical/spatial"],
+            [False, True],
+        )
+        self.assertTrue(any(
+            message.startswith("DIRECTOR RAW REPAIR DISPATCH ")
+            and "director_raw_scene_repair" in message
+            and "door closes before Will enters" in message
+            for message in log_messages
+        ))
         repair_calls = [
             call for call in request.call_args_list
             if call.kwargs.get("history_metadata", {}).get("purpose")
@@ -1345,6 +1364,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             mock.patch("minimax.validate_director_raw_scene_physical", physical),
             mock.patch("minimax.validate_director_raw_scene_prop_state", prop_state),
             mock.patch("minimax.validate_director_raw_scene_timing", timing),
+            mock.patch("minimax.console_log") as console_log,
             mock.patch("builtins.print"),
         ):
             payload = minimax.request_segment_llm(
@@ -1366,6 +1386,24 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "Fix this prop/state problem" in prompt
             and "redirected onto the table" in prompt
             for prompt in request_prompts
+        ))
+        log_messages = [
+            str(call.args[0]) for call in console_log.call_args_list if call.args
+        ]
+        prop_verdicts = [
+            json.loads(message.removeprefix("DIRECTOR RAW VALIDATOR RESULT "))
+            for message in log_messages
+            if message.startswith("DIRECTOR RAW VALIDATOR RESULT ")
+            and '"validator": "prop/state"' in message
+        ]
+        self.assertEqual(
+            [item["valid"] for item in prop_verdicts],
+            [False, True],
+        )
+        self.assertTrue(any(
+            "prop/state validation failed" in message
+            and "redirected onto the table" in message
+            for message in log_messages
         ))
 
     def test_python_structure_normalization_leaves_only_semantic_retry_blockers(self):

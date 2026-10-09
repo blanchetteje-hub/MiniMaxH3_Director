@@ -1,5 +1,23 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-09 — expose RAW validator verdicts and repair dispatch
+
+- The physical/spatial validator already routed invalid RAW scenes to
+  `director_raw_scene_repair` for up to five attempts. The confusing behavior
+  came from other rejection paths: structure, dialogue, prop/state, and timing
+  failures retry `director_raw_scene` directly, while five failed physical
+  repairs intentionally fall back to RAW regeneration.
+- Added structured console records for physical/spatial, prop/state, and timing
+  validator results, including Segment, Director attempt, repair attempt where
+  applicable, validity, and the concrete issue. Physical failures also log an
+  explicit `director_raw_scene_repair` dispatch with the same issue.
+- Added physical, prop/state, and timing validator purposes to response history
+  so the raw validator model responses can be inspected alongside the parsed
+  verdicts. Runtime prompts and validation rules are unchanged.
+- Verification: `tests/test_director_retry.py` and
+  `tests/test_dynamic_temperature.py` passed (173 passed, 4 subtests);
+  `py_compile` and `git diff --check` passed.
+
 ## 2026-10-09 — bridge accepts fixture Director plans
 
 - `run_acceptance` jobs may provide `director_plan_dir`; the bridge resolves it
