@@ -1,0 +1,43 @@
+{
+  "version": 3,
+  "source_sha256": "3f2fbb8f5e34725eb1a8477676a663a107484451d2a964d4183cf65d64841ef9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "skin_color",
+    "hair_color",
+    "scale_texture",
+    "eye_color"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "She wears a rough‑spun faded tan linen tunic with scuffed cuffs and hem from years of polishing tables; beneath it she has worn brown woolen breeches tucked into simple knee‑high leather boots that show signs of use. Over the tunic is a patched leather apron tied at her waist by a braided leather belt, its pockets holding tools for service",
+      "gender": "female"
+    },
+    {
+      "name": "Goblin",
+      "age": "25",
+      "clothing": "A leaf‑green rough‑spun tunic with frayed edges hangs loosely over mismatched loose trousers of faded green cloth. The tunic is belted at the waist by a thin, scuffed brown leather belt that holds a small pouch for coins. His feet are covered in small worn brown leather boots",
+      "gender": "male",
+      "skin_color": "green"
+    },
+    {
+      "name": "Elf",
+      "age": "170",
+      "clothing": "A moss‑green linen tunic reaching mid‑thigh, embroidered along the hem with subtle silver filigree shaped like leaves. The sleeves fall just below the wrists. Beneath it she wears fitted brown leather leggings tucked into dark suede ankle‑high boots. A wide leather belt cinches at her waist, holding a small pouch and a silver oak‑leaf clasp. Over the tunic drapes a moss‑green cloak with a hood, lined inside in faded silver silk that catches light as she moves; it is fastened by a single silver brooch shaped like an elven sigil. Her long silver hair streams down to her shoulders, loosely tied at the back with a thin leather cord",
+      "gender": "female",
+      "hair_color": "silver"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "500",
+      "clothing": "N/A",
+      "gender": "male",
+      "scale_texture": "obsidian-like",
+      "eye_color": "amber"
+    }
+  ]
+}
