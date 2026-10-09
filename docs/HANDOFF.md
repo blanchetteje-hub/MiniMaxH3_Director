@@ -958,3 +958,20 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
 - The two requests run concurrently for each candidate. Both must return valid before finite-endpoint checks and acceptance continue. Each result and issue is logged under its validator name; failed reasons retain Story/State attribution in the existing retry/regeneration feedback.
 - Removed the combined validator purpose and builder. Existing separate finite-endpoint and within-Beat coherence checks remain unchanged.
 - Verification: forward-Beat, retry hierarchy, at-a-time validator, source-span, simplified-prompt, and dynamic-profile suites passed (115 passed; 2 unrelated stale assertions deselected; 2 subtests passed). The postmortem regression suite passed (79 passed; one unrelated stale wardrobe-prompt assertion deselected). Split-validator profile/transport tests passed (3 passed). `py_compile` and `git diff --check` passed.
+
+## 2026-10-09 — accept quote-wrapped prop evidence
+
+- Updated `parse_current_segment_persistent_prop_result()` to strip repeated,
+  matching straight or curly quotation pairs from a temporary evidence value
+  before the existing case-insensitive exact-substring check against the
+  current Beat and assigned source.
+- The parsed evidence retains its original enclosing and internal quotation
+  marks. Evidence still must match a source substring; prop validation,
+  extraction prompts, schemas, and logging are unchanged.
+- Added regressions for straight/curly and redundant enclosing quotes, unquoted
+  exact evidence, preserved internal quotation marks, and incorrect quoted
+  evidence.
+- Verification: WorldState foundation selection passed (53 passed, 7
+  subtests; 2 unrelated stale story-start assertions deselected), Director
+  retry tests passed (112 passed, 4 subtests), and `py_compile` plus
+  `git diff --check` passed.

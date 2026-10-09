@@ -4346,6 +4346,25 @@ def parse_current_segment_persistent_prop_result(
         if item["kind"] in {"support", "fixture_support"}
     }
     existing = {item["name"].casefold() for item in world_state["props"].values()}
+    quote_pairs = (("\"", "\""), ("'", "'"), ("“", "”"), ("‘", "’"))
+
+    def strip_enclosing_quotes(value):
+        unquoted = value.strip()
+        while len(unquoted) >= 2:
+            pair = next(
+                (
+                    (opening, closing)
+                    for opening, closing in quote_pairs
+                    if unquoted.startswith(opening) and unquoted.endswith(closing)
+                ),
+                None,
+            )
+            if pair is None:
+                break
+            opening, closing = pair
+            unquoted = unquoted[len(opening):-len(closing)].strip()
+        return unquoted
+
     expected_keys = {
         "name", "kind", "mobility",
         "initial_location", "initial_holder", "support_name", "contents",
@@ -4373,7 +4392,12 @@ def parse_current_segment_persistent_prop_result(
             raise ValueError(f"Persistent prop {name!r} has invalid contents/capabilities.")
         reason = " ".join(str(entry["reason"] or "").split()).strip()
         evidence = " ".join(str(entry["evidence"] or "").split()).strip()
-        if not reason or not evidence or evidence.casefold() not in source_text.casefold():
+        evidence_for_match = strip_enclosing_quotes(evidence)
+        if (
+            not reason
+            or not evidence_for_match
+            or evidence_for_match.casefold() not in source_text.casefold()
+        ):
             raise ValueError(f"Persistent prop {name!r} requires exact current-source evidence.")
         parsed.append({**entry, "name": name, "reason": reason, "evidence": evidence})
     return parsed

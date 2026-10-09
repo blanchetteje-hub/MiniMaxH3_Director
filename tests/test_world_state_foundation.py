@@ -745,6 +745,69 @@ class WorldStateSeedTests(unittest.TestCase):
                 {"props": [by_id]}, beat, beat, state
             )
 
+    def _parse_prop_candidate_with_evidence(
+        self, evidence, source="A traveler places a brass key on the shelf."
+    ):
+        state, _ = seed_canonical_static_location_state(
+            empty_world_state(),
+            {"location": {"name": "Room"}, "anchors": [], "objects": []},
+        )
+        candidate = {
+            "props": [{
+                "name": "brass key",
+                "kind": "object",
+                "mobility": "movable",
+                "initial_location": "Room",
+                "initial_holder": None,
+                "support_name": None,
+                "contents": [],
+                "capabilities": {
+                    "container": "unknown",
+                    "consumable": "unknown",
+                    "openable": "unknown",
+                    "lockable": "unknown",
+                },
+                "reason": "The key is placed for persistent tracking.",
+                "evidence": evidence,
+            }],
+        }
+        return minimax.parse_current_segment_persistent_prop_result(
+            candidate, source, source, state
+        )
+
+    def test_current_segment_prop_evidence_accepts_enclosing_quote_pairs(self):
+        exact_source = "A traveler places a brass key on the shelf."
+        quoted_evidence_values = (
+            f'"{exact_source}"',
+            f"'{exact_source}'",
+            f"“{exact_source}”",
+            f"‘{exact_source}’",
+            f'""{exact_source}""',
+            f'"“{exact_source}”"',
+            f'“‘{exact_source}’”',
+        )
+        for evidence in quoted_evidence_values:
+            with self.subTest(evidence=evidence):
+                parsed = self._parse_prop_candidate_with_evidence(evidence)
+                self.assertEqual(parsed[0]["evidence"], evidence)
+
+    def test_current_segment_prop_evidence_preserves_internal_quotation_marks(self):
+        source = 'A traveler says "ready" and places a brass key on the shelf.'
+        evidence = '‘A traveler says "ready" and places a brass key on the shelf.’'
+        parsed = self._parse_prop_candidate_with_evidence(evidence, source=source)
+        self.assertEqual(parsed[0]["evidence"], evidence)
+
+    def test_current_segment_prop_evidence_accepts_unquoted_exact_substring(self):
+        evidence = "places a brass key on the shelf"
+        parsed = self._parse_prop_candidate_with_evidence(evidence)
+        self.assertEqual(parsed[0]["evidence"], evidence)
+
+    def test_current_segment_prop_evidence_rejects_incorrect_quoted_substring(self):
+        with self.assertRaisesRegex(ValueError, "exact current-source evidence"):
+            self._parse_prop_candidate_with_evidence(
+                '“A traveler places a silver key on the shelf.”'
+            )
+
     def test_legacy_visual_raw_and_accepted_state_do_not_seed_world_state(self):
         state = minimax.new_generation_state({
             "world_state_seed": {"subjects": {}},
