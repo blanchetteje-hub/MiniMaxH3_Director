@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "3f2fbb8f5e34725eb1a8477676a663a107484451d2a964d4183cf65d64841ef9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy wears a dark brown rough‑spun linen tunic that reaches her mid-thigh and shows slight fraying at the cuffs, paired with a scuffed leather apron over it in which she keeps tools for pouring ale. Below, she dons tan woolen breeches tucked into sturdy black leather boots. A simple brown belt cinches her waist, holding small pouches for coins and kitchen utensils. Her hair is tied back in a loose knot to keep it out of the way while she works",
+      "gender": "female"
+    }
+  ]
+}
