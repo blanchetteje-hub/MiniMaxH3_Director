@@ -31,43 +31,195 @@ PLACEMENT_KINDS = {"held", "located", "unknown"}
 CONTENT_AMOUNTS = {"none", "some", UNKNOWN}
 MECHANISM_STATES = {"open", "closed", "locked", "unlocked", UNKNOWN}
 CAPABILITY_FIELDS = {"container", "consumable", "openable", "lockable"}
-ACTION_FIELDS = {
-    "pickup": {"actor_subject_id", "prop_id"},
-    "place": {"actor_subject_id", "prop_id", "location_id", "support_id"},
-    "handoff": {"from_subject_id", "to_subject_id", "prop_id"},
+
+# Canonical persistent-object record and the shared value schemas used by
+# authority-specific extractors. Extraction-only fields (for example reason
+# and evidence) are deliberately not part of this record.
+CURRENT_SEGMENT_PROP_KINDS = ("object", "container", "consumable", "tool")
+PROP_CONTENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "substance": {"type": "string", "minLength": 1},
+        "amount": {"type": "string", "enum": sorted(CONTENT_AMOUNTS)},
+        "consumable": {
+            "type": ["boolean", "string"],
+            "enum": [True, False, UNKNOWN],
+        },
+    },
+    "required": ["substance", "amount", "consumable"],
+    "additionalProperties": False,
+}
+PROP_CAPABILITIES_SCHEMA = {
+    "type": "object",
+    "properties": {
+        field: {
+            "type": ["boolean", "string"],
+            "enum": [True, False, UNKNOWN],
+        }
+        for field in sorted(CAPABILITY_FIELDS)
+    },
+    "required": sorted(CAPABILITY_FIELDS),
+    "additionalProperties": False,
+}
+WORLD_STATE_PROP_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "enum": sorted(PROP_KINDS)},
+        "mobility": {"type": "string", "enum": sorted(MOBILITY_VALUES)},
+        "status": {"type": "string", "enum": sorted(PROP_STATUSES)},
+        "placement": {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "kind": {"const": "held"},
+                        "subject_id": {"type": "string", "minLength": 1},
+                    },
+                    "required": ["kind", "subject_id"],
+                    "additionalProperties": False,
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "kind": {"const": "located"},
+                        "location_id": {"type": "string", "minLength": 1},
+                        "support_id": {"type": ["string", "null"]},
+                    },
+                    "required": ["kind", "location_id"],
+                    "additionalProperties": False,
+                },
+                {
+                    "type": "object",
+                    "properties": {"kind": {"const": "unknown"}},
+                    "required": ["kind"],
+                    "additionalProperties": False,
+                },
+            ],
+        },
+        "contents": {"type": "array", "items": PROP_CONTENT_SCHEMA},
+        "capabilities": PROP_CAPABILITIES_SCHEMA,
+        "mechanism_state": {"type": "string", "enum": sorted(MECHANISM_STATES)},
+        "condition": {"type": "string", "minLength": 1},
+        "provenance": {"type": "object"},
+    },
+    "additionalProperties": False,
+}
+PROP_RECORD_FIELDS = frozenset(WORLD_STATE_PROP_SCHEMA["properties"])
+WORLD_STATE_PROP_SCHEMA["required"] = sorted(PROP_RECORD_FIELDS)
+
+# One declarative operation contract drives reducer shape validation and the
+# dynamically vocabulary-restricted Director response schema. `ref` values
+# are resolved to the IDs registered in the current WorldState at request time.
+ACTION_CONTRACT = {
+    "pickup": {
+        "fields": {
+            "actor_subject_id": {"ref": "subject"},
+            "prop_id": {"ref": "prop"},
+        },
+        "required": {"actor_subject_id", "prop_id"},
+    },
+    "place": {
+        "fields": {
+            "actor_subject_id": {"ref": "subject"},
+            "prop_id": {"ref": "prop"},
+            "location_id": {"ref": "location"},
+            "support_id": {"ref": "support", "nullable": True},
+        },
+        "required": {"actor_subject_id", "prop_id", "location_id"},
+    },
+    "handoff": {
+        "fields": {
+            "from_subject_id": {"ref": "subject"},
+            "to_subject_id": {"ref": "subject"},
+            "prop_id": {"ref": "prop"},
+        },
+        "required": {"from_subject_id", "to_subject_id", "prop_id"},
+    },
     "pour": {
-        "actor_subject_id", "source_prop_id", "target_prop_id", "substance", "amount",
+        "fields": {
+            "actor_subject_id": {"ref": "subject"},
+            "source_prop_id": {"ref": "prop"},
+            "target_prop_id": {"ref": "prop"},
+            "substance": {"type": "string", "minLength": 1},
+            "amount": {"type": "string", "enum": ["all", "partial"]},
+        },
+        "required": {
+            "actor_subject_id", "source_prop_id", "target_prop_id", "substance", "amount",
+        },
     },
-    "consume": {"actor_subject_id", "prop_id", "amount", "substance"},
-    "enter": {"subject_id", "location_id"},
-    "exit": {"subject_id", "destination_location_id"},
-    "move": {"subject_id", "destination_location_id", "support_id"},
-    "set_support": {"subject_id", "support_id", "resulting_posture"},
+    "consume": {
+        "fields": {
+            "actor_subject_id": {"ref": "subject"},
+            "prop_id": {"ref": "prop"},
+            "amount": {"type": "string", "enum": ["all", "partial"]},
+            "substance": {"type": ["string", "null"], "minLength": 1},
+        },
+        "required": {"actor_subject_id", "prop_id", "amount"},
+    },
+    "enter": {
+        "fields": {
+            "subject_id": {"ref": "subject"},
+            "location_id": {"ref": "location"},
+        },
+        "required": {"subject_id", "location_id"},
+    },
+    "exit": {
+        "fields": {
+            "subject_id": {"ref": "subject"},
+            "destination_location_id": {"ref": "location", "nullable": True},
+        },
+        "required": {"subject_id"},
+    },
+    "move": {
+        "fields": {
+            "subject_id": {"ref": "subject"},
+            "destination_location_id": {"ref": "location"},
+            "support_id": {"ref": "support", "nullable": True},
+        },
+        "required": {"subject_id", "destination_location_id"},
+    },
+    "set_support": {
+        "fields": {
+            "subject_id": {"ref": "subject"},
+            "support_id": {"ref": "support", "nullable": True},
+            "resulting_posture": {"type": ["string", "null"], "minLength": 1},
+        },
+        "required": {"subject_id", "support_id"},
+    },
     "change_clothing": {
-        "subject_id", "change", "slot", "garment", "replaces", "condition",
+        "fields": {
+            "subject_id": {"ref": "subject"},
+            "change": {
+                "type": "string",
+                "enum": ["put_on", "remove", "replace", "set_condition"],
+            },
+            "slot": {"type": "string", "enum": list(WARDROBE_SLOTS)},
+            "garment": {"type": "string", "minLength": 1},
+            "replaces": {"type": ["string", "null"], "minLength": 1},
+            "condition": {"type": ["string", "null"], "minLength": 1},
+        },
+        "required": {"subject_id", "change", "slot", "garment"},
     },
-    "open": {"actor_subject_id", "prop_id"},
-    "close": {"actor_subject_id", "prop_id"},
-    "lock": {"actor_subject_id", "prop_id"},
-    "unlock": {"actor_subject_id", "prop_id"},
+    **{
+        op: {
+            "fields": {
+                "actor_subject_id": {"ref": "subject"},
+                "prop_id": {"ref": "prop"},
+            },
+            "required": {"actor_subject_id", "prop_id"},
+        }
+        for op in ("open", "close", "lock", "unlock")
+    },
+}
+ACTION_FIELDS = {
+    op: set(contract["fields"])
+    for op, contract in ACTION_CONTRACT.items()
 }
 ACTION_REQUIRED_FIELDS = {
-    "pickup": {"actor_subject_id", "prop_id"},
-    "place": {"actor_subject_id", "prop_id", "location_id"},
-    "handoff": {"from_subject_id", "to_subject_id", "prop_id"},
-    "pour": {
-        "actor_subject_id", "source_prop_id", "target_prop_id", "substance", "amount",
-    },
-    "consume": {"actor_subject_id", "prop_id", "amount"},
-    "enter": {"subject_id", "location_id"},
-    "exit": {"subject_id"},
-    "move": {"subject_id", "destination_location_id"},
-    "set_support": {"subject_id", "support_id"},
-    "change_clothing": {"subject_id", "change", "slot", "garment"},
-    "open": {"actor_subject_id", "prop_id"},
-    "close": {"actor_subject_id", "prop_id"},
-    "lock": {"actor_subject_id", "prop_id"},
-    "unlock": {"actor_subject_id", "prop_id"},
+    op: set(contract["required"])
+    for op, contract in ACTION_CONTRACT.items()
 }
 
 
@@ -716,7 +868,6 @@ def register_explicit_persistent_props(
             status="present",
             provenance={"registration": {
                 "authority": "explicit_persistent_prop_registry",
-                "reason": reason,
             }},
         )
         existing = candidate["props"].get(prop_id)
@@ -867,6 +1018,13 @@ def validate_world_state(world_state: dict[str, Any]) -> None:
     for prop_id, prop in world_state["props"].items():
         if not isinstance(prop, dict) or prop.get("id") != prop_id:
             raise ValueError(f"Invalid WorldState prop record: {prop_id!r}.")
+        if set(prop) != PROP_RECORD_FIELDS:
+            missing = sorted(PROP_RECORD_FIELDS - set(prop))
+            extra = sorted(set(prop) - PROP_RECORD_FIELDS)
+            raise ValueError(
+                f"WorldState prop {prop_id!r} does not match the canonical object schema "
+                f"(missing={missing}, extra={extra})."
+            )
         if not isinstance(prop.get("name"), str) or not prop["name"].strip():
             raise ValueError(f"WorldState prop {prop_id!r} has no name.")
         if prop.get("kind") not in PROP_KINDS:
@@ -959,6 +1117,10 @@ def validate_world_state(world_state: dict[str, Any]) -> None:
             raise ValueError(f"WorldState prop {prop_id!r} has invalid capability value.")
         if prop.get("mechanism_state") not in MECHANISM_STATES:
             raise ValueError(f"WorldState prop {prop_id!r} has invalid mechanism state.")
+        if not isinstance(prop.get("condition"), str):
+            raise ValueError(f"WorldState prop {prop_id!r} has invalid condition.")
+        if not isinstance(prop.get("provenance"), dict):
+            raise ValueError(f"WorldState prop {prop_id!r} has invalid provenance.")
 
 
 def copy_world_state(world_state: dict[str, Any]) -> dict[str, Any]:
@@ -1560,6 +1722,21 @@ def _director_action_schema(
     }
 
 
+def _action_field_schema(
+    field_contract: dict[str, Any],
+    entity_ids: dict[str, list[str]],
+) -> dict[str, Any]:
+    """Resolve a declarative StateAction field against this request vocabulary."""
+    schema = deepcopy(field_contract)
+    reference_kind = schema.pop("ref", None)
+    if reference_kind is None:
+        return schema
+    return _string_enum(
+        entity_ids[reference_kind],
+        nullable=bool(schema.pop("nullable", False)),
+    )
+
+
 def _registered_name_is_referenced(name: str, segment_text: str) -> bool:
     text = " ".join(str(segment_text or "").casefold().split())
     normalized_name = " ".join(str(name or "").casefold().split())
@@ -1693,59 +1870,33 @@ def build_director_state_action_contract(
     location_ids = [item["id"] for item in locations]
     prop_ids = [item["id"] for item in props]
     support_ids = [item["id"] for item in supports]
+    entity_ids = {
+        "subject": subject_ids,
+        "location": location_ids,
+        "prop": prop_ids,
+        "support": support_ids,
+    }
     action_schemas: list[dict[str, Any]] = []
-    def add(op: str, specs: dict[str, dict[str, Any]], required: list[str], *needed: list[str]) -> None:
-        if op in ACTION_FIELDS and all(needed_ids for needed_ids in needed):
-            action_schemas.append(_director_action_schema(op, specs, required))
-
-    subject_field = lambda key="subject_id": {key: _string_enum(subject_ids)}
-    prop_field = lambda key="prop_id": {key: _string_enum(prop_ids)}
-    location_field = lambda key="location_id": {key: _string_enum(location_ids)}
-    support_field = lambda key="support_id", nullable=False: {key: _string_enum(support_ids, nullable=nullable)}
-
-    add("pickup", {**subject_field("actor_subject_id"), **prop_field()}, ["actor_subject_id", "prop_id"], subject_ids, prop_ids)
-    add("place", {
-        **subject_field("actor_subject_id"), **prop_field(), **location_field(),
-        **support_field(nullable=True),
-    }, ["actor_subject_id", "prop_id", "location_id"], subject_ids, prop_ids, location_ids)
-    add("handoff", {
-        **subject_field("from_subject_id"), **subject_field("to_subject_id"), **prop_field(),
-    }, ["from_subject_id", "to_subject_id", "prop_id"], subject_ids, prop_ids)
-    add("pour", {
-        **subject_field("actor_subject_id"),
-        "source_prop_id": _string_enum(prop_ids),
-        "target_prop_id": _string_enum(prop_ids),
-        "substance": {"type": "string", "minLength": 1},
-        "amount": {"type": "string", "enum": ["all", "partial"]},
-    }, ["actor_subject_id", "source_prop_id", "target_prop_id", "substance", "amount"], subject_ids, prop_ids)
-    add("consume", {
-        **subject_field("actor_subject_id"), **prop_field(),
-        "amount": {"type": "string", "enum": ["all", "partial"]},
-        "substance": {"type": ["string", "null"], "minLength": 1},
-    }, ["actor_subject_id", "prop_id", "amount"], subject_ids, prop_ids)
-    add("enter", {**subject_field(), **location_field()}, ["subject_id", "location_id"], subject_ids, location_ids)
-    add("exit", {
-        **subject_field(),
-        "destination_location_id": _string_enum(location_ids, nullable=True),
-    }, ["subject_id"], subject_ids)
-    add("move", {
-        **subject_field(), **location_field("destination_location_id"),
-        **support_field(nullable=True),
-    }, ["subject_id", "destination_location_id"], subject_ids, location_ids)
-    add("set_support", {
-        **subject_field(), **support_field(nullable=True),
-        "resulting_posture": {"type": ["string", "null"], "minLength": 1},
-    }, ["subject_id", "support_id"], subject_ids)
-    add("change_clothing", {
-        **subject_field(),
-        "change": {"type": "string", "enum": ["put_on", "remove", "replace", "set_condition"]},
-        "slot": {"type": "string", "enum": list(WARDROBE_SLOTS)},
-        "garment": {"type": "string", "minLength": 1},
-        "replaces": {"type": ["string", "null"], "minLength": 1},
-        "condition": {"type": ["string", "null"], "minLength": 1},
-    }, ["subject_id", "change", "slot", "garment"], subject_ids)
-    for op in ("open", "close", "lock", "unlock"):
-        add(op, {**subject_field("actor_subject_id"), **prop_field()}, ["actor_subject_id", "prop_id"], subject_ids, prop_ids)
+    for op, operation in ACTION_CONTRACT.items():
+        required_vocabulary = {
+            field_contract["ref"]
+            for field_contract in operation["fields"].values()
+            if field_contract.get("ref")
+            and not field_contract.get("nullable", False)
+        }
+        if not all(entity_ids[category] for category in required_vocabulary):
+            continue
+        fields = {
+            field_name: _action_field_schema(field_contract, entity_ids)
+            for field_name, field_contract in operation["fields"].items()
+        }
+        action_schemas.append(
+            _director_action_schema(
+                op,
+                fields,
+                sorted(operation["required"]),
+            )
+        )
 
     format_schema = {
         "type": "json_schema",

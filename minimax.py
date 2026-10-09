@@ -51,6 +51,10 @@ from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
 from story_planner import StoryPlan, build_story_plan
 from world_state import (
+    CURRENT_SEGMENT_PROP_KINDS,
+    MOBILITY_VALUES,
+    PROP_CAPABILITIES_SCHEMA,
+    PROP_CONTENT_SCHEMA,
     empty_world_state,
     new_world_state,
     build_director_state_action_contract,
@@ -4181,35 +4185,17 @@ def prepare_segment_world_state_for_director(
 def build_current_segment_persistent_prop_response_format():
     """Return the narrow strict schema for new props needed in one Segment."""
     nullable_string = {"type": ["string", "null"]}
-    content_schema = {
-        "type": "object",
-        "properties": {
-            "substance": {"type": "string", "minLength": 1},
-            "amount": {"type": "string", "enum": ["none", "some", "unknown"]},
-            "consumable": {"type": ["boolean", "string"], "enum": [True, False, "unknown"]},
-        },
-        "required": ["substance", "amount", "consumable"],
-        "additionalProperties": False,
-    }
     prop_schema = {
         "type": "object",
         "properties": {
             "name": {"type": "string", "minLength": 1},
-            "kind": {"type": "string", "enum": ["object", "container", "consumable", "tool"]},
-            "mobility": {"type": "string", "enum": ["movable", "fixed", "unknown"]},
+            "kind": {"type": "string", "enum": list(CURRENT_SEGMENT_PROP_KINDS)},
+            "mobility": {"type": "string", "enum": sorted(MOBILITY_VALUES)},
             "initial_location": nullable_string,
             "initial_holder": nullable_string,
             "support_name": nullable_string,
-            "contents": {"type": "array", "items": content_schema},
-            "capabilities": {
-                "type": "object",
-                "properties": {
-                    key: {"type": ["boolean", "string"], "enum": [True, False, "unknown"]}
-                    for key in ("container", "consumable", "openable", "lockable")
-                },
-                "required": ["container", "consumable", "openable", "lockable"],
-                "additionalProperties": False,
-            },
+            "contents": {"type": "array", "items": PROP_CONTENT_SCHEMA},
+            "capabilities": PROP_CAPABILITIES_SCHEMA,
             "reason": {"type": "string", "minLength": 1},
             "evidence": {"type": "string", "minLength": 1},
         },

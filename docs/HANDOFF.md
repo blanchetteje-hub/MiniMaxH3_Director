@@ -28,6 +28,22 @@ Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/
 - Deleted `LONG_CONTEXT_CREATIVE_GENERATION_LLM_SETTINGS` and its purpose set. The wardrobe, story-location, and static-setting extractors now use the existing `CREATIVE_GENERATION_LLM_SETTINGS` and its standard context budget; prompt text and call counts are unchanged.
 - Updated the LLM prompt inventory and profile-routing regressions to match. Long-context deterministic routing remains unchanged.
 
+## 2026-10-09 — centralized WorldState object and action schemas
+
+- Added a canonical Python `WORLD_STATE_PROP_SCHEMA` in `world_state.py` and
+  made WorldState prop validation enforce its field set. Shared contents,
+  capability, kind, and mobility definitions now supply the current-Segment
+  prop extractor schema instead of repeating those values in `minimax.py`.
+- Replaced the separately maintained Director action field/schema blocks with
+  one declarative `ACTION_CONTRACT`. Reducer shape validation and the dynamic
+  Director action schema now derive operation fields and requirements from it;
+  request-specific entity enums still use the registered IDs at this stage.
+- Kept extractor `reason`/`evidence` in the extraction response and diagnostics.
+  Registration no longer copies `reason` into persistent prop provenance.
+- Runtime prompt wording and state-writer/commit behavior were not changed. The
+  Director ID-to-name boundary and legacy-writer retirement remain later steps.
+- Tests were not run in this change.
+
 ## Primary goal
 
 `story.txt -> gold-standard MiniMax H3 prompts`
