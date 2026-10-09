@@ -41,6 +41,36 @@ Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/
   duplicate-name ambiguity, and nested holder/location/support references.
 - Verification: `python -m pytest -q tests/test_world_state_foundation.py::WorldStateSeedTests tests/test_world_state_foundation.py::WorldStateReducerTests tests/test_director_retry.py tests/test_llm_prompt_pipeline.py::DirectorPromptCallContractTests::test_director_response_schema_includes_state_actions` — 151 passed, 4 subtests passed. `py_compile` passed.
 
+## 2026-10-09 — commit accepted Director WorldState actions
+
+- Added a small commit function that reduces the ID-resolved action batch
+  against the Segment's captured opening WorldState and assigns the candidate
+  only after successful reduction. It verifies that Request 1's dry run passed
+  and that canonical WorldState still matches the captured opening. A reducer
+  rejection leaves the stored state unchanged.
+- Prompt-only generation commits after the final H3 prompt is assembled and
+  immediately before its completed-segment checkpoint. Rendered generation
+  commits only after a successful render, before the completed-segment record
+  and atomic checkpoint save. Each completed record therefore carries the same
+  WorldState used as the next Segment's opening; resume restores it from the
+  last completed record.
+- When vision cadence skips observation, rendering now waits synchronously so
+  the next Segment cannot open before the current state commit. The cadence-
+  skipped background completion/prefetch path was removed. Vision-enabled
+  prefetch still starts only after the previous Segment has committed.
+- Legacy continuity and visual-observation state remain separate; neither is
+  used to update canonical WorldState. Pre-Director authority seeding and
+  identity/prop registration remain unchanged.
+- Added regressions for successful multi-Segment handoff/place, rejected-batch
+  rollback, prompt-only checkpoint recovery, and ensuring legacy/visual state
+  does not overwrite the recorded WorldState. The prompt-generation path also
+  verifies commit occurs before checkpoint recording and not after a failed
+  render.
+- Verification: focused WorldState, Director retry, checkpoint/resume, and
+  prompt-generation tests — 157 passed, 4 subtests passed. `py_compile` and
+  `git diff --check` passed. A broader foundation run still has two unrelated
+  stale story-start prompt/response assertions.
+
 ## 2026-10-09 — WorldState extractors use the smart profile
 
 - Routed `world_state_current_segment_props` and `world_state_current_segment_subjects` through immutable `SMART_EXTRACTOR_LLM_SETTINGS`.

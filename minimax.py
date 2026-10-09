@@ -60,6 +60,7 @@ from world_state import (
     build_director_state_action_contract,
     parse_and_dry_run_director_state_actions,
     register_explicit_persistent_props,
+    reduce_world_state,
     seed_canonical_static_location_state,
     seed_canonical_wardrobes,
     seed_current_segment_subject_identities,
@@ -8857,6 +8858,64 @@ def record_completed_segment(
         continuity_summary_pending
     )
     return record
+
+
+def commit_accepted_director_world_state(
+    generation_state,
+    opening_world_state,
+    request1_result,
+    segment_number,
+):
+    """Commit accepted Director actions against the Segment's immutable opening."""
+    validate_world_state(opening_world_state)
+    if not isinstance(request1_result, dict) or not request1_result.get(
+        "state_actions_dry_run_accepted"
+    ):
+        raise BeatGenerationError(
+            f"Segment {segment_number} has no accepted Director WorldState action batch."
+        )
+    current_world_state = generation_state.get("world_state")
+    if current_world_state != opening_world_state:
+        raise RuntimeError(
+            f"WorldState changed after Segment {segment_number}'s Director opening "
+            "was captured; refusing to commit against a stale opening."
+        )
+    actions = request1_result.get("state_actions")
+    if not isinstance(actions, list):
+        raise BeatGenerationError(
+            f"Segment {segment_number} accepted Director actions are not an array."
+        )
+    reduction = reduce_world_state(
+        opening_world_state,
+        actions,
+        segment_number=int(segment_number),
+    )
+    if not reduction.committed:
+        failure = next(
+            (outcome for outcome in reduction.outcomes if not outcome.accepted),
+            None,
+        )
+        diagnostic = (
+            f"{failure.code}: {failure.message}"
+            if failure is not None
+            else "reducer rejected the accepted batch without a diagnostic"
+        )
+        console_log(
+            f"WorldState commit rejected for Segment {segment_number}; "
+            f"canonical state remains at its opening: {diagnostic}",
+            flush=True,
+        )
+        raise BeatGenerationError(
+            f"Segment {segment_number} WorldState commit failed: {diagnostic}"
+        )
+    generation_state["world_state"] = copy.deepcopy(reduction.world_state)
+    console_log(
+        f"Committed Director WorldState for Segment {segment_number}: "
+        f"{len(actions)} accepted action(s), revision "
+        f"{reduction.world_state['revision']}.",
+        flush=True,
+    )
+    return copy.deepcopy(reduction.world_state)
 
 
 # Find workflow node.
@@ -39435,30 +39494,20 @@ def _run_main(
 
     run_start_time = time.perf_counter()
     prefetched_next = None
-    pending_previous_render_future = None
     render_futures_by_segment = {}
-    # Keep the prompt inputs for the next segment in the main thread. A
-    # cadence-skipped render is finalized by a callback, and that callback
-    # updates generation_state["recent_dialogues"] asynchronously. Reading
-    # that field while rebuilding the next segment bundle can therefore make
-    # an otherwise identical prefetch look stale.
+    # Keep the next-segment dialogue exclusions in the main thread so prompt
+    # construction uses the same committed segment history in every run.
     recent_dialogue_exclusions = list(
         generation_state.get(
             "recent_dialogue_exclusions",
             generation_state.get("recent_dialogues", []),
         )
     )
-    # The completed-segment list is also updated by the cadence-skipped render
-    # callback. Keep a private history for deriving the next exclusion window
-    # so that callback timing cannot change the next prompt's fingerprint.
+    # Keep a private history for deriving the next exclusion window from the
+    # completed-segment records restored at run start.
     dialogue_history_records = copy.deepcopy(
         generation_state.get("segments", [])
     )[-DIALOGUE_HISTORY_SEGMENTS_MAX:]
-    # Set by finalize_skipped_vision_segment once it has finished appending a
-    # non-final segment's video path to generated_video_paths. The final
-    # segment is always drained synchronously below, so this event is only
-    # relevant when a later segment needs the preceding background render.
-    pending_render_finalized = threading.Event()
     for segment in segments_to_generate:
         if is_new_phase_start(beats, segment):
             #Dynamic Subject cleanup at phase boundaries is intentionally
@@ -40051,30 +40100,6 @@ def _run_main(
         console_log(f"# {'=' * 64} END H3 PROMPT - SEGMENT {segment}")
         console_log()
 
-        # A skipped vision-continuity render runs in the background. The path
-        # from the prior completed segment may still be non-None, so checking
-        # only previous_video_path is insufficient: Segment N must wait for
-        # Segment N-1's render before its continuation anchor is extracted.
-        if segment > 1 and pending_previous_render_future is not None:
-            try:
-                _, previous_video_path, _, _, _ = pending_previous_render_future.result()
-                previous_video_path = _append_unique_video_path(
-                    generated_video_paths,
-                    previous_video_path,
-                    generation_state_lock,
-                )
-            except ComfyUIConnectionError:
-                raise
-            except Exception as error:
-                console_log(
-                    f"WARNING: waiting for the previous segment render to finish "
-                    f"before starting segment {segment} failed: {error}. "
-                    "Returning to the last committed segment checkpoint."
-                )
-                raise
-            finally:
-                pending_previous_render_future = None
-
         vision_required = (
             False
             if test_prompt_generation
@@ -40159,13 +40184,6 @@ def _run_main(
                 excluded_picture_ids=segment_excluded_picture_ids,
             )
             render_futures_by_segment[int(segment)] = render_future
-            # A cadence-skipped final render must still be completed on the main
-            # path. If it is submitted as a background render, the loop can reach
-            # stitch_videos after Future.result() but before the future's done
-            # callback has appended the final path. The reusable completion event
-            # is not sufficient here: it may already be set by an earlier segment.
-            if not vision_required and segment < total_segments:
-                pending_previous_render_future = render_future
             while not render_started.wait(0.05):
                 if render_future.done():
                     # Surface workflow preparation/queue failures instead of waiting
@@ -40407,6 +40425,12 @@ def _run_main(
             )
             generation_state["continuity_source"] = continuity_source
             with generation_state_lock:
+                commit_accepted_director_world_state(
+                    generation_state,
+                    segment_bundle["world_state_opening"],
+                    payload.get("request1_result"),
+                    segment,
+                )
                 completed_record = record_completed_segment(
                     generation_state,
                     segment,
@@ -40441,143 +40465,13 @@ def _run_main(
             )
             continue
 
-        # When the cadence skips rendered-frame vision continuity, the prompt-
-        # derived continuity state is authoritative and the next Director prompt
-        # can be prefetched without waiting for the render to finish.
+        # Stateful Director actions must reach the canonical commit before the
+        # next Segment opening is built, even when vision cadence is disabled.
         if not vision_required and segment < total_segments:
-            next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
-            if (
-                segment < total_segments
-                and director_prefetch_executor is not None
-                and not next_segment_starts_phase
-            ):
-                prepare_current_segment_world_state(segment + 1)
-                next_bundle = build_segment_bundle(
-                    segment + 1,
-                    completed_beat_ids,
-                    recent_results,
-                    continuity_state,
-                    continuity_summary,
-                    next_dialogue_exclusions,
-                )
-                prefetch_cancellation = threading.Event()
-                prefetched_next = {
-                    "segment": segment + 1,
-                    "cancellation_event": prefetch_cancellation,
-                    "future": director_prefetch_executor.submit(
-                        request_prefetched_segment,
-                        next_bundle,
-                        prefetch_cancellation,
-                    ),
-                }
-                console_log(
-                    f"Started LLM prefetch for segment {segment + 1} without waiting "
-                    f"for segment {segment}'s video render because vision continuity "
-                    "is skipped by cadence."
-                )
             console_log(
-                "Skipping the render wait for this segment so the next prompt can "
-                "start immediately while the render continues in the background."
+                f"Segment {segment} vision continuity is skipped; waiting for its "
+                "render so WorldState can commit before the next Segment opens."
             )
-
-            skipped_segment_number = int(segment)
-            skipped_llm_result = copy.deepcopy(llm_result)
-            skipped_completed_beat_ids = sorted(set(completed_beat_ids))
-            skipped_prompt_state = copy.deepcopy(prompt_reduced_continuity_state)
-            skipped_registry_state = migrate_continuity_state(continuity_state)
-            skipped_prop_ledger = copy.deepcopy(prop_ledger)
-            skipped_prompt_completed_beat_ids = list(prompt_completed_beat_ids)
-            skipped_opening_summary = prompt_only_opening_summary
-            skipped_subject_definitions = str(h3_subject_definitions)
-            skipped_character_reference_images = copy.deepcopy(
-                segment_character_reference_images
-            )
-            skipped_reference_bindings = copy.deepcopy(
-                segment_reference_binding_snapshot
-            )
-
-            # Finalize a segment whose vision check was skipped.
-            def finalize_skipped_vision_segment(future):
-                nonlocal previous_video_path, pending_previous_render_future
-                try:
-                    (
-                        workflow,
-                        video_path,
-                        width,
-                        height,
-                        rendered_megapixels,
-                    ) = future.result()
-                except Exception:
-                    console_log(
-                        f"Segment {skipped_segment_number} render failed after the "
-                        "cadence skipped its visual continuity check; the prompt-"
-                        "derived state was already allowed to proceed."
-                    )
-                    pending_previous_render_future = None
-                    pending_render_finalized.set()
-                    return
-                if not isinstance(video_path, str) or not video_path.strip():
-                    console_log(
-                        f"Segment {skipped_segment_number} finished without a valid "
-                        "video path; skipping the background completion record."
-                    )
-                    pending_previous_render_future = None
-                    pending_render_finalized.set()
-                    return
-                previous_video_path = os.path.abspath(video_path)
-                _append_unique_video_path(
-                    generated_video_paths,
-                    previous_video_path,
-                    generation_state_lock,
-                )
-                pending_previous_render_future = None
-                pending_render_finalized.set()
-                reduced_continuity_state = copy.deepcopy(skipped_prompt_state)
-                continuity_summary = skipped_opening_summary
-                with generation_state_lock:
-                    completed_record = record_completed_segment(
-                        generation_state,
-                        skipped_segment_number,
-                        video_path,
-                        skipped_llm_result,
-                        skipped_completed_beat_ids,
-                        continuity_summary,
-                        continuity_state=reduced_continuity_state,
-                        prop_ledger=skipped_prop_ledger,
-                        continuity_summary_pending=False,
-                        subject_registry_state=skipped_registry_state,
-                    )
-                    completed_record["continuity_prompt_state"] = copy.deepcopy(
-                        skipped_prompt_state
-                    )
-                    generation_state["continuity_prompt_state"] = copy.deepcopy(
-                        skipped_prompt_state
-                    )
-                    completed_record["continuity_source"] = "prompt"
-                    completed_record["subject_definitions"] = skipped_subject_definitions
-                    completed_record["character_reference_images"] = copy.deepcopy(
-                        skipped_character_reference_images
-                    )
-                    completed_record["reference_bindings"] = copy.deepcopy(
-                        skipped_reference_bindings
-                    )
-                    generation_state["continuity_source"] = "prompt"
-                    if beats:
-                        generation_state["beat_progress"] = {
-                            "completed_beat_ids": sorted(skipped_completed_beat_ids),
-                            "last_segment_number": skipped_segment_number,
-                            "newly_completed_beat_ids": skipped_prompt_completed_beat_ids,
-                        }
-                    save_generation_state(generation_state)
-                console_log(
-                    f"Completed segment {skipped_segment_number} from the "
-                    "prompt-derived state while its render finished in the "
-                    "background."
-                )
-
-            render_future.add_done_callback(finalize_skipped_vision_segment)
-            continue
-
         try:
             (
                 workflow,
@@ -40731,10 +40625,15 @@ def _run_main(
             generation_state_lock,
         )
 
-        # Commit the rendered video and structured continuity state together.
-        # The lock also prevents a just-completed prompt prefetch from
-        # serializing this dictionary halfway through the commit.
+        # Commit the reducer candidate and completed render record under the
+        # same lock, then save them as one resumable checkpoint.
         with generation_state_lock:
+            commit_accepted_director_world_state(
+                generation_state,
+                segment_bundle["world_state_opening"],
+                payload.get("request1_result"),
+                segment,
+            )
             completed_record = record_completed_segment(
                 generation_state,
                 segment,

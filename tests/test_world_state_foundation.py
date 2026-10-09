@@ -1067,6 +1067,148 @@ def make_reducer_state():
     return state
 
 
+class WorldStateTransactionTests(unittest.TestCase):
+    def test_accepted_actions_commit_across_segments_and_checkpoint_recovery(self):
+        opening = make_reducer_state()
+        config = minimax.build_run_config(5, 10, 0.5, 2)
+        config["test_prompt_generation"] = True
+        state = minimax.new_generation_state(config)
+        state["world_state"] = copy.deepcopy(opening)
+
+        segment_one_actions = [
+            {
+                "action_id": "pickup-vessel",
+                "op": "pickup",
+                "actor_subject_id": "subject_1",
+                "prop_id": "prop_target",
+            },
+            {
+                "action_id": "handoff-vessel",
+                "op": "handoff",
+                "from_subject_id": "subject_1",
+                "to_subject_id": "subject_2",
+                "prop_id": "prop_target",
+            },
+        ]
+        segment_one_result = {
+            "state_actions_dry_run_accepted": True,
+            "state_actions": segment_one_actions,
+        }
+        segment_one_end = minimax.commit_accepted_director_world_state(
+            state, opening, segment_one_result, 1
+        )
+        self.assertEqual(opening["props"]["prop_target"]["placement"], {
+            "kind": "located", "location_id": "location_a",
+        })
+        self.assertEqual(
+            segment_one_end["props"]["prop_target"]["placement"],
+            {"kind": "held", "subject_id": "subject_2"},
+        )
+        minimax.record_completed_segment(
+            state, 1, None, {"detailed_description": "segment one"}, [1]
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = str(Path(directory) / "generation_state.json")
+            minimax.save_generation_state(state, checkpoint)
+            restored = minimax.restore_generation_state(
+                2, ["First", "Second"], checkpoint
+            )
+            segment_two_opening = restored["state"]["world_state"]
+            self.assertEqual(
+                segment_two_opening["props"]["prop_target"]["placement"],
+                {"kind": "held", "subject_id": "subject_2"},
+            )
+
+            segment_two_result = {
+                "state_actions_dry_run_accepted": True,
+                "state_actions": [{
+                    "action_id": "place-vessel",
+                    "op": "place",
+                    "actor_subject_id": "subject_2",
+                    "prop_id": "prop_target",
+                    "location_id": "location_a",
+                    "support_id": "prop_support_a",
+                }],
+            }
+            segment_two_end = minimax.commit_accepted_director_world_state(
+                restored["state"], segment_two_opening, segment_two_result, 2
+            )
+            self.assertEqual(
+                segment_two_end["props"]["prop_target"]["placement"],
+                {
+                    "kind": "located",
+                    "location_id": "location_a",
+                    "support_id": "prop_support_a",
+                },
+            )
+            legacy_continuity = minimax.new_continuity_state()
+            legacy_continuity["environment"]["location"] = "Unrelated observed location"
+            restored["state"]["continuity_state"] = legacy_continuity
+            restored["state"]["visual_end_state"] = {
+                "subjects": {"Subject One": {"location": "unrelated visual value"}}
+            }
+            minimax.record_completed_segment(
+                restored["state"],
+                2,
+                None,
+                {"detailed_description": "segment two"},
+                [1, 2],
+            )
+            minimax.save_generation_state(restored["state"], checkpoint)
+            saved = minimax.load_generation_state(checkpoint)
+            self.assertEqual(
+                saved["segments"][1]["world_state"], segment_two_end
+            )
+            recovered = minimax.restore_generation_state(
+                3, ["First", "Second"], checkpoint
+            )
+            self.assertEqual(
+                recovered["state"]["world_state"], segment_two_end
+            )
+
+    def test_rejected_action_batch_never_commits_partial_candidate(self):
+        opening = make_reducer_state()
+        generation_state = {"world_state": copy.deepcopy(opening)}
+        before = copy.deepcopy(generation_state["world_state"])
+        rejected = {
+            "state_actions_dry_run_accepted": True,
+            "state_actions": [
+                {
+                    "action_id": "valid-pickup",
+                    "op": "pickup",
+                    "actor_subject_id": "subject_1",
+                    "prop_id": "prop_target",
+                },
+                {
+                    "action_id": "invalid-handoff",
+                    "op": "handoff",
+                    "from_subject_id": "subject_2",
+                    "to_subject_id": "subject_1",
+                    "prop_id": "prop_target",
+                },
+            ],
+        }
+        with self.assertRaisesRegex(minimax.BeatGenerationError, "commit failed"):
+            minimax.commit_accepted_director_world_state(
+                generation_state, opening, rejected, 1
+            )
+        self.assertEqual(generation_state["world_state"], before)
+        self.assertEqual(opening, before)
+
+    def test_unaccepted_director_attempt_cannot_commit(self):
+        opening = make_reducer_state()
+        generation_state = {"world_state": copy.deepcopy(opening)}
+        with self.assertRaisesRegex(minimax.BeatGenerationError, "no accepted"):
+            minimax.commit_accepted_director_world_state(
+                generation_state,
+                opening,
+                {"state_actions_dry_run_accepted": False, "state_actions": []},
+                1,
+            )
+        self.assertEqual(generation_state["world_state"], opening)
+
+
 class WorldStateReducerTests(unittest.TestCase):
     def action(self, action_id, op, **fields):
         return {"action_id": action_id, "op": op, **fields}

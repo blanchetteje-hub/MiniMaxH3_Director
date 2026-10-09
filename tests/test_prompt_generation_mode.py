@@ -87,6 +87,7 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
                  test_prompt_generation=not render_enabled)
     saved_packages = []
     durations = []
+    completed_world_states = []
 
     def load_text(path, required=True):
         del required
@@ -107,7 +108,16 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
             "non_diegetic_music": "N/A",
             "completed_beat_ids": [],
         }
+        payload["request1_result"] = {
+            "state_actions": [],
+            "state_actions_dry_run_accepted": True,
+        }
         return payload
+
+    def capture_completed_state(state, *args, **kwargs):
+        del args, kwargs
+        completed_world_states.append(copy.deepcopy(state["world_state"]))
+        return {}
 
     def assemble_prompt(*args, **kwargs):
         assert kwargs["character_canon"]["characters"][0]["name"] == "Amy"
@@ -149,7 +159,14 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
             "minimax.request_continuity_opening_state",
             return_value="OPENING",
         ),
-        mock.patch("minimax.record_completed_segment", return_value={}),
+        mock.patch(
+            "minimax.record_completed_segment",
+            side_effect=capture_completed_state,
+        ),
+        mock.patch(
+            "minimax.commit_accepted_director_world_state",
+            wraps=minimax.commit_accepted_director_world_state,
+        ),
         verify_images,
         verify_loras,
         render,
@@ -159,7 +176,8 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
     verify_loras_mock = verify_loras.start()
     render_mock = render.start()
     stitch_mock = stitch.start()
-    for patcher in patches[:-4]:
+    world_state_commit_mock = patches[-5].start()
+    for patcher in patches[:-5]:
         patcher.start()
     try:
         with ThreadPoolExecutor(max_workers=1) as summary_executor, ThreadPoolExecutor(max_workers=1) as render_executor:
@@ -174,6 +192,12 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
 
     assert durations == [8.0] * count
     assert len(saved_packages[-1]["prompts"]) == count
+    if not render_enabled:
+        assert len(completed_world_states) == count
+        assert world_state_commit_mock.call_count == count
+    else:
+        assert completed_world_states == []
+        world_state_commit_mock.assert_not_called()
     assert saved_packages[-1]["prompts"][0]["h3_prompt"] == "H3 prompt"
     if render_enabled:
         render_mock.assert_called_once()

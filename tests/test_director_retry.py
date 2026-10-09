@@ -657,6 +657,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_reducer_retry_contains_only_first_failure_and_no_prior_attempt_junk(self):
         bundle = goblin_mug_bundle()
+        opening_world_state = copy.deepcopy(bundle["world_state_opening"])
         bundle["current_beat_text"] += " Amy watches."
         _state, _location_id, mug_id = goblin_mug_world_state()
         invalid_batch = [
@@ -715,6 +716,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertNotIn("stale physical failure from attempt one", reducer_retry_prompt)
         self.assertNotIn("unknown_registered_name", reducer_retry_prompt)
         self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
+        self.assertEqual(bundle["world_state_opening"], opening_world_state)
 
     def test_h3_soundscape_prompt_is_extraction_only(self):
         messages = minimax.build_h3_soundscape_messages(
