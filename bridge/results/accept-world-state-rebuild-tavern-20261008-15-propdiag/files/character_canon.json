@@ -1,0 +1,47 @@
+{
+  "version": 3,
+  "source_sha256": "71c4a7722a2016fb1163ba63496f7568b425455d2ebfa5296e909e2f5c8c4865",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "skin_color",
+    "holding_mug",
+    "hair_color",
+    "hair_style",
+    "scale_color",
+    "eye_color"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy wears a practical outfit suitable for a medieval tavern barmaid: - **Tunic**: linen, brown, soft texture, chest‑to‑hips length. - **Waistcoat**: leather, dark brown, smooth surface, worn over the tunic. - **Apron**: canvas, deep red, thick weave, draped over the waistcoat; a bartender apron for serving ale. - **Skirt**: linen, brown, mid‑thigh length, matching the tunic. - **Boots**: leather, dark brown, sturdy, ankle‑high",
+      "gender": "female"
+    },
+    {
+      "name": "Goblin",
+      "age": "25",
+      "clothing": "Goblin wears a basic medieval‑style outfit suitable for a 25‑year‑old male goblin in a tavern setting. • Tunic – rough wool material, dark green color with frayed cuffs and hem; fits the chest and waist with short sleeves. • Breeches – brown leather trousers that sit at the hips and fall to mid‑calf, snug enough for quick movement. • Boots – sturdy wooden‑soled boots, light tan leather upper, laced at the ankle. • Belt – simple worn leather strap around the hips, carrying a small pouch and a short knife. No additional role‑specific garments are present. The goblin’s attire is complete and consistent with its humanoid form in a medieval tavern",
+      "gender": "male",
+      "skin_color": "green",
+      "holding_mug": "chipped mug"
+    },
+    {
+      "name": "Elf",
+      "age": "30",
+      "clothing": "Elf - Tunic: A knee‑length emerald green linen tunic, soft texture, slightly frayed at the cuffs and hem. - Bottoms: Brown leather leggings covering hips to calves, snug fit, worn at knees from walking. - Boots: Simple brown leather ankle boots with a small silver buckle on each strap. - Belt: A narrow leather belt in matching brown with a tiny silver buckle (echoing her hair color). - Optional cloak: None (she is seated indoors)",
+      "gender": "female",
+      "hair_color": "silver",
+      "hair_style": "streaming down shoulders"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "30",
+      "clothing": "Dragon-shaped creature: {",
+      "gender": "unknown",
+      "scale_color": "polished obsidian",
+      "eye_color": "amber"
+    }
+  ]
+}
