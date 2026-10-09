@@ -37434,6 +37434,21 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             response_format=state_action_contract["response_format"],
             history_metadata=request1_metadata,
         )
+        # Always include every Director candidate in run.log, even if the
+        # reducer or a later validator rejects it before checkpointing.
+        console_log(
+            "DIRECTOR REQUEST 1 RAW RESPONSE " + json.dumps(
+                {
+                    "segment": segment_number,
+                    "attempt": request1_attempt,
+                    "opening_state_sha256": bundle.get("opening_state_sha256"),
+                    "response": raw_scene_result,
+                },
+                ensure_ascii=False,
+                default=str,
+            ),
+            flush=True,
+        )
         try:
             state_action_dry_run = parse_and_dry_run_director_state_actions(
                 world_state_opening,
