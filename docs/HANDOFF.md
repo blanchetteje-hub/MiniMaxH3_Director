@@ -14,6 +14,17 @@ Baseline branch this experiment diverged from: `main`
 
 Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/evaluation only and must not become a production dependency.
 
+## 2026-10-09 — persistent-prop extractor prompt clarified
+
+- Updated the `world_state_current_segment_props` system prompt to explicitly
+  require only new physical props needed for persistent actions, reuse existing
+  prop identity, use registered names for placement and support, quote exact
+  evidence, and return the specified JSON fields and capability values.
+- The extractor call, LLM-facing schema, validation, and Python ID resolution
+  are unchanged.
+- Verification: syntax and whitespace checks passed; tests were not run for
+  this prompt-only change.
+
 ## 2026-10-09 — current-Segment prop vocabulary uses names
 
 - Removed Python-assigned Subject, location, and prop IDs from the `world_state_current_segment_props` request vocabulary. Existing prop placements are rendered with registered holder, location, and support names as well.

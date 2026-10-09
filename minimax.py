@@ -4301,21 +4301,52 @@ def build_current_segment_persistent_prop_messages(
             "content": (
                 "Identify only new physical props whose distinct identity and "
                 "placement are needed to represent an explicit persistent "
-                "state-changing action in THIS SEGMENT. Existing props are listed "
-                "and must be reused by identity; never duplicate or rename them. "
-                "Do not harvest nouns, register ordinary staging objects, or "
-                "predict future props, beats, holders, or actions. Do not return "
-                "Subjects, fixtures already registered in the canonical location "
-                "vocabulary, garments, or background objects. Each new prop must be "
-                "directly involved in a transfer, placement, pour/consume, or "
-                "mechanism action in CURRENT BEAT or ASSIGNED SOURCE. Return exactly "
-                "one explicit initial_location or initial_holder, using only the "
-                "registered names below. A support_name may name only a registered "
-                "support/fixture. Do not guess a placement: omit any prop whose "
-                "initial placement is not supported by the current sources. Evidence "
-                "must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE. "
-                "Record contents/capabilities only when explicit; otherwise use "
-                "unknown or an empty contents list. Return JSON only."
+                "state-changing action in CURRENT BEAT. Existing props are listed "
+                "and must be reused by identity; never duplicate or rename them.\n\n"
+                "- Each new prop must be directly involved in a transfer, placement, "
+                "pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.\n"
+                "- Return exactly one explicit initial_location or initial_holder, "
+                "using only the registered names below.\n"
+                "- A support_name may name only a registered support/fixture.\n"
+                "- Do not guess a placement: omit any prop whose initial placement "
+                "is not supported by the current sources.\n"
+                "- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED "
+                "SOURCE.\n"
+                "- Record contents/capabilities only when explicit; otherwise use "
+                "unknown or an empty contents list.\n"
+                "- Return JSON in this format:\n"
+                "{\n"
+                '  "props": [\n'
+                "    {\n"
+                '      "name": "object_name",\n'
+                '      "kind": "object",\n'
+                '      "mobility": "movable",\n'
+                '      "initial_location": null,\n'
+                '      "initial_holder": "registered_subject_name",\n'
+                '      "support_name": null,\n'
+                '      "contents": [\n'
+                "        {\n"
+                '          "substance": "substance_name",\n'
+                '          "amount": "unknown",\n'
+                '          "consumable": "unknown"\n'
+                "        }\n"
+                "      ],\n"
+                '      "capabilities": {\n'
+                '        "container": "unknown",\n'
+                '        "consumable": "unknown",\n'
+                '        "openable": "unknown",\n'
+                '        "lockable": "unknown"\n'
+                "      },\n"
+                '      "reason": "Why this object needs persistent tracking.",\n'
+                '      "evidence": "Exact quotation from CURRENT BEAT or ASSIGNED SOURCE"\n'
+                "    }\n"
+                "  ]\n"
+                "}\n\n"
+                "- Notes: All fields are required. Use null for either "
+                "initial_location or initial_holder—exactly one must have a "
+                "registered name. The props array can be empty ([]), and contents "
+                "can also be empty. Capability values can be true, false, or "
+                '"unknown".'
             ),
         },
         {
