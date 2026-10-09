@@ -25687,6 +25687,42 @@ def seed_character_canon_subject_identities(world_state, character_canon):
     )
 
 
+def seed_generation_world_state_subjects(
+    world_state,
+    subject_definitions_seed,
+    character_canon,
+):
+    """Apply the authored identity and wardrobe seeds used at run startup."""
+    state = seed_predefined_subject_identities(
+        world_state,
+        subject_definitions_seed,
+    )
+    state = seed_character_canon_subject_identities(state, character_canon)
+    wardrobes = world_state_wardrobes_from_character_canon(character_canon)
+    if wardrobes:
+        state = seed_canonical_wardrobes(state, wardrobes)
+    return state
+
+
+def new_checkpoint_recovery_state(
+    run_config,
+    base_subject_definitions,
+    character_canon,
+):
+    """Start recovery with the authored Subject identities and wardrobes."""
+    state = new_generation_state(run_config)
+    state["world_state"] = seed_generation_world_state_subjects(
+        state["world_state"],
+        run_config.get("world_state_seed", {}),
+        character_canon,
+    )
+    subject_definitions = world_state_subject_definitions(
+        base_subject_definitions,
+        state["world_state"],
+    )
+    return state, subject_definitions
+
+
 # Join wardrobe components.
 def _join_wardrobe_components(values):
     values = list(dict.fromkeys(value for value in values if value))
@@ -39234,12 +39270,9 @@ def _run_main(
         # Gate C phase 1: compose WorldState only from named authoritative
         # sources before any Segment is generated. Legacy continuity/ledgers,
         # RAW, accepted beats, and visual observations do not enter here.
-        world_state = seed_predefined_subject_identities(
+        world_state = seed_generation_world_state_subjects(
             generation_state["world_state"],
             run_config.get("world_state_seed", {}),
-        )
-        world_state = seed_character_canon_subject_identities(
-            world_state,
             character_canon,
         )
         canonical_location_state = generation_state.get("location_state")
@@ -39283,11 +39316,6 @@ def _run_main(
                 beats,
                 location_id=location_id,
                 history_metadata={"run_id": run_id},
-            )
-        if character_canon:
-            world_state = seed_canonical_wardrobes(
-                world_state,
-                world_state_wardrobes_from_character_canon(character_canon),
             )
         generation_state["world_state"] = world_state
         subject_definitions = world_state_subject_definitions(
@@ -39354,7 +39382,11 @@ def _run_main(
                 f"video is {previous_video_path}.",
                 flush=True,
             )
-            generation_state = new_generation_state(run_config)
+            generation_state, subject_definitions = new_checkpoint_recovery_state(
+                run_config,
+                base_subject_definitions,
+                character_canon,
+            )
             additional_subject_definitions = []
             completed_beat_ids = set()
             recent_results = []

@@ -1,5 +1,21 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-09 — seed canonical Subjects after checkpoint recovery fallback
+
+- When checkpoint restoration failed, `_run_main()` created a fresh generation
+  state but skipped the canonical `character_canon` identity and wardrobe seeds
+  applied on a normal new run. The fallback now uses the same shared composition
+  of the existing authored identity and wardrobe seed functions, then rebuilds
+  Subject definitions from the resulting WorldState. Presence remains unknown.
+- The fresh-run path uses this same seed composition. Successful checkpoint
+  resume remains unchanged and continues restoring the completed Segment's
+  canonical WorldState.
+- Added regressions for canonical wardrobe/identity seeding on the fallback
+  initialization path and wardrobe preservation through normal checkpoint
+  resume. Verification: `pytest -q tests/test_resume.py
+  tests/test_world_state_foundation.py::WorldStateSeedTests` — 76 passed,
+  16 subtests; `py_compile` and `git diff --check` passed.
+
 ## 2026-10-09 — use WorldState for Director and final H3 continuity
 
 - Bridge job 26 showed physical facts duplicated across the generated
