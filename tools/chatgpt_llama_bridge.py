@@ -898,7 +898,11 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
             raise FileNotFoundError(
                 f"Director plan directory not found: {plan_dir}"
             )
-        required_plan_files = ("story_arc.json", "beats.txt")
+        required_plan_files = (
+            "story_arc.json",
+            "beats.txt",
+            "expanded_story.txt",
+        )
         missing_plan_files = [
             filename for filename in required_plan_files
             if not (plan_dir / filename).is_file()

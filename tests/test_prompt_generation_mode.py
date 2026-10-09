@@ -1,5 +1,6 @@
 import copy
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
@@ -75,6 +76,129 @@ def test_director_only_implies_prompt_generation_and_never_combines_with_generat
 
     with __import__("pytest").raises(SystemExit):
         minimax.parse_args(["5", "10", ".2", "--director-only", "--generate-prompts", "2"])
+
+
+def test_director_only_saved_expansion_seeds_location_world_state(tmp_path):
+    fixture_dir = (
+        Path(__file__).parent
+        / "acceptance"
+        / "fixtures"
+        / "tavern_run21_plan"
+    )
+    expanded_story = (fixture_dir / "expanded_story.txt").read_text(
+        encoding="utf-8"
+    )
+    story_file = tmp_path / "story.txt"
+    story_file.write_text("Amy works in a tavern.", encoding="utf-8")
+    beats_file = tmp_path / "beats.txt"
+    beats_file.write_text(
+        (fixture_dir / "beats.txt").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    arc_file = tmp_path / "story_arc.json"
+    arc_file.write_text(
+        (fixture_dir / "story_arc.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    expanded_story_file = tmp_path / "expanded_story.txt"
+    expanded_story_file.write_text(expanded_story, encoding="utf-8")
+    subjects_file = tmp_path / "subjects.txt"
+    subjects_file.write_text("", encoding="utf-8")
+    phrase_exclusions_file = tmp_path / "phrase_exclusions.txt"
+    args = _args(
+        director_only=True,
+        segment_length=8.0,
+        total_length=48.0,
+        total_segments=6,
+        refresh=999999,
+        vision_continuity=0,
+    )
+    expected_location_state = {
+        "location": {"name": "The Hearthside Tavern"},
+        "anchors": [{"name": "stone counter", "type": "stone counter"}],
+        "objects": [],
+    }
+    captured = {}
+
+    class _StopAfterWorldStateSeed(Exception):
+        pass
+
+    def capture_seeded_state(state, *seed_args, **seed_kwargs):
+        original_validate(state, *seed_args, **seed_kwargs)
+        captured["location_state"] = copy.deepcopy(state["location_state"])
+        captured["world_state"] = copy.deepcopy(state["world_state"])
+        raise _StopAfterWorldStateSeed()
+
+    def extract_story_locations(expanded, **_kwargs):
+        captured["expanded_story_for_location"] = expanded
+        return {
+            "overall_location": "a medieval tavern",
+            "starting_location": "The Hearthside Tavern",
+        }
+
+    location_description = {
+        "text_description": "A medieval tavern with stone walls and a counter.",
+        "location_state": expected_location_state,
+    }
+    original_validate = minimax.validate_subject_identity_state
+    generate_beats_patcher = mock.patch.object(minimax, "load_or_generate_beats")
+    expand_story_patcher = mock.patch.object(
+        minimax, "generate_beats_via_story_expansion"
+    )
+    validate_beats_patcher = mock.patch.object(
+        minimax, "_run_forward_beat_validation"
+    )
+    generate_beats = generate_beats_patcher.start()
+    expand_story = expand_story_patcher.start()
+    validate_beats = validate_beats_patcher.start()
+    patches = [
+        mock.patch.object(minimax, "parse_args", return_value=args),
+        mock.patch.object(minimax, "configure_reference_image_overrides"),
+        mock.patch.object(minimax, "configure_formatter"),
+        mock.patch.object(minimax, "STORY_FILE", story_file),
+        mock.patch.object(minimax, "BEATS_FILE", beats_file),
+        mock.patch.object(minimax, "STORY_ARC_FILE", arc_file),
+        mock.patch.object(minimax, "EXPANDED_STORY_FILE", expanded_story_file),
+        mock.patch.object(minimax, "SUBJECT_DEFINITIONS_FILE", subjects_file),
+        mock.patch.object(minimax, "PHRASE_EXCLUSIONS_FILE", phrase_exclusions_file),
+        mock.patch.object(minimax, "load_beats", return_value=[f"Beat {i}" for i in range(1, 7)]),
+        mock.patch.object(minimax, "load_canonical_data", return_value={}),
+        mock.patch.object(minimax, "load_or_generate_character_canon", return_value={}),
+        mock.patch.object(minimax, "canonicalize_defined_subject_wardrobes", return_value={}),
+        mock.patch.object(minimax, "reset_prompt_history"),
+        mock.patch.object(minimax, "save_generated_prompts_file"),
+        mock.patch.object(minimax, "extract_story_locations", side_effect=extract_story_locations),
+        mock.patch.object(minimax, "extract_static_setting", return_value="Static setting"),
+        mock.patch.object(minimax, "refine_story_setting_spatially", return_value="Spatial setting"),
+        mock.patch.object(minimax, "extract_story_setting_description", return_value=location_description),
+        mock.patch.object(minimax, "extract_initial_location_subjects", return_value=[]),
+        mock.patch.object(minimax, "extract_registered_subject_story_start_presence", side_effect=lambda state, *_a, **_k: state),
+        mock.patch.object(minimax, "validate_subject_identity_state", side_effect=capture_seeded_state),
+    ]
+    for patcher in patches:
+        patcher.start()
+    try:
+        with pytest.raises(_StopAfterWorldStateSeed):
+            minimax._run_main(None)
+    finally:
+        for patcher in reversed(patches):
+            patcher.stop()
+        validate_beats_patcher.stop()
+        expand_story_patcher.stop()
+        generate_beats_patcher.stop()
+
+    assert captured["expanded_story_for_location"] == expanded_story.strip()
+    assert captured["location_state"] == expected_location_state
+    assert {
+        location["name"] for location in captured["world_state"]["locations"].values()
+    } == {"The Hearthside Tavern"}
+    assert {
+        prop["name"] for prop in captured["world_state"]["props"].values()
+    } == {"stone counter"}
+    minimax.validate_world_state(captured["world_state"])
+    generate_beats.assert_not_called()
+    expand_story.assert_not_called()
+    validate_beats.assert_not_called()
 
 
 def test_director_raw_scene_retry_budget_is_five():

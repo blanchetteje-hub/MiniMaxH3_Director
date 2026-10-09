@@ -4,8 +4,8 @@
 
 - `run_acceptance` jobs may provide `director_plan_dir`; the bridge resolves it
   inside the execution worktree, restricts it to `tests/acceptance/fixtures/`,
-  verifies `story_arc.json` and `beats.txt`, and forwards the resolved path to
-  the existing `--director-plan-dir` runner option.
+  verifies `story_arc.json`, `beats.txt`, and `expanded_story.txt`, and forwards
+  the resolved path to the existing `--director-plan-dir` runner option.
 - The established plan is
   `tests/acceptance/fixtures/tavern_run21_plan`. Existing `director_plan_job`
   materialization remains unchanged; a job cannot specify both plan sources.
@@ -13,9 +13,26 @@
   assertion deselected), acceptance-runner tests passed (10 passed), and syntax
   and whitespace checks passed.
 
+## 2026-10-09 — include expanded story in Director-only plans
+
+- Recovered the saved expanded tavern story from the run artifacts and added
+  it to `tests/acceptance/fixtures/tavern_run21_plan/expanded_story.txt`.
+- Director-only acceptance now requires and stages `story_arc.json`,
+  `beats.txt`, and `expanded_story.txt`, and captures the expanded story in the
+  acceptance artifacts. The existing Director-only path continues to load the
+  saved Beats and skip story expansion, Beat generation, and Beat validation.
+- Added a regression proving the saved expanded story reaches location
+  extraction and that its resulting location/fixture state seeds canonical
+  WorldState. Story and Beat stages remain uncalled; existing WorldState
+  validation remains active.
+- Verification: acceptance-runner tests passed (11 passed), bridge tests passed
+  (9 passed; one unrelated stale branch-error assertion deselected),
+  prompt-generation-mode tests passed (10 passed), and syntax/whitespace checks
+  passed.
+
 ## 2026-10-09 — reusable six-Beat tavern Director plan
 
-- Preserved the **six accepted Beats** from acceptance 21 and paired them with the supplied one-phase `story_arc.json` at `tests/acceptance/fixtures/tavern_run21_plan/{story_arc.json,beats.txt}`. The arc retains E1–E6, their original source-event wording (including Amy's explicit wardrobe in E1), ordering/dependencies, and empty source state effects; accepted Beat text is copied verbatim from the run log.
+- Preserved the **six accepted Beats** from acceptance 21 and paired them with the supplied one-phase `story_arc.json` and recovered `expanded_story.txt` at `tests/acceptance/fixtures/tavern_run21_plan/`. The arc retains E1–E6, their original source-event wording (including Amy's explicit wardrobe in E1), ordering/dependencies, and empty source state effects; accepted Beat text is copied verbatim from the run log.
 - **Future tavern WorldState/Director/H3 tests:** use the existing `tests/acceptance/run_acceptance.py --director-plan-dir tests/acceptance/fixtures/tavern_run21_plan` mode with the tavern gold benchmark and normal image/model options. This reuses the fixed planning outputs and skips story expansion/Beat generation/Beat validation; do not quietly substitute a fresh plan.
 - The separate `tests/acceptance/fixtures/tavern_run21_accepted_beats.txt` remains as a source record. No production prompt, reducer, or acceptance runner code changed. Re-enable fresh full-pipeline acceptance when testing planning itself.
 

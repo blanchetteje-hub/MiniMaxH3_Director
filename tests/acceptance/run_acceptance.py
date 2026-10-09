@@ -33,6 +33,7 @@ GENERATED_FILES = (
     "story_arc.json",
     "story_arc.json.sha256",
     "beats.txt",
+    "expanded_story.txt",
     "generation_state.json",
     "beat_validation_state.json",
     "prompt_history.txt",
@@ -312,6 +313,7 @@ def build_report(
     for filename in (
         "story_arc.json",
         "beats.txt",
+        "expanded_story.txt",
         "character_canon.json",
         "generation_state.json",
         "prompt_history.txt",
@@ -329,6 +331,7 @@ def build_report(
         planning_complete = bool(
             read_json(workspace / "story_arc.json")
             and (read_text(workspace / "beats.txt") or "").strip()
+            and (read_text(workspace / "expanded_story.txt") or "").strip()
         )
     else:
         expected_segments = len(benchmark["beats"])
@@ -429,8 +432,8 @@ def parse_args(argv=None):
         type=Path,
         default=None,
         help=(
-            "reuse story_arc.json and beats.txt from this directory and run "
-            "only the two Director prompt stages"
+            "reuse story_arc.json, beats.txt, and expanded_story.txt from "
+            "this directory and run only the two Director prompt stages"
         ),
     )
     parser.add_argument(
@@ -481,7 +484,11 @@ def main(argv=None) -> int:
         prepare_workspace(REPO_ROOT, workspace, benchmark)
         if args.director_plan_dir is not None:
             plan_dir = args.director_plan_dir.resolve()
-            for filename in ("story_arc.json", "beats.txt"):
+            for filename in (
+                "story_arc.json",
+                "beats.txt",
+                "expanded_story.txt",
+            ):
                 source = plan_dir / filename
                 if not source.is_file():
                     raise FileNotFoundError(
@@ -575,8 +582,9 @@ def main(argv=None) -> int:
     if not capture_complete:
         if args.planning_only:
             print(
-                "Planning-only capture is incomplete; story_arc.json and/or "
-                "beats.txt was not produced. Include run.log for diagnosis."
+                "Planning-only capture is incomplete; story_arc.json, beats.txt, "
+                "and/or expanded_story.txt was not produced. Include run.log "
+                "for diagnosis."
             )
         else:
             missing = report["capture_status"]["missing_segments"]

@@ -150,6 +150,9 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             plan_dir.mkdir(parents=True)
             (plan_dir / "story_arc.json").write_text("{}\n", encoding="utf-8")
             (plan_dir / "beats.txt").write_text("Beat 1\n", encoding="utf-8")
+            (plan_dir / "expanded_story.txt").write_text(
+                "The saved expanded story.\n", encoding="utf-8"
+            )
 
             job = {
                 "job_id": "director-plan-fixture",
@@ -181,7 +184,8 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             )
             incomplete_dir.mkdir()
             (incomplete_dir / "story_arc.json").write_text("{}\n", encoding="utf-8")
-            with self.assertRaisesRegex(FileNotFoundError, "beats.txt"):
+            (incomplete_dir / "beats.txt").write_text("Beat 1\n", encoding="utf-8")
+            with self.assertRaisesRegex(FileNotFoundError, "expanded_story.txt"):
                 bridge.execute_acceptance(
                     {
                         **job,

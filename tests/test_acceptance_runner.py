@@ -2,11 +2,91 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tests.acceptance import run_acceptance
 
 
 class AcceptanceRunnerTests(unittest.TestCase):
+    def test_director_plan_stages_expanded_story_for_director_only_run(self):
+        plan_dir = (
+            Path(__file__).parent
+            / "acceptance"
+            / "fixtures"
+            / "tavern_run21_plan"
+        )
+        expanded_story = (plan_dir / "expanded_story.txt").read_text(
+            encoding="utf-8"
+        )
+
+        class FakeProcess:
+            stdout = ()
+
+            @staticmethod
+            def wait():
+                return 0
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            image = root / "reference.jpg"
+            image.write_bytes(b"image")
+            output_dir = root / "results"
+
+            def inspect_staged_plan(command, cwd, **_kwargs):
+                workspace = Path(cwd)
+                for filename in (
+                    "story_arc.json",
+                    "beats.txt",
+                    "expanded_story.txt",
+                ):
+                    self.assertTrue((workspace / filename).is_file())
+                self.assertEqual(
+                    (workspace / "expanded_story.txt").read_text(
+                        encoding="utf-8"
+                    ),
+                    expanded_story,
+                )
+                self.assertIn("--director-only", command)
+                self.assertNotIn("--generate-beats", command)
+                self.assertNotIn("--generate-prompts", command)
+                return FakeProcess()
+
+            incomplete_dir = root / "incomplete_plan"
+            incomplete_dir.mkdir()
+            for filename in ("story_arc.json", "beats.txt"):
+                (incomplete_dir / filename).write_text("plan\n", encoding="utf-8")
+
+            with (
+                patch.object(run_acceptance, "git_revision", return_value="test"),
+                patch.object(
+                    run_acceptance.subprocess,
+                    "Popen",
+                    side_effect=inspect_staged_plan,
+                ) as popen,
+            ):
+                result = run_acceptance.main([
+                    "--image1", str(image),
+                    "--output-dir", str(output_dir),
+                    "--director-plan-dir", str(plan_dir),
+                ])
+
+                with self.assertRaisesRegex(
+                    FileNotFoundError, "expanded_story.txt"
+                ):
+                    run_acceptance.main([
+                        "--image1", str(image),
+                        "--output-dir", str(root / "incomplete_results"),
+                        "--director-plan-dir", str(incomplete_dir),
+                    ])
+                self.assertEqual(popen.call_count, 1)
+
+            self.assertEqual(result, 2)  # No Director prompts were generated.
+            report = json.loads(
+                (output_dir / "acceptance_run.json").read_text(encoding="utf-8")
+            )
+            artifact = output_dir / report["artifacts"]["expanded_story.txt"]
+            self.assertEqual(artifact.read_text(encoding="utf-8"), expanded_story)
+
     def test_locked_amy_benchmark_loads(self):
         benchmark = run_acceptance.load_benchmark(
             run_acceptance.DEFAULT_BENCHMARK
