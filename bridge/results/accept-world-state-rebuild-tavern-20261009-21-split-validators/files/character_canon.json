@@ -1,0 +1,45 @@
+{
+  "version": 3,
+  "source_sha256": "6124314d5210727be4864def139be2ae9a1e0a399a4d598f941c8d72c33f016b",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence",
+    "skin_color",
+    "hair_type",
+    "scales_color",
+    "eye_color"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "Amy wears a rough‑spun woolen tunic in muted earth tones, frayed at the cuffs from years of use; over it she dons a sturdy brown leather apron with deep scuff marks along the shoulders and front panels where tools have brushed against it. A wide iron belt cinches her waist, holding a small pouch for oil cloths and a pocketknife. Her lower half is covered by simple linen breeches tucked into worn leather boots that reach mid‑calf, their soles polished but showing signs of frequent use on stone floors",
+      "gender": "female",
+      "confidence": "confident"
+    },
+    {
+      "name": "Goblin",
+      "age": "30",
+      "clothing": "A rough‑spun light‑tan tunic with short sleeves that fits his small frame, belted at the waist by a worn leather belt holding several pouches for coins and tools; simple brown trousers tucked into scuffed leather boots; a dark mossy‑green hooded cloak draped over his shoulders to blend in with tavern patrons",
+      "gender": "neutral",
+      "skin_color": "green"
+    },
+    {
+      "name": "Elf",
+      "age": "35",
+      "clothing": "A 35‑year‑old female elf wears a green‑tinted linen tunic embroidered in silver leaf motifs that drapes to her knees; the tunic is belted at the waist with a worn leather strap and carries faint wear from travel. Beneath, she sports fitted dark wool breeches tucked into soft leather boots reaching ankle level. Over her shoulders hangs a moss‑green velvet cape of modest length, fastened by a simple silver brooch. A delicate silver circlet sits just above her brow, complementing the long strands of silver hair that flow down to shoulder level; she also wears a matching thin silver necklace around her neck",
+      "gender": "female",
+      "hair_type": "silver hair streaming down shoulders"
+    },
+    {
+      "name": "Dragon",
+      "age": "300",
+      "clothing": "A sleek, black‑leather harness cinched snugly around its broad waist, featuring small brass buckles and two short pouches for carrying ale. The dragon’s head is adorned with a thin silver circlet that matches the obsidian hue of its scales",
+      "gender": "neutral",
+      "scales_color": "polished obsidian",
+      "eye_color": "amber"
+    }
+  ]
+}
