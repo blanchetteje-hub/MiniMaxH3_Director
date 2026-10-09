@@ -271,7 +271,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         ):
             self.assertEqual(
                 request_json[name],
-                minimax.MUSIC_GENERATION_LLM_SETTINGS[name],
+                minimax.CREATIVE_LLM_SETTINGS[name],
             )
         self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["reasoning_effort"], "medium")
@@ -280,7 +280,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
-    def test_h3_soundscape_remains_deterministic(
+    def test_h3_soundscape_uses_creative_profile(
         self,
         post,
         random_seed,
@@ -308,19 +308,19 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
         self.assertEqual(result, {"overall_soundscape": "door slam"})
         request_json = post.call_args.kwargs["json"]
-        self.assertEqual(request_json["temperature"], 0)
-        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertEqual(request_json["temperature"], 0.6)
+        self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["repeat_penalty"], 1.15)
-        self.assertNotIn("top_p", request_json)
-        self.assertNotIn("top_k", request_json)
-        self.assertNotIn("min_p", request_json)
-        self.assertEqual(request_json["reasoning_effort"], "low")
-        self.assertEqual(request_json["thinking_budget_tokens"], 128)
-        random_seed.assert_not_called()
+        self.assertEqual(request_json["top_p"], 0.95)
+        self.assertEqual(request_json["top_k"], 0)
+        self.assertEqual(request_json["min_p"], 0.05)
+        self.assertEqual(request_json["reasoning_effort"], "medium")
+        self.assertEqual(request_json["thinking_budget_tokens"], 256)
+        random_seed.assert_called_once_with()
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
-    def test_beat_generation_uses_temperature_zero_with_large_reasoning_budget(
+    def test_beat_generation_uses_smart_creative_profile(
         self,
         post,
         _random_seed,
@@ -346,12 +346,12 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
         self.assertEqual(result, {"ok": True})
         request_json = post.call_args.kwargs["json"]
-        self.assertEqual(request_json["temperature"], 0)
-        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertEqual(request_json["temperature"], 0.6)
+        self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["repeat_penalty"], 1.15)
-        self.assertNotIn("top_p", request_json)
-        self.assertNotIn("top_k", request_json)
-        self.assertNotIn("min_p", request_json)
+        self.assertEqual(request_json["top_p"], 0.95)
+        self.assertEqual(request_json["top_k"], 0)
+        self.assertEqual(request_json["min_p"], 0.05)
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         self.assertEqual(
@@ -362,11 +362,11 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             request_json["chat_template_kwargs"],
             {"enable_thinking": True},
         )
-        _random_seed.assert_not_called()
+        _random_seed.assert_called_once_with()
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
-    def test_beat_repair_uses_same_temperature_zero_writing_profile(
+    def test_beat_repair_uses_smart_creative_profile(
         self,
         post,
         _random_seed,
@@ -392,11 +392,11 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
         self.assertEqual(result, {"ok": True})
         request_json = post.call_args.kwargs["json"]
-        self.assertEqual(request_json["temperature"], 0)
-        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertEqual(request_json["temperature"], 0.6)
+        self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
-        _random_seed.assert_not_called()
+        _random_seed.assert_called_once_with()
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
@@ -437,15 +437,16 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         ):
             self.assertEqual(
                 request_json[name],
-                minimax.CREATIVE_GENERATION_LLM_SETTINGS[name],
+                minimax.SMART_CREATIVE_LLM_SETTINGS[name],
             )
+        self.assertEqual(request_json["temperature"], 0.6)
         self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         _random_seed.assert_called_once_with()
 
     @patch("minimax.requests.post")
-    def test_extractor_forces_temperature_zero_even_if_caller_passes_creative_profile(
+    def test_source_unit_state_effects_uses_smart_extractor_profile(
         self,
         post,
     ):
@@ -472,8 +473,8 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         request_json = post.call_args.kwargs["json"]
         self.assertEqual(request_json["temperature"], 0)
         self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
-        self.assertEqual(request_json["reasoning_effort"], "low")
-        self.assertEqual(request_json["thinking_budget_tokens"], 128)
+        self.assertEqual(request_json["reasoning_effort"], "high")
+        self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         self.assertEqual(
             request_json["reasoning_budget_message"],
             ". Enough thinking, now answer.",
@@ -501,7 +502,12 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         request_json = post.call_args.kwargs["json"]
         self.assertEqual(
             request_json["max_tokens"],
-            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["max_output_tokens"],
+            min(
+                minimax.LLM_DEFAULT_MAX_OUTPUT_TOKENS,
+                minimax.LLM_DEFAULT_CONTEXT_TOKEN_BUDGET
+                - minimax.LLM_CONTEXT_SAFETY_TOKENS
+                - minimax.estimate_message_tokens(messages),
+            ),
         )
     @patch("minimax.requests.post")
     def test_ask_llm_rejects_input_that_leaves_no_completion_room(self, post):
@@ -605,11 +611,11 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         request_json = post.call_args.kwargs["json"]
         self.assertEqual(
             request_json["temperature"],
-            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["temperature"],
+            minimax.EXTRACTOR_LLM_SETTINGS["temperature"],
         )
         self.assertEqual(
             request_json["repeat_penalty"],
-            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["repeat_penalty"],
+            minimax.EXTRACTOR_LLM_SETTINGS["repeat_penalty"],
         )
         self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
         self.assertNotIn("thinking", request_json)
@@ -619,8 +625,8 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             request_json["chat_template_kwargs"],
             {"enable_thinking": True},
         )
-        self.assertEqual(request_json["reasoning_effort"], "low")
-        self.assertEqual(request_json["thinking_budget_tokens"], 128)
+        self.assertEqual(request_json["reasoning_effort"], "high")
+        self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         self.assertEqual(
             request_json["reasoning_budget_message"],
             ". Enough thinking, now answer.",
@@ -655,8 +661,8 @@ class LLMSamplingRoutingTests(unittest.TestCase):
                 request_json["chat_template_kwargs"],
                 {"enable_thinking": True},
             )
-            self.assertEqual(request_json["reasoning_effort"], "low")
-            self.assertEqual(request_json["thinking_budget_tokens"], 128)
+            self.assertEqual(request_json["reasoning_effort"], "high")
+            self.assertEqual(request_json["thinking_budget_tokens"], 1024)
             self.assertEqual(
                 request_json["reasoning_budget_message"],
                 ". Enough thinking, now answer.",

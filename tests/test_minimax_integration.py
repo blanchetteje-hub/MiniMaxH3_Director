@@ -904,7 +904,7 @@ class LlmHostIntegrationTests(unittest.TestCase):
 
     @mock.patch("minimax.generate_random_llm_seed")
     @mock.patch("minimax.requests.post")
-    def test_unclassified_llm_transport_uses_deterministic_profile(
+    def test_unclassified_llm_transport_uses_extractor_profile(
         self,
         post,
         random_seed,
@@ -922,7 +922,7 @@ class LlmHostIntegrationTests(unittest.TestCase):
 
         self.assertEqual(
             post.call_args.kwargs["json"]["seed"],
-            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["seed"],
+            minimax.EXTRACTOR_LLM_SETTINGS["seed"],
         )
         random_seed.assert_not_called()
 
@@ -952,15 +952,15 @@ class LlmHostIntegrationTests(unittest.TestCase):
         ):
             self.assertEqual(
                 request_json[name],
-                minimax.BEAT_WRITING_LLM_SETTINGS[name],
+                minimax.SMART_CREATIVE_LLM_SETTINGS[name],
             )
         self.assertEqual(
             request_json["reasoning_effort"],
-            minimax.BEAT_WRITING_LLM_SETTINGS["reasoning_effort"],
+            minimax.SMART_CREATIVE_LLM_SETTINGS["reasoning_effort"],
         )
         self.assertEqual(
             request_json["thinking_budget_tokens"],
-            minimax.BEAT_WRITING_LLM_SETTINGS["thinking_budget_tokens"],
+            minimax.SMART_CREATIVE_LLM_SETTINGS["thinking_budget_tokens"],
         )
 
     @mock.patch("minimax.generate_random_llm_seed", return_value=101)

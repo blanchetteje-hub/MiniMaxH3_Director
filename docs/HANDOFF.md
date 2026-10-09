@@ -14,6 +14,37 @@ Baseline branch this experiment diverged from: `main`
 
 Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/evaluation only and must not become a production dependency.
 
+## 2026-10-09 — standardized LLM profiles and request budgets
+
+- Replaced the overlapping text settings profiles and purpose sets with four
+  immutable profiles: Creative (0.6, medium/256), Smart Creative (0.6,
+  high/1024), Extractor (0, medium/256), and Smart Extractor (0, high/1024).
+  Creative profiles retain creative sampling defaults and random seeds;
+  extractor profiles retain deterministic sampling defaults and seed 42.
+- Routed every text-call purpose through one `LLM_PURPOSE_PROFILES` mapping.
+  Applied the requested classifications: character canon and wardrobe use
+  Smart Creative; spatial refinement uses Smart Creative; story-location and
+  static-setting extraction use Extractor; soundscape uses Creative; and
+  source-unit state effects use Smart Extractor. The remaining source-planner
+  calls are also explicitly mapped to Smart Extractor.
+- Moved context and completion limits out of profile constants into independent
+  per-purpose maps. The story expansion, story-to-beats, and registered
+  story-start calls retain their 60,000-token context; prior task-specific
+  output ceilings are retained. Unknown text purposes use Extractor with the
+  standard 8192 context and 1024 output defaults.
+- `visual_end_state` remains on its image-capable request path and
+  `VISION_LLM_SETTINGS`; it cannot cleanly fit a text-only profile.
+- Runtime prompts, schemas, LLM call count, and diagnostic logging are
+  unchanged. `docs/LLM_PROMPTS.md` now reflects the actual purpose mapping,
+  including the source-planner calls.
+- Verification: focused routing/settings, source-planner, and call-integration
+  tests passed (98 passed, 1 skipped). The wider WorldState/Director selection
+  reported 283 passed, 8 subtests passed, and 2 existing stale story-start
+  prompt/response assertions failed. A broader LLM prompt selection reported
+  194 passed and 26 existing stale Director/story prompt assertions failed;
+  this work did not change runtime prompt text. Syntax and whitespace checks
+  passed.
+
 ## 2026-10-09 — wardrobe extractor prompt clarified
 
 - Updated the `story_subject_wardrobe_extract` system prompt to preserve all

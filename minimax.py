@@ -428,97 +428,11 @@ VISION_LLM_SETTINGS = MappingProxyType({
     "repeat_penalty": 1.15,
     "max_output_tokens": VISION_REQUEST_MAX_TOKENS,
 })
-DEFAULT_STORY_TEMPERATURE = 0.8
 DEFAULT_VISUAL_STYLE = "Live-action cinematic"
 DEFAULT_REFRESH_INTERVAL = 999
 REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
 
-CREATIVE_GENERATION_LLM_SETTINGS = MappingProxyType({
-    "temperature": 0.8,
-    "top_p": 0.95,
-    "top_k": 0,
-    "min_p": 0.05,
-    "presence_penalty": 0.0,
-    "frequency_penalty": 0.0,
-    "repeat_penalty": 1.15,
-    "seed": None,
-    "reasoning_effort": "high",
-    "thinking_budget_tokens": 1024,
-    "max_output_tokens": 8192,
-    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-})
-
-DIRECTOR_RAW_SCENE_LLM_SETTINGS = MappingProxyType({
-    "temperature": 0.2,
-    "top_p": 0.95,
-    "top_k": 0,
-    "min_p": 0.05,
-    "presence_penalty": 0.0,
-    "frequency_penalty": 0.0,
-    "repeat_penalty": 1.15,
-    "seed": None,
-    "reasoning_effort": "high",
-    "thinking_budget_tokens": 1024,
-    "max_output_tokens": 8192,
-    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-})
-
-BEAT_WRITING_LLM_SETTINGS = MappingProxyType({
-    "temperature": 0,
-    "top_p": None,
-    "top_k": None,
-    "min_p": None,
-    "presence_penalty": None,
-    "frequency_penalty": None,
-    "repeat_penalty": 1.15,
-    "seed": BENCHMARK_SEED,
-    "reasoning_effort": "high",
-    "thinking_budget_tokens": 1024,
-    "max_output_tokens": 8192,
-    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-})
-
-STORY_EXPANSION_LLM_SETTINGS = MappingProxyType({
-    "temperature": DEFAULT_STORY_TEMPERATURE,
-    "top_p": 0.95,
-    "top_k": 0,
-    "min_p": 0.05,
-    "presence_penalty": 0.0,
-    "frequency_penalty": 0.0,
-    "repeat_penalty": 1.15,
-    "seed": None,
-    "reasoning_effort": "high",
-    "thinking_budget_tokens": 1024,
-    "max_output_tokens": 12000,
-    "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-})
-
-STORY_TO_BEATS_LLM_SETTINGS = MappingProxyType({
-    "temperature": 0,
-    "top_p": None,
-    "top_k": None,
-    "min_p": None,
-    "presence_penalty": None,
-    "frequency_penalty": None,
-    "repeat_penalty": 1.15,
-    "seed": BENCHMARK_SEED,
-    "reasoning_effort": "medium",
-    "thinking_budget_tokens": 1024,
-    "max_output_tokens": 4096,
-    "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-})
-
-MUSIC_GENERATION_LLM_SETTINGS = MappingProxyType({
+CREATIVE_LLM_SETTINGS = MappingProxyType({
     "temperature": 0.6,
     "top_p": 0.95,
     "top_k": 0,
@@ -529,29 +443,26 @@ MUSIC_GENERATION_LLM_SETTINGS = MappingProxyType({
     "seed": None,
     "reasoning_effort": "medium",
     "thinking_budget_tokens": 256,
-    "max_output_tokens": 512,
-    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 })
 
-SLIGHTLY_CREATIVE_LLM_SETTINGS = MappingProxyType({
-    "temperature": 0.1,
-    "top_p": None,
-    "top_k": None,
-    "min_p": None,
-    "presence_penalty": None,
-    "frequency_penalty": None,
+SMART_CREATIVE_LLM_SETTINGS = MappingProxyType({
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0.05,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
     "repeat_penalty": 1.15,
-    "reasoning_effort": "low",
-    "thinking_budget_tokens": 384,
-    "max_output_tokens": 3072,
-    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
+    "seed": None,
+    "reasoning_effort": "high",
+    "thinking_budget_tokens": 1024,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 })
 
-DETERMINISTIC_ANALYSIS_LLM_SETTINGS = MappingProxyType({
+EXTRACTOR_LLM_SETTINGS = MappingProxyType({
     "temperature": 0,
     "top_p": None,
     "top_k": None,
@@ -562,8 +473,6 @@ DETERMINISTIC_ANALYSIS_LLM_SETTINGS = MappingProxyType({
     "seed": BENCHMARK_SEED,
     "reasoning_effort": "medium",
     "thinking_budget_tokens": 256,
-    "max_output_tokens": 1024,
-    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
 })
@@ -579,85 +488,130 @@ SMART_EXTRACTOR_LLM_SETTINGS = MappingProxyType({
     "seed": BENCHMARK_SEED,
     "reasoning_effort": "high",
     "thinking_budget_tokens": 1024,
-    "max_output_tokens": 4096,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-    "context_token_budget": LLM_CONTEXT_TOKEN_BUDGET,
 })
 
-# Long-input analysis retains a separate immutable profile. Creative extractors
-# use their task's standard creative or smart-extractor profile.
-LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_SETTINGS = MappingProxyType({
-    **DETERMINISTIC_ANALYSIS_LLM_SETTINGS,
-    "context_token_budget": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+LLM_DEFAULT_MAX_OUTPUT_TOKENS = 1024
+LLM_DEFAULT_CONTEXT_TOKEN_BUDGET = LLM_CONTEXT_TOKEN_BUDGET
+
+# Purpose selects only one of the four sampling/reasoning profiles. Context and
+# output limits are independent request requirements below.
+LLM_PURPOSE_PROFILES = MappingProxyType({
+    "story_expansion": SMART_CREATIVE_LLM_SETTINGS,
+    "story_to_beats": SMART_EXTRACTOR_LLM_SETTINGS,
+    "story_to_beats_repair": SMART_EXTRACTOR_LLM_SETTINGS,
+    "character_canon": SMART_CREATIVE_LLM_SETTINGS,
+    "story_subject_wardrobe_extract": SMART_CREATIVE_LLM_SETTINGS,
+    "story_location_extract": EXTRACTOR_LLM_SETTINGS,
+    "static_setting_extract": EXTRACTOR_LLM_SETTINGS,
+    "story_setting_spatial_refine": SMART_CREATIVE_LLM_SETTINGS,
+    "story_setting_extract": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_terminal": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_hard_reset": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_split_gate": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_cut_choice": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_visible_responsibility": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_local_relation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_subject_resolution": SMART_EXTRACTOR_LLM_SETTINGS,
+    "registered_subject_story_start_presence": SMART_EXTRACTOR_LLM_SETTINGS,
+    "world_state_current_segment_subjects": SMART_EXTRACTOR_LLM_SETTINGS,
+    "world_state_current_segment_props": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_state_effects": SMART_EXTRACTOR_LLM_SETTINGS,
+    "macro_arc_create": SMART_CREATIVE_LLM_SETTINGS,
+    "macro_arc_validate": SMART_EXTRACTOR_LLM_SETTINGS,
+    "macro_arc_majority_validate": SMART_EXTRACTOR_LLM_SETTINGS,
+    "macro_arc_majority_tail_repair": SMART_CREATIVE_LLM_SETTINGS,
+    "macro_arc_repair": SMART_CREATIVE_LLM_SETTINGS,
+    "beat_generation": SMART_CREATIVE_LLM_SETTINGS,
+    "beat_validation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "beat_destination_presence_extract": EXTRACTOR_LLM_SETTINGS,
+    "beat_finite_endpoint_extract": EXTRACTOR_LLM_SETTINGS,
+    "beat_coherence_validation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "beat_repair": SMART_CREATIVE_LLM_SETTINGS,
+    "accepted_beat_state_extract": EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene": SMART_CREATIVE_LLM_SETTINGS,
+    "director_raw_scene_physical": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_prop_state": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_timing": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_pronoun_resolution": EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_visible_subject_resolution": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_h3_soundscape": CREATIVE_LLM_SETTINGS,
+    "director_h3_music": CREATIVE_LLM_SETTINGS,
+    "continuity_attachment_extract": EXTRACTOR_LLM_SETTINGS,
+    "continuity_combined_reduced_state": SMART_EXTRACTOR_LLM_SETTINGS,
+    "continuity_state_validation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "continuity_phase_2_h3_opening": EXTRACTOR_LLM_SETTINGS,
+    "combined_continuity": SMART_EXTRACTOR_LLM_SETTINGS,
+    "subject_continuity": SMART_EXTRACTOR_LLM_SETTINGS,
+    "final_h3_action_preservation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "json_repair": EXTRACTOR_LLM_SETTINGS,
+    "director_h3_formatter": EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_coherence": SMART_EXTRACTOR_LLM_SETTINGS,
+    "beat_instruction_review": SMART_EXTRACTOR_LLM_SETTINGS,
 })
 
-LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
-    "registered_subject_story_start_presence",
+# Long story-pipeline inputs use larger contexts without creating more profiles.
+LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS = MappingProxyType({
+    "story_expansion": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "story_to_beats": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "story_to_beats_repair": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "registered_subject_story_start_presence": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
 })
 
-BEAT_WRITING_LLM_PURPOSES = frozenset({
-    "beat_generation",
-    "beat_repair",
-})
-
-CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
-    "character_canon",
-    "macro_arc_create",
-    "macro_arc_repair",
-    "macro_arc_majority_tail_repair",
-    "story_subject_wardrobe_extract",
-    "story_location_extract",
-    "static_setting_extract",
-})
-
-DIRECTOR_RAW_SCENE_LLM_PURPOSES = frozenset({
-    "director_raw_scene",
-})
-
-MUSIC_GENERATION_LLM_PURPOSES = frozenset({
-    "director_h3_music",
-})
-
-SMART_EXTRACTOR_LLM_PURPOSES = frozenset({
-    "story_setting_extract",
-    "director_raw_scene_subject_resolution",
-    "world_state_current_segment_subjects",
-    "world_state_current_segment_props",
-})
-
-SLIGHTLY_CREATIVE_LLM_PURPOSES = frozenset({
-    "story_setting_spatial_refine",
-})
-
-DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
-    "accepted_beat_state_extract",
-    "beat_coherence_validation",
-    "beat_destination_presence_extract",
-    "beat_finite_endpoint_extract",
-    "beat_instruction_review",
-    "beat_validation",
-    "combined_continuity",
-    "continuity_attachment_extract",
-    "continuity_combined_reduced_state",
-    "continuity_phase_2_h3_opening",
-    "director_h3_soundscape",
-    "director_h3_formatter",
-    "director_raw_scene_coherence",
-    "director_raw_scene_physical",
-    "director_raw_scene_prop_state",
-    "director_raw_scene_timing",
-    "director_raw_scene_pronoun_resolution",
-    "director_raw_scene_subject_resolution",
-    "final_h3_action_preservation",
-    "json_repair",
-    "macro_arc_majority_validate",
-    "macro_arc_validate",
-    "source_unit_state_effects",
-    "registered_subject_story_start_presence",
-    "director_raw_scene_visible_subject_resolution",
-    "subject_continuity",
-    "visual_end_state",
+# Preserve task-specific response capacity independently from profile choice.
+LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
+    "story_expansion": 12000,
+    "story_to_beats": 4096,
+    "story_to_beats_repair": 4096,
+    "character_canon": 8192,
+    "story_subject_wardrobe_extract": 8192,
+    "story_location_extract": 8192,
+    "static_setting_extract": 8192,
+    "macro_arc_create": 8192,
+    "macro_arc_majority_tail_repair": 8192,
+    "macro_arc_repair": 8192,
+    "beat_generation": 8192,
+    "beat_repair": 8192,
+    "director_raw_scene": 8192,
+    "director_h3_music": 512,
+    "story_setting_spatial_refine": 3072,
+    "story_setting_extract": 4096,
+    "director_raw_scene_subject_resolution": 4096,
+    "world_state_current_segment_subjects": 4096,
+    "world_state_current_segment_props": 4096,
+    "registered_subject_story_start_presence": 1024,
+    "accepted_beat_state_extract": 1024,
+    "beat_coherence_validation": 1024,
+    "beat_destination_presence_extract": 1024,
+    "beat_finite_endpoint_extract": 1024,
+    "beat_instruction_review": 1024,
+    "beat_validation": 1024,
+    "combined_continuity": 1024,
+    "continuity_attachment_extract": 1024,
+    "continuity_combined_reduced_state": 1024,
+    "continuity_phase_2_h3_opening": 1024,
+    "director_h3_soundscape": 1024,
+    "director_h3_formatter": 1024,
+    "director_raw_scene_coherence": 1024,
+    "director_raw_scene_physical": 1024,
+    "director_raw_scene_prop_state": 1024,
+    "director_raw_scene_timing": 1024,
+    "director_raw_scene_pronoun_resolution": 1024,
+    "director_raw_scene_visible_subject_resolution": 1024,
+    "final_h3_action_preservation": 1024,
+    "json_repair": 1024,
+    "macro_arc_majority_validate": 1024,
+    "macro_arc_validate": 1024,
+    "source_unit_state_effects": 1024,
+    "source_unit_terminal": 1024,
+    "source_unit_hard_reset": 1024,
+    "source_unit_split_gate": 1024,
+    "source_unit_cut_choice": 1024,
+    "source_unit_visible_responsibility": 1024,
+    "source_unit_local_relation": 1024,
+    "subject_continuity": 1024,
+    "continuity_state_validation": 1024,
 })
 
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
@@ -10686,31 +10640,18 @@ def ask_llm(
     received_response = False
     messages = normalize_llm_host_messages(messages)
     history_purpose = str((history_metadata or {}).get("purpose", ""))
-    # Select request behavior strictly by task/responsibility. Formatter/model
-    # selection is intentionally absent from this routing.
-    if history_purpose == "story_expansion":
-        llm_settings = STORY_EXPANSION_LLM_SETTINGS
-    elif history_purpose in {"story_to_beats", "story_to_beats_repair"}:
-        llm_settings = STORY_TO_BEATS_LLM_SETTINGS
-    elif history_purpose in LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_PURPOSES:
-        llm_settings = LONG_CONTEXT_DETERMINISTIC_ANALYSIS_LLM_SETTINGS
-    elif history_purpose in MUSIC_GENERATION_LLM_PURPOSES:
-        llm_settings = MUSIC_GENERATION_LLM_SETTINGS
-    elif history_purpose in BEAT_WRITING_LLM_PURPOSES:
-        llm_settings = BEAT_WRITING_LLM_SETTINGS
-    elif history_purpose in DIRECTOR_RAW_SCENE_LLM_PURPOSES:
-        llm_settings = DIRECTOR_RAW_SCENE_LLM_SETTINGS
-    elif history_purpose in CREATIVE_GENERATION_LLM_PURPOSES:
-        llm_settings = CREATIVE_GENERATION_LLM_SETTINGS
-    elif history_purpose in SMART_EXTRACTOR_LLM_PURPOSES:
-        llm_settings = SMART_EXTRACTOR_LLM_SETTINGS
-    elif history_purpose in SLIGHTLY_CREATIVE_LLM_PURPOSES:
-        llm_settings = SLIGHTLY_CREATIVE_LLM_SETTINGS
-    else:
-        llm_settings = DETERMINISTIC_ANALYSIS_LLM_SETTINGS
+    # Purpose selects one standardized sampling/reasoning profile. Request
+    # context and output capacity remain independent per-purpose requirements.
+    llm_settings = LLM_PURPOSE_PROFILES.get(
+        history_purpose,
+        EXTRACTOR_LLM_SETTINGS,
+    )
 
     estimated_input_tokens = estimate_message_tokens(messages)
-    effective_context_budget = llm_settings["context_token_budget"]
+    effective_context_budget = LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS.get(
+        history_purpose,
+        LLM_DEFAULT_CONTEXT_TOKEN_BUDGET,
+    )
     if effective_context_budget <= LLM_CONTEXT_SAFETY_TOKENS:
         raise ValueError("context_token_budget must leave room for completion.")
     available_completion_tokens = (
@@ -10727,7 +10668,10 @@ def ask_llm(
         )
     effective_max_tokens = min(
         int(available_completion_tokens),
-        int(llm_settings["max_output_tokens"]),
+        int(LLM_PURPOSE_MAX_OUTPUT_TOKENS.get(
+            history_purpose,
+            LLM_DEFAULT_MAX_OUTPUT_TOKENS,
+        )),
     )
     temperature = llm_settings["temperature"]
     top_p = llm_settings["top_p"]

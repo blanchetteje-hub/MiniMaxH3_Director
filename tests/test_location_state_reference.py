@@ -16,35 +16,25 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertIn("objects/furniture mentioned only because a later action", system)
         self.assertIn("Do not promote every story prop", system)
 
-    def test_smart_extractor_profile_is_high_1024_seed_42_with_8192_context(self):
-        profile = minimax.SMART_EXTRACTOR_LLM_SETTINGS
-        self.assertEqual(profile["seed"], 42)
-        self.assertEqual(profile["context_token_budget"], 8192)
-        self.assertEqual(profile["reasoning_effort"], "high")
-        self.assertEqual(profile["thinking_budget_tokens"], 1024)
-        self.assertEqual(
-            minimax.SMART_EXTRACTOR_LLM_PURPOSES,
-            {
-                "story_setting_extract",
-                "director_raw_scene_subject_resolution",
-                "world_state_current_segment_subjects",
-                "world_state_current_segment_props",
-            },
+    def test_setting_and_world_state_purpose_routes_use_standard_profiles(self):
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["story_setting_spatial_refine"],
+            minimax.SMART_CREATIVE_LLM_SETTINGS,
+        )
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["story_setting_extract"],
+            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
+        )
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["story_location_extract"],
+            minimax.EXTRACTOR_LLM_SETTINGS,
+        )
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["static_setting_extract"],
+            minimax.EXTRACTOR_LLM_SETTINGS,
         )
         self.assertEqual(
-            minimax.SLIGHTLY_CREATIVE_LLM_PURPOSES,
-            {"story_setting_spatial_refine"},
-        )
-        self.assertIn(
-            "static_setting_extract",
-            minimax.CREATIVE_GENERATION_LLM_PURPOSES,
-        )
-        self.assertEqual(
-            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["thinking_budget_tokens"],
-            256,
-        )
-        self.assertEqual(
-            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["max_output_tokens"],
+            minimax.SMART_EXTRACTOR_LLM_SETTINGS["thinking_budget_tokens"],
             1024,
         )
 
