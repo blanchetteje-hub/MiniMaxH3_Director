@@ -1,0 +1,65 @@
+{
+  "version": 3,
+  "source_sha256": "3f2fbb8f5e34725eb1a8477676a663a107484451d2a964d4183cf65d64841ef9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman_referenced_in_picture_1",
+    "wipes_polished_table_with_cloth_soaked_in_ale_scented_oil",
+    "refills_goblin_s_mug_from_barrel_beside_hearth",
+    "pours_steaming_cup_into_crystal_chalice_for_elf",
+    "lifts_crystal_cup_from_shelf_to_pour_special_brew_for_dragon",
+    "watches_dragon_exhale_contentedly",
+    "turns_off_lanterns_at_each_table_and_pulls_wooden_latch_on_back_door",
+    "steps_outside_to_close_it_locking_the_tavern_for_the_night",
+    "green_skin",
+    "tiny_hands_clutching_a_chipped_mug",
+    "leans_over_the_counter",
+    "silver_hair_streaming_down_its_shoulders",
+    "takes_a_seat_at_the_back_table",
+    "scales_glittering_like_polished_obsidian",
+    "wings_unfurl_to_reveal_amber_eyes_that_scan_the_room"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy wears a rough‑spun crimson tunic that falls just below her hips, its wooly texture frayed at the cuffs from years of use. Over it she dons a scuffed leather apron tied snugly at her waist with a worn brass buckle; the apron bears dents and scratches from chopping wood and ladling ale. She completes her look in sturdy brown leather boots laced up to her ankles, their soles thickened for the creaking wooden floor. A simple woolen belt cinches the tunic at mid‑waist, holding a small pouch of coins. On her head rests a plain woven cap",
+      "gender": "female",
+      "confident_woman_referenced_in_picture_1": "yes",
+      "wipes_polished_table_with_cloth_soaked_in_ale_scented_oil": "yes",
+      "refills_goblin_s_mug_from_barrel_beside_hearth": "yes",
+      "pours_steaming_cup_into_crystal_chalice_for_elf": "yes",
+      "lifts_crystal_cup_from_shelf_to_pour_special_brew_for_dragon": "yes",
+      "watches_dragon_exhale_contentedly": "yes",
+      "turns_off_lanterns_at_each_table_and_pulls_wooden_latch_on_back_door": "yes",
+      "steps_outside_to_close_it_locking_the_tavern_for_the_night": "yes"
+    },
+    {
+      "name": "Goblin",
+      "age": "20",
+      "clothing": "A green‑skinned goblin in his twenties wears a faded brown wool tunic that falls to mid‑thigh, belted with a worn leather strap; he pairs it with dark trousers tucked into scuffed leather boots and carries a small pouch on his belt while clutching a chipped mug",
+      "gender": "male",
+      "green_skin": "true",
+      "tiny_hands_clutching_a_chipped_mug": "yes",
+      "leans_over_the_counter": "yes"
+    },
+    {
+      "name": "Elf",
+      "age": "120",
+      "clothing": "She wears a floor‑length tunic of fine pale linen dyed with subtle silver threads that catch the light as she moves, embroidered along the hem and cuffs with delicate leaf motifs in green. Over it drapes a moss‑green hooded cloak made from soft wool, its edges frayed at the hems from years of wear. A narrow leather belt cinches her waist, holding a small pouch for coins. Her feet are shod in plain brown leather boots laced up to mid‑calf, worn at the toes. Around her neck hangs an elven silver circlet set with a single green sapphire. Her silver hair streams down its shoulders, loosely flowing without braids",
+      "gender": "female",
+      "silver_hair_streaming_down_its_shoulders": "true",
+      "takes_a_seat_at_the_back_table": "yes"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "500",
+      "clothing": "A worn bronze scale armor drapes over its chest and belly, a leather belt cinches around its waist, and a tattered cloak flutters across its wings",
+      "gender": "female",
+      "scales_glittering_like_polished_obsidian": "true",
+      "wings_unfurl_to_reveal_amber_eyes_that_scan_the_room": "yes"
+    }
+  ]
+}
