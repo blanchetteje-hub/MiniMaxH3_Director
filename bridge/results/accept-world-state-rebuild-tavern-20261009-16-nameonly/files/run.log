@@ -1,0 +1,18 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).
+LLM request failed (attempt 1/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x000002488F6EAE10>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))
+LLM request started: character_canon (attempt 2/10, ~691 input tokens, max 7373 output tokens).
+LLM request failed (attempt 2/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x00000248909EDED0>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))
+LLM request started: character_canon (attempt 3/10, ~691 input tokens, max 7373 output tokens).
+LLM request failed (attempt 3/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x000002488F681190>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))
+LLM request started: character_canon (attempt 4/10, ~691 input tokens, max 7373 output tokens).
+LLM request failed (attempt 4/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x00000248909ED190>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))
+LLM request started: character_canon (attempt 5/10, ~691 input tokens, max 7373 output tokens).
+LLM request failed (attempt 5/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x000002488F681D10>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))
+LLM request started: character_canon (attempt 6/10, ~691 input tokens, max 7373 output tokens).
+LLM request failed (attempt 6/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x000002488F681C50>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))
+LLM request started: character_canon (attempt 7/10, ~691 input tokens, max 7373 output tokens).
+
+Emergency stop requested; exiting immediately.

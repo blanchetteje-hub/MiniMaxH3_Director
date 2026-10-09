@@ -1,0 +1,36 @@
+{
+  "job_id": "accept-world-state-rebuild-tavern-20261009-16-nameonly",
+  "kind": "run_acceptance",
+  "started_at": 1791560104.916917,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--benchmark",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\gold\\amy_medieval_tavern_six.json"
+    ],
+    "returncode": 130,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 6 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-bj7dqnif\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261009-113506\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nRun start: cleared files and folders in the video state directory.\nLLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).\nLLM request failed (attempt 1/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x000002488F6EAE10>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))\nLLM request started: character_canon (attempt 2/10, ~691 input tokens, max 7373 output tokens).\nLLM request failed (attempt 2/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x00000248909EDED0>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))\nLLM request started: character_canon (attempt 3/10, ~691 input tokens, max 7373 output tokens).\nLLM request failed (attempt 3/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x000002488F681190>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))\nLLM request started: character_canon (attempt 4/10, ~691 input tokens, max 7373 output tokens).\nLLM request failed (attempt 4/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x00000248909ED190>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))\nLLM request started: character_canon (attempt 5/10, ~691 input tokens, max 7373 output tokens).\nLLM request failed (attempt 5/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x000002488F681D10>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))\nLLM request started: character_canon (attempt 6/10, ~691 input tokens, max 7373 output tokens).\nLLM request failed (attempt 6/10): HTTPConnectionPool(host='192.168.0.203', port=1234): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x000002488F681C50>, 'Connection to 192.168.0.203 timed out. (connect timeout=600)'))\nLLM request started: character_canon (attempt 7/10, ~691 input tokens, max 7373 output tokens).\n\nEmergency stop requested; exiting immediately.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261009-113506\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6]. Include run.log for diagnosis.\nMiniMax exited with code 130; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1791560106.2998562,
+    "finished_at": 1791560279.0638392,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "prompt_history.txt": "files\\prompt_history.txt",
+      "source_result_dir": "tests\\acceptance\\results\\amy_medieval_tavern_six-20261009-113506"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1791560279.09509,
+  "status": "ok"
+}
