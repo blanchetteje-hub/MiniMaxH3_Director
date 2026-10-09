@@ -36707,7 +36707,7 @@ def format_known_subject_state_for_validator(continuity_state):
 
 
 def build_director_raw_scene_repair_messages(raw_prompt, validation_errors):
-    """Build a focused text repair request for a physical/spatial RAW error."""
+    """Build a focused text repair request for Director RAW validator errors."""
     if isinstance(validation_errors, str):
         errors = [line.strip().lstrip("-* ").strip() for line in validation_errors.splitlines()]
     else:
@@ -36730,7 +36730,7 @@ def build_director_raw_scene_repair_messages(raw_prompt, validation_errors):
             "content": (
                 "RAW PROMPT\n"
                 f"{str(raw_prompt or '').strip()}\n\n"
-                "VALIDATOR ERRORS (physical/spatial):\n"
+                "VALIDATOR ERRORS:\n"
                 + "\n".join(f"- {error}" for error in errors)
             ),
         },
@@ -37578,241 +37578,129 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         ).strip()
         if raw_scene and raw_scene != "N/A":
             request1_result["raw_scene"] = raw_scene
-
-            structure_errors = _director_raw_scene_structure_errors(
-                raw_scene,
-                duration,
-            )
-            if structure_errors:
-                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                    raise BeatGenerationError(
-                        f"Director Request 1 returned malformed shot script for "
-                        f"Segment {segment_number}: " + "; ".join(structure_errors)
-                    )
-                console_log(
-                    f"Director Request 1 shot-script structure failed "
-                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                    f"retrying: " + "; ".join(structure_errors),
-                    flush=True,
-                )
-                request1_messages = build_request1_retry_messages(
-                    "SHOT SCRIPT: " + "; ".join(structure_errors)
-                )
-                continue
-
             current_beat_text = str(bundle.get("current_beat_text") or "").strip()
-            dialogue_issue = director_required_dialogue_issue(
-                current_beat_text,
-                raw_scene,
+            raw_repair_attempt = 0
+            regenerate_raw = False
+
+            validator_metadata = {
+                "run_id": run_id,
+                "source_sha256": (run_config or {}).get("source_sha256"),
+                "segment": segment_number,
+                "attempt": request1_attempt,
+                "conditioning_mode": conditioning_mode,
+            }
+            previous_shot_end = (
+                bundle.get("previous_final_frame", "")
+                if segment_number > 1
+                else ""
             )
-            if dialogue_issue:
-                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                    raise BeatGenerationError(
-                        f"Director Request 1 never rendered required direct dialogue "
-                        f"for Segment {segment_number}: {dialogue_issue}"
-                    )
-                console_log(
-                    f"Director Request 1 dialogue contract failed "
-                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                    f"retrying: {dialogue_issue}",
-                    flush=True,
-                )
-                request1_messages = build_request1_retry_messages(
-                    "DIALOGUE: CURRENT BEAT requires intelligible speech. "
-                    + dialogue_issue
-                    + " Use one brief direct line in the form "
-                    "Speaker said <d>exact words</d>."
-                )
-                continue
+            static_setting_description = bundle.get(
+                "static_setting_description", ""
+            )
 
-            if current_beat_text:
-                validator_metadata = {
-                    "run_id": run_id,
-                    "source_sha256": (run_config or {}).get("source_sha256"),
-                    "segment": segment_number,
-                    "attempt": request1_attempt,
-                    "conditioning_mode": conditioning_mode,
-                }
-                previous_shot_end = (
-                    bundle.get("previous_final_frame", "")
-                    if segment_number > 1
-                    else ""
-                )
-                static_setting_description = bundle.get(
-                    "static_setting_description", ""
-                )
+            def raw_validator_metadata(repair_attempt):
+                metadata = dict(validator_metadata)
+                if repair_attempt is not None:
+                    metadata["repair_attempt"] = repair_attempt
+                return metadata
 
-                def validate_physical_candidate(candidate, repair_attempt=None):
-                    metadata = dict(validator_metadata)
-                    if repair_attempt is not None:
-                        metadata["repair_attempt"] = repair_attempt
-                    try:
-                        result = validate_director_raw_scene_physical(
-                            current_beat_text,
-                            candidate,
-                            previous_shot_end=previous_shot_end,
-                            static_setting_description=static_setting_description,
-                            known_subject_state=bundle.get("registry_state"),
-                            history_metadata=metadata,
-                        )
-                    except (
-                        LLMConnectionError,
-                        requests.RequestException,
-                        OSError,
-                        ValueError,
-                        TypeError,
-                    ) as error:
-                        result = {
-                            "valid": False,
-                            "issue": f"RAW physical validator failed: {error}",
-                        }
+            def validate_raw_candidate(candidate, repair_attempt=None):
+                """Return the first failing RAW-scene validator and its issue."""
+                structure_errors = _director_raw_scene_structure_errors(
+                    candidate,
+                    duration,
+                )
+                if structure_errors:
+                    issue = "; ".join(structure_errors)
                     log_director_raw_validator_result(
-                        "physical/spatial",
-                        result,
+                        "shot-script structure",
+                        {"valid": False, "issue": issue},
                         segment_number=segment_number,
                         director_attempt=request1_attempt,
                         repair_attempt=repair_attempt,
                     )
-                    return result
+                    return "SHOT SCRIPT", issue
+                log_director_raw_validator_result(
+                    "shot-script structure",
+                    {"valid": True, "issue": ""},
+                    segment_number=segment_number,
+                    director_attempt=request1_attempt,
+                    repair_attempt=repair_attempt,
+                )
 
-                physical = validate_physical_candidate(raw_scene)
-                physical_repair_attempt = 0
-                while (
-                    not physical["valid"]
-                    and physical_repair_attempt < DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS
-                ):
-                    issue = physical["issue"] or (
-                        "RAW SCENE has an impossible subject movement or action order."
+                dialogue_issue = director_required_dialogue_issue(
+                    current_beat_text,
+                    candidate,
+                )
+                if dialogue_issue:
+                    issue = (
+                        "CURRENT BEAT requires intelligible speech. "
+                        + dialogue_issue
+                        + " Use one brief direct line in the form "
+                        "Speaker said <d>exact words</d>."
                     )
-                    physical_repair_attempt += 1
-                    console_log(
-                        "DIRECTOR RAW REPAIR DISPATCH " + json.dumps(
-                            {
-                                "purpose": "director_raw_scene_repair",
-                                "segment": segment_number,
-                                "director_attempt": request1_attempt,
-                                "repair_attempt": physical_repair_attempt,
-                                "issue": issue,
-                            },
-                            ensure_ascii=False,
-                            default=str,
-                        ),
-                        flush=True,
+                    log_director_raw_validator_result(
+                        "dialogue",
+                        {"valid": False, "issue": issue},
+                        segment_number=segment_number,
+                        director_attempt=request1_attempt,
+                        repair_attempt=repair_attempt,
                     )
-                    repair_metadata = {
-                        **validator_metadata,
-                        "purpose": "director_raw_scene_repair",
-                        "attempt": physical_repair_attempt,
-                        "director_attempt": request1_attempt,
-                    }
-                    repaired_raw_scene = ask_llm(
-                        build_director_raw_scene_repair_messages(raw_scene, [issue]),
-                        response_format=None,
-                        parse_json_response=False,
-                        history_metadata=repair_metadata,
-                    )
-                    console_log(
-                        "DIRECTOR RAW SCENE REPAIR RESPONSE " + json.dumps(
-                            {
-                                "segment": segment_number,
-                                "director_attempt": request1_attempt,
-                                "repair_attempt": physical_repair_attempt,
-                                "issue": issue,
-                                "response": repaired_raw_scene,
-                            },
-                            ensure_ascii=False,
-                            default=str,
-                        ),
-                        flush=True,
-                    )
-                    if not isinstance(repaired_raw_scene, str) or not repaired_raw_scene.strip():
-                        console_log(
-                            "Director RAW repair returned no usable prompt; "
-                            f"keeping the previous RAW scene for repair attempt "
-                            f"{physical_repair_attempt}/{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS}.",
-                            flush=True,
-                        )
-                        continue
-                    raw_scene = _normalize_director_raw_scene_structure(
-                        repaired_raw_scene.strip(),
-                        segment_seconds=duration,
-                    ).strip()
-                    request1_result["raw_scene"] = raw_scene
-                    physical = validate_physical_candidate(
-                        raw_scene,
-                        repair_attempt=physical_repair_attempt,
-                    )
+                    return "DIALOGUE", issue
+                log_director_raw_validator_result(
+                    "dialogue",
+                    {"valid": True, "issue": ""},
+                    segment_number=segment_number,
+                    director_attempt=request1_attempt,
+                    repair_attempt=repair_attempt,
+                )
 
-                if not physical["valid"]:
-                    issue = physical["issue"] or (
-                        "RAW SCENE has an impossible subject movement or action order."
-                    )
-                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                        raise BeatGenerationError(
-                            f"Director Request 1 remained physically incoherent for "
-                            f"Segment {segment_number}: {issue}"
-                        )
-                    console_log(
-                        f"Director RAW physical repair exhausted "
-                        f"({DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS} repairs); "
-                        f"regenerating RAW (Director attempt "
-                        f"{request1_attempt + 1}/{DIRECTOR_RAW_SCENE_ATTEMPTS}): {issue}",
-                        flush=True,
-                    )
-                    request1_messages = build_request1_retry_messages(
-                        f"PHYSICAL/SPATIAL: Fix this physical/spatial problem: {issue}"
-                    )
-                    continue
+                if not current_beat_text:
+                    return None
 
-                if physical_repair_attempt:
-                    structure_errors = _director_raw_scene_structure_errors(
-                        raw_scene,
-                        duration,
-                    )
-                    if structure_errors:
-                        issue = "; ".join(structure_errors)
-                        if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                            raise BeatGenerationError(
-                                f"Director RAW repair broke shot-script structure for "
-                                f"Segment {segment_number}: {issue}"
-                            )
-                        console_log(
-                            "Director RAW repair changed shot-script structure; "
-                            f"regenerating RAW: {issue}",
-                            flush=True,
-                        )
-                        request1_messages = build_request1_retry_messages(
-                            "SHOT SCRIPT: " + issue
-                        )
-                        continue
-                    dialogue_issue = director_required_dialogue_issue(
+                try:
+                    physical = validate_director_raw_scene_physical(
                         current_beat_text,
-                        raw_scene,
+                        candidate,
+                        previous_shot_end=previous_shot_end,
+                        static_setting_description=static_setting_description,
+                        known_subject_state=bundle.get("registry_state"),
+                        history_metadata=raw_validator_metadata(repair_attempt),
                     )
-                    if dialogue_issue:
-                        if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                            raise BeatGenerationError(
-                                f"Director RAW repair removed required direct dialogue "
-                                f"for Segment {segment_number}: {dialogue_issue}"
-                            )
-                        console_log(
-                            "Director RAW repair removed required dialogue; "
-                            f"regenerating RAW: {dialogue_issue}",
-                            flush=True,
-                        )
-                        request1_messages = build_request1_retry_messages(
-                            "DIALOGUE: " + dialogue_issue
-                        )
-                        continue
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    physical = {
+                        "valid": False,
+                        "issue": f"RAW physical validator failed: {error}",
+                    }
+                log_director_raw_validator_result(
+                    "physical/spatial",
+                    physical,
+                    segment_number=segment_number,
+                    director_attempt=request1_attempt,
+                    repair_attempt=repair_attempt,
+                )
+                if not physical["valid"]:
+                    return (
+                        "PHYSICAL/SPATIAL",
+                        physical["issue"] or (
+                            "RAW SCENE has an impossible subject movement or action order."
+                        ),
+                    )
 
                 try:
                     prop_state = validate_director_raw_scene_prop_state(
                         current_beat_text,
-                        raw_scene,
+                        candidate,
                         previous_shot_end=previous_shot_end,
                         prop_ledger=prop_ledger,
                         static_setting_description=static_setting_description,
-                        history_metadata=validator_metadata,
+                        history_metadata=raw_validator_metadata(repair_attempt),
                     )
                 except (
                     LLMConnectionError,
@@ -37825,44 +37713,25 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "valid": False,
                         "issue": f"RAW prop/state validator failed: {error}",
                     }
-
                 log_director_raw_validator_result(
                     "prop/state",
                     prop_state,
                     segment_number=segment_number,
                     director_attempt=request1_attempt,
+                    repair_attempt=repair_attempt,
                 )
-
                 if not prop_state["valid"]:
-                    issue = prop_state["issue"] or (
-                        "RAW SCENE has inconsistent prop, transfer, or final object state."
+                    return (
+                        "PROP/STATE",
+                        prop_state["issue"] or (
+                            "RAW SCENE has inconsistent prop, transfer, or final object state."
+                        ),
                     )
-                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                        raise BeatGenerationError(
-                            f"Director Request 1 remained prop/state incoherent for "
-                            f"Segment {segment_number}: {issue}"
-                        )
-                    console_log(
-                        f"Director Request 1 prop/state validation failed "
-                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                        f"retrying: {issue}",
-                        flush=True,
-                    )
-                    request1_messages = build_request1_retry_messages(
-                        f"PROP/STATE: Fix this prop/state problem: {issue}"
-                    )
-                    continue
 
                 try:
                     timing = validate_director_raw_scene_timing(
-                        raw_scene,
-                        history_metadata={
-                            "run_id": run_id,
-                            "source_sha256": (run_config or {}).get("source_sha256"),
-                            "segment": segment_number,
-                            "attempt": request1_attempt,
-                            "conditioning_mode": conditioning_mode,
-                        },
+                        candidate,
+                        history_metadata=raw_validator_metadata(repair_attempt),
                     )
                 except (
                     LLMConnectionError,
@@ -37875,37 +37744,109 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "valid": False,
                         "issue": f"RAW timing validator failed: {error}",
                     }
-
                 log_director_raw_validator_result(
                     "timing",
                     timing,
                     segment_number=segment_number,
                     director_attempt=request1_attempt,
+                    repair_attempt=repair_attempt,
                 )
-
                 if not timing["valid"]:
-                    issue = (
-                        timing["issue"]
-                        or "RAW SCENE compresses a physical transition into too little visible time."
+                    return (
+                        "TIMING",
+                        timing["issue"] or (
+                            "RAW SCENE compresses a physical transition into too little visible time."
+                        ),
                     )
+                return None
+
+            while True:
+                failure = validate_raw_candidate(raw_scene, raw_repair_attempt or None)
+                if failure is None:
+                    break
+                failure_category, issue = failure
+                if raw_repair_attempt >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
                     if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
                         raise BeatGenerationError(
-                            f"Director Request 1 remained physically over-compressed for "
-                            f"Segment {segment_number}: {issue}"
+                            f"Director RAW validators remained invalid for Segment "
+                            f"{segment_number} after "
+                            f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS} repairs; "
+                            f"{failure_category}: {issue}"
                         )
                     console_log(
-                        f"Director Request 1 timing feasibility failed "
-                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                        f"retrying: {issue}",
+                        f"Director RAW repair exhausted "
+                        f"({DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS} repairs); "
+                        f"regenerating RAW (Director attempt "
+                        f"{request1_attempt + 1}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                        f"last validator={failure_category}: {issue}",
                         flush=True,
                     )
                     request1_messages = build_request1_retry_messages(
-                        "TIMING: "
-                        + issue
-                        + " Give required travel and prerequisite actions enough visible "
-                        "time by simplifying optional staging and/or redistributing timestamps."
+                        f"{failure_category}: {issue}"
+                    )
+                    regenerate_raw = True
+                    break
+
+                raw_repair_attempt += 1
+                console_log(
+                    "DIRECTOR RAW REPAIR DISPATCH " + json.dumps(
+                        {
+                            "purpose": "director_raw_scene_repair",
+                            "segment": segment_number,
+                            "director_attempt": request1_attempt,
+                            "repair_attempt": raw_repair_attempt,
+                            "validator": failure_category,
+                            "issue": issue,
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                    ),
+                    flush=True,
+                )
+                repair_metadata = {
+                    **validator_metadata,
+                    "purpose": "director_raw_scene_repair",
+                    "attempt": raw_repair_attempt,
+                    "director_attempt": request1_attempt,
+                    "validator": failure_category,
+                }
+                repaired_raw_scene = ask_llm(
+                    build_director_raw_scene_repair_messages(raw_scene, [issue]),
+                    response_format=None,
+                    parse_json_response=False,
+                    history_metadata=repair_metadata,
+                )
+                console_log(
+                    "DIRECTOR RAW SCENE REPAIR RESPONSE " + json.dumps(
+                        {
+                            "segment": segment_number,
+                            "director_attempt": request1_attempt,
+                            "repair_attempt": raw_repair_attempt,
+                            "validator": failure_category,
+                            "issue": issue,
+                            "response": repaired_raw_scene,
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                    ),
+                    flush=True,
+                )
+                if not isinstance(repaired_raw_scene, str) or not repaired_raw_scene.strip():
+                    console_log(
+                        "Director RAW repair returned no usable prompt; "
+                        f"keeping the previous RAW scene for repair attempt "
+                        f"{raw_repair_attempt}/{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS}.",
+                        flush=True,
                     )
                     continue
+                raw_scene = _normalize_director_raw_scene_structure(
+                    repaired_raw_scene.strip(),
+                    segment_seconds=duration,
+                ).strip()
+                request1_result["raw_scene"] = raw_scene
+
+            if regenerate_raw:
+                continue
 
             # Baseline-reset rule: old deterministic Director guards report
             # defects but do not reject or regenerate the scene. This lets a

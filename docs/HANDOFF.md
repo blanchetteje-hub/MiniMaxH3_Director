@@ -1,22 +1,24 @@
 # MiniMax H3 — Development Handoff
 
-## 2026-10-09 — expose RAW validator verdicts and repair dispatch
+## 2026-10-09 — route all Director RAW validators through repair
 
-- The physical/spatial validator already routed invalid RAW scenes to
-  `director_raw_scene_repair` for up to five attempts. The confusing behavior
-  came from other rejection paths: structure, dialogue, prop/state, and timing
-  failures retry `director_raw_scene` directly, while five failed physical
-  repairs intentionally fall back to RAW regeneration.
-- Added structured console records for physical/spatial, prop/state, and timing
-  validator results, including Segment, Director attempt, repair attempt where
-  applicable, validity, and the concrete issue. Physical failures also log an
-  explicit `director_raw_scene_repair` dispatch with the same issue.
-- Added physical, prop/state, and timing validator purposes to response history
-  so the raw validator model responses can be inspected alongside the parsed
-  verdicts. Runtime prompts and validation rules are unchanged.
-- Verification: `tests/test_director_retry.py` and
-  `tests/test_dynamic_temperature.py` passed (173 passed, 4 subtests);
-  `py_compile` and `git diff --check` passed.
+- Every Director RAW-scene validator now sends its first concrete failure to
+  `director_raw_scene_repair`: shot-script structure, required dialogue,
+  physical/spatial movement, prop/state consistency, and timing feasibility.
+  The repaired RAW is normalized and the full validator sequence reruns. Five
+  unsuccessful repairs still step back to a new `director_raw_scene` attempt.
+  The separate `state_actions` contract/reducer retry remains separate because
+  the RAW-only repair cannot change the action response.
+- The repair request labels its errors generically as `VALIDATOR ERRORS`. Each
+  verdict and repair dispatch logs the Segment, Director attempt, repair
+  attempt, validator, and concrete issue. Raw physical, prop/state, and timing
+  responses are retained in prompt history.
+- `docs/LLM_PROMPTS.md` now records the broader repair scope. Verification:
+  `tests/test_director_retry.py` and `tests/test_dynamic_temperature.py` passed
+  (174 passed, 7 subtests); `py_compile` and `git diff --check` passed. The
+  broader combined run including `tests/test_llm_prompt_pipeline.py` had 24
+  failures among 288 cases, from stale prompt assertions and pre-WorldState
+  Director response fixtures; those were not changed in this scoped update.
 
 ## 2026-10-09 — bridge accepts fixture Director plans
 
