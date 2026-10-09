@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "source_sha256": "3f2fbb8f5e34725eb1a8477676a663a107484451d2a964d4183cf65d64841ef9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "A rough‑spun tunic in deep brown that falls to mid‑thigh and shows scuffs at the elbows from years of polishing tables; over it she wears a dark tan leather apron with worn edges, its surface marked by small scratches and scuffs from handling mugs and barrels. Beneath her tunic are simple linen leggings in light tan tucked into sturdy brown leather boots that reach just below the ankles, their soles worn smooth by constant use at the bar",
+      "gender": "female"
+    }
+  ]
+}
