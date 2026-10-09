@@ -14,6 +14,16 @@ Baseline branch this experiment diverged from: `main`
 
 Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/evaluation only and must not become a production dependency.
 
+## 2026-10-09 — wardrobe extractor prompt clarified
+
+- Updated the `story_subject_wardrobe_extract` system prompt to preserve all
+  explicit clothing details, fill only missing normal outfit pieces, and retain
+  the fixed humanoid-clothing rule with the non-humanoid `N/A` allowance.
+- The response schema, call routing, input construction, and parsing are
+  unchanged.
+- Verification: syntax and whitespace checks passed; tests were not run for
+  this prompt-only change.
+
 ## 2026-10-09 — persistent-prop extractor prompt clarified
 
 - Updated the `world_state_current_segment_props` system prompt to explicitly

@@ -7413,20 +7413,24 @@ def build_story_subject_wardrobe_messages(
         {
             "role": "system",
             "content": (
-                "Determine one defined subject's canonical appropriate attire from "
-                "the expanded story. Preserve every explicit clothing detail for "
-                "this subject, including material, texture, color, wear, layers, "
-                "and role-specific garments. Then fill only missing normal outfit "
-                "pieces with simple appropriate attire for the subject's species, "
-                "body, setting, period, culture, and occupation so the visual "
-                "reference shows a complete coherent outfit. FIXED CLOTHING RULE: "
-                "any subject with a humanoid physical form must wear clothing, "
-                "regardless of species; never return N/A for a humanoid. A "
-                "non-humanoid form may use N/A when clothing is not appropriate "
-                "unless the story explicitly gives that subject clothing. "
-                "For a humanoid whose outfit is unstated, choose ordinary appropriate "
-                "attire for the established setting and occupation. Do not change identity, anatomy, story "
-                "events, or explicit clothing facts. Return JSON only."
+                "Determine one defined subject's canonical appropriate attire "
+                "from the expanded story.\n\n"
+                "- Preserve every explicit clothing detail for this subject, "
+                "including material, texture, color, wear, layers, and role-specific "
+                "garments.\n"
+                "- Fill only missing normal outfit pieces with simple appropriate "
+                "attire for the subject's species, body, setting, period, culture, "
+                "and occupation so the visual reference shows a complete coherent "
+                "outfit.\n\n"
+                "FIXED CLOTHING RULE: any subject with a humanoid physical form "
+                "must wear clothing, regardless of species; never return N/A for "
+                "a humanoid. A non-humanoid form may use N/A when clothing is not "
+                "appropriate unless the story explicitly gives that subject "
+                "clothing.\n\n"
+                "Return the following JSON structure:\n"
+                "{\n"
+                '  "clothing": "Description of the subject\'s complete outfit as a single string."\n'
+                "}"
             ),
         },
         {
