@@ -191,7 +191,9 @@ def test_request_context_and_output_budgets_are_independent_of_profiles():
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["story_expansion"] == 12000
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["story_to_beats"] == 4096
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_h3_music"] == 512
-    assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["source_unit_state_effects"] == 1024
+    assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["source_unit_state_effects"] == 2048
+    assert minimax.LLM_DEFAULT_MAX_OUTPUT_TOKENS == 2048
+    assert 1024 not in minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS.values()
 
     response = mock.Mock()
     response.raise_for_status.return_value = None
@@ -240,7 +242,7 @@ def test_unknown_purpose_uses_extractor_profile_and_default_budgets():
     assert request["seed"] == 42
     assert request["reasoning_effort"] == "medium"
     assert request["thinking_budget_tokens"] == 256
-    assert request["max_tokens"] == minimax.LLM_DEFAULT_MAX_OUTPUT_TOKENS == 1024
+    assert request["max_tokens"] == minimax.LLM_DEFAULT_MAX_OUTPUT_TOKENS == 2048
 
 
 def test_cli_does_not_accept_runtime_llm_setting_overrides():

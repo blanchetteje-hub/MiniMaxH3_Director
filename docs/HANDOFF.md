@@ -938,3 +938,9 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   194 passed and 26 existing stale Director/story prompt assertions failed;
   this work did not change runtime prompt text. Syntax and whitespace checks
   passed.
+
+## 2026-10-09 — raise 1024-token output caps to 2048
+
+- Raised every text-purpose completion cap that was 1024 to 2048 tokens, and raised `LLM_DEFAULT_MAX_OUTPUT_TOKENS` from 1024 to 2048. This covers the listed purpose-specific requests and unknown-purpose requests using the default.
+- Left profiles, thinking budgets, context budgets, and purpose caps already above or below 1024 unchanged. The context-fit calculation may still lower the effective request cap when necessary. The separate vision request cap was not changed.
+- Updated the LLM call catalog and routing/settings regression to assert the new limits.
