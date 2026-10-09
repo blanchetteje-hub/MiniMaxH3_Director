@@ -6,6 +6,7 @@ This file is for promising ideas, heuristics, and experiments that are **not cur
 
 These are **not approved implementation tasks**. Revisit only when they become relevant; detailed notes remain below.
 
+- [ ] **Parallel Director validators:** benchmark concurrent independent LLM validation and aggregate failures into one RAW repair request. See [Parallel Director validation experiment](#parallel-director-validation-experiment).
 - [ ] **Modularize `minimax.py`:** after WorldState/Director acceptance is stable, incrementally separate pipeline, LLM, planning, Director, and rendering responsibilities into modules, without changing behavior or adding OOP ceremony. See [Future modularization of minimax.py](#future-modularization-of-minimaxpy).
 - [ ] **Minimum local LLM context and long-story chunking:** evaluate **6,044 tokens** as the minimum supported context window; redesign story-dependent requests so expanded stories of **50+ beats** and other large story chunks can be processed in bounded, coherent pieces without losing source coverage, beat ordering, or cross-chunk continuity. See [Minimum-context / long-story scaling](#minimum-context--long-story-scaling).
 - [ ] **Dialogue-density classification:** evaluate a narrow story-type dialogue prior; keep source dialogue authoritative. See [Dialogue-density classification experiment](#dialogue-density-classification-experiment).
@@ -16,6 +17,18 @@ These are **not approved implementation tasks**. Revisit only when they become r
 - [ ] **Clothing-state reference refresh:** test short updated reference videos when visible wardrobe condition changes materially. See [Clothing-state reference-video refresh](#clothing-state-reference-video-refresh).
 
 The persistent room geometry / navigable topology item is already marked **SOLVED** below and is intentionally not an open TODO.
+
+## Parallel Director validation experiment
+
+**Deferred performance experiment, not approved for current implementation.** Once the unified RAW-scene validate → repair → revalidate loop is stable, compare sequential versus concurrent independent Director LLM validators (physical/spatial, prop/state, timing) against the same immutable RAW candidate.
+
+- Run cheap deterministic parsing, reducer dry-run, shot-script structure, and required-dialogue checks first; only parallelize independent LLM calls.
+- Gather all validator results in stable order regardless of completion order. Preserve complete individual diagnostics; feed one deduplicated, actionable set of failures into **one** repair prompt.
+- Revalidate the repaired RAW against all required validators. Regenerate RAW only after the repair budget is exhausted.
+- Benchmark wall-clock time, request contention, VRAM/throughput, reliability, and total LLM calls on the actual local GPT-OSS 20B / LM Studio setup; concurrent requests may be slower if the backend serializes or contends.
+- Use a minimal concurrency mechanism such as `ThreadPoolExecutor`; do not add scheduler, manager, extra state ledger, or change WorldState authority.
+
+**Status:** TODO / performance investigation only. Do not combine with the ongoing repair-loop changes.
 
 ## Future modularization of minimax.py
 
