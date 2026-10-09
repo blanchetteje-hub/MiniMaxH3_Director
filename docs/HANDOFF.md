@@ -1005,3 +1005,29 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   subtests; 2 unrelated stale story-start assertions deselected), Director
   retry tests passed (112 passed, 4 subtests), and `py_compile` plus
   `git diff --check` passed.
+
+## 2026-10-09 — validate complete initial-Subject and static-fixture seeds
+
+- `extract_initial_location_subjects()` now checks that each Beat's explicitly
+  referenced canonical Subjects have classifications before accepting that
+  attempt. Matching uses exact canonical names and only unambiguous aliases
+  already supported by the parser. An incomplete response enters the existing
+  three-attempt retry path; after exhaustion it fails closed. The check runs
+  before earliest classifications are recorded, so rejected partial attempts
+  cannot affect earliest-classification-wins. Prompts, schemas, and diagnostics
+  are unchanged.
+- `seed_canonical_static_location_state()` now merges duplicate declarations
+  with the same stable fixture identity when their physical fields agree. A
+  difference in `anchors` versus `objects` provenance alone is ignored, and
+  compatible known/unknown capability declarations are combined. Conflicting
+  mobility, kind, type, placement, or other physical attributes still fail
+  closed; same-name conflicting static declarations cannot silently receive a
+  second ID.
+- Added the tavern Beat-2 Goblin/Amy incomplete-classification retry and
+  three-attempt failure regressions, plus stone-hearth duplicate, idempotence,
+  stable-ID, capability-merge, mobility-conflict, and type-conflict coverage.
+- Verification: the WorldState foundation and location-reference suites passed
+  with 91 tests and 7 subtests; two pre-existing stale registered-story-start
+  prompt/response assertions were deselected. Running both files without the
+  exclusions reports those same two failures. `py_compile` and
+  `git diff --check` passed.

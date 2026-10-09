@@ -586,10 +586,63 @@ def seed_canonical_static_location_state(
                 "source_type": type_name or UNKNOWN,
             }},
         )
+        normalized_item_name = _name_key(item_name)
+        for registered_id, registered in candidate["props"].items():
+            if registered_id == prop_id or not isinstance(registered, dict):
+                continue
+            registered_provenance = registered.get("provenance", {})
+            registration = (
+                registered_provenance.get("registration", {})
+                if isinstance(registered_provenance, dict)
+                else {}
+            )
+            registered_placement = registered.get("placement", {})
+            if (
+                registration.get("authority") == "canonical_location_state"
+                and _name_key(registered.get("name")) == normalized_item_name
+                and isinstance(registered_placement, dict)
+                and registered_placement.get("kind") == "located"
+                and registered_placement.get("location_id") == location_id
+            ):
+                raise ValueError(
+                    f"Conflicting canonical fixture declarations for {item_name!r}."
+                )
         existing_prop = candidate["props"].get(prop_id)
-        if existing_prop is not None and existing_prop != prop:
-            raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
-        candidate["props"][prop_id] = prop
+        if existing_prop is not None:
+            existing_without_metadata = deepcopy(existing_prop)
+            prop_without_metadata = deepcopy(prop)
+            existing_provenance = existing_without_metadata.pop("provenance", {})
+            prop_provenance = prop_without_metadata.pop("provenance", {})
+            existing_registration = (
+                existing_provenance.get("registration", {})
+                if isinstance(existing_provenance, dict)
+                else {}
+            )
+            prop_registration = (
+                prop_provenance.get("registration", {})
+                if isinstance(prop_provenance, dict)
+                else {}
+            )
+            existing_registration.pop("source_field", None)
+            prop_registration.pop("source_field", None)
+            if existing_registration != prop_registration:
+                raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
+            existing_capabilities = existing_without_metadata.pop("capabilities", {})
+            new_capabilities = prop_without_metadata.pop("capabilities", {})
+            if existing_without_metadata != prop_without_metadata:
+                raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
+            merged_capabilities = {}
+            for capability in CAPABILITY_FIELDS:
+                old_value = existing_capabilities.get(capability, UNKNOWN)
+                new_value = new_capabilities.get(capability, UNKNOWN)
+                if old_value != UNKNOWN and new_value != UNKNOWN and old_value != new_value:
+                    raise ValueError(f"Stable fixture ID collision for {item_name!r}.")
+                merged_capabilities[capability] = (
+                    new_value if old_value == UNKNOWN else old_value
+                )
+            existing_prop["capabilities"] = merged_capabilities
+        else:
+            candidate["props"][prop_id] = prop
 
     return _changed_revision(before, candidate), location_id
 

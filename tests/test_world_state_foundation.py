@@ -592,6 +592,126 @@ class WorldStateSeedTests(unittest.TestCase):
             stable_world_state_id("location", "  hall  "),
         )
 
+    def test_tavern_stone_hearth_anchor_and_object_merge_with_complementary_metadata(self):
+        source = {
+            "location": {"name": "Medieval Tavern"},
+            "anchors": [{
+                "name": "stone-hearth",
+                "type": "stone hearth",
+                "world_state_role": "fixture_support",
+                "mobility": "fixed",
+                "capabilities": {"container": False},
+                "wall": "north",
+            }],
+            "objects": [{
+                "name": "stone-hearth",
+                "type": "stone hearth",
+                "world_state_role": "fixture_support",
+                "mobility": "fixed",
+                "capabilities": {"openable": False},
+                "near": ["counter", "barrel"],
+            }],
+        }
+        first, location_id = seed_canonical_static_location_state(empty_world_state(), source)
+        second, second_location_id = seed_canonical_static_location_state(
+            empty_world_state(), source
+        )
+        shared_declaration = source["anchors"][0]
+        anchor_only, anchor_location_id = seed_canonical_static_location_state(
+            empty_world_state(), {
+                "location": source["location"],
+                "anchors": [shared_declaration],
+                "objects": [],
+            }
+        )
+        object_only, object_location_id = seed_canonical_static_location_state(
+            empty_world_state(), {
+                "location": source["location"],
+                "anchors": [],
+                "objects": [shared_declaration],
+            }
+        )
+
+        self.assertEqual(location_id, second_location_id)
+        self.assertEqual(anchor_location_id, object_location_id)
+        self.assertEqual(len(first["props"]), 1)
+        self.assertEqual(set(anchor_only["props"]), set(object_only["props"]))
+        self.assertEqual(set(anchor_only["props"]), set(first["props"]))
+        prop_id, hearth = next(iter(first["props"].items()))
+        self.assertEqual(
+            prop_id,
+            stable_world_state_id(
+                "prop",
+                "|".join((location_id, "fixture_support", "stone-hearth", "stone hearth")),
+            ),
+        )
+        self.assertEqual(hearth["kind"], "fixture_support")
+        self.assertEqual(hearth["mobility"], "fixed")
+        self.assertEqual(hearth["placement"], {"kind": "located", "location_id": location_id})
+        self.assertEqual(hearth["capabilities"]["container"], False)
+        self.assertEqual(hearth["capabilities"]["openable"], False)
+        self.assertEqual(first, second)
+
+    def test_static_fixture_duplicate_declaration_is_idempotent(self):
+        state = empty_world_state()
+        source = {
+            "location": {"name": "Hall"},
+            "anchors": [{
+                "name": "stone-hearth",
+                "type": "stone hearth",
+                "world_state_role": "fixture_support",
+                "mobility": "fixed",
+            }],
+            "objects": [{
+                "name": "stone-hearth",
+                "type": "stone hearth",
+                "world_state_role": "fixture_support",
+                "mobility": "fixed",
+            }],
+        }
+        seeded, _ = seed_canonical_static_location_state(state, source)
+        seeded_again, _ = seed_canonical_static_location_state(seeded, source)
+        self.assertEqual(len(seeded["props"]), 1)
+        self.assertEqual(seeded_again, seeded)
+
+    def test_static_fixture_duplicate_with_conflicting_mobility_fails_closed(self):
+        source = {
+            "location": {"name": "Hall"},
+            "anchors": [{
+                "name": "stone-hearth",
+                "type": "stone hearth",
+                "world_state_role": "fixture_support",
+                "mobility": "fixed",
+            }],
+            "objects": [{
+                "name": "stone-hearth",
+                "type": "stone hearth",
+                "world_state_role": "fixture_support",
+                "mobility": "movable",
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "Stable fixture ID collision"):
+            seed_canonical_static_location_state(empty_world_state(), source)
+
+    def test_static_fixture_same_name_with_conflicting_type_fails_closed(self):
+        source = {
+            "location": {"name": "Hall"},
+            "anchors": [{
+                "name": "stone-hearth",
+                "type": "stone hearth",
+                "world_state_role": "fixture_support",
+                "mobility": "fixed",
+            }],
+            "objects": [{
+                "name": "stone-hearth",
+                "type": "wooden hearth",
+                "world_state_role": "fixture_support",
+                "mobility": "fixed",
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "Conflicting canonical fixture declarations"):
+            seed_canonical_static_location_state(empty_world_state(), source)
+
     def test_explicit_persistent_prop_registration_requires_and_sets_one_placement(self):
         state, location_id = seed_canonical_static_location_state(
             empty_world_state(),

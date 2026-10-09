@@ -152,7 +152,8 @@ A rectangular tavern interior.
         responses = [
             '[{"subject":"Amy","present":true,"reason":"Amy wipes the counter."},'
             '{"subject":"Elf","present":false,"reason":"The elf waits by the door."}]',
-            '[{"subject":"goblin","present":true,"reason":"The goblin asks for a pint."},'
+            '[{"subject":"Amy","present":true,"reason":"Amy serves the goblin."},'
+            '{"subject":"goblin","present":true,"reason":"The goblin asks for a pint."},'
             '{"subject":"Elf","present":false,"reason":"The elf steps into the tavern."}]',
             '[{"subject":"Goblin1","present":false,"reason":"The goblin enters from outside."},'
             '{"subject":"Elf","present":true,"reason":"The elf is already seated."}]',
@@ -192,11 +193,13 @@ A rectangular tavern interior.
         request = mock.Mock(side_effect=[
             '{"wrong":[]}',
             '[{"subject":"goblin","present":true,"reason":"The goblin asks for ale."}]',
-            "[]",
+            '[{"subject":"Amy","present":true,"reason":"Amy serves the goblin."},'
+            '{"subject":"Goblin1","present":true,"reason":"The goblin asks for ale."}]',
         ])
         result = minimax.extract_initial_location_subjects(
             ["The goblin asks for ale.", "Amy serves the goblin."],
-            possible_subjects=["Goblin1"],
+            "<Subject 1> is Amy (S1).",
+            possible_subjects=["Amy", "Goblin1"],
             llm_request=request,
         )
         self.assertEqual(
@@ -213,7 +216,7 @@ A rectangular tavern interior.
         self.assertEqual(first_messages, retry_messages)
         self.assertEqual(
             first_messages[-1]["content"],
-            "POSSIBLE SUBJECTS\nGoblin1\n\nSTORY BEAT\nThe goblin asks for ale.",
+            "POSSIBLE SUBJECTS\nAmy, Goblin1\n\nSTORY BEAT\nThe goblin asks for ale.",
         )
         self.assertEqual(
             [call.kwargs["history_metadata"]["beat_index"] for call in request.call_args_list],
@@ -306,6 +309,60 @@ A rectangular tavern interior.
             }],
         )
         self.assertEqual(request.call_count, 2)
+
+    def test_initial_location_subject_incomplete_tavern_goblin_result_retries(self):
+        goblin_beat = (
+            "A green-skinned goblin leans over the counter clutching a chipped mug "
+            "while Amy refills it by pouring liquid from a barrel beside the hearth."
+        )
+        request = mock.Mock(side_effect=[
+            '[{"subject":"Amy","present":true,"reason":"Amy refills the mug."}]',
+            '[{"subject":"Amy","present":true,"reason":"Amy refills the mug."},'
+            '{"subject":"Goblin","present":true,"reason":"The goblin clutches a chipped mug."}]',
+        ])
+        result = minimax.extract_initial_location_subjects(
+            [goblin_beat],
+            "<Subject 1> is Amy (S1).",
+            possible_subjects=["Amy", "Goblin1"],
+            llm_request=request,
+        )
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(
+            result,
+            [{
+                "name": "Goblin1",
+                "initial_state": "present in the opening scene",
+                "reason": "The goblin clutches a chipped mug.",
+            }],
+        )
+        self.assertEqual(
+            request.call_args_list[0].kwargs["history_metadata"]["attempt"], 1
+        )
+        self.assertEqual(
+            request.call_args_list[1].kwargs["history_metadata"]["attempt"], 2
+        )
+
+    def test_initial_location_subject_incomplete_tavern_beat_fails_after_three_attempts(self):
+        goblin_beat = (
+            "A green-skinned goblin leans over the counter clutching a chipped mug "
+            "while Amy refills it by pouring liquid from a barrel beside the hearth."
+        )
+        incomplete = '[{"subject":"Amy","present":true,"reason":"Amy refills the mug."}]'
+        request = mock.Mock(return_value=incomplete)
+        with self.assertRaisesRegex(
+            ValueError, "omitted explicitly referenced canonical Subjects: Goblin1"
+        ):
+            minimax.extract_initial_location_subjects(
+                [goblin_beat],
+                "<Subject 1> is Amy (S1).",
+                possible_subjects=["Amy", "Goblin1"],
+                llm_request=request,
+            )
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["attempt"] for call in request.call_args_list],
+            [1, 2, 3],
+        )
 
     def test_initial_location_subject_parser_rejects_unknown_canon_key(self):
         with self.assertRaisesRegex(ValueError, "unrecognized Subject key"):

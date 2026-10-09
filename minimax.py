@@ -19562,10 +19562,29 @@ def extract_initial_location_subjects(
     }
     max_attempts = max(1, int(attempts))
     first_classification_by_subject = {}
+    aliases_by_key = {}
+    for canonical_name in canonical_subjects:
+        canonical_key = _subject_identity_key(canonical_name)
+        aliases_by_key.setdefault(canonical_key, set()).add(canonical_name)
+        if canonical_name.casefold().endswith("1"):
+            role_alias = _subject_identity_key(canonical_name[:-1].strip())
+            if role_alias and role_alias not in possible_subject_names:
+                aliases_by_key.setdefault(role_alias, set()).add(canonical_name)
+        name_tokens = canonical_key.split()
+        for start in range(1, len(name_tokens)):
+            role_alias = " ".join(name_tokens[start:])
+            if role_alias and role_alias not in possible_subject_names:
+                aliases_by_key.setdefault(role_alias, set()).add(canonical_name)
     for beat_index, beat in enumerate(beats, start=1):
         beat_text = str(beat or "").strip()
         if not beat_text:
             continue
+        normalized_beat = f" {_subject_identity_key(beat_text)} "
+        explicitly_named = {
+            next(iter(names))
+            for alias, names in aliases_by_key.items()
+            if len(names) == 1 and f" {alias} " in normalized_beat
+        }
         last_error = None
         base_messages = build_initial_location_subjects_messages(
             canonical_subjects,
@@ -19594,6 +19613,19 @@ def extract_initial_location_subjects(
                     raw,
                     possible_subject_names=canonical_subjects,
                 )
+                classified_names = {
+                    _subject_identity_key(item["name"])
+                    for item in classifications
+                }
+                missing_names = sorted(
+                    name for name in explicitly_named
+                    if _subject_identity_key(name) not in classified_names
+                )
+                if missing_names:
+                    raise ValueError(
+                        "Subject presence response omitted explicitly referenced "
+                        "canonical Subjects: " + ", ".join(missing_names) + "."
+                    )
                 for item in classifications:
                     key = _subject_identity_key(item["name"])
                     canonical_name = possible_subject_names.get(key)
