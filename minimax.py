@@ -4258,23 +4258,66 @@ def build_current_segment_persistent_prop_messages(
     world_state,
 ):
     """Build a current-only prop extractor from registered vocabulary."""
+    subject_names = {
+        subject_id: item["name"]
+        for subject_id, item in world_state["subjects"].items()
+    }
+    location_names = {
+        location_id: item["name"]
+        for location_id, item in world_state["locations"].items()
+    }
+    prop_names = {
+        prop_id: item["name"]
+        for prop_id, item in world_state["props"].items()
+    }
     subjects = [
-        {"id": item["id"], "name": item["name"], "presence": item["presence"]}
-        for _subject_id, item in sorted(world_state["subjects"].items())
+        {"name": item["name"], "presence": item["presence"]}
+        for _subject_id, item in sorted(
+            world_state["subjects"].items(), key=lambda pair: pair[1]["name"].casefold()
+        )
     ]
-    props = [
-        {"id": prop_id, "name": item["name"], "kind": item["kind"],
-         "placement": item["placement"]}
-        for prop_id, item in sorted(world_state["props"].items())
-    ]
+    props = []
+    for prop_id, item in sorted(
+        world_state["props"].items(), key=lambda pair: pair[1]["name"].casefold()
+    ):
+        placement = item["placement"]
+        if placement["kind"] == "held":
+            name_placement = {
+                "kind": "held",
+                "holder": subject_names.get(placement["subject_id"], "unknown"),
+            }
+        elif placement["kind"] == "located":
+            name_placement = {
+                "kind": "located",
+                "location": location_names.get(placement["location_id"], "unknown"),
+            }
+            if placement.get("support_id") is not None:
+                name_placement["support"] = prop_names.get(
+                    placement["support_id"], "unknown"
+                )
+        else:
+            name_placement = {"kind": "unknown"}
+        props.append({
+            "name": item["name"],
+            "kind": item["kind"],
+            "placement": name_placement,
+        })
     locations = [
-        {"id": location_id, "name": item["name"]}
-        for location_id, item in sorted(world_state["locations"].items())
+        {"name": item["name"]}
+        for _location_id, item in sorted(
+            world_state["locations"].items(), key=lambda pair: pair[1]["name"].casefold()
+        )
     ]
     supports = [
-        {"id": prop_id, "name": item["name"],
-         "location_id": item["placement"].get("location_id")}
-        for prop_id, item in sorted(world_state["props"].items())
+        {
+            "name": item["name"],
+            "location": location_names.get(
+                item["placement"].get("location_id"), "unknown"
+            ),
+        }
+        for _prop_id, item in sorted(
+            world_state["props"].items(), key=lambda pair: pair[1]["name"].casefold()
+        )
         if item["kind"] in {"support", "fixture_support"}
     ]
     return [

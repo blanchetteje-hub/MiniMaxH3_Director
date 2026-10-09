@@ -14,6 +14,14 @@ Baseline branch this experiment diverged from: `main`
 
 Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/evaluation only and must not become a production dependency.
 
+## 2026-10-09 — current-Segment prop vocabulary uses names
+
+- Removed Python-assigned Subject, location, and prop IDs from the `world_state_current_segment_props` request vocabulary. Existing prop placements are rendered with registered holder, location, and support names as well.
+- The extractor's prompt and response schema are unchanged. Python continues to validate exact registered names, resolve them through its name-to-ID maps, and assign stable IDs through the existing persistent-prop registry.
+- Added a regression for a cleaning cloth explicitly involved in a handoff: Python registers it with Amy as the initial holder, the same deterministic prop ID survives the handoff into the following Segment, and the cloth can then be placed on the registered counter. The next extractor vocabulary includes names and placement but no IDs.
+- Scope note: with the current unchanged extractor contract, a prop is registered when the current Beat/assigned source explicitly involves it in a supported persistent action such as placement or transfer. A cloth mentioned only as a wiping instrument is not inferred from future handling.
+- Verification: the new focused regression passed. The full `tests/test_world_state_foundation.py` module reported 43 passed and 2 existing stale story-start contract assertions failed; syntax and `git diff --check` passed.
+
 ## Primary goal
 
 `story.txt -> gold-standard MiniMax H3 prompts`

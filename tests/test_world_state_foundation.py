@@ -617,6 +617,134 @@ class WorldStateSeedTests(unittest.TestCase):
                 "needed_for_state": True, "reason": "cross-segment action", "location_id": location_id,
             }])
 
+    def test_current_segment_prop_extractor_uses_names_and_cloth_id_persists(self):
+        state = new_world_state({"subjects": {
+            "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
+            "2": {"subject_id": 2, "name": "Goblin", "gender": UNKNOWN, "picture_ids": []},
+        }})
+        state, location_id = seed_canonical_static_location_state(
+            state,
+            {
+                "location": {"name": "Tavern"},
+                "anchors": [],
+                "objects": [{
+                    "name": "bar counter",
+                    "type": "wooden counter",
+                    "world_state_role": "fixture_support",
+                    "mobility": "fixed",
+                }],
+            },
+        )
+        state = minimax.seed_story_start_presence(
+            state,
+            [
+                {"name": "Amy", "initial_state": "behind the counter"},
+                {"name": "Goblin", "initial_state": "near the counter"},
+            ],
+            location_id=location_id,
+        )
+        beat = "Amy wipes the counter and hands the cleaning cloth to Goblin."
+        extracted_entry = {
+            "name": "cleaning cloth",
+            "kind": "tool",
+            "mobility": "movable",
+            "initial_location": None,
+            "initial_holder": "Amy",
+            "support_name": None,
+            "contents": [],
+            "capabilities": {
+                "container": "unknown",
+                "consumable": "unknown",
+                "openable": "unknown",
+                "lockable": "unknown",
+            },
+            "reason": "The cloth is explicitly handed from Amy to Goblin.",
+            "evidence": beat,
+        }
+        captured = {}
+
+        def fake_llm(messages, **_kwargs):
+            captured["messages"] = messages
+            return {"props": [copy.deepcopy(extracted_entry)]}
+
+        extracted = minimax.extract_current_segment_persistent_props(
+            beat, beat, state, llm_request=fake_llm
+        )
+        self.assertEqual(extracted[0]["initial_holder"], "Amy")
+        prompt_text = "\n".join(message["content"] for message in captured["messages"])
+        self.assertIn('"name":"Amy"', prompt_text)
+        self.assertIn('"name":"Goblin"', prompt_text)
+        self.assertIn('"name":"Tavern"', prompt_text)
+        self.assertIn('"name":"bar counter"', prompt_text)
+        for entity_id in (
+            *state["subjects"], *state["locations"], *state["props"],
+        ):
+            self.assertNotIn(entity_id, prompt_text)
+
+        # Python alone resolves the returned registered name to its canonical ID.
+        registered_state = minimax.register_extracted_persistent_props(state, extracted)
+        cloth_id = next(
+            prop_id for prop_id, prop in registered_state["props"].items()
+            if prop["name"] == "cleaning cloth"
+        )
+        self.assertEqual(
+            cloth_id,
+            stable_world_state_id("prop", "tool|cleaning cloth", scope="subject_1"),
+        )
+        self.assertEqual(
+            registered_state["props"][cloth_id]["placement"],
+            {"kind": "held", "subject_id": "subject_1"},
+        )
+
+        handed_off = reduce_world_state(registered_state, [{
+            "action_id": "cloth-handoff",
+            "op": "handoff",
+            "from_subject_id": "subject_1",
+            "to_subject_id": "subject_2",
+            "prop_id": cloth_id,
+        }], segment_number=1)
+        self.assertTrue(handed_off.committed)
+        following_state = handed_off.world_state
+        next_prompt = "\n".join(
+            message["content"]
+            for message in minimax.build_current_segment_persistent_prop_messages(
+                "Goblin places the cloth on the counter.",
+                "Goblin places the cloth on the counter.",
+                following_state,
+            )
+        )
+        self.assertIn('"name":"cleaning cloth"', next_prompt)
+        self.assertIn('"holder":"Goblin"', next_prompt)
+        for entity_id in (
+            *following_state["subjects"], *following_state["locations"],
+            *following_state["props"],
+        ):
+            self.assertNotIn(entity_id, next_prompt)
+
+        placed = reduce_world_state(following_state, [{
+            "action_id": "cloth-place",
+            "op": "place",
+            "actor_subject_id": "subject_2",
+            "prop_id": cloth_id,
+            "location_id": location_id,
+            "support_id": next(
+                prop_id for prop_id, prop in following_state["props"].items()
+                if prop["name"] == "bar counter"
+            ),
+        }], segment_number=2)
+        self.assertTrue(placed.committed)
+        self.assertEqual(
+            placed.world_state["props"][cloth_id]["placement"]["kind"], "located"
+        )
+
+        # Supplying a Python ID where a registered holder name is required remains invalid.
+        by_id = copy.deepcopy(extracted_entry)
+        by_id["initial_holder"] = "subject_1"
+        with self.assertRaisesRegex(ValueError, "unregistered holder"):
+            minimax.parse_current_segment_persistent_prop_result(
+                {"props": [by_id]}, beat, beat, state
+            )
+
     def test_legacy_visual_raw_and_accepted_state_do_not_seed_world_state(self):
         state = minimax.new_generation_state({
             "world_state_seed": {"subjects": {}},
