@@ -1,0 +1,35 @@
+{
+  "version": 3,
+  "source_sha256": "d507f502c61f9ee028690a226c15002009b8f00004c6ea4a10ffa147852e4084",
+  "fields": [
+    "age",
+    "clothing",
+    "gender"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30 years old",
+      "clothing": "Amy wears a rough‑spun tunic over her torso and a scuffed leather apron that shows the wear of her medieval trade. The tunic is made from coarse linen woven with wool threads in a muted olive‑brown hue; it has uneven warp, visible hand‑stitches at hems and cuffs, slight fraying on its hem, and a worn collar area. Underneath she wears a dark tan leather waist belt that matches the apron’s material—a smooth tanned cowhide strap with slight stretch marks from carrying tools. Her feet are covered in wooden clogs made of polished oak with a tan leather strap at the ankle; the planks are smooth but scuffed from walking on creaky floors and stepping into ale spills",
+      "gender": "Female"
+    },
+    {
+      "name": "Goblin",
+      "age": "20 years old",
+      "clothing": "Green goblin wearing a rough‑spun greenish‑brown tunic patched at the seams; worn brown canvas trousers tucked into scuffed leather boots; a simple leather belt with a small pouch hangs from his waist",
+      "gender": "Male"
+    },
+    {
+      "name": "Elf",
+      "age": "150 years old",
+      "clothing": "{\"tunic\":{\"type\":\"tunics\",\"material\":\"linen\",\"texture\":\"soft and smooth\",\"color\":\"sage green\",\"wear\":\"lightly worn on shoulders and waist\",\"layer\":\"outer\"",
+      "gender": "Female"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "200 years old",
+      "clothing": "N/A",
+      "gender": "Male"
+    }
+  ]
+}
