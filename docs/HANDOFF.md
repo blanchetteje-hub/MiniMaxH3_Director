@@ -42,7 +42,14 @@ Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/
   Registration no longer copies `reason` into persistent prop provenance.
 - Runtime prompt wording and state-writer/commit behavior were not changed. The
   Director ID-to-name boundary and legacy-writer retirement remain later steps.
-- Tests were not run in this change.
+- Focused follow-up validation: `WorldStateSeedTests`, `WorldStateReducerTests`,
+  the four Request-1 state-action regressions, and the Director response-schema
+  test passed (40 passed, 2 subtests).
+- The broader WorldState foundation + Director retry modules reported 150
+  passed and 6 failures. All six are stale story-start prompt/response fixtures:
+  two assert the retired `classification/evidence` contract, and four Director
+  tests use a shared fixture returning that same retired shape. They do not
+  exercise the shared prop/action schema consolidation.
 
 ## Primary goal
 
