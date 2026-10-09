@@ -73,7 +73,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("Griffin1 is a griffin.", definitions[0])
 
     def test_beat_validator_treats_missing_ordinary_prop_as_unknown(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_state_validation_messages(
             previous_final_beat="Amy stands at the bar.",
             current_state=minimax.new_beat_canonical_state(),
             beat_job="Amy pours water from a chalice.",
@@ -99,7 +99,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertIn("Do not invent a completion endpoint", finite_prompt)
 
-        validator_messages = minimax.build_beat_validation_messages(
+        validator_messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy stands by the hearth.",
             current_state=minimax.new_beat_canonical_state(),
             beat_job="Amy polishes a crystal goblet by the hearth.",
@@ -710,7 +710,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("do not replace a stated list with", prompt)
         self.assertIn("instead of collapsing them into a", prompt)
 
-        validator = minimax.build_beat_validation_messages(
+        validator = minimax.build_beat_story_validation_messages(
             previous_final_beat="",
             current_state=minimax.new_beat_canonical_state(),
             beat_job="Amy watches the goblin, centaur, dragon, and unicorn settle.",

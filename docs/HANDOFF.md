@@ -944,3 +944,11 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
 - Raised every text-purpose completion cap that was 1024 to 2048 tokens, and raised `LLM_DEFAULT_MAX_OUTPUT_TOKENS` from 1024 to 2048. This covers the listed purpose-specific requests and unknown-purpose requests using the default.
 - Left profiles, thinking budgets, context budgets, and purpose caps already above or below 1024 unchanged. The context-fit calculation may still lower the effective request cap when necessary. The separate vision request cap was not changed.
 - Updated the LLM call catalog and routing/settings regression to assert the new limits.
+
+## 2026-10-09 — split Beat story and state validation
+
+- Replaced the combined `beat_validation` purpose with independent `beat_story_validation` and `beat_state_validation` purposes. Both use the existing Smart Extractor profile and unchanged `{"valid": boolean, "issue": string}` response schema.
+- Both validators receive byte-identical user context for previous Beat, current state, current job, reserved later job, state effects, and candidate Beat. Only `CHECKS` differs: Story runs checks 1, 2, 4, and 6; State runs checks 3 and 5.
+- The two requests run concurrently for each candidate. Both must return valid before finite-endpoint checks and acceptance continue. Each result and issue is logged under its validator name; failed reasons retain Story/State attribution in the existing retry/regeneration feedback.
+- Removed the combined validator purpose and builder. Existing separate finite-endpoint and within-Beat coherence checks remain unchanged.
+- Verification: forward-Beat, retry hierarchy, at-a-time validator, source-span, simplified-prompt, and dynamic-profile suites passed (115 passed; 2 unrelated stale assertions deselected; 2 subtests passed). The postmortem regression suite passed (79 passed; one unrelated stale wardrobe-prompt assertion deselected). Split-validator profile/transport tests passed (3 passed). `py_compile` and `git diff --check` passed.

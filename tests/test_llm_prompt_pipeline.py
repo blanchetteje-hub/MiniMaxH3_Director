@@ -602,39 +602,40 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         }
         post.return_value = response
 
-        minimax.ask_llm(
-            [{"role": "user", "content": "validate"}],
-            response_format=None,
-            history_metadata={"purpose": "beat_validation"},
-        )
+        for purpose in ("beat_story_validation", "beat_state_validation"):
+            minimax.ask_llm(
+                [{"role": "user", "content": "validate"}],
+                response_format=None,
+                history_metadata={"purpose": purpose},
+            )
 
-        request_json = post.call_args.kwargs["json"]
-        self.assertEqual(
-            request_json["temperature"],
-            minimax.EXTRACTOR_LLM_SETTINGS["temperature"],
-        )
-        self.assertEqual(
-            request_json["repeat_penalty"],
-            minimax.EXTRACTOR_LLM_SETTINGS["repeat_penalty"],
-        )
-        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
-        self.assertNotIn("thinking", request_json)
-        self.assertNotIn("chat_template", request_json)
-        self.assertNotIn("jinja", request_json)
-        self.assertEqual(
-            request_json["chat_template_kwargs"],
-            {"enable_thinking": True},
-        )
-        self.assertEqual(request_json["reasoning_effort"], "high")
-        self.assertEqual(request_json["thinking_budget_tokens"], 1024)
-        self.assertEqual(
-            request_json["reasoning_budget_message"],
-            ". Enough thinking, now answer.",
-        )
+            request_json = post.call_args.kwargs["json"]
+            self.assertEqual(
+                request_json["temperature"],
+                minimax.SMART_EXTRACTOR_LLM_SETTINGS["temperature"],
+            )
+            self.assertEqual(
+                request_json["repeat_penalty"],
+                minimax.SMART_EXTRACTOR_LLM_SETTINGS["repeat_penalty"],
+            )
+            self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+            self.assertNotIn("thinking", request_json)
+            self.assertNotIn("chat_template", request_json)
+            self.assertNotIn("jinja", request_json)
+            self.assertEqual(
+                request_json["chat_template_kwargs"],
+                {"enable_thinking": True},
+            )
+            self.assertEqual(request_json["reasoning_effort"], "high")
+            self.assertEqual(request_json["thinking_budget_tokens"], 1024)
+            self.assertEqual(
+                request_json["reasoning_budget_message"],
+                ". Enough thinking, now answer.",
+            )
 
 
     @patch("minimax.requests.post")
-    def test_beat_validation_transport_does_not_follow_active_formatter(self, post):
+    def test_split_beat_validators_transport_does_not_follow_active_formatter(self, post):
         response = Mock()
         response.status_code = 200
         response.raise_for_status = Mock()
@@ -650,26 +651,27 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         original = minimax.ACTIVE_FORMATTER
         try:
             minimax.configure_formatter("qwen")
-            result = minimax.ask_llm(
-                [{"role": "user", "content": "validate"}],
-                response_format=None,
-                history_metadata={"purpose": "beat_validation"},
-            )
-            self.assertEqual(result, {"valid": True, "issue": ""})
-            request_json = post.call_args.kwargs["json"]
-            self.assertEqual(
-                request_json["chat_template_kwargs"],
-                {"enable_thinking": True},
-            )
-            self.assertEqual(request_json["reasoning_effort"], "high")
-            self.assertEqual(request_json["thinking_budget_tokens"], 1024)
-            self.assertEqual(
-                request_json["reasoning_budget_message"],
-                ". Enough thinking, now answer.",
-            )
-            self.assertNotIn("thinking", request_json)
-            self.assertNotIn("chat_template", request_json)
-            self.assertNotIn("jinja", request_json)
+            for purpose in ("beat_story_validation", "beat_state_validation"):
+                result = minimax.ask_llm(
+                    [{"role": "user", "content": "validate"}],
+                    response_format=None,
+                    history_metadata={"purpose": purpose},
+                )
+                self.assertEqual(result, {"valid": True, "issue": ""})
+                request_json = post.call_args.kwargs["json"]
+                self.assertEqual(
+                    request_json["chat_template_kwargs"],
+                    {"enable_thinking": True},
+                )
+                self.assertEqual(request_json["reasoning_effort"], "high")
+                self.assertEqual(request_json["thinking_budget_tokens"], 1024)
+                self.assertEqual(
+                    request_json["reasoning_budget_message"],
+                    ". Enough thinking, now answer.",
+                )
+                self.assertNotIn("thinking", request_json)
+                self.assertNotIn("chat_template", request_json)
+                self.assertNotIn("jinja", request_json)
         finally:
             if isinstance(original, minimax.QwenFormatter):
                 minimax.configure_formatter("qwen")
@@ -683,7 +685,16 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         original = minimax.ACTIVE_FORMATTER
         try:
             minimax.configure_formatter("mistral")
-            mistral_messages = minimax.build_beat_validation_messages(
+            mistral_messages = minimax.build_beat_story_validation_messages(
+                previous_final_beat="Amy equips her weapons.",
+                current_state=minimax.new_beat_canonical_state(),
+                beat_job="Amy kills attacking zombies.",
+                next_beat_job="Amy kills more attacking zombies.",
+                candidate_beat=(
+                    "Amy kills attacking zombies until the last zombie falls dead."
+                ),
+            )
+            mistral_state_messages = minimax.build_beat_state_validation_messages(
                 previous_final_beat="Amy equips her weapons.",
                 current_state=minimax.new_beat_canonical_state(),
                 beat_job="Amy kills attacking zombies.",
@@ -694,7 +705,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             )
 
             minimax.configure_formatter("qwen")
-            qwen_messages = minimax.build_beat_validation_messages(
+            qwen_messages = minimax.build_beat_story_validation_messages(
                 previous_final_beat="Amy equips her weapons.",
                 current_state=minimax.new_beat_canonical_state(),
                 beat_job="Amy kills attacking zombies.",
@@ -708,6 +719,18 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             self.assertIn(
                 "You validate one candidate story beat.",
                 qwen_messages[0]["content"],
+            )
+            self.assertEqual(
+                mistral_state_messages,
+                minimax.build_beat_state_validation_messages(
+                    previous_final_beat="Amy equips her weapons.",
+                    current_state=minimax.new_beat_canonical_state(),
+                    beat_job="Amy kills attacking zombies.",
+                    next_beat_job="Amy kills more attacking zombies.",
+                    candidate_beat=(
+                        "Amy kills attacking zombies until the last zombie falls dead."
+                    ),
+                ),
             )
         finally:
             if isinstance(original, minimax.QwenFormatter):
@@ -909,7 +932,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("does NOT require another set_location effect", prompt)
 
     def test_beat_validator_does_not_require_effect_for_new_incidental_target(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy is armed and ready.",
             current_state=minimax.new_beat_canonical_state(),
             beat_job="Amy kills a zombie that attacks her.",
@@ -1049,7 +1072,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             ],
         )
 
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy waits outside.",
             current_state=state,
             beat_job="Amy fights zombies.",
@@ -1097,7 +1120,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         state["environment"]["barriers"] = {
             "door": {"status": "locked"}
         }
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy locks Will in the basement.",
             current_state=state,
             beat_job="Amy retrieves and equips her hidden weapons.",
@@ -1123,7 +1146,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         state["environment"]["barriers"] = {
             "door": {"status": "locked"}
         }
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Will is secured in the basement.",
             current_state=state,
             beat_job="Amy defeats another attacker.",
@@ -1149,7 +1172,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         state["environment"]["barriers"] = {
             "door": {"status": "locked"}
         }
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Will is secured in the basement.",
             current_state=state,
             beat_job="Amy defeats another attacker.",
@@ -1195,7 +1218,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
             {"op": "set_barrier_state", "entity": "door", "value": "locked"},
         ]
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy is in the kitchen.",
             current_state=minimax.new_beat_canonical_state(),
             beat_job="Amy gets Will and Amber into the basement and locks the door.",

@@ -34,7 +34,8 @@
 | `macro_arc_majority_tail_repair` | `SMART_CREATIVE_LLM_SETTINGS` | Repair majority-process placement | Affected arc portion and validator feedback | Corrected arc tail |
 | `macro_arc_repair` | `SMART_CREATIVE_LLM_SETTINGS` | Repair an arc defect | Story, candidate arc and validation failure | Revised arc plan |
 | `beat_generation` | `SMART_CREATIVE_LLM_SETTINGS` | Write assigned visible Beats | Authoritative source, assigned events, budget, Subject canon and relevant prior context | Specified number of Beats |
-| `beat_validation` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check source coverage, fidelity, and beat boundaries | Source/assigned events, candidate Beats, applicable canonical state | Valid/invalid with first issue |
+| `beat_story_validation` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check assigned work, participants, later-event boundaries, and story fidelity | Previous Beat, current state, current/reserved jobs, state effects, candidate Beat | Story-specific validity and issue |
+| `beat_state_validation` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check physical continuity and persistent state effects/final state | Same context as Story Validator | State-specific validity and issue |
 | `beat_destination_presence_extract` | `EXTRACTOR_LLM_SETTINGS` | Extract source-unit destination presence | Source unit and relevant established context | Structured destination/presence facts |
 | `beat_instruction_review` | `SMART_EXTRACTOR_LLM_SETTINGS` | Review beat instructions for clarity and usable staging | Beat instructions and applicable source context | Specific issue or approval result |
 | `beat_finite_endpoint_extract` | `EXTRACTOR_LLM_SETTINGS` | Observe whether finite assigned activity has completed | Exact finite assignment and candidate Beat | Complete/ongoing/not-applicable classification |

@@ -524,7 +524,8 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "macro_arc_majority_tail_repair": SMART_CREATIVE_LLM_SETTINGS,
     "macro_arc_repair": SMART_CREATIVE_LLM_SETTINGS,
     "beat_generation": SMART_CREATIVE_LLM_SETTINGS,
-    "beat_validation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "beat_story_validation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "beat_state_validation": SMART_EXTRACTOR_LLM_SETTINGS,
     "beat_destination_presence_extract": EXTRACTOR_LLM_SETTINGS,
     "beat_finite_endpoint_extract": EXTRACTOR_LLM_SETTINGS,
     "beat_coherence_validation": SMART_EXTRACTOR_LLM_SETTINGS,
@@ -586,7 +587,8 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "beat_destination_presence_extract": 2048,
     "beat_finite_endpoint_extract": 2048,
     "beat_instruction_review": 2048,
-    "beat_validation": 2048,
+    "beat_story_validation": 2048,
+    "beat_state_validation": 2048,
     "combined_continuity": 2048,
     "continuity_attachment_extract": 2048,
     "continuity_combined_reduced_state": 2048,
@@ -10694,7 +10696,8 @@ def ask_llm(
         "beat_generation",
         "beat_repair",
         "beat_instruction_review",
-        "beat_validation",
+        "beat_story_validation",
+        "beat_state_validation",
     }
     response_history_purposes = beat_history_purposes | {
         "director_raw_scene",
@@ -13794,16 +13797,17 @@ def _beat_unassigned_barrier_end_state_errors(
     return errors
 
 
-def build_beat_validation_messages(
+def _build_beat_validator_messages(
     previous_final_beat,
     current_state,
     beat_job,
     next_beat_job,
     candidate_beat,
+    checks,
     settings=None,
     assigned_state_effects=None,
 ):
-    """Build the compact single-candidate beat-validation prompt."""
+    """Build one focused beat validator with the shared context contract."""
     settings = settings or {}
     state = compact_beat_validation_state(current_state)
     # Boundary/barrier enforcement is intentionally dormant during beat
@@ -13867,7 +13871,18 @@ CANDIDATE BEAT
 {candidate_beat}
 
 CHECKS
-1. CURRENT JOB is the only required work. Show every assigned action and result
+{checks}
+
+Return only {{"valid": true, "issue": ""}} when all checks pass, otherwise
+{{"valid": false, "issue": "short concrete explanation"}}. No extra keys or markdown.
+""".strip()
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+
+
+_BEAT_STORY_VALIDATION_CHECKS = """1. CURRENT JOB is the only required work. Show every assigned action and result
 in THIS beat. PREVIOUS FINAL BEAT or aftermath ("having finished X") cannot
 substitute for performing an assigned action now. Preparation or partial progress
 is insufficient when CURRENT JOB explicitly requires a terminal result. When the
@@ -13878,22 +13893,27 @@ activity is sufficient unless CURRENT JOB explicitly requires it to finish.
 2. Preserve every required participant and beneficiary role. If CURRENT JOB
 explicitly enumerates distinct participants, recipients, targets, or objects,
 the candidate must preserve each listed identity rather than collapse the list
-into a generic collective label. When immediate
-receipt is part of the job, food/hand-offs must reach the intended recipient;
-labeling or leaving them elsewhere is insufficient. Work made FOR someone needs
-no delivery unless required. Honor explicit later pickup/storage; watching or
-listening can satisfy a performance/lesson role.
+into a generic collective label. When immediate receipt is part of the job,
+food/hand-offs must reach the intended recipient; labeling or leaving them
+elsewhere is insufficient. Work made FOR someone needs no delivery unless
+required. Honor explicit later pickup/storage; watching or listening can satisfy
+a performance/lesson role.
 
-3. PREVIOUS FINAL BEAT and CURRENT STATE are authoritative history. Apply candidate
+4. RESERVED FOR LATER is never required now. Do not complete a distinct later job
+early. Allow preparation belonging to CURRENT JOB and another instance of an
+intentionally repeated job, without prematurely ending the process.
+
+6. Allow harmless staging. Reject details that materially change the assigned
+action, location, outcome, participant treatment, or story meaning. Tools must
+suit their actions unless an unusual capability is established. Do not invent
+harmful treatment of protected/non-hostile participants."""
+
+_BEAT_STATE_VALIDATION_CHECKS = """3. PREVIOUS FINAL BEAT and CURRENT STATE are authoritative history. Apply candidate
 actions in order. Reject clear impossibilities: an object explicitly established
 as absent/destroyed/inaccessible, conflicting locations, unresolved closed
 barriers/containment, or repeating an irreversible action without restoration.
 An ordinary story/staging prop is NOT unavailable merely because CURRENT STATE
 does not list it. Missing state is unknown, not absent.
-
-4. RESERVED FOR LATER is never required now. Do not complete a distinct later job
-early. Allow preparation belonging to CURRENT JOB and another instance of an
-intentionally repeated job, without prematurely ending the process.
 
 5. Every listed effect must match the candidate's FINAL state after all actions.
 For set_location(entity, place), that entity must visibly end at/in that place;
@@ -13904,20 +13924,49 @@ injury is not death; picked up then set down is not held at the end. For entitie
 already in CURRENT STATE or STATE EFFECTS IF VALID, new persistent changes require
 a matching assigned effect. Do not require effects for new incidental entities or
 temporary motion that restores the prior state. Boundary, barrier, door/window,
-and containment changes are intentionally outside this validation phase.
+and containment changes are intentionally outside this validation phase."""
 
-6. Allow harmless staging. Reject details that materially change the assigned
-action, location, outcome, participant treatment, or story meaning. Tools must
-suit their actions unless an unusual capability is established. Do not invent
-harmful treatment of protected/non-hostile participants.
 
-Return only {{"valid": true, "issue": ""}} when all checks pass, otherwise
-{{"valid": false, "issue": "short concrete explanation"}}. No extra keys or markdown.
-""".strip()
-    return [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user},
-    ]
+def build_beat_story_validation_messages(
+    previous_final_beat,
+    current_state,
+    beat_job,
+    next_beat_job,
+    candidate_beat,
+    settings=None,
+    assigned_state_effects=None,
+):
+    return _build_beat_validator_messages(
+        previous_final_beat,
+        current_state,
+        beat_job,
+        next_beat_job,
+        candidate_beat,
+        _BEAT_STORY_VALIDATION_CHECKS,
+        settings=settings,
+        assigned_state_effects=assigned_state_effects,
+    )
+
+
+def build_beat_state_validation_messages(
+    previous_final_beat,
+    current_state,
+    beat_job,
+    next_beat_job,
+    candidate_beat,
+    settings=None,
+    assigned_state_effects=None,
+):
+    return _build_beat_validator_messages(
+        previous_final_beat,
+        current_state,
+        beat_job,
+        next_beat_job,
+        candidate_beat,
+        _BEAT_STATE_VALIDATION_CHECKS,
+        settings=settings,
+        assigned_state_effects=assigned_state_effects,
+    )
 
 
 def build_beat_coherence_validation_messages(
@@ -14843,64 +14892,135 @@ def _run_forward_beat_validation(
                 )
                 continue
 
-            messages = build_beat_validation_messages(
-                previous_final_beat=(
+            shared_validator_context = {
+                "previous_final_beat": (
                     finalized_texts[-1] if finalized_texts else ""
                 ),
-                current_state=state_before,
-                beat_job=current_job,
-                next_beat_job=next_job,
-                candidate_beat=candidate,
-                assigned_state_effects=[
+                "current_state": state_before,
+                "beat_job": current_job,
+                "next_beat_job": next_job,
+                "candidate_beat": candidate,
+                "assigned_state_effects": [
                     {
                         "id": event["id"],
                         "state_effects": copy.deepcopy(event.get("state_effects", [])),
                     }
                     for event in assigned_current_events
                 ],
+            }
+            validator_inputs = (
+                (
+                    "Story",
+                    "beat_story_validation",
+                    build_beat_story_validation_messages,
+                ),
+                (
+                    "State",
+                    "beat_state_validation",
+                    build_beat_state_validation_messages,
+                ),
             )
+            validator_calls = {
+                name: (
+                    purpose,
+                    builder(**shared_validator_context),
+                )
+                for name, purpose, builder in validator_inputs
+            }
+
+            def run_beat_validator(validator_name, purpose, messages):
+                try:
+                    raw_result = llm_request(
+                        messages,
+                        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+                        parse_json_response=False,
+                        history_metadata={
+                            **(history_metadata or {}),
+                            "purpose": purpose,
+                            "beat_number": beat_number,
+                            "validation_attempt": validation_attempt,
+                            "total_segments": int(total_segments),
+                        },
+                    )
+                    return validator_name, parse_beat_validation_result(raw_result), None
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    return validator_name, None, error
+
             console_log(
                 f"Validating Beat {beat_number} "
                 f"(attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}) "
-                "with the single beat validator.",
+                "with concurrent Story and State validators.",
                 flush=True,
             )
-            try:
-                raw_result = llm_request(
-                    messages,
-                    response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
-                    parse_json_response=False,
-                    history_metadata={
-                        **(history_metadata or {}),
-                        "purpose": "beat_validation",
-                        "beat_number": beat_number,
-                        "validation_attempt": validation_attempt,
-                        "total_segments": int(total_segments),
-                    },
+            with ThreadPoolExecutor(
+                max_workers=2, thread_name_prefix="beat-validator"
+            ) as executor:
+                futures = {
+                    name: executor.submit(
+                        run_beat_validator,
+                        name,
+                        purpose,
+                        messages,
+                    )
+                    for name, (purpose, messages) in validator_calls.items()
+                }
+                validations = {
+                    name: future.result()
+                    for name, future in futures.items()
+                }
+
+            validator_failures = []
+            validator_errors = []
+            for name in ("Story", "State"):
+                _, validation, error = validations[name]
+                if error is not None:
+                    validator_errors.append(f"{name} validator failed: {error}")
+                    console_log(
+                        f"Beat {beat_number} {name.lower()} validator "
+                        f"attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                        f"ERROR; issue: {error}",
+                        flush=True,
+                    )
+                    continue
+                status = "VALID" if validation["valid"] else "INVALID"
+                issue = validation["issue"] or (
+                    f"The {name.lower()} validator rejected the candidate."
+                    if not validation["valid"] else "none"
                 )
-                validation = parse_beat_validation_result(raw_result)
-            except (LLMConnectionError, requests.RequestException, OSError, ValueError, TypeError) as error:
-                last_issue = f"Beat validator failed: {error}"
+                console_log(
+                    f"Beat {beat_number} {name.lower()} validator "
+                    f"attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                    f"{status}; issue: {issue}",
+                    flush=True,
+                )
+                if not validation["valid"]:
+                    validator_failures.append(f"{name} validator: {issue}")
+
+            if validator_errors:
+                last_issue = "; ".join(validator_errors + validator_failures)
                 retry_feedback = last_issue
                 regenerate_candidate = False
                 console_log(
                     f"Beat {beat_number} validation attempt "
                     f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
-                    f"{last_issue}",
+                    f"retrying after validator error: {last_issue}",
                     flush=True,
                 )
                 continue
 
-            validation_status = "VALID" if validation["valid"] else "INVALID"
-            last_issue = validation["issue"] or "The beat validator rejected the candidate."
-            console_log(
-                f"Beat {beat_number} validation attempt "
-                f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
-                f"{validation_status}; issue: "
-                f"{validation['issue'] or 'none'}",
-                flush=True,
-            )
-            if validation["valid"]:
+            if validator_failures:
+                last_issue = "; ".join(validator_failures)
+                retry_feedback = last_issue
+                regenerate_candidate = True
+                continue
+
+            if all(validations[name][1]["valid"] for name in ("Story", "State")):
                 try:
                     finite_endpoint_status = parse_beat_finite_endpoint_result(
                         llm_request(

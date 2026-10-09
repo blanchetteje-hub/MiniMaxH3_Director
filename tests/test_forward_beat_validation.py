@@ -1,5 +1,6 @@
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -89,34 +90,189 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertNotIn("STATE EFFECTS IF VALID", prompt)
 
     def test_validator_contract_is_immutable_and_minimal(self):
-        messages = minimax.build_beat_validation_messages(
+        story_messages = minimax.build_beat_story_validation_messages(
             "",
             minimax.new_beat_canonical_state(),
             "Operator opens the primary barrier.",
             None,
             "Operator opens the primary barrier.",
         )
-        self.assertIn("CURRENT STATE", messages[1]["content"])
-        self.assertIn('valid": true', messages[1]["content"])
-        self.assertNotIn("state_patch", messages[1]["content"])
-        self.assertNotIn("STORY", messages[1]["content"])
-        self.assertNotIn("PHASE GOAL", messages[1]["content"])
-        self.assertIn("CURRENT JOB", messages[1]["content"])
-        self.assertIn("RESERVED FOR LATER", messages[1]["content"])
-        self.assertIn("STATE EFFECTS IF VALID", messages[1]["content"])
-        prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("CURRENT JOB is the only required work", prompt)
-        self.assertIn("Finite tasks must visibly finish", prompt)
-        self.assertIn('wording like "is cooking"', prompt)
-        self.assertIn("ongoing/repeated jobs need only a non-terminal instance", prompt)
-        self.assertIn("RESERVED FOR LATER is never required now", prompt)
-        self.assertIn("new persistent changes require a matching assigned effect", prompt)
+        state_messages = minimax.build_beat_state_validation_messages(
+            "",
+            minimax.new_beat_canonical_state(),
+            "Operator opens the primary barrier.",
+            None,
+            "Operator opens the primary barrier.",
+        )
+        for messages in (story_messages, state_messages):
+            self.assertIn("CURRENT STATE", messages[1]["content"])
+            self.assertIn('valid": true', messages[1]["content"])
+            self.assertNotIn("state_patch", messages[1]["content"])
+            self.assertNotIn("STORY", messages[1]["content"])
+            self.assertNotIn("PHASE GOAL", messages[1]["content"])
+            self.assertIn("CURRENT JOB", messages[1]["content"])
+            self.assertIn("RESERVED FOR LATER", messages[1]["content"])
+            self.assertIn("STATE EFFECTS IF VALID", messages[1]["content"])
+            self.assertIn("You validate one candidate story beat.", messages[0]["content"])
+
+        story_prompt = " ".join(story_messages[1]["content"].split())
+        state_prompt = " ".join(state_messages[1]["content"].split())
+        self.assertIn("CURRENT JOB is the only required work", story_prompt)
+        self.assertIn("RESERVED FOR LATER is never required now", story_prompt)
+        self.assertNotIn("Every listed effect must match", story_prompt)
+        self.assertIn("Every listed effect must match", state_prompt)
+        self.assertNotIn("CURRENT JOB is the only required work", state_prompt)
+
+    def test_story_and_state_validators_share_context_and_response_contract(self):
+        args = {
+            "previous_final_beat": "Operator waits beside the gate.",
+            "current_state": minimax.new_beat_canonical_state(),
+            "beat_job": "Operator opens the gate.",
+            "next_beat_job": "Operator walks through the gate.",
+            "candidate_beat": "Operator opens the gate.",
+            "assigned_state_effects": [{
+                "id": "E1",
+                "state_effects": [{
+                    "op": "set_location", "entity": "Operator", "value": "gate"
+                }],
+            }],
+        }
+        story = minimax.build_beat_story_validation_messages(**args)
+        state = minimax.build_beat_state_validation_messages(**args)
+        self.assertEqual(story[0], state[0])
+        story_context, story_checks = story[1]["content"].split("\n\nCHECKS\n", 1)
+        state_context, state_checks = state[1]["content"].split("\n\nCHECKS\n", 1)
+        self.assertEqual(story_context, state_context)
+        self.assertNotEqual(story_checks, state_checks)
+        self.assertIn("1. CURRENT JOB", story_checks)
+        self.assertIn("2. Preserve every required participant", story_checks)
+        self.assertIn("4. RESERVED FOR LATER", story_checks)
+        self.assertIn("6. Allow harmless staging", story_checks)
+        self.assertIn("3. PREVIOUS FINAL BEAT", state_checks)
+        self.assertIn("5. Every listed effect", state_checks)
+        for messages in (story, state):
+            contract = messages[1]["content"].split("\n\nCHECKS\n", 1)[1]
+            self.assertIn('{"valid": true, "issue": ""}', contract)
+            self.assertIn('{"valid": false, "issue": "short concrete explanation"}', contract)
+
+    def test_story_and_state_validators_execute_concurrently(self):
+        barrier = threading.Barrier(2)
+        validator_inputs = {}
+
+        def llm_request(messages, **kwargs):
+            purpose = kwargs["history_metadata"]["purpose"]
+            if purpose in {"beat_story_validation", "beat_state_validation"}:
+                validator_inputs[purpose] = messages
+                barrier.wait(timeout=3)
+                return {"valid": True, "issue": ""}
+            if purpose == "beat_finite_endpoint_extract":
+                return {"status": "COMPLETE"}
+            if purpose == "beat_coherence_validation":
+                return {"valid": True, "issue": ""}
+            raise AssertionError(purpose)
+
+        with tempfile.TemporaryDirectory() as directory:
+            result = minimax._run_forward_beat_validation(
+                lambda: ["Operator completes action X."],
+                "The operator completes action X.",
+                1,
+                ARC,
+                str(Path(directory) / "beats.txt"),
+                llm_request,
+                state_path=str(Path(directory) / "state.json"),
+            )
+
+        self.assertEqual(result, ["Operator completes action X."])
+        self.assertEqual(
+            set(validator_inputs),
+            {"beat_story_validation", "beat_state_validation"},
+        )
+        story_context = validator_inputs["beat_story_validation"][1]["content"].split(
+            "\n\nCHECKS\n", 1
+        )[0]
+        state_context = validator_inputs["beat_state_validation"][1]["content"].split(
+            "\n\nCHECKS\n", 1
+        )[0]
+        self.assertEqual(story_context, state_context)
+
+    def test_each_validator_failure_independently_rejects_candidate_with_attribution(self):
+        for rejected_validator in ("Story", "State"):
+            with self.subTest(validator=rejected_validator):
+                responses = []
+                corrections = []
+
+                def llm_request(messages, **kwargs):
+                    purpose = kwargs["history_metadata"]["purpose"]
+                    attempt = kwargs["history_metadata"]["validation_attempt"]
+                    name = (
+                        "Story" if purpose == "beat_story_validation" else
+                        "State" if purpose == "beat_state_validation" else None
+                    )
+                    if name:
+                        responses.append((name, attempt))
+                        rejected = name == rejected_validator and attempt == 1
+                        return {
+                            "valid": not rejected,
+                            "issue": f"{name} issue" if rejected else "",
+                        }
+                    if purpose == "beat_finite_endpoint_extract":
+                        return {"status": "COMPLETE"}
+                    if purpose == "beat_coherence_validation":
+                        return {"valid": True, "issue": ""}
+                    raise AssertionError(purpose)
+
+                def regenerate(**kwargs):
+                    corrections.append(kwargs["correction"])
+                    return "Operator completes corrected action X."
+
+                with tempfile.TemporaryDirectory() as directory:
+                    result = minimax._run_forward_beat_validation(
+                        lambda: ["Operator completes action X."],
+                        "The operator completes action X.",
+                        1,
+                        ARC,
+                        str(Path(directory) / "beats.txt"),
+                        llm_request,
+                        state_path=str(Path(directory) / "state.json"),
+                        candidate_factory=regenerate,
+                    )
+
+                self.assertEqual(result, ["Operator completes corrected action X."])
+                expected_issue = f"{rejected_validator} validator: {rejected_validator} issue"
+                self.assertEqual(corrections, [expected_issue])
+                self.assertEqual(
+                    set(responses),
+                    {
+                        ("Story", 1),
+                        ("State", 1),
+                        ("Story", 2),
+                        ("State", 2),
+                    },
+                )
+
+    def test_state_validator_checks_effects_and_missing_state_is_unknown(self):
+        messages = minimax.build_beat_state_validation_messages(
+            "Amy stands at the bar.",
+            minimax.new_beat_canonical_state(),
+            "Amy pours water from a chalice.",
+            "Amy serves the next guest.",
+            "Amy pours water from a chalice.",
+            assigned_state_effects=[{
+                "id": "E1",
+                "state_effects": [{
+                    "op": "set_location", "entity": "Amy", "value": "bar"
+                }],
+            }],
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("Every listed effect must match the candidate's FINAL state", prompt)
+        self.assertIn("ordinary story/staging prop is NOT unavailable merely", prompt)
+        self.assertIn("Missing state is unknown, not absent", prompt)
         self.assertIn("Do not require effects for new incidental entities", prompt)
-        self.assertIn("Work made FOR someone needs no delivery unless required", prompt)
         self.assertLess(len(" ".join(m["content"] for m in messages).split()), 500)
 
     def test_validator_rejects_completed_state_grammar_for_assigned_action(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             "Amy kills a zombie.",
             minimax.new_beat_canonical_state(),
             "Amy kills the last zombie and opens the basement.",
@@ -129,11 +285,21 @@ class ForwardBeatValidationTests(unittest.TestCase):
             'PREVIOUS FINAL BEAT or aftermath ("having finished X") cannot '
             'substitute for performing an assigned action now', prompt,
         )
-        self.assertIn("repeating an irreversible action without restoration", prompt)
+        state_messages = minimax.build_beat_state_validation_messages(
+            "Amy kills a zombie.",
+            minimax.new_beat_canonical_state(),
+            "Amy kills the last zombie and opens the basement.",
+            None,
+            "With the last zombie slain, Amy opens the basement.",
+        )
+        self.assertIn(
+            "repeating an irreversible action without restoration",
+            " ".join(state_messages[1]["content"].split()),
+        )
 
 
     def test_validator_prompt_rejects_materially_incoherent_staging(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             "Amy is holding a pistol and katana.",
             minimax.new_beat_canonical_state(),
             "Amy kills the last zombie, leaving the house soaked in blood.",
@@ -193,7 +359,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertNotIn("story_progress", compacted)
 
     def test_validator_prompt_includes_assigned_state_effects(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_state_validation_messages(
             "",
             minimax.new_beat_canonical_state(),
             "Operator opens the primary barrier.",
@@ -234,9 +400,12 @@ class ForwardBeatValidationTests(unittest.TestCase):
 
         def validator(messages, **kwargs):
             content = messages[1]["content"]
+            purpose = kwargs.get("history_metadata", {}).get("purpose")
             if "Classify only the finite-activity endpoint" in content:
                 return {"status": "COMPLETE"}
             if "WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY" in content:
+                return {"valid": True, "issue": ""}
+            if purpose == "beat_state_validation":
                 return {"valid": True, "issue": ""}
             marker = "CURRENT STATE\n"
             state_text = content.split(marker, 1)[1].split("\n\nCURRENT JOB", 1)[0]
@@ -420,7 +589,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("final beat contains raw JSON delimiter", issues)
 
     def test_validator_checks_final_state_for_typed_effects(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_state_validation_messages(
             "None",
             {},
             "The engineer equips the scanner.",
@@ -448,7 +617,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
 
 
     def test_validator_requires_assigned_final_location_to_be_visible(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_state_validation_messages(
             "",
             minimax.new_beat_canonical_state(),
             "Amy moves the children to safety and returns to the kitchen.",
@@ -691,7 +860,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
             self.assertEqual(environment["properties"][field]["type"], "array")
 
     def test_validator_preserves_group_beneficiary_roles(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             "",
             minimax.new_beat_canonical_state(),
             "The parent cooks breakfast for the children.",
