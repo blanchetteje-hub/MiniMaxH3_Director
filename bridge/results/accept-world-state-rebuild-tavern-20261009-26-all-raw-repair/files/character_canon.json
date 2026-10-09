@@ -1,0 +1,53 @@
+{
+  "version": 3,
+  "source_sha256": "3f2fbb8f5e34725eb1a8477676a663a107484451d2a964d4183cf65d64841ef9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence",
+    "appearance",
+    "skin_color",
+    "hand_size",
+    "hair_color",
+    "seating_location",
+    "scale_color",
+    "eye_color",
+    "seat_position"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "A rough-spun dark-wool tunic that falls just below her hips and is belted at the waist; over it a scuffed leather apron worn during her tavern work. She pairs these with loose-fitting linen trousers tucked into sturdy mid-calf leather boots, a simple leather belt around her hips to hold tools, and plain cotton gloves protecting her hands while wiping tables. Her hair is tied back in a practical knot",
+      "gender": "Female",
+      "confidence": "confident woman",
+      "appearance": "facial identity, facial structure, hair, body proportions, and distinguishing features as defined in Picture 1"
+    },
+    {
+      "name": "Goblin",
+      "age": "12",
+      "clothing": "A short tunic of rough‑spun greenish wool that falls to his mid‑thigh, frayed at the cuffs and hem from frequent use; a brown leather belt cinches it with a small pouch for coins or tools. He wears loose dark‑gray linen breeches tucked into worn tan leather boots. His tiny hands hold the chipped mug bare",
+      "gender": "Male",
+      "skin_color": "green",
+      "hand_size": "tiny hands clutching a chipped mug"
+    },
+    {
+      "name": "Elf",
+      "age": "200",
+      "clothing": "The elf is wearing a light cream‑colored linen tunic that falls just below her knees, its hem embroidered with silver thread vines; over it drapes a loose pale blue cloak fastened at one shoulder by an iron acorn brooch. She wears forest‑green leather leggings and polished brown ankle boots, with a narrow oak‑bark waist belt holding a small coin pouch. Her silver hair streams down her shoulders, catching the lantern light",
+      "gender": "Female",
+      "hair_color": "silver hair streaming down its shoulders",
+      "seating_location": "back table"
+    },
+    {
+      "name": "Dragon‑shaped creature",
+      "age": "500",
+      "clothing": "A narrow, worn leather harness snugly wrapped around the dragon’s broad chest, its straps coiled to accommodate the creature’s wings and tail; draped loosely over the shoulders is a simple woolen cloak in deep burgundy that flutters with each wingbeat. The harness holds a small brass cup on a chain for easy sipping",
+      "gender": "Male",
+      "scale_color": "obsidian‑like glittering scales",
+      "eye_color": "amber eyes",
+      "seat_position": "high bar stool"
+    }
+  ]
+}
