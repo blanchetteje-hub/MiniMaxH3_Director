@@ -6,6 +6,7 @@ This file is for promising ideas, heuristics, and experiments that are **not cur
 
 These are **not approved implementation tasks**. Revisit only when they become relevant; detailed notes remain below.
 
+- [ ] **Modularize `minimax.py`:** after WorldState/Director acceptance is stable, incrementally separate pipeline, LLM, planning, Director, and rendering responsibilities into modules, without changing behavior or adding OOP ceremony. See [Future modularization of minimax.py](#future-modularization-of-minimaxpy).
 - [ ] **Minimum local LLM context and long-story chunking:** evaluate **6,044 tokens** as the minimum supported context window; redesign story-dependent requests so expanded stories of **50+ beats** and other large story chunks can be processed in bounded, coherent pieces without losing source coverage, beat ordering, or cross-chunk continuity. See [Minimum-context / long-story scaling](#minimum-context--long-story-scaling).
 - [ ] **Dialogue-density classification:** evaluate a narrow story-type dialogue prior; keep source dialogue authoritative. See [Dialogue-density classification experiment](#dialogue-density-classification-experiment).
 - [ ] **Segment timing / duration fit:** deterministic timing budgets plus narrow extraction for genuinely underspecified action durations. See [Segment timing / duration-fit validation](#segment-timing--duration-fit-validation).
@@ -15,6 +16,40 @@ These are **not approved implementation tasks**. Revisit only when they become r
 - [ ] **Clothing-state reference refresh:** test short updated reference videos when visible wardrobe condition changes materially. See [Clothing-state reference-video refresh](#clothing-state-reference-video-refresh).
 
 The persistent room geometry / navigable topology item is already marked **SOLVED** below and is intentionally not an open TODO.
+
+## Future modularization of minimax.py
+
+**Deferred refactor, not current implementation work.** Split the oversized procedural `minimax.py` into cohesive Python modules, prioritizing clear ownership and testable boundaries over conversion to a C#-style class hierarchy.
+
+Proposed *target layout* (illustrative; verify actual dependencies before moving code):
+
+```text
+minimax/
+    pipeline.py
+    world_state.py
+    llm/
+        client.py
+        profiles.py
+        prompts.py
+    planning/
+        story.py
+        beats.py
+    director/
+        raw.py
+        validation.py
+    rendering/
+        comfyui.py
+        continuity.py
+```
+
+Migration constraints:
+- **Modularization, not a rewrite:** move one cohesive responsibility at a time, keeping runtime behavior, prompts, JSON contracts, LLM call counts, and diagnostic logging unchanged.
+- Preserve **one Python-owned canonical WorldState and reducer**; do not create shadow object state, duplicated ledgers, or compatibility writers.
+- Avoid introducing classes/interfaces, dependency-injection frameworks, or abstraction layers unless demonstrably simpler than modules/functions.
+- Consider import dependencies, CLI compatibility, checkpoints, existing automation deployment/copies, and tests before changing module boundaries.
+- Perform only **after** the active continuity migration and end-to-end acceptance stabilize; validate each move with focused tests and acceptance comparisons. Do not bundle this refactor with behavioral fixes.
+
+**Status:** TODO / deferred.
 
 ## Minimum-context / long-story scaling
 
