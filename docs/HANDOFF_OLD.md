@@ -2,6 +2,36 @@
 
 This file contains the historical handoff material that predates the narrow-extractor + deterministic-Python breakthrough beginning at acceptance 1610. For current work, read `docs/PROJECT_NOTES.md` and `docs/HANDOFF.md`.
 
+## Architectural change index (historical)
+
+**Read this index before older entries.** Each boundary identifies a major direction change, not an assertion that the old approach is still active. Original handoff snapshots are preserved below, including obsolete branch names, instructions, and failed experiments. For the **currently implemented architecture**, use [HANDOFF.md](HANDOFF.md) and [PROJECT_NOTES.md](PROJECT_NOTES.md).
+
+| Era / boundary | Architectural decision or transition | Historical entry |
+| --- | --- | --- |
+| **Sep 24–26: story source and planning** | Source-span planning, chapters/beat responsibility, compact local-model probes; story remains authoritative. | [Source-span architecture lock](#source-span-architecture-lock) |
+| **Sep 26: Director and physical checks** | Timed RAW/Request 1, explicit beat ownership, barrier/topology and persistent-state safeguards; move measurable validity into Python. | [Barrier topology Python authority](#2026-09-26--barrier-topology-should-be-state--python--narrow-llm-extraction) |
+| **Sep 26–28: narrow LLM extractors + Python decisions** | Replace broad semantic adjudication with targeted extraction followed by deterministic checks; individual stages evolved substantially. | [Archived Sep 28 snapshot](#archived-handoff-snapshot--2026-09-28) |
+| **Late Sep–Oct 2: prompt/Director simplification** | Beat/story pipeline work, RAW-to-H3 simplification, explicit named Subject handling and continuity. | [RAW → final H3 simplification](#raw---final-h3-simplification) |
+| **Oct 3: rendered continuity strategy changes** | Local rendered acceptance, frame-zero/continuation work; **native H3 Guide overlap replaces append Ref2V**. | [Native Guide transition](#2026-10-03-handoff--native-guide-overlap-replaces-append-ref2v) |
+| **Oct 4: persistent location and visual references** | Location reference and state tests, props/fixed fixtures, character-specific wardrobe and Picture references. | [Location-state-test](#2026-10-04-handoff--location-state-test) |
+| **Oct 5: object/Subject authority pressure** | Prop-ledger and Subject-ledger additions revealed competing physical-state ownership; led toward architectural reconsideration. | [Object-state-work branch](#2026-10-05--object-state-work-branch) |
+| **Oct 6–9: WorldState rebuild (current handoff)** | After overextended WorldState experiments, narrow rebuild centers canonical Python WorldState; schema centralization, name-based Director actions, committed reducer state, and four standardized local-LLM profiles. **This newer era is in HANDOFF.md, not this archive.** | [Current handoff](HANDOFF.md) |
+
+### How to read the historical boundaries
+
+- **Decision** describes what the team attempted or adopted *at that point in history*; later entries may supersede it.
+- **Verification** (probe/acceptance/test results) is evidence for a specific revision, not proof the approach remains active.
+- **Branch changes and rollbacks matter:** the Oct 6–9 WorldState rebuild intentionally rejected the earlier expanding synchronization design. Do not resurrect earlier Gate D-style parallel state writers based on these archived notes.
+- **Current status is never inferred from this archive.** Follow the latest current handoff and actual code.
+
+---
+
+---
+
+## ARCHITECTURAL BOUNDARY — SEP 24–26 · SOURCE-SPAN PLANNING AND EARLY DIRECTOR
+
+*Historical snapshot below; later decisions may supersede it.*
+
 # MiniMax H3 — Development Handoff
 
 Last updated: 2026-09-26
@@ -1518,6 +1548,12 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 
 
 ---
+
+---
+
+## ARCHITECTURAL BOUNDARY — SEP 26–28 · NARROW EXTRACTORS / PYTHON-OWNED VALIDATION
+
+*Historical snapshot below; later decisions may supersede it.*
 
 # Archived HANDOFF snapshot — 2026-09-28
 
@@ -3544,6 +3580,12 @@ This moves H3-specific reference precision out of the creative RAW prompt instea
 
 All production LLM stages should emit their result or concise verdict through `print()` so bridge `run.log` is sufficient for diagnosis. The pronoun resolver now logs whether it made no replacements or prints each changed line as `Checking pronouns segment: replaced <before> -> <after>`.
 
+---
+
+## ARCHITECTURAL BOUNDARY — LATE SEP–OCT 2 · RAW-TO-H3 AND NAMED SUBJECTS
+
+*Historical snapshot below; later decisions may supersede it.*
+
 ### RAW -> final H3 simplification
 
 The former Request 2 formatter no longer owns narrative conversion.
@@ -3966,6 +4008,12 @@ Do not queue new `gpt-runtime` bridge jobs or wait for bridge results unless the
 user explicitly asks to restore the bridge workflow.
 
 
+---
+
+## ARCHITECTURAL BOUNDARY — OCT 3 · RENDERED CONTINUITY / NATIVE GUIDE
+
+*Historical snapshot below; later decisions may supersede it.*
+
 ## 2026-10-03 update — six continuity fixes from 8x6 acceptance render
 
 The 48-second / six-segment local acceptance render established that clean refresh is
@@ -4145,6 +4193,12 @@ loader remains uniquely resolvable after a location-reference loader is added.
 
 Next acceptance: rerun/resume through the next clean refresh and verify Segment 6 renders;
 then evaluate the location-reference experiment on background geometry/fixtures as planned.
+
+---
+
+## ARCHITECTURAL BOUNDARY — OCT 4 · LOCATION REFERENCE / STATIC AND VISUAL STATE
+
+*Historical snapshot below; later decisions may supersede it.*
 
 ## 2026-10-04 handoff — location-state-test
 
@@ -4585,6 +4639,12 @@ Dragon reference is both generated and bound; the closing sequence visibly trave
 door before exterior framing; and background Goblin/Elf identity references remain bound
 when the RAW End state keeps them present.
 
+
+---
+
+## ARCHITECTURAL BOUNDARY — OCT 5 · OBJECT/SUBJECT STATE OWNERSHIP AND LEDGER PRESSURE
+
+*Historical snapshot below; later decisions may supersede it.*
 
 ### 2026-10-05 — RAW validator split
 
