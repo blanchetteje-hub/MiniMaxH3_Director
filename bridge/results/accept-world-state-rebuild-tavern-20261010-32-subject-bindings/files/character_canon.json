@@ -1,0 +1,53 @@
+{
+  "version": 3,
+  "source_sha256": "3f2fbb8f5e34725eb1a8477676a663a107484451d2a964d4183cf65d64841ef9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "skin_color",
+    "hand_size",
+    "holding_item",
+    "hair_color",
+    "hair_length",
+    "appearance",
+    "scale_color",
+    "eye_color",
+    "wings_status"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "Amy wears an earth‑toned rough‑spun linen tunic that reaches her knees and is frayed at the hem from years of use; over it a dark brown leather apron drapes across her shoulders and chest, its worn corners and patched seams showing frequent repairs to protect her clothing while she works at the tavern. Beneath the tunic she dons simple charcoal‑colored woolen leggings that tuck into sturdy ankle‑high leather boots with scuffed soles. A wide brown belt cinches her waist around the apron, holding small pouches for tools and a polished silver key—her outfit blends practicality with modest medieval style",
+      "gender": "female"
+    },
+    {
+      "name": "Goblin",
+      "age": "18",
+      "clothing": "A tattered off‑green tunic of rough‑spun wool draped over his wiry frame, belted at the waist with a worn leather strap. Beneath it he wears simple brown breeches tucked into scuffed leather boots, and a frayed greenish pouch hangs from his left hip for tools or coins",
+      "gender": "male",
+      "skin_color": "green",
+      "hand_size": "tiny",
+      "holding_item": "chipped mug"
+    },
+    {
+      "name": "Elf",
+      "age": "150",
+      "clothing": "A flowing forest‑green linen tunic that reaches mid‑thighs, belted at the waist with a simple brown leather sash; soft brown leather leggings beneath and polished black leather boots covering her feet. A lightweight dark green cloak is draped over her shoulders for warmth as she steps into the tavern. Her long silver hair streams down her shoulders, accentuated by a delicate silver circlet around her brow and matching thin silver earrings that dangle just below her collarbone",
+      "gender": "female",
+      "hair_color": "silver",
+      "hair_length": "long",
+      "appearance": "beautiful"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "400",
+      "clothing": "N/A",
+      "gender": "male",
+      "scale_color": "obsidian",
+      "eye_color": "amber",
+      "wings_status": "unfurled"
+    }
+  ]
+}

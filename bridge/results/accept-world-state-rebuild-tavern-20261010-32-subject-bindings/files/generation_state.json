@@ -1,0 +1,1741 @@
+{
+  "version": 1,
+  "config": {
+    "segment_length": 8.0,
+    "total_length": 48.0,
+    "megapixels": 0.5,
+    "total_segments": 6,
+    "refresh_interval": 999999,
+    "vision_continuity": 0,
+    "trim_frames": 2,
+    "retention": false,
+    "test_prompt_generation": true,
+    "no_music": false,
+    "disable_subject_removal": false,
+    "visual_style": "Live-action cinematic",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "world_state_seed": {
+      "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yo8a5x68\\repo\\subjects.txt",
+      "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+      "subjects": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null,
+          "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+          "physical_form": "unknown"
+        }
+      }
+    }
+  },
+  "segments": [
+    {
+      "segment_number": 1,
+      "video_path": null,
+      "llm_result": {
+        "detailed_description": "At 00:00.000, The shot begins from the established opening state. At 00:01.000, Amy steps forward onto the creaking oak floor; her foot lands on a plank, producing a crisp creak that echoes across the tavern. At 00:02.500, Amy lifts the cloth soaked in ale‑scented oil and begins wiping along the polished table’s edge with rhythmic strokes. At 00:04.200, the table’s surface catches the light; each swipe of the cloth leaves a gleaming streak that reflects amber from the hearth. At 00:06.800, Amy finishes her final sweep, leans back slightly to admire the newly polished sheen, and smiles contentedly as the floor creaks softly beneath her feet again.",
+        "overall_soundscape": "Creak of footstep on oak plank at 00:01.000, soft rhythmic swipes of cloth across polished table starting at 00:02.500, creak of floor under feet again at 00:06.800",
+        "non_diegetic_music": "A single warm cello line with a faint brushed cymbal wash follows the creak, rising to a bright chord as Amy smiles contentedly.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "she finishes her final sweep, leans back slightly to admire the newly polished sheen, and smiles contentedly as the floor creaks softly beneath her feet again. Amy remains present in the state established by the final timed action: Amy finishes her final sweep, leans back slightly to admire the newly polished sheen, and smiles contentedly as the floor creaks softly beneath her feet again."
+      },
+      "dialogues": [],
+      "completed_beat_ids": [
+        1
+      ],
+      "continuity_summary": "",
+      "continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "prop_ledger": {},
+      "subject_state_ledger": {},
+      "subject_registry_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "subject_identity_snapshot": {},
+      "world_state": {
+        "schema_version": 1,
+        "revision": 6,
+        "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+        "seed_status": "authoritative_source_seeded",
+        "subjects": {
+          "subject_1": {
+            "id": "subject_1",
+            "subject_id": 1,
+            "name": "Amy",
+            "identity": {
+              "gender": "female",
+              "picture_ids": [
+                1
+              ],
+              "canonical_description": "unknown",
+              "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+              "physical_form": "unknown",
+              "clothing_applicability": "unknown"
+            },
+            "presence": "present",
+            "location_id": "location_the_tavern_2e7ff416daba",
+            "support_id": null,
+            "posture": "unknown",
+            "wardrobe": {
+              "upper": [
+                {
+                  "garment": "Amy wears an earth‑toned rough‑spun linen tunic that",
+                  "condition": "unknown"
+                }
+              ],
+              "lower": [],
+              "footwear": [],
+              "other": []
+            },
+            "persistent_condition": "unknown",
+            "status": "unknown",
+            "provenance": {
+              "identity": {
+                "authority": "user_authored_subject_definitions",
+                "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yo8a5x68\\repo\\subjects.txt",
+                "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31"
+              },
+              "wardrobe.upper": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.lower": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.footwear": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.other": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "presence": {
+                "authority": "registered_subject_story_start_classifier",
+                "initial_state": "The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams."
+              }
+            }
+          },
+          "subject_goblin_a0f199af52d0": {
+            "id": "subject_goblin_a0f199af52d0",
+            "subject_id": "subject_goblin_a0f199af52d0",
+            "name": "Goblin",
+            "identity": {
+              "gender": "male",
+              "picture_ids": [],
+              "canonical_description": "unknown",
+              "source_description": "unknown",
+              "physical_form": "unknown",
+              "clothing_applicability": "unknown"
+            },
+            "presence": "present",
+            "location_id": "location_the_tavern_2e7ff416daba",
+            "support_id": null,
+            "posture": "unknown",
+            "wardrobe": {
+              "upper": [
+                {
+                  "garment": "tattered off‑green tunic of rough‑spun wool draped over his wiry frame",
+                  "condition": "unknown"
+                }
+              ],
+              "lower": [],
+              "footwear": [],
+              "other": []
+            },
+            "persistent_condition": "unknown",
+            "status": "unknown",
+            "provenance": {
+              "identity": {
+                "authority": "character_canon"
+              },
+              "wardrobe.upper": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.lower": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.footwear": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.other": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "presence": {
+                "authority": "initial_location_subject_extractor",
+                "initial_state": "present in the opening scene"
+              }
+            }
+          },
+          "subject_elf_a7b4191901e4": {
+            "id": "subject_elf_a7b4191901e4",
+            "subject_id": "subject_elf_a7b4191901e4",
+            "name": "Elf",
+            "identity": {
+              "gender": "female",
+              "picture_ids": [],
+              "canonical_description": "unknown",
+              "source_description": "unknown",
+              "physical_form": "unknown",
+              "clothing_applicability": "unknown"
+            },
+            "presence": "unknown",
+            "location_id": "unknown",
+            "support_id": "unknown",
+            "posture": "unknown",
+            "wardrobe": {
+              "upper": [
+                {
+                  "garment": "flowing forest‑green linen tunic that",
+                  "condition": "unknown"
+                }
+              ],
+              "lower": [],
+              "footwear": [],
+              "other": []
+            },
+            "persistent_condition": "unknown",
+            "status": "unknown",
+            "provenance": {
+              "identity": {
+                "authority": "character_canon"
+              },
+              "wardrobe.upper": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.lower": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.footwear": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.other": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              }
+            }
+          },
+          "subject_dragon_shaped_creature_91990debafe1": {
+            "id": "subject_dragon_shaped_creature_91990debafe1",
+            "subject_id": "subject_dragon_shaped_creature_91990debafe1",
+            "name": "Dragon-shaped creature",
+            "identity": {
+              "gender": "male",
+              "picture_ids": [],
+              "canonical_description": "unknown",
+              "source_description": "unknown",
+              "physical_form": "unknown",
+              "clothing_applicability": "unknown"
+            },
+            "presence": "unknown",
+            "location_id": "unknown",
+            "support_id": "unknown",
+            "posture": "unknown",
+            "wardrobe": {
+              "upper": "N/A",
+              "lower": "N/A",
+              "footwear": "N/A",
+              "other": "N/A"
+            },
+            "persistent_condition": "unknown",
+            "status": "unknown",
+            "provenance": {
+              "identity": {
+                "authority": "character_canon"
+              },
+              "wardrobe.upper": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.lower": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.footwear": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.other": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              }
+            }
+          }
+        },
+        "props": {
+          "prop_location_the_tavern_2e7ff416daba_a588eaaebbae": {
+            "id": "prop_location_the_tavern_2e7ff416daba_a588eaaebbae",
+            "name": "front entrance",
+            "kind": "fixture",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "anchors",
+                "source_type": "door"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_78c98887b61b": {
+            "id": "prop_location_the_tavern_2e7ff416daba_78c98887b61b",
+            "name": "back door",
+            "kind": "fixture",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "anchors",
+                "source_type": "door"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_589179d46091": {
+            "id": "prop_location_the_tavern_2e7ff416daba_589179d46091",
+            "name": "creaking oak floor",
+            "kind": "support",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "floor planks"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_fc8fd056692a": {
+            "id": "prop_location_the_tavern_2e7ff416daba_fc8fd056692a",
+            "name": "central counter",
+            "kind": "fixture",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "counter"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_426ba049c19f": {
+            "id": "prop_location_the_tavern_2e7ff416daba_426ba049c19f",
+            "name": "hearth",
+            "kind": "support",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "stone blaze"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_3559e283fb73": {
+            "id": "prop_location_the_tavern_2e7ff416daba_3559e283fb73",
+            "name": "back table",
+            "kind": "fixture",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "table"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_96d9c9f4ce69": {
+            "id": "prop_location_the_tavern_2e7ff416daba_96d9c9f4ce69",
+            "name": "lantern on back table corner",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "lantern"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_54e07313f794": {
+            "id": "prop_location_the_tavern_2e7ff416daba_54e07313f794",
+            "name": "lantern at northern wall interval",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "lantern"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_7b78c336c9ab": {
+            "id": "prop_location_the_tavern_2e7ff416daba_7b78c336c9ab",
+            "name": "high bar stool",
+            "kind": "fixture",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "bar stool"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_18ba563c77fd": {
+            "id": "prop_location_the_tavern_2e7ff416daba_18ba563c77fd",
+            "name": "shelf above bar stool",
+            "kind": "support",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "shelf"
+              }
+            }
+          },
+          "prop_location_the_tavern_2e7ff416daba_b3c63ce7ee75": {
+            "id": "prop_location_the_tavern_2e7ff416daba_b3c63ce7ee75",
+            "name": "wooden latch on back door",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "latch"
+              }
+            }
+          },
+          "prop_object_polished_table_50d963ef29a7": {
+            "id": "prop_object_polished_table_50d963ef29a7",
+            "name": "polished table",
+            "kind": "object",
+            "mobility": "movable",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_the_tavern_2e7ff416daba",
+              "support_id": "prop_location_the_tavern_2e7ff416daba_589179d46091"
+            },
+            "contents": [],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "explicit_persistent_prop_registry"
+              }
+            }
+          },
+          "prop_object_cloth_soaked_in_ale_scent_a77a43c05219": {
+            "id": "prop_object_cloth_soaked_in_ale_scent_a77a43c05219",
+            "name": "cloth soaked in ale‑scented oil",
+            "kind": "object",
+            "mobility": "movable",
+            "status": "present",
+            "placement": {
+              "kind": "held",
+              "subject_id": "subject_1"
+            },
+            "contents": [
+              {
+                "substance": "oil",
+                "amount": "unknown",
+                "consumable": "unknown"
+              }
+            ],
+            "capabilities": {
+              "container": "unknown",
+              "lockable": "unknown",
+              "openable": "unknown",
+              "consumable": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "explicit_persistent_prop_registry"
+              }
+            }
+          }
+        },
+        "locations": {
+          "location_the_tavern_2e7ff416daba": {
+            "id": "location_the_tavern_2e7ff416daba",
+            "name": "the tavern"
+          }
+        }
+      },
+      "continuity_summary_pending": false,
+      "continuity_prompt_state": {},
+      "continuity_source": "world_state",
+      "h3_prompt": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.\n<Picture 2> references only the clothing that Amy is currently wearing.\n\nSubject Amy: present; at the tavern; wearing Amy wears an earth‑toned rough‑spun linen tunic that.\nSubject Elf: wearing flowing forest‑green linen tunic that.\nSubject Goblin: present; at the tavern; wearing tattered off‑green tunic of rough‑spun wool draped over his wiry frame.\nProp back door: at the tavern.\nProp back table: at the tavern.\nProp central counter: at the tavern.\nProp cloth soaked in ale‑scented oil: held by Amy.\nProp creaking oak floor: at the tavern.\nProp front entrance: at the tavern.\nProp hearth: at the tavern.\nProp high bar stool: at the tavern.\nProp lantern at northern wall interval: at the tavern.\nProp lantern on back table corner: at the tavern.\nProp polished table: at the tavern; on creaking oak floor.\nProp shelf above bar stool: at the tavern.\nProp wooden latch on back door: at the tavern.\nAmy is a 30-year-old female. Beneath the tunic she dons simple charcoal‑colored woolen leggings that tuck into sturdy ankle‑high leather boots with scuffed soles. A wide brown belt cinches her waist around the apron, holding small pouches for tools and a polished silver key—her outfit blends practicality with modest medieval style.\nGoblin is an 18-year-old male. Beneath it he wears simple brown breeches tucked into scuffed leather boots, and a frayed greenish pouch hangs from his left hip for tools or coins.\nElf is a 150-year-old female. A lightweight dark green cloak is draped over her shoulders for warmth as she steps into the tavern. Her long silver hair streams down her shoulders, accentuated by a delicate silver circlet around her brow and matching thin silver earrings that dangle just below her collarbone.\nDragon-shaped creature is a 400-year-old male.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The tavern is a rectangular space thirty feet wide from east to west and twenty feet deep from north to south. The western wall holds the heavy oak front entrance; the northern wall near its centre contains the back door with a wooden latch. Beneath the floor are creaking oak planks laid in long rows along the east‑west axis, each three inches thick and twelve inches wide. At the heart of the room stands a ten‑foot‑long central counter that runs adjacent to the hearth built into the north wall; its back edge lies directly against the stone blaze. Inside the hearth’s fire‑box rests a barrel holding ale or beer. To the east side of the counter sits a single six‑by‑two foot back table, positioned just inside the room’s eastern boundary. Lanterns hang from wrought‑iron sconces at each corner of this table and at intervals along the northern wall, providing steady illumination. Near the south end of the tavern is a high bar stool resting upon a narrow counter platform four feet long and one foot wide. Above this stool extends a shelf that holds crystal cups in a neat row; the shelf stretches from east to west across the back of the stool just above floor level. All objects are spaced so they do not overlap: the hearth sits at the north wall centre, the counter runs adjacent to it along the eastern side of the room, the back table occupies space near the eastern corner, and the bar stool with crystal cups is positioned in the south‑eastern quadrant. The wooden latch on the back door remains accessible from inside the tavern, allowing easy exit for patrons or staff). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, The scene starts in the tavern. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, The shot begins from the established opening state.\n\nAt 00:01.000, Amy steps forward onto the creaking oak floor; her foot lands on a plank, producing a crisp creak that echoes across the tavern.\n\nAt 00:02.500, Amy lifts the cloth soaked in ale‑scented oil and begins wiping along the polished table’s edge with rhythmic strokes.\n\nAt 00:04.200, the table’s surface catches the light; each swipe of the cloth leaves a gleaming streak that reflects amber from the hearth.\n\nAt 00:06.800, Amy finishes her final sweep, leans back slightly to admire the newly polished sheen, and smiles contentedly as the floor creaks softly beneath her feet again.\n\noverall_soundscape: Creak of footstep on oak plank at 00:01.000, soft rhythmic swipes of cloth across polished table starting at 00:02.500, creak of floor under feet again at 00:06.800\n\nnon_diegetic_music: A single warm cello line with a faint brushed cymbal wash follows the creak, rising to a bright chord as Amy smiles contentedly.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "subject_definitions": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.\n<Picture 2> references only the clothing that Amy is currently wearing.",
+      "character_reference_images": {
+        "Amy": {
+          "name": "Amy",
+          "picture_number": 2,
+          "image_name": "minimax_character_ref_8a622be1e273_002_Amy_v001.png",
+          "image_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yo8a5x68\\repo\\output\\video\\state\\minimax_character_ref_8a622be1e273_002_Amy_v001.png",
+          "signature": "ff205bacf186482e7ac7a8d80ad645cb2f58e12e706df8143ed4e73d5d511356",
+          "version": 1,
+          "description": "Amy is a 30-year-old female. Beneath the tunic she dons simple charcoal‑colored woolen leggings that tuck into sturdy ankle‑high leather boots with scuffed soles. A wide brown belt cinches her waist around the apron, holding small pouches for tools and a polished silver key—her outfit blends practicality with modest medieval style. Amy is currently wearing Amy wears an earth‑toned rough‑spun linen tunic that.",
+          "wardrobe": {
+            "upper": "Amy wears an earth‑toned rough‑spun linen tunic that"
+          },
+          "clothing_condition": "",
+          "authority": "clothing_only",
+          "canonical_picture_number": 2
+        }
+      },
+      "reference_bindings": {
+        "segment_number": 1,
+        "disable_subject_removal": false,
+        "subject_removal_window_segments": 3,
+        "explicit_subject_ids": [
+          1
+        ],
+        "active_subject_ids": [
+          1
+        ],
+        "defined_subject_ids": [
+          1
+        ],
+        "removed_subject_ids": [],
+        "excluded_configured_picture_ids": [],
+        "bindings": [
+          {
+            "picture_number": 1,
+            "canonical_picture_number": 1,
+            "subject_name": "Amy",
+            "subject_id": 1,
+            "source_kind": "configured_picture",
+            "reference_version": null,
+            "image_name": "",
+            "image_path": "",
+            "authority": "identity",
+            "binding_reason": "explicit_current_segment"
+          },
+          {
+            "picture_number": 2,
+            "canonical_picture_number": 2,
+            "subject_name": "Amy",
+            "subject_id": 1,
+            "source_kind": "generated_reference",
+            "reference_version": 1,
+            "image_name": "minimax_character_ref_8a622be1e273_002_Amy_v001.png",
+            "image_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yo8a5x68\\repo\\output\\video\\state\\minimax_character_ref_8a622be1e273_002_Amy_v001.png",
+            "authority": "clothing_only",
+            "binding_reason": "explicit_current_segment",
+            "first_segment_seen": 1,
+            "last_explicit_segment": 1,
+            "segments_since_explicit": 0,
+            "removal_threshold_segment": 4
+          }
+        ]
+      }
+    }
+  ],
+  "recent_dialogues": [],
+  "recent_dialogue_exclusions": [],
+  "continuity_prompt_state": {},
+  "continuity_state": {
+    "version": 5,
+    "environment": {
+      "location": "N/A",
+      "persistent_state": "N/A"
+    },
+    "camera": "N/A",
+    "ongoing_action": "N/A",
+    "ongoing_audio": "N/A",
+    "subjects": {}
+  },
+  "continuity_summary": "",
+  "visual_raw_end_state": {},
+  "visual_end_state": {},
+  "visual_end_frame_paths": [],
+  "prop_ledger": {},
+  "location_state": {
+    "location": {
+      "name": "Medieval Tavern Interior",
+      "description": "A rectangular tavern measuring thirty feet wide (east‑west) by twenty feet deep (north‑south), with a creaking oak floor, central counter adjacent to a hearth that holds a barrel, a back table, high bar stool with shelves of crystal cups, lanterns at each table and along the northern wall, and a wooden latch on the back door."
+    },
+    "anchors": [
+      {
+        "name": "front entrance",
+        "type": "door",
+        "wall": "west",
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "back door",
+        "type": "door",
+        "wall": "north",
+        "near": [
+          "hearth"
+        ],
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      }
+    ],
+    "objects": [
+      {
+        "name": "creaking oak floor",
+        "type": "floor planks",
+        "size": {
+          "thickness": "3 inches",
+          "width": "12 inches"
+        },
+        "orientation": "east‑west rows",
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "central counter",
+        "type": "counter",
+        "length": "10 feet",
+        "depth": "3 feet",
+        "position": "adjacent to hearth on north wall, east side of room",
+        "back_edge": "against hearth",
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "hearth",
+        "type": "stone blaze",
+        "location": "north wall center",
+        "size": "built into wall",
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "barrel of ale",
+        "type": "barrel",
+        "position": "inside hearth fire‑box",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "back table",
+        "type": "table",
+        "length": "6 feet",
+        "depth": "2 feet",
+        "position": "just inside eastern boundary, east side of counter",
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern on back table corner",
+        "type": "lantern",
+        "location": "corner of back table",
+        "sconce_type": "wrought‑iron",
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern at northern wall interval",
+        "type": "lantern",
+        "position": "interval along north wall",
+        "sconce_type": "wrought‑iron",
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "high bar stool",
+        "type": "bar stool",
+        "length": "4 feet",
+        "width": "1 foot",
+        "position": "south‑eastern quadrant, on narrow counter platform",
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "shelf above bar stool",
+        "type": "shelf",
+        "length": "4 feet",
+        "depth": "1 foot",
+        "position": "east‑west across back of stool, just above floor level",
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "crystal cup 1",
+        "type": "cup",
+        "material": "crystal",
+        "position": "on shelf",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "crystal cup 2",
+        "type": "cup",
+        "material": "crystal",
+        "position": "on shelf",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "crystal cup 3",
+        "type": "cup",
+        "material": "crystal",
+        "position": "on shelf",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "wooden latch on back door",
+        "type": "latch",
+        "location": "back door, north wall center",
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      }
+    ]
+  },
+  "subject_state_ledger": {},
+  "character_reference_images": {
+    "Amy": {
+      "name": "Amy",
+      "picture_number": 2,
+      "image_name": "minimax_character_ref_8a622be1e273_002_Amy_v001.png",
+      "image_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yo8a5x68\\repo\\output\\video\\state\\minimax_character_ref_8a622be1e273_002_Amy_v001.png",
+      "signature": "ff205bacf186482e7ac7a8d80ad645cb2f58e12e706df8143ed4e73d5d511356",
+      "version": 1,
+      "description": "Amy is a 30-year-old female. Beneath the tunic she dons simple charcoal‑colored woolen leggings that tuck into sturdy ankle‑high leather boots with scuffed soles. A wide brown belt cinches her waist around the apron, holding small pouches for tools and a polished silver key—her outfit blends practicality with modest medieval style. Amy is currently wearing Amy wears an earth‑toned rough‑spun linen tunic that.",
+      "wardrobe": {
+        "upper": "Amy wears an earth‑toned rough‑spun linen tunic that"
+      },
+      "clothing_condition": "",
+      "authority": "clothing_only"
+    }
+  },
+  "base_reference_image_count": 1,
+  "reference_binding_state": {
+    "version": 1,
+    "disable_subject_removal": false,
+    "subject_removal_window_segments": 3,
+    "current_segment_number": 1,
+    "current_bindings": [
+      {
+        "picture_number": 1,
+        "canonical_picture_number": 1,
+        "subject_name": "Amy",
+        "subject_id": 1,
+        "source_kind": "configured_picture",
+        "reference_version": null,
+        "image_name": "",
+        "image_path": "",
+        "authority": "identity",
+        "binding_reason": "explicit_current_segment"
+      },
+      {
+        "picture_number": 2,
+        "canonical_picture_number": 2,
+        "subject_name": "Amy",
+        "subject_id": 1,
+        "source_kind": "generated_reference",
+        "reference_version": 1,
+        "image_name": "minimax_character_ref_8a622be1e273_002_Amy_v001.png",
+        "image_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yo8a5x68\\repo\\output\\video\\state\\minimax_character_ref_8a622be1e273_002_Amy_v001.png",
+        "authority": "clothing_only",
+        "binding_reason": "explicit_current_segment",
+        "first_segment_seen": 1,
+        "last_explicit_segment": 1,
+        "segments_since_explicit": 0,
+        "removal_threshold_segment": 4
+      }
+    ],
+    "current_active_subject_ids": [
+      1
+    ],
+    "current_explicit_subject_ids": [
+      1
+    ],
+    "current_removed_subject_ids": [],
+    "current_excluded_configured_picture_ids": [],
+    "subjects": {
+      "Amy": {
+        "subject_id": 1,
+        "first_segment_seen": 1,
+        "last_explicit_segment": 1,
+        "binding_history": [
+          {
+            "segment_number": 1,
+            "picture_number": 2,
+            "canonical_picture_number": 2,
+            "reference_version": 1,
+            "image_name": "minimax_character_ref_8a622be1e273_002_Amy_v001.png",
+            "binding_reason": "explicit_current_segment"
+          }
+        ],
+        "explicitly_departed": false,
+        "segments_since_explicit": 0,
+        "currently_bound": true,
+        "eligible_for_removal": false,
+        "removal_threshold_segment": 4,
+        "binding_reason": "explicit_current_segment",
+        "last_bound_segment": 1
+      }
+    },
+    "current_defined_subject_ids": [
+      1
+    ]
+  },
+  "subject_registry_state": {
+    "version": 5,
+    "environment": {
+      "location": "N/A",
+      "persistent_state": "N/A"
+    },
+    "camera": "N/A",
+    "ongoing_action": "N/A",
+    "ongoing_audio": "N/A",
+    "subjects": {
+      "Amy": {
+        "name": "Amy",
+        "id": "Subject 1",
+        "speaker_id": "(S1)",
+        "subject_id": 1,
+        "gender": "female",
+        "picture_ids": [
+          1
+        ],
+        "picture_id": 1,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "topology": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "persistent_effects": [],
+        "spatial_relationships": [],
+        "held_props": []
+      },
+      "Dragon-shaped creature": {
+        "name": "Dragon-shaped creature",
+        "id": "Subject 75843344593765",
+        "speaker_id": "(S75843344593765)",
+        "subject_id": 75843344593765,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "topology": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "persistent_effects": [],
+        "spatial_relationships": [],
+        "held_props": []
+      },
+      "Elf": {
+        "name": "Elf",
+        "id": "Subject 243430124958720",
+        "speaker_id": "(S243430124958720)",
+        "subject_id": 243430124958720,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "topology": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "persistent_effects": [],
+        "spatial_relationships": [],
+        "held_props": []
+      },
+      "Goblin": {
+        "name": "Goblin",
+        "id": "Subject 267280715056018",
+        "speaker_id": "(S267280715056018)",
+        "subject_id": 267280715056018,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "topology": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "persistent_effects": [],
+        "spatial_relationships": [],
+        "held_props": []
+      }
+    }
+  },
+  "world_state": {
+    "schema_version": 1,
+    "revision": 7,
+    "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+    "seed_status": "authoritative_source_seeded",
+    "subjects": {
+      "subject_1": {
+        "id": "subject_1",
+        "subject_id": 1,
+        "name": "Amy",
+        "identity": {
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "canonical_description": "unknown",
+          "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "present",
+        "location_id": "location_the_tavern_2e7ff416daba",
+        "support_id": null,
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "Amy wears an earth‑toned rough‑spun linen tunic that",
+              "condition": "unknown"
+            }
+          ],
+          "lower": [],
+          "footwear": [],
+          "other": []
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "user_authored_subject_definitions",
+            "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yo8a5x68\\repo\\subjects.txt",
+            "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "presence": {
+            "authority": "registered_subject_story_start_classifier",
+            "initial_state": "The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams."
+          }
+        }
+      },
+      "subject_goblin_a0f199af52d0": {
+        "id": "subject_goblin_a0f199af52d0",
+        "subject_id": "subject_goblin_a0f199af52d0",
+        "name": "Goblin",
+        "identity": {
+          "gender": "male",
+          "picture_ids": [],
+          "canonical_description": "unknown",
+          "source_description": "unknown",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "present",
+        "location_id": "location_the_tavern_2e7ff416daba",
+        "support_id": null,
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "tattered off‑green tunic of rough‑spun wool draped over his wiry frame",
+              "condition": "unknown"
+            }
+          ],
+          "lower": [],
+          "footwear": [],
+          "other": []
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "character_canon"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "presence": {
+            "authority": "initial_location_subject_extractor",
+            "initial_state": "present in the opening scene"
+          }
+        }
+      },
+      "subject_elf_a7b4191901e4": {
+        "id": "subject_elf_a7b4191901e4",
+        "subject_id": "subject_elf_a7b4191901e4",
+        "name": "Elf",
+        "identity": {
+          "gender": "female",
+          "picture_ids": [],
+          "canonical_description": "unknown",
+          "source_description": "unknown",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "unknown",
+        "location_id": "unknown",
+        "support_id": "unknown",
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "flowing forest‑green linen tunic that",
+              "condition": "unknown"
+            }
+          ],
+          "lower": [],
+          "footwear": [],
+          "other": []
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "character_canon"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          }
+        }
+      },
+      "subject_dragon_shaped_creature_91990debafe1": {
+        "id": "subject_dragon_shaped_creature_91990debafe1",
+        "subject_id": "subject_dragon_shaped_creature_91990debafe1",
+        "name": "Dragon-shaped creature",
+        "identity": {
+          "gender": "male",
+          "picture_ids": [],
+          "canonical_description": "unknown",
+          "source_description": "unknown",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "unknown",
+        "location_id": "unknown",
+        "support_id": "unknown",
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": "N/A",
+          "lower": "N/A",
+          "footwear": "N/A",
+          "other": "N/A"
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "character_canon"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          }
+        }
+      }
+    },
+    "props": {
+      "prop_location_the_tavern_2e7ff416daba_a588eaaebbae": {
+        "id": "prop_location_the_tavern_2e7ff416daba_a588eaaebbae",
+        "name": "front entrance",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "anchors",
+            "source_type": "door"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_78c98887b61b": {
+        "id": "prop_location_the_tavern_2e7ff416daba_78c98887b61b",
+        "name": "back door",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "anchors",
+            "source_type": "door"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_589179d46091": {
+        "id": "prop_location_the_tavern_2e7ff416daba_589179d46091",
+        "name": "creaking oak floor",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "floor planks"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_fc8fd056692a": {
+        "id": "prop_location_the_tavern_2e7ff416daba_fc8fd056692a",
+        "name": "central counter",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "counter"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_426ba049c19f": {
+        "id": "prop_location_the_tavern_2e7ff416daba_426ba049c19f",
+        "name": "hearth",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "stone blaze"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_3559e283fb73": {
+        "id": "prop_location_the_tavern_2e7ff416daba_3559e283fb73",
+        "name": "back table",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "table"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_96d9c9f4ce69": {
+        "id": "prop_location_the_tavern_2e7ff416daba_96d9c9f4ce69",
+        "name": "lantern on back table corner",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "lantern"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_54e07313f794": {
+        "id": "prop_location_the_tavern_2e7ff416daba_54e07313f794",
+        "name": "lantern at northern wall interval",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "lantern"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_7b78c336c9ab": {
+        "id": "prop_location_the_tavern_2e7ff416daba_7b78c336c9ab",
+        "name": "high bar stool",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "bar stool"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_18ba563c77fd": {
+        "id": "prop_location_the_tavern_2e7ff416daba_18ba563c77fd",
+        "name": "shelf above bar stool",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "shelf"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_b3c63ce7ee75": {
+        "id": "prop_location_the_tavern_2e7ff416daba_b3c63ce7ee75",
+        "name": "wooden latch on back door",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "latch"
+          }
+        }
+      },
+      "prop_object_polished_table_50d963ef29a7": {
+        "id": "prop_object_polished_table_50d963ef29a7",
+        "name": "polished table",
+        "kind": "object",
+        "mobility": "movable",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba",
+          "support_id": "prop_location_the_tavern_2e7ff416daba_589179d46091"
+        },
+        "contents": [],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "explicit_persistent_prop_registry"
+          }
+        }
+      },
+      "prop_object_cloth_soaked_in_ale_scent_a77a43c05219": {
+        "id": "prop_object_cloth_soaked_in_ale_scent_a77a43c05219",
+        "name": "cloth soaked in ale‑scented oil",
+        "kind": "object",
+        "mobility": "movable",
+        "status": "present",
+        "placement": {
+          "kind": "held",
+          "subject_id": "subject_1"
+        },
+        "contents": [
+          {
+            "substance": "oil",
+            "amount": "unknown",
+            "consumable": "unknown"
+          }
+        ],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "explicit_persistent_prop_registry"
+          }
+        }
+      },
+      "prop_object_chipped_mug_ee914785c997": {
+        "id": "prop_object_chipped_mug_ee914785c997",
+        "name": "chipped mug",
+        "kind": "object",
+        "mobility": "movable",
+        "status": "present",
+        "placement": {
+          "kind": "held",
+          "subject_id": "subject_goblin_a0f199af52d0"
+        },
+        "contents": [
+          {
+            "substance": "liquid",
+            "amount": "unknown",
+            "consumable": "unknown"
+          }
+        ],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "explicit_persistent_prop_registry"
+          }
+        }
+      },
+      "prop_object_barrel_e6ba2388287f": {
+        "id": "prop_object_barrel_e6ba2388287f",
+        "name": "barrel",
+        "kind": "object",
+        "mobility": "movable",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba",
+          "support_id": "prop_location_the_tavern_2e7ff416daba_589179d46091"
+        },
+        "contents": [
+          {
+            "substance": "liquid",
+            "amount": "unknown",
+            "consumable": "unknown"
+          }
+        ],
+        "capabilities": {
+          "container": "unknown",
+          "lockable": "unknown",
+          "openable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "explicit_persistent_prop_registry"
+          }
+        }
+      }
+    },
+    "locations": {
+      "location_the_tavern_2e7ff416daba": {
+        "id": "location_the_tavern_2e7ff416daba",
+        "name": "the tavern"
+      }
+    }
+  },
+  "subject_identity_lock": {
+    "subjects": {
+      "1": {
+        "name": "Amy",
+        "id": "Subject 1",
+        "speaker_id": "(S1)",
+        "subject_id": 1,
+        "gender": "female",
+        "picture_ids": [
+          1
+        ],
+        "picture_id": 1,
+        "origin_segment": null
+      },
+      "75843344593765": {
+        "name": "Dragon-shaped creature",
+        "id": "Subject 75843344593765",
+        "speaker_id": "(S75843344593765)",
+        "subject_id": 75843344593765,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null
+      },
+      "243430124958720": {
+        "name": "Elf",
+        "id": "Subject 243430124958720",
+        "speaker_id": "(S243430124958720)",
+        "subject_id": 243430124958720,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null
+      },
+      "267280715056018": {
+        "name": "Goblin",
+        "id": "Subject 267280715056018",
+        "speaker_id": "(S267280715056018)",
+        "subject_id": 267280715056018,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null
+      }
+    }
+  },
+  "continuity_summary_pending": false,
+  "beat_progress": {
+    "completed_beat_ids": [
+      1
+    ],
+    "last_segment_number": 1,
+    "newly_completed_beat_ids": []
+  },
+  "metadata": {
+    "overall_location": "a medieval tavern",
+    "starting_location": "the tavern",
+    "setting_description": "The tavern is a rectangular space thirty feet wide from east to west and twenty feet deep from north to south. The western wall holds the heavy oak front entrance; the northern wall near its centre contains the back door with a wooden latch. Beneath the floor are creaking oak planks laid in long rows along the east‑west axis, each three inches thick and twelve inches wide.\n\nAt the heart of the room stands a ten‑foot‑long central counter that runs adjacent to the hearth built into the north wall; its back edge lies directly against the stone blaze. Inside the hearth’s fire‑box rests a barrel holding ale or beer.\n\nTo the east side of the counter sits a single six‑by‑two foot back table, positioned just inside the room’s eastern boundary. Lanterns hang from wrought‑iron sconces at each corner of this table and at intervals along the northern wall, providing steady illumination.\n\nNear the south end of the tavern is a high bar stool resting upon a narrow counter platform four feet long and one foot wide. Above this stool extends a shelf that holds crystal cups in a neat row; the shelf stretches from east to west across the back of the stool just above floor level.\n\nAll objects are spaced so they do not overlap: the hearth sits at the north wall centre, the counter runs adjacent to it along the eastern side of the room, the back table occupies space near the eastern corner, and the bar stool with crystal cups is positioned in the south‑eastern quadrant. The wooden latch on the back door remains accessible from inside the tavern, allowing easy exit for patrons or staff.",
+    "spatial_location_description": "A heavy oak front door opens onto a rectangular tavern that measures thirty feet wide (east‑west) by twenty feet deep (north‑south).  \nThe back door sits on the north wall near its centre and has a single wooden latch.\n\nBeneath the floor are creaking oak planks, each three inches thick and twelve inches wide, laid in long rows along the east‑west axis. Their worn surface gives the room an unmistakably medieval feel.\n\nAt the heart of the tavern stands a central counter that is ten feet long and three feet deep. The counter’s back edge lies directly against a hearth built into the north wall; the hearth itself is a stone blaze with a barrel resting within its fire‑box, holding barrels of ale or beer.  \n\nTo the east side of the counter sits a single back table, six feet wide by two feet deep, positioned just inside the room’s eastern boundary. Lanterns hang from wrought‑iron sconces on each corner of this table and at intervals along the northern wall, providing steady illumination.\n\nNear the south end of the tavern stands a high bar stool that rests upon a narrow counter platform four feet long and one foot wide. Above this stool is a shelf that holds crystal cups in a neat row; the shelf extends from east to west across the back of the stool, just above the floor level.\n\nAll objects are spaced so they do not overlap: the hearth sits at the north wall centre, the counter runs adjacent to it along the eastern side of the room, the back table occupies the space near the eastern corner, and the bar stool with crystal cups is positioned in the south‑eastern quadrant. The wooden latch on the back door remains accessible from inside the tavern, allowing easy exit for patrons or staff."
+  },
+  "initial_location_subjects": [
+    {
+      "name": "Goblin",
+      "initial_state": "present in the opening scene",
+      "reason": "He leans over the counter clutching a chipped mug, showing he is performing an action while in the scene."
+    }
+  ]
+}
