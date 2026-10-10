@@ -962,6 +962,23 @@ class WorldStateSeedTests(unittest.TestCase):
         parsed = self._parse_prop_candidate_with_evidence(evidence)
         self.assertEqual(parsed[0]["evidence"], evidence)
 
+    def test_current_segment_prop_evidence_normalizes_unicode_hyphens_for_match(self):
+        source = "A traveler leaves a brass-key on the shelf."
+        evidence = "leaves a brass\u2011key on the shelf"
+        parsed = self._parse_prop_candidate_with_evidence(evidence, source=source)
+        self.assertEqual(parsed[0]["evidence"], evidence)
+
+    def test_current_segment_prop_evidence_normalizes_whitespace_for_match(self):
+        source = "A traveler places a brass key on the shelf."
+        evidence = "A traveler  places\n a brass key\ton the shelf."
+        parsed = self._parse_prop_candidate_with_evidence(evidence, source=source)
+        self.assertEqual(parsed[0]["evidence"], evidence)
+
+    def test_current_segment_prop_evidence_accepts_exact_match_unchanged(self):
+        evidence = "A traveler places a brass key on the shelf."
+        parsed = self._parse_prop_candidate_with_evidence(evidence)
+        self.assertEqual(parsed[0]["evidence"], evidence)
+
     def test_current_segment_prop_evidence_rejects_incorrect_quoted_substring(self):
         with self.assertRaisesRegex(ValueError, "exact current-source evidence"):
             self._parse_prop_candidate_with_evidence(

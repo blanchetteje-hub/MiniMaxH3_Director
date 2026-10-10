@@ -4382,6 +4382,16 @@ def parse_current_segment_persistent_prop_result(
             unquoted = unquoted[len(opening):-len(closing)].strip()
         return unquoted
 
+    dash_translation = str.maketrans({
+        character: "-"
+        for character in (
+            "\u2010\u2011\u2012\u2013\u2014\u2015\u2212\ufe58\ufe63\uff0d"
+        )
+    })
+
+    def normalize_evidence_for_match(value):
+        return " ".join(value.translate(dash_translation).split()).casefold()
+
     expected_keys = {
         "name", "kind", "mobility",
         "initial_location", "initial_holder", "support_name", "contents",
@@ -4408,12 +4418,13 @@ def parse_current_segment_persistent_prop_result(
         if not isinstance(entry["contents"], list) or not isinstance(entry["capabilities"], dict):
             raise ValueError(f"Persistent prop {name!r} has invalid contents/capabilities.")
         reason = " ".join(str(entry["reason"] or "").split()).strip()
-        evidence = " ".join(str(entry["evidence"] or "").split()).strip()
+        evidence = str(entry["evidence"] or "")
         evidence_for_match = strip_enclosing_quotes(evidence)
         if (
             not reason
-            or not evidence_for_match
-            or evidence_for_match.casefold() not in source_text.casefold()
+            or not normalize_evidence_for_match(evidence_for_match)
+            or normalize_evidence_for_match(evidence_for_match)
+            not in normalize_evidence_for_match(source_text)
         ):
             raise ValueError(f"Persistent prop {name!r} requires exact current-source evidence.")
         parsed.append({**entry, "name": name, "reason": reason, "evidence": evidence})

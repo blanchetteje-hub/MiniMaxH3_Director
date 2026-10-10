@@ -1159,3 +1159,16 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   branch.
 - Updated the branch-allowlist regression to execute an acceptance job on the
   auto-pilot branch and verify that an unapproved branch is still rejected.
+
+## 2026-10-10 — normalize persistent-prop evidence matching
+
+- Fixed the source-evidence comparison used by `world_state_current_segment_props`
+  after bridge job 30 exposed a U+002D/U+2011 mismatch. The comparison now
+  normalizes Unicode hyphen/dash variants and whitespace on temporary copies
+  of both strings, then requires the normalized evidence to remain a
+  contiguous substring of the normalized current Beat/assigned source.
+- Original evidence and source text remain unchanged; quote handling and all
+  extraction behavior remain as before. Incorrect evidence still fails closed.
+- Added regressions for U+002D versus U+2011, whitespace differences, an exact
+  match, and incorrect evidence. Focused evidence tests passed (7 passed,
+  56 deselected, 7 subtests); `py_compile` and `git diff --check` passed.
