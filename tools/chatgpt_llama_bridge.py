@@ -37,7 +37,9 @@ DEFAULT_CODE_BRANCH = "gpt-arc-refresh"
 ACCEPTANCE_MODEL = "gpt"
 ACCEPTANCE_MODELS = {"gpt", "mistral", "qwen"}
 ACCEPTANCE_CODE_BRANCH = "gpt-arc-refresh"
-ACCEPTANCE_EXPERIMENT_BRANCHES = frozenset({"world-state-rebuild"})
+ACCEPTANCE_EXPERIMENT_BRANCHES = frozenset(
+    {"world-state-rebuild", "world-state-rebuild-auto-pilot"}
+)
 DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
 
 _ACTIVE_LOCAL_PROCESS = None

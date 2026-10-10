@@ -191,7 +191,7 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
     @mock.patch.object(bridge, "run_local_process")
     @mock.patch.object(bridge, "ensure_exec_worktree")
     @mock.patch.object(bridge, "safe_source_path")
-    def test_acceptance_allows_qwen_model(
+    def test_acceptance_allows_qwen_model_on_auto_pilot_branch(
         self, safe_source_path, ensure_worktree, run_process, _copy, _stop, _start
     ):
         with tempfile.TemporaryDirectory() as temp:
@@ -212,7 +212,7 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             bridge.execute_acceptance(
                 {
                     "job_id": "qwen-model",
-                    "code_branch": "gpt-arc-refresh",
+                    "code_branch": "world-state-rebuild-auto-pilot",
                     "model": "qwen",
                 },
                 root,
@@ -221,6 +221,12 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             command = run_process.call_args.args[0]
             self.assertIn("--model", command)
             self.assertEqual(command[command.index("--model") + 1], "qwen")
+            self.assertEqual(
+                bridge.ACCEPTANCE_EXPERIMENT_BRANCHES,
+                frozenset(
+                    {"world-state-rebuild", "world-state-rebuild-auto-pilot"}
+                ),
+            )
 
     @mock.patch.object(bridge, "start_lmstudio_developer_log", return_value={})
     @mock.patch.object(bridge, "stop_lmstudio_developer_log", return_value={})
@@ -291,7 +297,7 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
 
     def test_acceptance_rejects_nonbaseline_branch(self):
         with tempfile.TemporaryDirectory() as temp:
-            with self.assertRaisesRegex(ValueError, "must run on 'gpt-arc-refresh'"):
+            with self.assertRaisesRegex(ValueError, "approved code branch"):
                 bridge.execute_acceptance(
                     {
                         "job_id": "bad-branch",

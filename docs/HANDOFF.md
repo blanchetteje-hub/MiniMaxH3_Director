@@ -1151,3 +1151,11 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   focused prompt-generation binding-log test passed (3 parameter cases).
   `py_compile` and `git diff --check` passed. Full-module runs reproduced only
   the three previously documented stale assertions; they were not changed.
+
+## 2026-10-10 — allow auto-pilot acceptance branch
+
+- Added `world-state-rebuild-auto-pilot` to the bridge acceptance experiment
+  branch allowlist while retaining `world-state-rebuild` and the existing base
+  branch.
+- Updated the branch-allowlist regression to execute an acceptance job on the
+  auto-pilot branch and verify that an unapproved branch is still rejected.
