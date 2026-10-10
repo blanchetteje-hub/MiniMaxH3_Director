@@ -1575,7 +1575,14 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertEqual(seg1_refs["Goblin1"]["picture_number"], 2)
         self.assertEqual(seg1_refs["Elf1"]["picture_number"], 3)
-        self.assertEqual(snap1["active_subject_ids"], [2, 3])
+        self.assertEqual(snap1["active_subject_ids"], [1, 2, 3])
+        self.assertIn(
+            (1, 1),
+            {
+                (binding["subject_id"], binding["picture_number"])
+                for binding in snap1["bindings"]
+            },
+        )
 
         _seg2_refs, _defs, state, _snap2 = minimax.build_segment_reference_bindings(
             segment_number=2, total_segments=4,
@@ -1591,7 +1598,7 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
         self.assertNotIn("Goblin1", seg3_refs)
         self.assertEqual(seg3_refs["Elf1"]["picture_number"], 2)
-        self.assertEqual(snap3["removed_subject_ids"], [2])
+        self.assertEqual(snap3["removed_subject_ids"], [1, 2])
         self.assertIn("<Picture 2> defines Elf1", defs3)
         self.assertIn("Goblin1", defs3)
         self.assertTrue(state["subjects"]["Goblin1"]["eligible_for_removal"])
@@ -1911,6 +1918,70 @@ class PostmortemRegressionTests(unittest.TestCase):
             binding_state=state,
         )
         self.assertNotIn("Goblin1", defs)
+
+    def test_authored_subject_picture_binding_survives_across_segments(self):
+        definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+        _references, segment_definitions, binding_state, snapshot = (
+            minimax.build_segment_reference_bindings(
+                segment_number=1,
+                total_segments=2,
+                detailed_description="At 00:00.000, the camera pans across the room.",
+                subject_definitions=definitions,
+                character_references={},
+                base_reference_count=1,
+            )
+        )
+
+        self.assertEqual(snapshot["active_subject_ids"], [1])
+        self.assertEqual(snapshot["bindings"][0]["subject_id"], 1)
+        self.assertEqual(snapshot["bindings"][0]["picture_number"], 1)
+        self.assertIn("<Subject 1> is Amy", segment_definitions)
+        self.assertIn("<Picture 1>", segment_definitions)
+
+        final_prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000, the camera pans across the room."
+                ),
+                "overall_soundscape": "quiet room tone",
+                "non_diegetic_music": "N/A",
+            },
+            segment_definitions,
+            segment_number=1,
+            conditioning_mode="initial",
+            retained_subject_ids=snapshot["defined_subject_ids"],
+        )
+        self.assertIn("<Subject 1> is Amy", final_prompt)
+        self.assertIn("<Picture 1>", final_prompt)
+        self.assertEqual(
+            minimax.validate_h3_subject_identity(final_prompt, segment_definitions),
+            [],
+        )
+
+        _references, segment_two_definitions, _binding_state, snapshot_two = (
+            minimax.build_segment_reference_bindings(
+                segment_number=2,
+                total_segments=2,
+                detailed_description="At 00:00.000, Amy wipes the counter.",
+                subject_definitions=definitions,
+                character_references={},
+                base_reference_count=1,
+                binding_state=binding_state,
+            )
+        )
+        self.assertIn(1, snapshot_two["defined_subject_ids"])
+        self.assertIn("<Picture 1>", segment_two_definitions)
+        self.assertEqual(
+            minimax.validate_h3_subject_identity(
+                "<Subject 1> Amy enters the room.", segment_two_definitions
+            ),
+            [],
+        )
+        self.assertTrue(
+            minimax.validate_h3_subject_identity(
+                "<Subject 1> Goblin waits.", segment_two_definitions
+            )
+        )
 
     def test_soundscape_prompt_preserves_source_count_and_intensity(self):
         messages = minimax.build_h3_soundscape_messages(

@@ -1172,3 +1172,32 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
 - Added regressions for U+002D versus U+2011, whitespace differences, an exact
   match, and incorrect evidence. Focused evidence tests passed (7 passed,
   56 deselected, 7 subtests); `py_compile` and `git diff --check` passed.
+
+## 2026-10-10 — retain authored Subject/Picture bindings
+
+- Acceptance job 31 showed Segment 1 logging no reference bindings or Subject
+  definitions despite `subjects.txt` defining Amy as `<Subject 1>` with
+  `<Picture 1>`. `build_segment_reference_bindings()` initialized an empty
+  tracking map and kept definitions only for IDs detected by matching the RAW
+  description. When that text omitted the canonical name/tag, filtering erased
+  the authored identity before H3 assembly, leaving the final identity check
+  with no Subject 1 contract to validate.
+- The binding builder now retains authored Picture-backed Subject mappings on
+  Segment 1 directly from the identity registry. Physical presence and
+  choreography remain separate; this does not infer scene presence or change
+  later-segment visibility/removal behavior. The segment binding snapshot,
+  H3 assembly, and identity validation receive the original authored mapping.
+- Added a Segment 1 regression where accepted scene prose omits Amy's name but
+  the authored mapping is retained, plus Segment 2 checks that the same mapping
+  remains available and rejects a mismatched Subject tag.
+- Updated the existing reference-window regression to expect authored Picture
+  1 in the Segment 1 binding snapshot; its normal later-segment expiration is
+  still covered.
+- Verification: the Segment 1 binding regression passed (1 passed), the
+  existing reference-binding selection passed (2 passed), and the focused H3
+  identity mismatch regression and cross-segment identity-lock regression
+  passed (1 each). The full
+  `test_subject_identity_continuity.py` run had 44 passes and 4 failures in
+  canonical-description wardrobe rendering, timed-sentence formatting, and
+  speaker-verb wording; those code paths are outside this change and were not
+  modified.

@@ -32177,12 +32177,20 @@ def build_segment_reference_bindings(
             subject_definitions,
         )
     )
+    initial_picture_subject_ids = set()
+    if segment_number == 1:
+        initial_picture_subject_ids = {
+            int(subject_id)
+            for subject_id, subject in registry.items()
+            if isinstance(subject, dict) and subject.get("picture_ids")
+        }
+    current_reference_ids = explicit_ids | initial_picture_subject_ids
     state = copy.deepcopy(binding_state) if isinstance(binding_state, dict) else {}
     subjects = state.get("subjects")
     if not isinstance(subjects, dict):
         subjects = {}
 
-    for subject_id in sorted(explicit_ids):
+    for subject_id in sorted(current_reference_ids):
         name = _reference_binding_subject_name(registry, subject_id)
         if not name:
             continue
@@ -32230,18 +32238,17 @@ def build_segment_reference_bindings(
             and (
                 disable_subject_removal
                 or segments_since < window
-                or subject_id in explicit_ids
+                or subject_id in current_reference_ids
             )
         )
-        reason = (
-            "explicit_current_segment"
-            if subject_id in explicit_ids
-            else (
-                "forced_persistent"
-                if disable_subject_removal
-                else "within_sliding_window"
-            )
-        )
+        if subject_id in explicit_ids:
+            reason = "explicit_current_segment"
+        elif subject_id in initial_picture_subject_ids:
+            reason = "authored_initial_picture"
+        elif disable_subject_removal:
+            reason = "forced_persistent"
+        else:
+            reason = "within_sliding_window"
         threshold = last_explicit + window
         tracking.update({
             "segments_since_explicit": segments_since,
