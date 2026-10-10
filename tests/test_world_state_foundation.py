@@ -2,7 +2,7 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import minimax
 from world_state import (
@@ -22,6 +22,46 @@ from world_state import (
     validate_state_actions,
     validate_world_state,
 )
+
+
+class CurrentSegmentSubjectDiagnosticTests(unittest.TestCase):
+    def test_rejected_raw_response_and_exact_error_are_logged_per_attempt(self):
+        invalid = {
+            "subjects": [{
+                "name": "Goblin_1",
+                "physical_form": "unknown",
+                "gender": "unknown",
+                "source_description": "green goblin",
+                "evidence": "The goblin stands beside the counter.",
+            }],
+        }
+        valid = {
+            "subjects": [{
+                "name": "Goblin_1",
+                "physical_form": "unknown",
+                "gender": "unknown",
+                "source_description": "A green goblin",
+                "evidence": "A green goblin leans over the counter.",
+            }],
+        }
+        llm_request = Mock(side_effect=[invalid, valid])
+        with patch.object(minimax, "console_log") as log:
+            subjects = minimax.extract_current_segment_subjects(
+                "A green goblin leans over the counter.",
+                llm_request=llm_request,
+            )
+
+        self.assertEqual(llm_request.call_count, 2)
+        self.assertEqual(subjects[0]["name"], "Goblin_1")
+        diagnostic = "\n".join(call.args[0] for call in log.call_args_list)
+        self.assertIn('"attempt": "1/3"', diagnostic)
+        self.assertIn('"raw_response":', diagnostic)
+        self.assertIn("The goblin stands beside the counter.", diagnostic)
+        self.assertIn(
+            "Current-segment Subject evidence for 'Goblin_1' is not quoted "
+            "from the current beat/source.",
+            diagnostic,
+        )
 
 
 class DestructiveStateMergeRegressionTests(unittest.TestCase):

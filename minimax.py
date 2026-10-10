@@ -4036,6 +4036,7 @@ def extract_current_segment_subjects(
     )
     for attempt in range(1, 4):
         messages = copy.deepcopy(base_messages)
+        raw = None
         if attempt > 1:
             messages[-1]["content"] += (
                 "\n\nFIX: Return only identity-only new Subject records. "
@@ -4059,6 +4060,19 @@ def extract_current_segment_subjects(
             raise
         except (TypeError, ValueError, json.JSONDecodeError) as error:
             last_error = error
+            console_log(
+                "Rejected world_state_current_segment_subjects response: "
+                + json.dumps(
+                    {
+                        "attempt": f"{attempt}/3",
+                        "raw_response": raw,
+                        "validation_error": str(error),
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
     raise ValueError(
         "Could not identify current-segment Subjects: " + str(last_error)
     )
@@ -40391,6 +40405,21 @@ def _run_main(
             segment_reference_binding_snapshot.get(
                 "excluded_configured_picture_ids", []
             )
+        )
+        console_log(
+            f"Segment {segment} Subject/Picture reference bindings before "
+            "final H3 assembly: "
+            + json.dumps(
+                {
+                    "bindings": segment_reference_binding_snapshot.get(
+                        "bindings", []
+                    ),
+                    "subject_definitions": h3_subject_definitions,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            flush=True,
         )
         h3_prompt = build_h3_prompt(
             llm_result,

@@ -415,7 +415,16 @@ def copy_acceptance_artifacts(
             shutil.copy2(source, target)
             copied[filename] = str(target.relative_to(result_dir))
     generated_dir = latest / "generated"
-    for filename in ("story_arc.json", "beats.txt", "character_canon.json", "prompt_history.txt", "generation_state.json"):
+    for filename in (
+        "story_arc.json",
+        "beats.txt",
+        "expanded_story.txt",
+        "character_canon.json",
+        "generation_state.json",
+        "prompt_history.txt",
+        "subjects.txt",
+        "story.txt",
+    ):
         source = generated_dir / filename
         if source.is_file():
             target = artifacts_dir / filename
@@ -1100,7 +1109,10 @@ def commit_result(worktree: Path, branch: str, result_dir: Path, job_id: str) ->
 
     relative = result_dir.relative_to(worktree)
     result_json = relative / "result.json"
-    run_git(["add", str(relative)], worktree)
+    # Result artifacts may reuse ignored runtime filenames such as
+    # generation_state.json and prompt_history.txt. Force-add only this job's
+    # result directory so the artifact manifest and published files agree.
+    run_git(["add", "-f", str(relative)], worktree)
     status = run_git(["status", "--porcelain"], worktree).stdout.strip()
     if not status:
         return

@@ -79,6 +79,98 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             )
             self.assertIn("bridge_log_capture_error", payload)
 
+    def test_acceptance_artifacts_are_copied_and_ignored_files_are_published(self):
+        with tempfile.TemporaryDirectory() as temp:
+            repo = Path(temp) / "repo"
+            repo.mkdir()
+            bare_remote = Path(temp) / "remote.git"
+            bridge.run_git(["init", "--bare", str(bare_remote)], repo)
+            bridge.run_git(["init", "-b", "main"], repo)
+            bridge.run_git(["config", "user.name", "Bridge Test"], repo)
+            bridge.run_git(
+                ["config", "user.email", "bridge-test@example.invalid"], repo
+            )
+            (repo / ".gitignore").write_text(
+                "generation_state.json\nprompt_history.txt\nsubjects.txt\n"
+                "story.txt\nexpanded_story.txt\nbeats.txt\nstory_arc.json\n",
+                encoding="utf-8",
+            )
+            bridge.run_git(["add", ".gitignore"], repo)
+            bridge.run_git(["commit", "-m", "Initialize test repository"], repo)
+            bridge.run_git(
+                ["remote", "add", "origin", str(bare_remote)], repo
+            )
+            bridge.run_git(
+                ["push", "--set-upstream", "origin", "main"], repo
+            )
+
+            acceptance_dir = (
+                repo / "tests" / "acceptance" / "results" / "sample-run"
+            )
+            generated_dir = acceptance_dir / "generated"
+            generated_dir.mkdir(parents=True)
+            (acceptance_dir / "acceptance_run.json").write_text(
+                "{}\n", encoding="utf-8"
+            )
+            (acceptance_dir / "run.log").write_text("run log\n", encoding="utf-8")
+            generated_names = (
+                "story_arc.json",
+                "beats.txt",
+                "expanded_story.txt",
+                "character_canon.json",
+                "generation_state.json",
+                "prompt_history.txt",
+                "subjects.txt",
+                "story.txt",
+            )
+            for filename in generated_names:
+                (generated_dir / filename).write_text(
+                    f"{filename}\n", encoding="utf-8"
+                )
+
+            result_dir = repo / "bridge" / "results" / "sample-job"
+            artifacts = bridge.copy_acceptance_artifacts(
+                repo, result_dir, benchmark_stem="sample"
+            )
+            result_dir.mkdir(parents=True, exist_ok=True)
+            (result_dir / "result.json").write_text(
+                json.dumps({"process": {"artifacts": artifacts}}) + "\n",
+                encoding="utf-8",
+            )
+            copied_paths = {
+                value for value in artifacts.values()
+                if value.startswith("files/")
+            }
+            self.assertEqual(
+                {Path(path).name for path in copied_paths},
+                {
+                    "acceptance_run.json",
+                    "run.log",
+                    *generated_names,
+                },
+            )
+            self.assertTrue(
+                all((result_dir / path).is_file() for path in copied_paths)
+            )
+
+            bridge.commit_result(repo, "main", result_dir, "sample-job")
+            committed_paths = set(
+                bridge.run_git(
+                    ["ls-tree", "-r", "--name-only", "HEAD"], repo
+                ).stdout.splitlines()
+            )
+            self.assertTrue(
+                all(
+                    (result_dir / path).relative_to(repo).as_posix()
+                    in committed_paths
+                    for path in copied_paths
+                )
+            )
+            self.assertIn(
+                (result_dir / "result.json").relative_to(repo).as_posix(),
+                committed_paths,
+            )
+
 
     def test_acceptance_rejects_unsupported_model(self):
         with tempfile.TemporaryDirectory() as temp:

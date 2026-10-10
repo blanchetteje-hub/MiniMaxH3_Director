@@ -1127,3 +1127,27 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   tests passed (12 passed). `py_compile` and `git diff --check` passed. A
   combined run including all prompt-generation
   tests was interrupted at a socket wait; the focused retry-budget test passed.
+
+## 2026-10-10 — publish job diagnostics and reference bindings
+
+- The bridge now copies `expanded_story.txt`, `subjects.txt`, and `story.txt`
+  alongside its existing acceptance artifacts when those files are available.
+  Result publication force-adds only the current job's result directory so
+  ignored `generation_state.json` and `prompt_history.txt` files are committed
+  when listed in the artifact manifest. The manifest continues to list only
+  files that were actually copied.
+- Rejected `world_state_current_segment_subjects` responses now log the raw
+  response, exact Python validation error, and attempt number. Retry behavior,
+  extraction, and prompts are unchanged.
+- Immediately before final H3 assembly, the run now logs each Segment's
+  Subject/Picture binding records and the exact Subject definitions passed to
+  the formatter.
+- Added regressions for copying and publishing ignored/source artifacts,
+  rejected Subject response diagnostics, and per-Segment pre-assembly binding
+  logs.
+- Verification: bridge tests passed (10 passed; one existing stale branch
+  assertion deselected); WorldState foundation passed (58 passed, 7 subtests;
+  two existing stale story-start prompt/response assertions deselected); the
+  focused prompt-generation binding-log test passed (3 parameter cases).
+  `py_compile` and `git diff --check` passed. Full-module runs reproduced only
+  the three previously documented stale assertions; they were not changed.

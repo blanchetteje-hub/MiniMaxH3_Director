@@ -213,6 +213,10 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
     saved_packages = []
     durations = []
     completed_world_states = []
+    console_messages = []
+
+    def capture_console_log(*values, **_kwargs):
+        console_messages.append(" ".join(str(value) for value in values))
 
     def load_text(path, required=True):
         del required
@@ -301,6 +305,10 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
     verify_loras_mock = verify_loras.start()
     render_mock = render.start()
     stitch_mock = stitch.start()
+    console_log_patch = mock.patch(
+        "minimax.console_log", side_effect=capture_console_log
+    )
+    console_log_patch.start()
     world_state_commit_mock = patches[-5].start()
     for patcher in patches[:-5]:
         patcher.start()
@@ -312,6 +320,7 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
             else:
                 minimax._run_main(summary_executor, None, render_executor if render_enabled else None)
     finally:
+        console_log_patch.stop()
         for patcher in reversed(patches):
             patcher.stop()
 
@@ -324,6 +333,13 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         assert completed_world_states == []
         world_state_commit_mock.assert_not_called()
     assert saved_packages[-1]["prompts"][0]["h3_prompt"] == "H3 prompt"
+    binding_logs = [
+        message for message in console_messages
+        if "Subject/Picture reference bindings before final H3 assembly" in message
+    ]
+    assert len(binding_logs) == count
+    assert all('"bindings"' in message for message in binding_logs)
+    assert all('"subject_definitions"' in message for message in binding_logs)
     if render_enabled:
         render_mock.assert_called_once()
     else:
