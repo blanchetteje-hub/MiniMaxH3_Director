@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "3f2fbb8f5e34725eb1a8477676a663a107484451d2a964d4183cf65d64841ef9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence_level",
+    "trade"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ".28",
+      "clothing": "A rough-spun charcoal-grey tunic, long-sleeved and reaching mid-thigh, tucked into muted brown woolen leggings that show faint scuffs from her daily work; over the tunic she wears a worn tan leather apron, heavily scarred by ale splashes and kitchen tools, tied at her waist with an iron buckle. Her feet are clad in sturdy dark-brown leather boots laced up to mid-calf, each heel slightly worn. A simple leather belt cinches between tunic and apron, holding a small pouch for coins",
+      "gender": "female",
+      "confidence_level": "confident",
+      "trade": "medieval tavern keeper"
+    }
+  ]
+}

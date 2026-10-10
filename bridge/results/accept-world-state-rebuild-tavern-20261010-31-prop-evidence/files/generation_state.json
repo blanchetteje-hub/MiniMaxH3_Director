@@ -1,0 +1,1743 @@
+{
+  "version": 1,
+  "config": {
+    "segment_length": 8.0,
+    "total_length": 48.0,
+    "megapixels": 0.5,
+    "total_segments": 6,
+    "refresh_interval": 999999,
+    "vision_continuity": 0,
+    "trim_frames": 2,
+    "retention": false,
+    "test_prompt_generation": true,
+    "no_music": false,
+    "disable_subject_removal": false,
+    "visual_style": "Live-action cinematic",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "world_state_seed": {
+      "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yqsk3iop\\repo\\subjects.txt",
+      "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+      "subjects": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null,
+          "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+          "physical_form": "unknown"
+        }
+      }
+    }
+  },
+  "segments": [
+    {
+      "segment_number": 1,
+      "video_path": null,
+      "llm_result": {
+        "detailed_description": "At 00:00.000, Camera starts mid‑shot of Amy’s upper body, a wooden table fronting her on the left side of frame; the polished tabletop gleams faintly under lantern light. At 00:01.200, Amy lifts her right foot and steps onto the creaking wooden floor beside the table, producing an audible “creak” as her boots make contact with the plank. At 00:02.400, Amy holds the cloth soaked in ale‑scented oil up to her left hand’s palm; the cloth swirls slightly, droplets of oil glinting on its surface. At 00:03.600, Amy moves forward and begins wiping across the table with a sweeping motion, dragging the cloth from one side toward the center while keeping contact with the wood; she keeps her gaze focused on the sheen forming. At 00:05.200, Amy completes the wipe in a single smooth stroke to the right edge of the tabletop; the surface now gleams noticeably brighter than before. At 00:07.000, Amy steps back, lifts the cloth from her hand, and sets it beside the table on the floor as she looks at the polished finish with satisfaction.",
+        "overall_soundscape": "creak",
+        "non_diegetic_music": "Soft, warm pizzicato cello underlies the scene, gradually swelling into a bright arpeggio as Amy finishes wiping and admires her gleaming table.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy steps back, lifts the cloth from her hand, and sets it beside the table on the floor as she looks at the polished finish with satisfaction."
+      },
+      "dialogues": [],
+      "completed_beat_ids": [
+        1
+      ],
+      "continuity_summary": "",
+      "continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "prop_ledger": {},
+      "subject_state_ledger": {},
+      "subject_registry_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "subject_identity_snapshot": {},
+      "world_state": {
+        "schema_version": 1,
+        "revision": 4,
+        "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+        "seed_status": "authoritative_source_seeded",
+        "subjects": {
+          "subject_1": {
+            "id": "subject_1",
+            "subject_id": 1,
+            "name": "Amy",
+            "identity": {
+              "gender": "female",
+              "picture_ids": [
+                1
+              ],
+              "canonical_description": "unknown",
+              "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+              "physical_form": "unknown",
+              "clothing_applicability": "unknown"
+            },
+            "presence": "present",
+            "location_id": "location_a_wooden_topped_tavern_1495b560a3bd",
+            "support_id": null,
+            "posture": "unknown",
+            "wardrobe": {
+              "upper": [
+                {
+                  "garment": "rough-spun charcoal-grey tunic",
+                  "condition": "unknown"
+                }
+              ],
+              "lower": [
+                {
+                  "garment": "tucked into muted brown woolen leggings that show faint scuffs from her daily work",
+                  "condition": "unknown"
+                }
+              ],
+              "footwear": [
+                {
+                  "garment": "tied at her waist with an iron buckle. Her feet are clad in sturdy dark-brown leather boots laced up to mid-calf",
+                  "condition": "unknown"
+                }
+              ],
+              "other": [
+                {
+                  "garment": "apron",
+                  "condition": "unknown"
+                }
+              ]
+            },
+            "persistent_condition": "unknown",
+            "status": "unknown",
+            "provenance": {
+              "identity": {
+                "authority": "user_authored_subject_definitions",
+                "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yqsk3iop\\repo\\subjects.txt",
+                "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31"
+              },
+              "wardrobe.upper": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.lower": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.footwear": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "wardrobe.other": {
+                "authority": "dedicated_subject_wardrobe_extractor"
+              },
+              "presence": {
+                "authority": "registered_subject_story_start_classifier",
+                "initial_state": "The floor creaks under Amy's feet"
+              }
+            }
+          }
+        },
+        "props": {
+          "prop_location_a_wooden_topped_tavern__8c250c970c53": {
+            "id": "prop_location_a_wooden_topped_tavern__8c250c970c53",
+            "name": "back door with wooden latch",
+            "kind": "fixture",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "anchors",
+                "source_type": "door"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__34d2789bb4fd": {
+            "id": "prop_location_a_wooden_topped_tavern__34d2789bb4fd",
+            "name": "hearth",
+            "kind": "fixture",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "anchors",
+                "source_type": "fireplace"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__cf8ee1f48e3c": {
+            "id": "prop_location_a_wooden_topped_tavern__cf8ee1f48e3c",
+            "name": "barrel",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "anchors",
+                "source_type": "wooden barrel"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__de92da6e673b": {
+            "id": "prop_location_a_wooden_topped_tavern__de92da6e673b",
+            "name": "central counter",
+            "kind": "fixture",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "counter"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__bcca7cffca10": {
+            "id": "prop_location_a_wooden_topped_tavern__bcca7cffca10",
+            "name": "high bar stool 1",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "bar stool"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__8b9b18b93913": {
+            "id": "prop_location_a_wooden_topped_tavern__8b9b18b93913",
+            "name": "high bar stool 2",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "bar stool"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__e0746abc4560": {
+            "id": "prop_location_a_wooden_topped_tavern__e0746abc4560",
+            "name": "high bar stool 3",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "bar stool"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__db1b5d72c291": {
+            "id": "prop_location_a_wooden_topped_tavern__db1b5d72c291",
+            "name": "high bar stool 4",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "bar stool"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__5acb6c2ba6a0": {
+            "id": "prop_location_a_wooden_topped_tavern__5acb6c2ba6a0",
+            "name": "crystal cup shelf 1",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "shelf"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__0518cff94e9a": {
+            "id": "prop_location_a_wooden_topped_tavern__0518cff94e9a",
+            "name": "crystal cup shelf 2",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "shelf"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__c03256f1f6e1": {
+            "id": "prop_location_a_wooden_topped_tavern__c03256f1f6e1",
+            "name": "crystal cup shelf 3",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "shelf"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__c03ca6270783": {
+            "id": "prop_location_a_wooden_topped_tavern__c03ca6270783",
+            "name": "crystal cup shelf 4",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "shelf"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__27f44ed19d8b": {
+            "id": "prop_location_a_wooden_topped_tavern__27f44ed19d8b",
+            "name": "back table",
+            "kind": "fixture",
+            "mobility": "fixed",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "table"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__7ce4eca4377d": {
+            "id": "prop_location_a_wooden_topped_tavern__7ce4eca4377d",
+            "name": "lantern at counter stool 1",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "lantern"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__3ea7c6d814bf": {
+            "id": "prop_location_a_wooden_topped_tavern__3ea7c6d814bf",
+            "name": "lantern at counter stool 2",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "lantern"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__82a19372d259": {
+            "id": "prop_location_a_wooden_topped_tavern__82a19372d259",
+            "name": "lantern at counter stool 3",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "lantern"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__4de1ca81ac80": {
+            "id": "prop_location_a_wooden_topped_tavern__4de1ca81ac80",
+            "name": "lantern at counter stool 4",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "lantern"
+              }
+            }
+          },
+          "prop_location_a_wooden_topped_tavern__3dd01f378680": {
+            "id": "prop_location_a_wooden_topped_tavern__3dd01f378680",
+            "name": "lantern at back table",
+            "kind": "support",
+            "mobility": "unknown",
+            "status": "present",
+            "placement": {
+              "kind": "located",
+              "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+            },
+            "contents": [],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "canonical_location_state",
+                "source_field": "objects",
+                "source_type": "lantern"
+              }
+            }
+          },
+          "prop_object_cloth_soaked_in_ale_scent_826cf590d4f3": {
+            "id": "prop_object_cloth_soaked_in_ale_scent_826cf590d4f3",
+            "name": "cloth soaked in ale-scented oil",
+            "kind": "object",
+            "mobility": "movable",
+            "status": "present",
+            "placement": {
+              "kind": "held",
+              "subject_id": "subject_1"
+            },
+            "contents": [
+              {
+                "substance": "ale-scented oil",
+                "amount": "unknown",
+                "consumable": "unknown"
+              }
+            ],
+            "capabilities": {
+              "lockable": "unknown",
+              "consumable": "unknown",
+              "openable": "unknown",
+              "container": "unknown"
+            },
+            "mechanism_state": "unknown",
+            "condition": "unknown",
+            "provenance": {
+              "registration": {
+                "authority": "explicit_persistent_prop_registry"
+              }
+            }
+          }
+        },
+        "locations": {
+          "location_a_wooden_topped_tavern_1495b560a3bd": {
+            "id": "location_a_wooden_topped_tavern_1495b560a3bd",
+            "name": "a wooden-topped tavern"
+          }
+        }
+      },
+      "continuity_summary_pending": false,
+      "continuity_prompt_state": {},
+      "continuity_source": "world_state",
+      "h3_prompt": "subject_definitions: Subject Amy: present; at a wooden-topped tavern; wearing rough-spun charcoal-grey tunic, tucked into muted brown woolen leggings that show faint scuffs from her daily work, tied at her waist with an iron buckle. Her feet are clad in sturdy dark-brown leather boots laced up to mid-calf, and apron.\nProp back door with wooden latch: at a wooden-topped tavern.\nProp back table: at a wooden-topped tavern.\nProp barrel: at a wooden-topped tavern.\nProp central counter: at a wooden-topped tavern.\nProp cloth soaked in ale-scented oil: held by Amy.\nProp crystal cup shelf 1: at a wooden-topped tavern.\nProp crystal cup shelf 2: at a wooden-topped tavern.\nProp crystal cup shelf 3: at a wooden-topped tavern.\nProp crystal cup shelf 4: at a wooden-topped tavern.\nProp hearth: at a wooden-topped tavern.\nProp high bar stool 1: at a wooden-topped tavern.\nProp high bar stool 2: at a wooden-topped tavern.\nProp high bar stool 3: at a wooden-topped tavern.\nProp high bar stool 4: at a wooden-topped tavern.\nProp lantern at back table: at a wooden-topped tavern.\nProp lantern at counter stool 1: at a wooden-topped tavern.\nProp lantern at counter stool 2: at a wooden-topped tavern.\nProp lantern at counter stool 3: at a wooden-topped tavern.\nProp lantern at counter stool 4: at a wooden-topped tavern.\nAmy is a .28 female. Her feet are clad in sturdy dark-brown leather boots laced up to mid-calf, each heel slightly worn. A simple leather belt cinches between tunic and apron, holding a small pouch for coins.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The tavern hall is a rectangular space measuring thirty feet east‑west by twenty feet north‑south on a creaking wooden floor. The western wall hosts the back door with its wooden latch, centered along that wall. North of the southern wall, ten feet away and centered on the north‑south axis, sits an eight‑by‑six‑foot hearth; in front of it, facing south, is a three‑foot diameter barrel five feet tall. A twelve‑by‑two‑foot counter runs parallel to the western wall just east of the hearth. Four high bar stools sit along this counter at equal intervals: one near each corner and two midway between them. Each stool has a seven‑ft seat height with a one‑by‑one foot platform, and above each sits a six‑by‑two‑foot crystal cup shelf. North of the back door on the western wall is a four‑by‑three‑foot table with an additional one‑foot depth for chairs; two chairs flank this table. Lanterns hang from the ceiling at five feet above floor level over every seating area—four lanterns above each bar stool and one above the back table—to provide continuous illumination without blocking pathways. All objects are positioned to avoid overlap: a four‑ft aisle north of the hearth, the counter east of that space, and ample room between stools for patrons. The layout reflects a medieval tavern interior with wooden fixtures, a hearth, barrels, counters, high stools, crystal cup shelves, tables, chairs, lanterns, and a back door latch). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, The scene starts in a wooden-topped tavern. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, Camera starts mid‑shot of Amy’s upper body, a wooden table fronting her on the left side of frame; the polished tabletop gleams faintly under lantern light.\n\nAt 00:01.200, Amy lifts her right foot and steps onto the creaking wooden floor beside the table, producing an audible “creak” as her boots make contact with the plank.\n\nAt 00:02.400, Amy holds the cloth soaked in ale‑scented oil up to her left hand’s palm; the cloth swirls slightly, droplets of oil glinting on its surface.\n\nAt 00:03.600, Amy moves forward and begins wiping across the table with a sweeping motion, dragging the cloth from one side toward the center while keeping contact with the wood; she keeps her gaze focused on the sheen forming.\n\nAt 00:05.200, Amy completes the wipe in a single smooth stroke to the right edge of the tabletop; the surface now gleams noticeably brighter than before.\n\nAt 00:07.000, Amy steps back, lifts the cloth from her hand, and sets it beside the table on the floor as she looks at the polished finish with satisfaction.\n\noverall_soundscape: creak\n\nnon_diegetic_music: Soft, warm pizzicato cello underlies the scene, gradually swelling into a bright arpeggio as Amy finishes wiping and admires her gleaming table.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "subject_definitions": "",
+      "character_reference_images": {},
+      "reference_bindings": {
+        "segment_number": 1,
+        "disable_subject_removal": false,
+        "subject_removal_window_segments": 3,
+        "explicit_subject_ids": [
+          1
+        ],
+        "active_subject_ids": [],
+        "defined_subject_ids": [],
+        "removed_subject_ids": [
+          1
+        ],
+        "excluded_configured_picture_ids": [
+          1
+        ],
+        "bindings": []
+      }
+    }
+  ],
+  "recent_dialogues": [],
+  "recent_dialogue_exclusions": [],
+  "continuity_prompt_state": {},
+  "continuity_state": {
+    "version": 5,
+    "environment": {
+      "location": "N/A",
+      "persistent_state": "N/A"
+    },
+    "camera": "N/A",
+    "ongoing_action": "N/A",
+    "ongoing_audio": "N/A",
+    "subjects": {}
+  },
+  "continuity_summary": "",
+  "visual_raw_end_state": {},
+  "visual_end_state": {},
+  "visual_end_frame_paths": [],
+  "prop_ledger": {},
+  "location_state": {
+    "location": {
+      "name": "Tavern Hall",
+      "description": "A rectangular medieval tavern interior on a creaking wooden floor."
+    },
+    "anchors": [
+      {
+        "name": "back door with wooden latch",
+        "type": "door",
+        "wall": "west",
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "hearth",
+        "type": "fireplace",
+        "position": "10 ft north of southern wall, centered on north‑south axis",
+        "dimensions": {
+          "east_west": "8 ft",
+          "depth": "6 ft"
+        },
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "barrel",
+        "type": "wooden barrel",
+        "position": "in front of hearth, facing south",
+        "dimensions": {
+          "diameter": "3 ft",
+          "height": "5 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      }
+    ],
+    "objects": [
+      {
+        "name": "central counter",
+        "type": "counter",
+        "position": "parallel to western wall, just east of hearth",
+        "dimensions": {
+          "north_south": "12 ft",
+          "depth": "2 ft"
+        },
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "high bar stool 1",
+        "type": "bar stool",
+        "position": "near western corner of counter, 4 ft from eastern wall",
+        "dimensions": {
+          "seat_height": "7 ft",
+          "platform": "1 ft × 1 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "high bar stool 2",
+        "type": "bar stool",
+        "position": "midway along counter, near western side",
+        "dimensions": {
+          "seat_height": "7 ft",
+          "platform": "1 ft × 1 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "high bar stool 3",
+        "type": "bar stool",
+        "position": "midway along counter, near eastern side",
+        "dimensions": {
+          "seat_height": "7 ft",
+          "platform": "1 ft × 1 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "high bar stool 4",
+        "type": "bar stool",
+        "position": "near eastern corner of counter, 2 ft from southern wall",
+        "dimensions": {
+          "seat_height": "7 ft",
+          "platform": "1 ft × 1 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "crystal cup shelf 1",
+        "type": "shelf",
+        "position": "above high bar stool 1, east‑west orientation",
+        "dimensions": {
+          "length": "6 ft",
+          "depth": "2 ft"
+        },
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "crystal cup shelf 2",
+        "type": "shelf",
+        "position": "above high bar stool 2, east‑west orientation",
+        "dimensions": {
+          "length": "6 ft",
+          "depth": "2 ft"
+        },
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "crystal cup shelf 3",
+        "type": "shelf",
+        "position": "above high bar stool 3, east‑west orientation",
+        "dimensions": {
+          "length": "6 ft",
+          "depth": "2 ft"
+        },
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "crystal cup shelf 4",
+        "type": "shelf",
+        "position": "above high bar stool 4, east‑west orientation",
+        "dimensions": {
+          "length": "6 ft",
+          "depth": "2 ft"
+        },
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "back table",
+        "type": "table",
+        "position": "just north of back door on western wall",
+        "dimensions": {
+          "east_west": "4 ft",
+          "deep": "3 ft",
+          "chair_depth": "1 ft"
+        },
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "back table chair 1",
+        "type": "chair",
+        "position": "south side of back table, near western corner",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "back table chair 2",
+        "type": "chair",
+        "position": "north side of back table, near eastern corner",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern at counter stool 1",
+        "type": "lantern",
+        "position": "hung from ceiling above high bar stool 1, 5 ft above floor",
+        "dimensions": {
+          "diameter": "0.8 ft",
+          "height": "1 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern at counter stool 2",
+        "type": "lantern",
+        "position": "hung from ceiling above high bar stool 2, 5 ft above floor",
+        "dimensions": {
+          "diameter": "0.8 ft",
+          "height": "1 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern at counter stool 3",
+        "type": "lantern",
+        "position": "hung from ceiling above high bar stool 3, 5 ft above floor",
+        "dimensions": {
+          "diameter": "0.8 ft",
+          "height": "1 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern at counter stool 4",
+        "type": "lantern",
+        "position": "hung from ceiling above high bar stool 4, 5 ft above floor",
+        "dimensions": {
+          "diameter": "0.8 ft",
+          "height": "1 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern at back table",
+        "type": "lantern",
+        "position": "hung from ceiling above back table, 5 ft above floor",
+        "dimensions": {
+          "diameter": "0.8 ft",
+          "height": "1 ft"
+        },
+        "world_state_role": "support",
+        "mobility": "unknown"
+      }
+    ]
+  },
+  "subject_state_ledger": {},
+  "character_reference_images": {
+    "Amy": {
+      "name": "Amy",
+      "picture_number": 2,
+      "image_name": "minimax_character_ref_662b7e9b6734_002_Amy_v001.png",
+      "image_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yqsk3iop\\repo\\output\\video\\state\\minimax_character_ref_662b7e9b6734_002_Amy_v001.png",
+      "signature": "f22c68dd7b977528409d86ce693710939c3f401f11ffcd6b31691a94fe56bb5f",
+      "version": 1,
+      "description": "Amy is a .28 female. Her feet are clad in sturdy dark-brown leather boots laced up to mid-calf, each heel slightly worn. A simple leather belt cinches between tunic and apron, holding a small pouch for coins. Amy is currently wearing rough-spun charcoal-grey tunic, tucked into muted brown woolen leggings that show faint scuffs from her daily work, tied at her waist with an iron buckle. Her feet are clad in sturdy dark-brown leather boots laced up to mid-calf, and apron.",
+      "wardrobe": {
+        "upper": "rough-spun charcoal-grey tunic",
+        "lower": "tucked into muted brown woolen leggings that show faint scuffs from her daily work",
+        "footwear": "tied at her waist with an iron buckle. Her feet are clad in sturdy dark-brown leather boots laced up to mid-calf",
+        "other": "apron"
+      },
+      "clothing_condition": "",
+      "authority": "clothing_only"
+    }
+  },
+  "base_reference_image_count": 1,
+  "reference_binding_state": {
+    "version": 1,
+    "disable_subject_removal": false,
+    "subject_removal_window_segments": 3,
+    "current_segment_number": 1,
+    "current_bindings": [],
+    "current_active_subject_ids": [],
+    "current_explicit_subject_ids": [
+      1
+    ],
+    "current_removed_subject_ids": [
+      1
+    ],
+    "current_excluded_configured_picture_ids": [
+      1
+    ],
+    "subjects": {
+      "Amy": {
+        "subject_id": 1,
+        "first_segment_seen": 1,
+        "last_explicit_segment": 1,
+        "binding_history": [],
+        "explicitly_departed": true,
+        "segments_since_explicit": 0,
+        "currently_bound": false,
+        "eligible_for_removal": true,
+        "removal_threshold_segment": 4,
+        "binding_reason": "expired_sliding_window"
+      }
+    },
+    "current_defined_subject_ids": []
+  },
+  "subject_registry_state": {
+    "version": 5,
+    "environment": {
+      "location": "N/A",
+      "persistent_state": "N/A"
+    },
+    "camera": "N/A",
+    "ongoing_action": "N/A",
+    "ongoing_audio": "N/A",
+    "subjects": {
+      "Amy": {
+        "name": "Amy",
+        "id": "Subject 1",
+        "speaker_id": "(S1)",
+        "subject_id": 1,
+        "gender": "female",
+        "picture_ids": [
+          1
+        ],
+        "picture_id": 1,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "topology": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "persistent_effects": [],
+        "spatial_relationships": [],
+        "held_props": []
+      }
+    }
+  },
+  "world_state": {
+    "schema_version": 1,
+    "revision": 7,
+    "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+    "seed_status": "authoritative_source_seeded",
+    "subjects": {
+      "subject_1": {
+        "id": "subject_1",
+        "subject_id": 1,
+        "name": "Amy",
+        "identity": {
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "canonical_description": "unknown",
+          "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "present",
+        "location_id": "location_a_wooden_topped_tavern_1495b560a3bd",
+        "support_id": null,
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "rough-spun charcoal-grey tunic",
+              "condition": "unknown"
+            }
+          ],
+          "lower": [
+            {
+              "garment": "tucked into muted brown woolen leggings that show faint scuffs from her daily work",
+              "condition": "unknown"
+            }
+          ],
+          "footwear": [
+            {
+              "garment": "tied at her waist with an iron buckle. Her feet are clad in sturdy dark-brown leather boots laced up to mid-calf",
+              "condition": "unknown"
+            }
+          ],
+          "other": [
+            {
+              "garment": "apron",
+              "condition": "unknown"
+            }
+          ]
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "user_authored_subject_definitions",
+            "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-yqsk3iop\\repo\\subjects.txt",
+            "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "presence": {
+            "authority": "registered_subject_story_start_classifier",
+            "initial_state": "The floor creaks under Amy's feet"
+          }
+        }
+      },
+      "subject_goblin_1_d854cbae1c19": {
+        "id": "subject_goblin_1_d854cbae1c19",
+        "subject_id": "subject_goblin_1_d854cbae1c19",
+        "name": "goblin_1",
+        "identity": {
+          "gender": "unknown",
+          "picture_ids": [],
+          "canonical_description": "unknown",
+          "source_description": "green-skinned goblin",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "unknown",
+        "location_id": "unknown",
+        "support_id": "unknown",
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [],
+          "lower": [],
+          "footwear": [],
+          "other": [
+            {
+              "garment": "over it drapes a leather apron from ale",
+              "condition": "worn, stained"
+            }
+          ]
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "current_segment_subject_extractor"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          }
+        }
+      }
+    },
+    "props": {
+      "prop_location_a_wooden_topped_tavern__8c250c970c53": {
+        "id": "prop_location_a_wooden_topped_tavern__8c250c970c53",
+        "name": "back door with wooden latch",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "anchors",
+            "source_type": "door"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__34d2789bb4fd": {
+        "id": "prop_location_a_wooden_topped_tavern__34d2789bb4fd",
+        "name": "hearth",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "anchors",
+            "source_type": "fireplace"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__cf8ee1f48e3c": {
+        "id": "prop_location_a_wooden_topped_tavern__cf8ee1f48e3c",
+        "name": "barrel",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "anchors",
+            "source_type": "wooden barrel"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__de92da6e673b": {
+        "id": "prop_location_a_wooden_topped_tavern__de92da6e673b",
+        "name": "central counter",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "counter"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__bcca7cffca10": {
+        "id": "prop_location_a_wooden_topped_tavern__bcca7cffca10",
+        "name": "high bar stool 1",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "bar stool"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__8b9b18b93913": {
+        "id": "prop_location_a_wooden_topped_tavern__8b9b18b93913",
+        "name": "high bar stool 2",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "bar stool"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__e0746abc4560": {
+        "id": "prop_location_a_wooden_topped_tavern__e0746abc4560",
+        "name": "high bar stool 3",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "bar stool"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__db1b5d72c291": {
+        "id": "prop_location_a_wooden_topped_tavern__db1b5d72c291",
+        "name": "high bar stool 4",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "bar stool"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__5acb6c2ba6a0": {
+        "id": "prop_location_a_wooden_topped_tavern__5acb6c2ba6a0",
+        "name": "crystal cup shelf 1",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "shelf"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__0518cff94e9a": {
+        "id": "prop_location_a_wooden_topped_tavern__0518cff94e9a",
+        "name": "crystal cup shelf 2",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "shelf"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__c03256f1f6e1": {
+        "id": "prop_location_a_wooden_topped_tavern__c03256f1f6e1",
+        "name": "crystal cup shelf 3",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "shelf"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__c03ca6270783": {
+        "id": "prop_location_a_wooden_topped_tavern__c03ca6270783",
+        "name": "crystal cup shelf 4",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "shelf"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__27f44ed19d8b": {
+        "id": "prop_location_a_wooden_topped_tavern__27f44ed19d8b",
+        "name": "back table",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "table"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__7ce4eca4377d": {
+        "id": "prop_location_a_wooden_topped_tavern__7ce4eca4377d",
+        "name": "lantern at counter stool 1",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "lantern"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__3ea7c6d814bf": {
+        "id": "prop_location_a_wooden_topped_tavern__3ea7c6d814bf",
+        "name": "lantern at counter stool 2",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "lantern"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__82a19372d259": {
+        "id": "prop_location_a_wooden_topped_tavern__82a19372d259",
+        "name": "lantern at counter stool 3",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "lantern"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__4de1ca81ac80": {
+        "id": "prop_location_a_wooden_topped_tavern__4de1ca81ac80",
+        "name": "lantern at counter stool 4",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "lantern"
+          }
+        }
+      },
+      "prop_location_a_wooden_topped_tavern__3dd01f378680": {
+        "id": "prop_location_a_wooden_topped_tavern__3dd01f378680",
+        "name": "lantern at back table",
+        "kind": "support",
+        "mobility": "unknown",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_a_wooden_topped_tavern_1495b560a3bd"
+        },
+        "contents": [],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "lantern"
+          }
+        }
+      },
+      "prop_object_cloth_soaked_in_ale_scent_826cf590d4f3": {
+        "id": "prop_object_cloth_soaked_in_ale_scent_826cf590d4f3",
+        "name": "cloth soaked in ale-scented oil",
+        "kind": "object",
+        "mobility": "movable",
+        "status": "present",
+        "placement": {
+          "kind": "held",
+          "subject_id": "subject_1"
+        },
+        "contents": [
+          {
+            "substance": "ale-scented oil",
+            "amount": "unknown",
+            "consumable": "unknown"
+          }
+        ],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "explicit_persistent_prop_registry"
+          }
+        }
+      },
+      "prop_object_chipped_mug_7f4421b41721": {
+        "id": "prop_object_chipped_mug_7f4421b41721",
+        "name": "chipped mug",
+        "kind": "object",
+        "mobility": "movable",
+        "status": "present",
+        "placement": {
+          "kind": "held",
+          "subject_id": "subject_goblin_1_d854cbae1c19"
+        },
+        "contents": [
+          {
+            "substance": "unknown",
+            "amount": "unknown",
+            "consumable": "unknown"
+          }
+        ],
+        "capabilities": {
+          "lockable": "unknown",
+          "consumable": "unknown",
+          "openable": "unknown",
+          "container": true
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "explicit_persistent_prop_registry"
+          }
+        }
+      }
+    },
+    "locations": {
+      "location_a_wooden_topped_tavern_1495b560a3bd": {
+        "id": "location_a_wooden_topped_tavern_1495b560a3bd",
+        "name": "a wooden-topped tavern"
+      }
+    }
+  },
+  "subject_identity_lock": {
+    "subjects": {
+      "1": {
+        "name": "Amy",
+        "id": "Subject 1",
+        "speaker_id": "(S1)",
+        "subject_id": 1,
+        "gender": "female",
+        "picture_ids": [
+          1
+        ],
+        "picture_id": 1,
+        "origin_segment": null
+      }
+    }
+  },
+  "continuity_summary_pending": false,
+  "beat_progress": {
+    "completed_beat_ids": [
+      1
+    ],
+    "last_segment_number": 1,
+    "newly_completed_beat_ids": []
+  },
+  "metadata": {
+    "overall_location": "a medieval tavern",
+    "starting_location": "a wooden-topped tavern",
+    "setting_description": "The tavern hall is a rectangular space measuring thirty feet east‑west by twenty feet north‑south on a creaking wooden floor. The western wall hosts the back door with its wooden latch, centered along that wall. North of the southern wall, ten feet away and centered on the north‑south axis, sits an eight‑by‑six‑foot hearth; in front of it, facing south, is a three‑foot diameter barrel five feet tall.\n\nA twelve‑by‑two‑foot counter runs parallel to the western wall just east of the hearth. Four high bar stools sit along this counter at equal intervals: one near each corner and two midway between them. Each stool has a seven‑ft seat height with a one‑by‑one foot platform, and above each sits a six‑by‑two‑foot crystal cup shelf.\n\nNorth of the back door on the western wall is a four‑by‑three‑foot table with an additional one‑foot depth for chairs; two chairs flank this table. Lanterns hang from the ceiling at five feet above floor level over every seating area—four lanterns above each bar stool and one above the back table—to provide continuous illumination without blocking pathways.\n\nAll objects are positioned to avoid overlap: a four‑ft aisle north of the hearth, the counter east of that space, and ample room between stools for patrons. The layout reflects a medieval tavern interior with wooden fixtures, a hearth, barrels, counters, high stools, crystal cup shelves, tables, chairs, lanterns, and a back door latch.",
+    "spatial_location_description": "The tavern occupies a rectangular hall that measures **30 ft east‑west by 20 ft north‑south** and is laid out on a creaking wooden floor.\n\n### Anchor objects (large or fixed)\n\n1. **Back door with wooden latch**  \n   - Located at the **western wall**, centered along its length.  \n   - Door width: **4 ft**; height: **7 ft**.  \n\n2. **Hearth and barrel**  \n   - Hearth sits **10 ft north of the southern wall** (the centre of the north‑south axis).  \n   - Hearth dimensions: **8 ft east‑west × 6 ft deep**, standing on the floor.  \n   - Barrel rests in front of the hearth, facing south; diameter **3 ft**, height **5 ft**.\n\n### Counter and seating\n\n3. **Central counter**  \n   - Runs parallel to the western wall, positioned just east of the hearth.  \n   - Length: **12 ft north‑south** (from 4 ft west of the eastern wall down to 2 ft from the southern wall).  \n   - Depth into room: **2 ft**.  \n\n4. **High bar stools with crystal cup shelves**  \n   - Four stools placed along the counter at equal intervals: one near each corner and two midway.  \n   - Stool height (to seat): **7 ft**; depth of stool platform: **1 ft × 1 ft**.  \n   - Shelves above stools run east‑west, 2 ft deep by 6 ft long, holding crystal cups.\n\n5. **Back table**  \n   - Located just north of the back door on the western wall.  \n   - Table dimensions: **4 ft east‑west × 3 ft deep**, with a 1 ft depth for chairs.  \n\n### Lighting\n\n6. **Lanterns at each table**  \n   - Small lanterns hung from the ceiling above every seating area (counter stools and back table).  \n   - Lantern diameter: **0.8 ft**, height: **1 ft**; positioned 5 ft above floor level.\n\nAll objects are spaced to avoid overlap: the hearth’s depth leaves a clear 4‑ft aisle northward, the counter sits east of that space, and the back table is directly adjacent to the western door. The high bar stools sit on the counter with ample room between them for patrons, while lanterns provide continuous illumination without blocking any pathways."
+  },
+  "initial_location_subjects": []
+}
