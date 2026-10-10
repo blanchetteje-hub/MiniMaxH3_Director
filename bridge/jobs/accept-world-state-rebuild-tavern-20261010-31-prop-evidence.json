@@ -1,0 +1,10 @@
+{
+  "job_id": "accept-world-state-rebuild-tavern-20261010-31-prop-evidence",
+  "kind": "run_acceptance",
+  "code_branch": "world-state-rebuild-auto-pilot",
+  "benchmark": "tests/acceptance/gold/amy_medieval_tavern_six.json",
+  "director_plan_dir": "tests/acceptance/fixtures/tavern_run21_plan",
+  "model": "gpt",
+  "image1": "amy.jpg",
+  "timeout_seconds": 7200
+}
