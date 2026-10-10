@@ -1,0 +1,7 @@
+{
+  "job_id": "accept-world-state-rebuild-tavern-20261010-28-diagnostics",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Acceptance jobs must run on an approved code branch ['gpt-arc-refresh', 'world-state-rebuild']; got 'world-state-rebuild-auto-pilot'.",
+  "finished_at": 1791641467.5869865
+}
