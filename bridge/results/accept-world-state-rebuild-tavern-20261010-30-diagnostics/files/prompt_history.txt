@@ -1,0 +1,1687 @@
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:19:30Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "story_subject_wardrobe_extract",
+    "subject": "Amy",
+    "subject_id": 1,
+    "attempt": 1,
+    "seed": 677296370,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 0,
+        "length": 813
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 1,
+        "length": 1674
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 0 LENGTH 813>>>
+Determine one defined subject's canonical appropriate attire from the expanded story.
+
+- Preserve every explicit clothing detail for this subject, including material, texture, color, wear, layers, and role-specific garments.
+- Fill only missing normal outfit pieces with simple appropriate attire for the subject's species, body, setting, period, culture, and occupation so the visual reference shows a complete coherent outfit.
+
+FIXED CLOTHING RULE: any subject with a humanoid physical form must wear clothing, regardless of species; never return N/A for a humanoid. A non-humanoid form may use N/A when clothing is not appropriate unless the story explicitly gives that subject clothing.
+
+Return the following JSON structure:
+{
+  "clothing": "Description of the subject's complete outfit as a single string."
+}
+<<<END_PROMPT_HISTORY_CONTENT 0>>>
+<<<PROMPT_HISTORY_CONTENT 1 LENGTH 1674>>>
+SUBJECT
+Amy
+
+DEFINED SUBJECT
+<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.
+
+KNOWN NON-CLOTHING FACTS
+{"age":"32","gender":"female","confident_woman":"true","referenced_in":"<Picture 1>"}
+
+EXPANDED STORY
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil. She wears a rough‑spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+Return exactly clothing.
+<<<END_PROMPT_HISTORY_CONTENT 1>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:19:43Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "story_subject_wardrobe_extract",
+    "subject": "Goblin",
+    "subject_id": null,
+    "attempt": 1,
+    "seed": 119527890,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 2,
+        "length": 813
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 3,
+        "length": 1506
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 2 LENGTH 813>>>
+Determine one defined subject's canonical appropriate attire from the expanded story.
+
+- Preserve every explicit clothing detail for this subject, including material, texture, color, wear, layers, and role-specific garments.
+- Fill only missing normal outfit pieces with simple appropriate attire for the subject's species, body, setting, period, culture, and occupation so the visual reference shows a complete coherent outfit.
+
+FIXED CLOTHING RULE: any subject with a humanoid physical form must wear clothing, regardless of species; never return N/A for a humanoid. A non-humanoid form may use N/A when clothing is not appropriate unless the story explicitly gives that subject clothing.
+
+Return the following JSON structure:
+{
+  "clothing": "Description of the subject's complete outfit as a single string."
+}
+<<<END_PROMPT_HISTORY_CONTENT 2>>>
+<<<PROMPT_HISTORY_CONTENT 3 LENGTH 1506>>>
+SUBJECT
+Goblin
+
+DEFINED SUBJECT
+N/A
+
+KNOWN NON-CLOTHING FACTS
+{"age":"N/A","gender":"N/A","skin_color":"green","hands":"tiny, clutching a chipped mug"}
+
+EXPANDED STORY
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil. She wears a rough‑spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+Return exactly clothing.
+<<<END_PROMPT_HISTORY_CONTENT 3>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:19:59Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "story_subject_wardrobe_extract",
+    "subject": "Elf",
+    "subject_id": null,
+    "attempt": 1,
+    "seed": 783125214,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 4,
+        "length": 813
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 5,
+        "length": 1555
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 4 LENGTH 813>>>
+Determine one defined subject's canonical appropriate attire from the expanded story.
+
+- Preserve every explicit clothing detail for this subject, including material, texture, color, wear, layers, and role-specific garments.
+- Fill only missing normal outfit pieces with simple appropriate attire for the subject's species, body, setting, period, culture, and occupation so the visual reference shows a complete coherent outfit.
+
+FIXED CLOTHING RULE: any subject with a humanoid physical form must wear clothing, regardless of species; never return N/A for a humanoid. A non-humanoid form may use N/A when clothing is not appropriate unless the story explicitly gives that subject clothing.
+
+Return the following JSON structure:
+{
+  "clothing": "Description of the subject's complete outfit as a single string."
+}
+<<<END_PROMPT_HISTORY_CONTENT 4>>>
+<<<PROMPT_HISTORY_CONTENT 5 LENGTH 1555>>>
+SUBJECT
+Elf
+
+DEFINED SUBJECT
+N/A
+
+KNOWN NON-CLOTHING FACTS
+{"age":"150","gender":"female","hair_color":"silver","description":"beautiful female elf steps in, silver hair streaming down its shoulders"}
+
+EXPANDED STORY
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil. She wears a rough‑spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+Return exactly clothing.
+<<<END_PROMPT_HISTORY_CONTENT 5>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:20:16Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "story_subject_wardrobe_extract",
+    "subject": "Dragon‑shaped creature",
+    "subject_id": null,
+    "attempt": 1,
+    "seed": 1113002108,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 6,
+        "length": 813
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 7,
+        "length": 1517
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 6 LENGTH 813>>>
+Determine one defined subject's canonical appropriate attire from the expanded story.
+
+- Preserve every explicit clothing detail for this subject, including material, texture, color, wear, layers, and role-specific garments.
+- Fill only missing normal outfit pieces with simple appropriate attire for the subject's species, body, setting, period, culture, and occupation so the visual reference shows a complete coherent outfit.
+
+FIXED CLOTHING RULE: any subject with a humanoid physical form must wear clothing, regardless of species; never return N/A for a humanoid. A non-humanoid form may use N/A when clothing is not appropriate unless the story explicitly gives that subject clothing.
+
+Return the following JSON structure:
+{
+  "clothing": "Description of the subject's complete outfit as a single string."
+}
+<<<END_PROMPT_HISTORY_CONTENT 6>>>
+<<<PROMPT_HISTORY_CONTENT 7 LENGTH 1517>>>
+SUBJECT
+Dragon‑shaped creature
+
+DEFINED SUBJECT
+N/A
+
+KNOWN NON-CLOTHING FACTS
+{"age":"N/A","gender":"N/A","scales_color":"polished obsidian","eyes_color":"amber"}
+
+EXPANDED STORY
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil. She wears a rough‑spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+Return exactly clothing.
+<<<END_PROMPT_HISTORY_CONTENT 7>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:20:31Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "story_location_extract",
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "medium",
+      "thinking_budget_tokens": 256,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 8,
+        "length": 577
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 9,
+        "length": 1383
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 8 LENGTH 577>>>
+Extract only two location facts from the complete expanded story. overall_location is the broadest useful physical setting that contains most of the story. starting_location is the physical place where the main character begins the story. Use concise natural-language place phrases. Do not invent a proper name, room, building, town, region, or world that the story does not establish. starting_location must be phrased so it can follow the words 'The scene starts in'. If no broader setting is established, use the most specific supported enclosing location. Return JSON only.
+<<<END_PROMPT_HISTORY_CONTENT 8>>>
+<<<PROMPT_HISTORY_CONTENT 9 LENGTH 1383>>>
+EXPANDED STORY
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil. She wears a rough‑spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+Return exactly overall_location and starting_location.
+<<<END_PROMPT_HISTORY_CONTENT 9>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:20:35Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "static_setting_extract",
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "medium",
+      "thinking_budget_tokens": 256,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 10,
+        "length": 1424
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 11,
+        "length": 1436
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 10 LENGTH 1424>>>
+Extract a concise static setting description for a video location reference. Use only facts the story actually presents as description of the place itself: architecture, terrain, broad room layout, fixed fixtures, entrances, surfaces, and persistent lighting sources. Exclude characters, creatures, character actions, dialogue, plot events, held props, and objects/furniture mentioned only because a later action uses or introduces them. Do not promote every story prop into the global setting. Relative action wording is not proof of distinct static architecture: labels such as front/back/side door or left/right table should be kept only when the story clearly establishes multiple distinct instances or that relative identity is itself a persistent architectural fact. When only one instance is established, describe it generically (for example, entrance door rather than back door). Do not invent details. Respect the supplied visual style when choosing concise appearance language, but do not let style add or alter setting facts. Preserve any explicit historical period, culture, or genre in the story or overall location (for example, medieval or fantasy) as a mandatory visual cue; do not reduce a medieval-fantasy tavern to a period-neutral tavern. If the story gives only a broad setting, return that broad setting with its stated period/genre and let the video model design unspecified details. Return JSON only.
+<<<END_PROMPT_HISTORY_CONTENT 10>>>
+<<<PROMPT_HISTORY_CONTENT 11 LENGTH 1436>>>
+VISUAL STYLE
+Live-action cinematic
+
+OVERALL LOCATION
+a medieval tavern
+
+EXPANDED STORY
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil. She wears a rough‑spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+Return exactly setting_description.
+<<<END_PROMPT_HISTORY_CONTENT 11>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:20:39Z",
+    "response_format": false,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "story_setting_spatial_refine",
+    "attempt": 1,
+    "seed": 1233022728,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 12,
+        "length": 573
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 13,
+        "length": 341
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 12 LENGTH 573>>>
+Refine this description to be spatially compliant.
+- use east/west/north/south.
+- if it is an interior, define anchor objects first, such as doors or large objects, if exterior, use houses or other large landmarks.
+- Define the size of the overall space and sizes of the objects.
+- Make sure nothing is overlapping and everything is accessible (especially doors).
+- Preserve every stated historical period, culture, and genre cue exactly; spatial refinement must not turn a medieval/fantasy place into a modern or period-neutral one.
+- Return plain text, no tables or JSON.
+<<<END_PROMPT_HISTORY_CONTENT 12>>>
+<<<PROMPT_HISTORY_CONTENT 13 LENGTH 341>>>
+A medieval tavern featuring a creaking wooden floor, stone walls, and a central counter by a hearth that holds barrels of ale. Tables are set throughout, including a back table and high bar stools with shelves for crystal cups. Lanterns hang over each table providing persistent lighting. A wooden latch on the back door secures the entrance
+<<<END_PROMPT_HISTORY_CONTENT 13>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:21:03Z",
+    "response_format": false,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "story_setting_extract",
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 14,
+        "length": 1728
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 15,
+        "length": 3055
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 14 LENGTH 1728>>>
+Describe this location spatially in detail; describe ALL objects.
+- Define anchors, such as doors for interiors or buildings for exteriors.
+- Do not include exact coordinates, but use references to anchors and north/south/east/west instead.  If interior, use west wall, east wall, etc. For exteriors, use east_side, west_side, etc.
+- Return a spatial description of the specified area only.
+- Keep it literal without embellishment.
+- For each anchor and object, add world_state_role with one of fixture, support, fixture_support, or untracked, and mobility with movable, fixed, or unknown. Use untracked for ordinary scene nouns; only identify persistent fixtures/supports needed for cross-segment state reasoning. Anchors are fixed fixtures unless clearly movable. Do not create IDs.
+- Preserve any historical period, culture, and genre in STATIC SETTING FACTS and SPATIAL REFINEMENT in both the JSON location name/description and the final text description. Treat those cues as visual constraints; a stated medieval fantasy tavern must read visibly medieval and fantasy, not modern or period-neutral.
+- Make the format:
+Location: [location]
+[JSON representation]
+[Text description based on JSON]
+
+JSON format:
+{
+  "location": {
+    "name": "[name]",
+    ...
+  },
+  "anchors": [
+    { "name": "entrance", "type": "door", "wall": "west", "world_state_role": "fixture", "mobility": "fixed" },
+    { "name": "city hall", "type": "building", "location": "east", "world_state_role": "fixture", "mobility": "fixed" }
+  ],
+  "objects": [
+    {
+      "name": "sign post",
+      "type": "wooden sign",
+      "near": ["hearth", "barrel"],
+      "world_state_role": "untracked",
+      "mobility": "unknown",
+      ...
+    },
+    ...
+  ]
+}
+<<<END_PROMPT_HISTORY_CONTENT 14>>>
+<<<PROMPT_HISTORY_CONTENT 15 LENGTH 3055>>>
+STATIC SETTING FACTS
+A medieval tavern featuring a creaking wooden floor, stone walls, and a central counter by a hearth that holds barrels of ale. Tables are set throughout, including a back table and high bar stools with shelves for crystal cups. Lanterns hang over each table providing persistent lighting. A wooden latch on the back door secures the entrance
+
+SPATIAL REFINEMENT
+The tavern occupies a rectangular interior of **30 ft east‑west (EW) by 40 ft north‑south (NS)** with stone walls that are **1 ft thick** on all sides.
+
+### Anchor objects
+1. **Back door** – Located at the south wall, centered **15 ft EW from the west corner**:  
+   - Width **2 ft**, height **7 ft**.  
+   - A wooden latch sits on its east side (west‑to‑east orientation).  
+   - The doorway opens toward the outside; no tables or counter occupy the 3 ft space between the door and the west wall.
+
+2. **Hearth / stone fireplace** – Along the west wall, centered northward:  
+   - Width **8 ft**, depth **6 ft** into the interior (extends from y = 16 to y = 22).  
+   - A chimney rises above it; a 4‑ft wide hearth counter sits just south of this fireplace.
+
+3. **Central counter** – Runs parallel to the west wall, positioned north of the hearth:  
+   - Length **20 ft EW**, width **4 ft NS** (from x = 5 to x = 25).  
+   - Counter edge is 2 ft south of the hearth’s front.  
+   - Barrels of ale line the counter, each barrel measuring **3 ft diameter × 4 ft tall**; they are spaced every 6 ft along the counter.
+
+### Additional furnishings
+- **High bar stools with crystal‑cup shelves** – Four stools sit at the eastern end of the counter (x = 20 to x = 24, y = 28).  
+  - Stools: height **4 ft**, seat width **2 ft × 2 ft**.  
+  - Shelves above each stool are **1 ft wide × 2 ft tall**.
+
+- **Back table** – A rectangular table behind the back door, centered at x = 15, y = 5:  
+  - Length **5 ft EW**, width **3 ft NS**.  
+  - Placed so that its front edge is 1 ft from the south wall.
+
+- **Round tables** – Six round tables are set throughout the interior:  
+  - Diameter **3 ft** each.  
+  - Two rows along the east and west walls, centered at y = 10, 20, and 30 respectively (x = 5 for west‑side tables; x = 25 for east‑side tables).  
+  - Each table has a small stool of its own: height **3 ft**, seat width **1.5 ft × 1.5 ft**.
+
+- **Lanterns** – A lantern hangs above every table (including the back table and each round table):  
+  - Lantern light radius **10 ft**, providing persistent illumination that covers the entire tavern without overlap.
+
+All objects are positioned so none overlap: the counter sits neatly north of the hearth, the bar stools sit at the far eastern end of the counter with shelves above them, tables line both sides of the room leaving clear pathways to the back door and to the central counter. The stone walls frame the space, and the 1‑ft thick walls provide a sturdy medieval backdrop for this bustling tavern.
+
+Return all three required parts: Location line, valid double-quoted JSON, then plain-text description based on that JSON.
+<<<END_PROMPT_HISTORY_CONTENT 15>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:21:59Z",
+    "response_format": false,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "story_setting_extract",
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 16,
+        "length": 1728
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 17,
+        "length": 3055
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 16 LENGTH 1728>>>
+Describe this location spatially in detail; describe ALL objects.
+- Define anchors, such as doors for interiors or buildings for exteriors.
+- Do not include exact coordinates, but use references to anchors and north/south/east/west instead.  If interior, use west wall, east wall, etc. For exteriors, use east_side, west_side, etc.
+- Return a spatial description of the specified area only.
+- Keep it literal without embellishment.
+- For each anchor and object, add world_state_role with one of fixture, support, fixture_support, or untracked, and mobility with movable, fixed, or unknown. Use untracked for ordinary scene nouns; only identify persistent fixtures/supports needed for cross-segment state reasoning. Anchors are fixed fixtures unless clearly movable. Do not create IDs.
+- Preserve any historical period, culture, and genre in STATIC SETTING FACTS and SPATIAL REFINEMENT in both the JSON location name/description and the final text description. Treat those cues as visual constraints; a stated medieval fantasy tavern must read visibly medieval and fantasy, not modern or period-neutral.
+- Make the format:
+Location: [location]
+[JSON representation]
+[Text description based on JSON]
+
+JSON format:
+{
+  "location": {
+    "name": "[name]",
+    ...
+  },
+  "anchors": [
+    { "name": "entrance", "type": "door", "wall": "west", "world_state_role": "fixture", "mobility": "fixed" },
+    { "name": "city hall", "type": "building", "location": "east", "world_state_role": "fixture", "mobility": "fixed" }
+  ],
+  "objects": [
+    {
+      "name": "sign post",
+      "type": "wooden sign",
+      "near": ["hearth", "barrel"],
+      "world_state_role": "untracked",
+      "mobility": "unknown",
+      ...
+    },
+    ...
+  ]
+}
+<<<END_PROMPT_HISTORY_CONTENT 16>>>
+<<<PROMPT_HISTORY_CONTENT 17 LENGTH 3055>>>
+STATIC SETTING FACTS
+A medieval tavern featuring a creaking wooden floor, stone walls, and a central counter by a hearth that holds barrels of ale. Tables are set throughout, including a back table and high bar stools with shelves for crystal cups. Lanterns hang over each table providing persistent lighting. A wooden latch on the back door secures the entrance
+
+SPATIAL REFINEMENT
+The tavern occupies a rectangular interior of **30 ft east‑west (EW) by 40 ft north‑south (NS)** with stone walls that are **1 ft thick** on all sides.
+
+### Anchor objects
+1. **Back door** – Located at the south wall, centered **15 ft EW from the west corner**:  
+   - Width **2 ft**, height **7 ft**.  
+   - A wooden latch sits on its east side (west‑to‑east orientation).  
+   - The doorway opens toward the outside; no tables or counter occupy the 3 ft space between the door and the west wall.
+
+2. **Hearth / stone fireplace** – Along the west wall, centered northward:  
+   - Width **8 ft**, depth **6 ft** into the interior (extends from y = 16 to y = 22).  
+   - A chimney rises above it; a 4‑ft wide hearth counter sits just south of this fireplace.
+
+3. **Central counter** – Runs parallel to the west wall, positioned north of the hearth:  
+   - Length **20 ft EW**, width **4 ft NS** (from x = 5 to x = 25).  
+   - Counter edge is 2 ft south of the hearth’s front.  
+   - Barrels of ale line the counter, each barrel measuring **3 ft diameter × 4 ft tall**; they are spaced every 6 ft along the counter.
+
+### Additional furnishings
+- **High bar stools with crystal‑cup shelves** – Four stools sit at the eastern end of the counter (x = 20 to x = 24, y = 28).  
+  - Stools: height **4 ft**, seat width **2 ft × 2 ft**.  
+  - Shelves above each stool are **1 ft wide × 2 ft tall**.
+
+- **Back table** – A rectangular table behind the back door, centered at x = 15, y = 5:  
+  - Length **5 ft EW**, width **3 ft NS**.  
+  - Placed so that its front edge is 1 ft from the south wall.
+
+- **Round tables** – Six round tables are set throughout the interior:  
+  - Diameter **3 ft** each.  
+  - Two rows along the east and west walls, centered at y = 10, 20, and 30 respectively (x = 5 for west‑side tables; x = 25 for east‑side tables).  
+  - Each table has a small stool of its own: height **3 ft**, seat width **1.5 ft × 1.5 ft**.
+
+- **Lanterns** – A lantern hangs above every table (including the back table and each round table):  
+  - Lantern light radius **10 ft**, providing persistent illumination that covers the entire tavern without overlap.
+
+All objects are positioned so none overlap: the counter sits neatly north of the hearth, the bar stools sit at the far eastern end of the counter with shelves above them, tables line both sides of the room leaving clear pathways to the back door and to the central counter. The stone walls frame the space, and the 1‑ft thick walls provide a sturdy medieval backdrop for this bustling tavern.
+
+Return all three required parts: Location line, valid double-quoted JSON, then plain-text description based on that JSON.
+<<<END_PROMPT_HISTORY_CONTENT 17>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:22:25Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 1,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 18,
+        "length": 638
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 19,
+        "length": 201
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 18 LENGTH 638>>>
+Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in that beat, you need to validate two things:
+Are they entering the scene: walked in, opened the door and entered, etc., making present = false.
+OR
+Are they performing an action while already in the scene: picked up a cup, kicked the wall, etc., making present=true.
+
+Use the above determination to determine if they were present in the scene before this story beat or not.
+
+- if the POSSIBLE SUBJECT isn't referenced at all, don't return it.
+- List the Subject (no adjectives), present:{true:false},  and one-sentence reasoning.
+- Return a JSON array of Subjects.
+<<<END_PROMPT_HISTORY_CONTENT 18>>>
+<<<PROMPT_HISTORY_CONTENT 19 LENGTH 201>>>
+POSSIBLE SUBJECTS
+Amy, Goblin, Elf, Dragon‑shaped creature
+
+STORY BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+<<<END_PROMPT_HISTORY_CONTENT 19>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:22:30Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 1,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 20,
+        "length": 121
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 20 LENGTH 121>>>
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She wipes the polished table with ale‑scented oil."
+  }
+]
+<<<END_PROMPT_HISTORY_CONTENT 20>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:22:30Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 2,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 21,
+        "length": 638
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 22,
+        "length": 212
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 21 LENGTH 638>>>
+Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in that beat, you need to validate two things:
+Are they entering the scene: walked in, opened the door and entered, etc., making present = false.
+OR
+Are they performing an action while already in the scene: picked up a cup, kicked the wall, etc., making present=true.
+
+Use the above determination to determine if they were present in the scene before this story beat or not.
+
+- if the POSSIBLE SUBJECT isn't referenced at all, don't return it.
+- List the Subject (no adjectives), present:{true:false},  and one-sentence reasoning.
+- Return a JSON array of Subjects.
+<<<END_PROMPT_HISTORY_CONTENT 21>>>
+<<<PROMPT_HISTORY_CONTENT 22 LENGTH 212>>>
+POSSIBLE SUBJECTS
+Amy, Goblin, Elf, Dragon‑shaped creature
+
+STORY BEAT
+A green-skinned goblin leans over the counter clutching a chipped mug while Amy refills it by pouring liquid from a barrel beside the hearth.
+<<<END_PROMPT_HISTORY_CONTENT 22>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:22:36Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 2,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 23,
+        "length": 246
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 23 LENGTH 246>>>
+[{"subject":"Goblin","present":true,"reason":"The goblin is already in the scene, leaning over the counter and clutching a mug."},{"subject":"Amy","present":true,"reason":"Amy is already present, pouring liquid from a barrel beside the hearth."}]
+<<<END_PROMPT_HISTORY_CONTENT 23>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:22:36Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 3,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 24,
+        "length": 638
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 25,
+        "length": 302
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 24 LENGTH 638>>>
+Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in that beat, you need to validate two things:
+Are they entering the scene: walked in, opened the door and entered, etc., making present = false.
+OR
+Are they performing an action while already in the scene: picked up a cup, kicked the wall, etc., making present=true.
+
+Use the above determination to determine if they were present in the scene before this story beat or not.
+
+- if the POSSIBLE SUBJECT isn't referenced at all, don't return it.
+- List the Subject (no adjectives), present:{true:false},  and one-sentence reasoning.
+- Return a JSON array of Subjects.
+<<<END_PROMPT_HISTORY_CONTENT 24>>>
+<<<PROMPT_HISTORY_CONTENT 25 LENGTH 302>>>
+POSSIBLE SUBJECTS
+Amy, Goblin, Elf, Dragon‑shaped creature
+
+STORY BEAT
+The beautiful female elf steps into the tavern, silver hair streaming down her shoulders, takes a seat at the back table, and Amy pours a steaming cup into a crystal chalice for her, gently sets it on the wood with a nod of thanks.
+<<<END_PROMPT_HISTORY_CONTENT 25>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:22:43Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 3,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 26,
+        "length": 291
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 26 LENGTH 291>>>
+[
+  {
+    "subject": "Elf",
+    "present": false,
+    "reason": "The elf steps into the tavern, indicating she enters the scene."
+  },
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "Amy pours a cup and sets it on the wood, actions performed while already in the tavern."
+  }
+]
+<<<END_PROMPT_HISTORY_CONTENT 26>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:22:43Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 4,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 27,
+        "length": 638
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 28,
+        "length": 368
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 27 LENGTH 638>>>
+Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in that beat, you need to validate two things:
+Are they entering the scene: walked in, opened the door and entered, etc., making present = false.
+OR
+Are they performing an action while already in the scene: picked up a cup, kicked the wall, etc., making present=true.
+
+Use the above determination to determine if they were present in the scene before this story beat or not.
+
+- if the POSSIBLE SUBJECT isn't referenced at all, don't return it.
+- List the Subject (no adjectives), present:{true:false},  and one-sentence reasoning.
+- Return a JSON array of Subjects.
+<<<END_PROMPT_HISTORY_CONTENT 27>>>
+<<<PROMPT_HISTORY_CONTENT 28 LENGTH 368>>>
+POSSIBLE SUBJECTS
+Amy, Goblin, Elf, Dragon‑shaped creature
+
+STORY BEAT
+From the doorway, a dragon-shaped creature slides onto a high bar stool, its obsidian scales glittering as its wings unfurl to reveal amber eyes that scan the room, while Amy greets it with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+<<<END_PROMPT_HISTORY_CONTENT 28>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:22:54Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 4,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 29,
+        "length": 339
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 29 LENGTH 339>>>
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She greets the creature with a warm smile and lifts a cup from her shelf, indicating she was already in the scene."
+  },
+  {
+    "subject": "Creature",
+    "present": false,
+    "reason": "It slides onto a high bar stool from the doorway, showing it entered the scene."
+  }
+]
+<<<END_PROMPT_HISTORY_CONTENT 29>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:22:54Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 5,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 30,
+        "length": 638
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 31,
+        "length": 292
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 30 LENGTH 638>>>
+Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in that beat, you need to validate two things:
+Are they entering the scene: walked in, opened the door and entered, etc., making present = false.
+OR
+Are they performing an action while already in the scene: picked up a cup, kicked the wall, etc., making present=true.
+
+Use the above determination to determine if they were present in the scene before this story beat or not.
+
+- if the POSSIBLE SUBJECT isn't referenced at all, don't return it.
+- List the Subject (no adjectives), present:{true:false},  and one-sentence reasoning.
+- Return a JSON array of Subjects.
+<<<END_PROMPT_HISTORY_CONTENT 30>>>
+<<<PROMPT_HISTORY_CONTENT 31 LENGTH 292>>>
+POSSIBLE SUBJECTS
+Amy, Goblin, Elf, Dragon‑shaped creature
+
+STORY BEAT
+The dragon licks its lips then takes a slow sip letting liquid swirl across its tongue as Amy watches it exhale contentedly, wiping the bar with a fresh cloth to smooth out any drips of ale that have fallen onto the wood.
+<<<END_PROMPT_HISTORY_CONTENT 31>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:23:08Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 5,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 32,
+        "length": 359
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 32 LENGTH 359>>>
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "Amy is already watching the dragon and wiping the bar, indicating she was present before this beat."
+  },
+  {
+    "subject": "Creature",
+    "present": true,
+    "reason": "The dragon (a dragon‑shaped creature) licks its lips and takes a sip, showing it was in the scene prior to this beat."
+} ]
+<<<END_PROMPT_HISTORY_CONTENT 32>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:23:08Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 6,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 33,
+        "length": 638
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 34,
+        "length": 256
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 33 LENGTH 638>>>
+Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in that beat, you need to validate two things:
+Are they entering the scene: walked in, opened the door and entered, etc., making present = false.
+OR
+Are they performing an action while already in the scene: picked up a cup, kicked the wall, etc., making present=true.
+
+Use the above determination to determine if they were present in the scene before this story beat or not.
+
+- if the POSSIBLE SUBJECT isn't referenced at all, don't return it.
+- List the Subject (no adjectives), present:{true:false},  and one-sentence reasoning.
+- Return a JSON array of Subjects.
+<<<END_PROMPT_HISTORY_CONTENT 33>>>
+<<<PROMPT_HISTORY_CONTENT 34 LENGTH 256>>>
+POSSIBLE SUBJECTS
+Amy, Goblin, Elf, Dragon‑shaped creature
+
+STORY BEAT
+Amy turns off the lanterns at each table and pulls a wooden latch on the back door, steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+<<<END_PROMPT_HISTORY_CONTENT 34>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:23:13Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "director_raw_scene_subject_resolution",
+    "beat_index": 6,
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 35,
+        "length": 196
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 35 LENGTH 196>>>
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She turns off lanterns at tables and pulls a latch while already inside the tavern, indicating her presence before this beat."
+  }
+]
+<<<END_PROMPT_HISTORY_CONTENT 35>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:23:13Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "purpose": "registered_subject_story_start_presence",
+    "subject_id": "subject_1",
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 36,
+        "length": 816
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 37,
+        "length": 2978
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 36 LENGTH 816>>>
+Classify a single Subject's story-start status. 
+- Return present when the Subject is already in Beat 1.
+- Return absent only when the source explicitly says the Subject enters later, establishing it was absent at story start. 
+- Return unknown when neither is explicit; do not infer absence from omission or from a late first mention. 
+
+For present/absent, copy a short verbatim substring from STORY SOURCE or BEATS as evidence: do not paraphrase. 
+- For present, give a concise starting-state phrase supported by that evidence. 
+- For absent or unknown, initial_state must be empty. 
+
+Use the BEATS as the primary source, use the STORY SOURCE as secondary.
+
+Classify only the named Subject, not the cast. 
+- Return JSON {"subject": "<name>", "status": "present|absent|unknown", "initial_state": "<state or empty>"}
+<<<END_PROMPT_HISTORY_CONTENT 36>>>
+<<<PROMPT_HISTORY_CONTENT 37 LENGTH 2978>>>
+REGISTERED SUBJECT
+Amy
+IDENTITY FACTS
+{"gender":"female","physical_form":"unknown","canonical_description":"unknown","source_description":"<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features."}
+
+BEATS
+Beat 1: The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+Beat 2: A green-skinned goblin leans over the counter clutching a chipped mug while Amy refills it by pouring liquid from a barrel beside the hearth.
+Beat 3: The beautiful female elf steps into the tavern, silver hair streaming down her shoulders, takes a seat at the back table, and Amy pours a steaming cup into a crystal chalice for her, gently sets it on the wood with a nod of thanks.
+Beat 4: From the doorway, a dragon-shaped creature slides onto a high bar stool, its obsidian scales glittering as its wings unfurl to reveal amber eyes that scan the room, while Amy greets it with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+Beat 5: The dragon licks its lips then takes a slow sip letting liquid swirl across its tongue as Amy watches it exhale contentedly, wiping the bar with a fresh cloth to smooth out any drips of ale that have fallen onto the wood.
+Beat 6: Amy turns off the lanterns at each table and pulls a wooden latch on the back door, steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+STORY SOURCE
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale-scented oil. She wears a rough-spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon-shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+Return subject, status, and initial_state for this Subject only.
+<<<END_PROMPT_HISTORY_CONTENT 37>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:23:19Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "segment": 1,
+    "purpose": "world_state_current_segment_subjects",
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 38,
+        "length": 969
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 39,
+        "length": 279
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 38 LENGTH 969>>>
+Identify only distinct person or animate-entity identities that CURRENT BEAT requires the Director to stage and that are not in REGISTERED SUBJECTS. Use the beat's established functional name when available; otherwise give one stable role/species name with the next unused integer suffix. Reuse a registered identity when the beat clearly refers to that same individual. Return no props, objects, groups, or background extras. Do not decide whether a Subject is present, absent, entering, or visible; this response registers identity only. physical_form must be humanoid or non_humanoid only when the supplied source explicitly supports that body form; otherwise use unknown. Never infer physical form from the Subject's name. source_description must contain only explicit identity/body facts from CURRENT BEAT or ASSIGNED SOURCE. evidence must be an exact contiguous quotation from one of those sources proving the identity participates in this beat. Return JSON only.
+<<<END_PROMPT_HISTORY_CONTENT 38>>>
+<<<PROMPT_HISTORY_CONTENT 39 LENGTH 279>>>
+REGISTERED SUBJECTS
+- Amy
+- Goblin
+- Elf
+- Dragon‑shaped creature
+
+CURRENT BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+ASSIGNED SOURCE
+N/A
+
+Return only identities not already registered.
+<<<END_PROMPT_HISTORY_CONTENT 39>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:23:25Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "segment": 1,
+    "purpose": "world_state_current_segment_props",
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 40,
+        "length": 1789
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 41,
+        "length": 1777
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 40 LENGTH 1789>>>
+Identify only new physical props whose distinct identity and placement are needed to represent an explicit persistent state-changing action in CURRENT BEAT. Existing props are listed and must be reused by identity; never duplicate or rename them.
+
+- Each new prop must be directly involved in a transfer, placement, pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.
+- Return exactly one explicit initial_location or initial_holder, using only the registered names below.
+- A support_name may name only a registered support/fixture.
+- Do not guess a placement: omit any prop whose initial placement is not supported by the current sources.
+- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE.
+- Record contents/capabilities only when explicit; otherwise use unknown or an empty contents list.
+- Return JSON in this format:
+{
+  "props": [
+    {
+      "name": "object_name",
+      "kind": "object",
+      "mobility": "movable",
+      "initial_location": null,
+      "initial_holder": "registered_subject_name",
+      "support_name": null,
+      "contents": [
+        {
+          "substance": "substance_name",
+          "amount": "unknown",
+          "consumable": "unknown"
+        }
+      ],
+      "capabilities": {
+        "container": "unknown",
+        "consumable": "unknown",
+        "openable": "unknown",
+        "lockable": "unknown"
+      },
+      "reason": "Why this object needs persistent tracking.",
+      "evidence": "Exact quotation from CURRENT BEAT or ASSIGNED SOURCE"
+    }
+  ]
+}
+
+- Notes: All fields are required. Use null for either initial_location or initial_holder—exactly one must have a registered name. The props array can be empty ([]), and contents can also be empty. Capability values can be true, false, or "unknown".
+<<<END_PROMPT_HISTORY_CONTENT 40>>>
+<<<PROMPT_HISTORY_CONTENT 41 LENGTH 1777>>>
+CURRENT BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+ASSIGNED SOURCE
+N/A
+
+REGISTERED SUBJECTS
+[{"name":"Amy","presence":"present"},{"name":"Dragon‑shaped creature","presence":"unknown"},{"name":"Elf","presence":"unknown"},{"name":"Goblin","presence":"present"}]
+
+CURRENT WORLDSTATE PROPS
+[{"name":"back door","kind":"fixture","placement":{"kind":"located","location":"the tavern"}},{"name":"central counter","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"crystal‑cup shelves","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"hearth / stone fireplace","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"high bar stools with crystal‑cup shelves","kind":"support","placement":{"kind":"located","location":"the tavern"}},{"name":"lanterns","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"stone walls","kind":"support","placement":{"kind":"located","location":"the tavern"}},{"name":"stools for round tables","kind":"support","placement":{"kind":"located","location":"the tavern"}}]
+
+CANONICAL LOCATIONS
+[{"name":"the tavern"}]
+
+CANONICAL SUPPORTS / FIXTURES
+[{"name":"central counter","location":"the tavern"},{"name":"crystal‑cup shelves","location":"the tavern"},{"name":"hearth / stone fireplace","location":"the tavern"},{"name":"high bar stools with crystal‑cup shelves","location":"the tavern"},{"name":"lanterns","location":"the tavern"},{"name":"stone walls","location":"the tavern"},{"name":"stools for round tables","location":"the tavern"}]
+
+Return only props needed for a persistent state action in this Segment.
+<<<END_PROMPT_HISTORY_CONTENT 41>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:23:42Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "segment": 1,
+    "purpose": "world_state_current_segment_props",
+    "attempt": 2,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 42,
+        "length": 1789
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 43,
+        "length": 2093
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 42 LENGTH 1789>>>
+Identify only new physical props whose distinct identity and placement are needed to represent an explicit persistent state-changing action in CURRENT BEAT. Existing props are listed and must be reused by identity; never duplicate or rename them.
+
+- Each new prop must be directly involved in a transfer, placement, pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.
+- Return exactly one explicit initial_location or initial_holder, using only the registered names below.
+- A support_name may name only a registered support/fixture.
+- Do not guess a placement: omit any prop whose initial placement is not supported by the current sources.
+- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE.
+- Record contents/capabilities only when explicit; otherwise use unknown or an empty contents list.
+- Return JSON in this format:
+{
+  "props": [
+    {
+      "name": "object_name",
+      "kind": "object",
+      "mobility": "movable",
+      "initial_location": null,
+      "initial_holder": "registered_subject_name",
+      "support_name": null,
+      "contents": [
+        {
+          "substance": "substance_name",
+          "amount": "unknown",
+          "consumable": "unknown"
+        }
+      ],
+      "capabilities": {
+        "container": "unknown",
+        "consumable": "unknown",
+        "openable": "unknown",
+        "lockable": "unknown"
+      },
+      "reason": "Why this object needs persistent tracking.",
+      "evidence": "Exact quotation from CURRENT BEAT or ASSIGNED SOURCE"
+    }
+  ]
+}
+
+- Notes: All fields are required. Use null for either initial_location or initial_holder—exactly one must have a registered name. The props array can be empty ([]), and contents can also be empty. Capability values can be true, false, or "unknown".
+<<<END_PROMPT_HISTORY_CONTENT 42>>>
+<<<PROMPT_HISTORY_CONTENT 43 LENGTH 2093>>>
+CURRENT BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+ASSIGNED SOURCE
+N/A
+
+REGISTERED SUBJECTS
+[{"name":"Amy","presence":"present"},{"name":"Dragon‑shaped creature","presence":"unknown"},{"name":"Elf","presence":"unknown"},{"name":"Goblin","presence":"present"}]
+
+CURRENT WORLDSTATE PROPS
+[{"name":"back door","kind":"fixture","placement":{"kind":"located","location":"the tavern"}},{"name":"central counter","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"crystal‑cup shelves","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"hearth / stone fireplace","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"high bar stools with crystal‑cup shelves","kind":"support","placement":{"kind":"located","location":"the tavern"}},{"name":"lanterns","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"stone walls","kind":"support","placement":{"kind":"located","location":"the tavern"}},{"name":"stools for round tables","kind":"support","placement":{"kind":"located","location":"the tavern"}}]
+
+CANONICAL LOCATIONS
+[{"name":"the tavern"}]
+
+CANONICAL SUPPORTS / FIXTURES
+[{"name":"central counter","location":"the tavern"},{"name":"crystal‑cup shelves","location":"the tavern"},{"name":"hearth / stone fireplace","location":"the tavern"},{"name":"high bar stools with crystal‑cup shelves","location":"the tavern"},{"name":"lanterns","location":"the tavern"},{"name":"stone walls","location":"the tavern"},{"name":"stools for round tables","location":"the tavern"}]
+
+Return only props needed for a persistent state action in this Segment.
+
+FIX: Return only new props needed for a persistent state-changing action in this Segment, with exact source evidence and exactly one registered initial location or holder. Do not predict future props. Prior validation error: Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence.
+<<<END_PROMPT_HISTORY_CONTENT 43>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-10T14:23:57Z",
+    "response_format": true,
+    "run_id": "95a371f3-d603-4282-b666-f0ef2f8aaca6",
+    "segment": 1,
+    "purpose": "world_state_current_segment_props",
+    "attempt": 3,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 44,
+        "length": 1789
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 45,
+        "length": 2093
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 44 LENGTH 1789>>>
+Identify only new physical props whose distinct identity and placement are needed to represent an explicit persistent state-changing action in CURRENT BEAT. Existing props are listed and must be reused by identity; never duplicate or rename them.
+
+- Each new prop must be directly involved in a transfer, placement, pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.
+- Return exactly one explicit initial_location or initial_holder, using only the registered names below.
+- A support_name may name only a registered support/fixture.
+- Do not guess a placement: omit any prop whose initial placement is not supported by the current sources.
+- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE.
+- Record contents/capabilities only when explicit; otherwise use unknown or an empty contents list.
+- Return JSON in this format:
+{
+  "props": [
+    {
+      "name": "object_name",
+      "kind": "object",
+      "mobility": "movable",
+      "initial_location": null,
+      "initial_holder": "registered_subject_name",
+      "support_name": null,
+      "contents": [
+        {
+          "substance": "substance_name",
+          "amount": "unknown",
+          "consumable": "unknown"
+        }
+      ],
+      "capabilities": {
+        "container": "unknown",
+        "consumable": "unknown",
+        "openable": "unknown",
+        "lockable": "unknown"
+      },
+      "reason": "Why this object needs persistent tracking.",
+      "evidence": "Exact quotation from CURRENT BEAT or ASSIGNED SOURCE"
+    }
+  ]
+}
+
+- Notes: All fields are required. Use null for either initial_location or initial_holder—exactly one must have a registered name. The props array can be empty ([]), and contents can also be empty. Capability values can be true, false, or "unknown".
+<<<END_PROMPT_HISTORY_CONTENT 44>>>
+<<<PROMPT_HISTORY_CONTENT 45 LENGTH 2093>>>
+CURRENT BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+ASSIGNED SOURCE
+N/A
+
+REGISTERED SUBJECTS
+[{"name":"Amy","presence":"present"},{"name":"Dragon‑shaped creature","presence":"unknown"},{"name":"Elf","presence":"unknown"},{"name":"Goblin","presence":"present"}]
+
+CURRENT WORLDSTATE PROPS
+[{"name":"back door","kind":"fixture","placement":{"kind":"located","location":"the tavern"}},{"name":"central counter","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"crystal‑cup shelves","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"hearth / stone fireplace","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"high bar stools with crystal‑cup shelves","kind":"support","placement":{"kind":"located","location":"the tavern"}},{"name":"lanterns","kind":"fixture_support","placement":{"kind":"located","location":"the tavern"}},{"name":"stone walls","kind":"support","placement":{"kind":"located","location":"the tavern"}},{"name":"stools for round tables","kind":"support","placement":{"kind":"located","location":"the tavern"}}]
+
+CANONICAL LOCATIONS
+[{"name":"the tavern"}]
+
+CANONICAL SUPPORTS / FIXTURES
+[{"name":"central counter","location":"the tavern"},{"name":"crystal‑cup shelves","location":"the tavern"},{"name":"hearth / stone fireplace","location":"the tavern"},{"name":"high bar stools with crystal‑cup shelves","location":"the tavern"},{"name":"lanterns","location":"the tavern"},{"name":"stone walls","location":"the tavern"},{"name":"stools for round tables","location":"the tavern"}]
+
+Return only props needed for a persistent state action in this Segment.
+
+FIX: Return only new props needed for a persistent state-changing action in this Segment, with exact source evidence and exactly one registered initial location or holder. Do not predict future props. Prior validation error: Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence.
+<<<END_PROMPT_HISTORY_CONTENT 45>>>

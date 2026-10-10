@@ -1,0 +1,191 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+LLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).
+LLM request finished: character_canon (20.4s, finish_reason=stop).
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~736 input tokens, max 7328 output tokens).
+LLM request finished: story_subject_wardrobe_extract (13.3s, finish_reason=stop).
+Canonical appropriate attire for Amy: Amy wears a rough‑spun tunic, its coarse wool texture reaching mid‑thigh and bearing visible scuffs from years of service in the tavern; over it she dons a dark leather apron with weathered cuffs that show signs of handling mugs and ale barrels. Her lower half is covered by simple grey woolen leggings tucked into worn leather boots whose soles have thickened with use, all cinched at her waist by a plain leather belt holding spare tools and coins
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~688 input tokens, max 7376 output tokens).
+LLM request finished: story_subject_wardrobe_extract (15.9s, finish_reason=stop).
+Canonical appropriate attire for Goblin: A small green‑skinned goblin wears a worn dark brown tunic of rough wool that falls just above its knees; the sleeves are frayed and patched from years of use. A simple leather belt cinches the tunic at the waist. Over it, he sports a tiny tan leather apron—slightly oversized for his frame but functional—with multiple pockets to hold mugs and tools. The ensemble is topped by a faded green hood draped over his head
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~702 input tokens, max 7362 output tokens).
+LLM request finished: story_subject_wardrobe_extract (16.5s, finish_reason=stop).
+Canonical appropriate attire for Elf: A finely woven forest‑green linen tunic tailored to her slender elf form, reaching mid‑thigh and edged with delicate silver filigree along the cuffs and hem; a narrow mossy‑brown leather belt cinches its waist. Beneath it soft mossy‑brown leather leggings hug her calves. Her feet are clad in polished bronze‑strap boots that reach just below the knee. A lightweight deep‑green velvet cloak drapes over her shoulders, fastened at the collar by a small silver leaf brooch. Around her neck hangs an elegant silver pendant set with a tiny emerald; delicate silver earrings dangle from each ear. Her long silver hair is left loose, streaming down to her shoulders
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~691 input tokens, max 7373 output tokens).
+LLM request finished: story_subject_wardrobe_extract (15.2s, finish_reason=stop).
+Canonical appropriate attire for Dragon‑shaped creature: A loosely fitted black leather tunic draped over its polished obsidian scales, cinched at the waist by a wide crimson cord. It wears a simple silver chain necklace around its neck with a small bronze ale‑mug pendant hanging from it
+LLM request started: story_location_extract (attempt 1/10, ~585 input tokens, max 7479 output tokens).
+LLM request finished: story_location_extract (3.8s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~842 input tokens, max 7222 output tokens).
+LLM request finished: static_setting_extract (4.1s, finish_reason=stop).
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~286 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (24.2s, finish_reason=stop).
+LLM request started: story_setting_extract (attempt 1/10, ~1391 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (51.1s, finish_reason=length).
+LLM response/content was unusable (attempt 1/10); retrying: LLM host truncated the response at the configured max_tokens=4096 before completion.
+LLM request started: story_setting_extract (attempt 2/10, ~1391 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (26.3s, finish_reason=stop).
+Story location metadata: overall='a medieval tavern'; starting='the tavern'; setting='The tavern’s rectangular stone‑walled interior measures thirty feet east–west and forty feet north–south. A creaking wooden floor lies beneath, while a hearth along the west wall provides warmth; its chimney rises above it. North of the hearth runs a twenty‑foot counter parallel to the west wall, with barrels of ale lined every six feet. At the far eastern end of this counter sit four high bar stools, each topped by a crystal‑cup shelf.\n\nBehind the back door on the south wall stands a rectangular table, its front edge one foot from the wall. Two rows of round tables line both east and west sides: three along the west side at y\u202f=\u202f10, 20, and 30 feet; three along the east side at the same north–south positions. Each round table has a small stool beside it.\n\nLanterns hang above every table—back and all six round tables—casting light that covers the entire tavern without overlap. The stone walls frame the space, their one‑foot thickness giving the room a sturdy medieval feel. All objects are positioned so none overlap; clear pathways lead from the back door to the central counter and around the tables.'; location_state={'location': {'name': 'Tavern Interior', 'dimensions': {'EW': '30ft', 'NS': '40ft'}, 'walls_thickness': '1ft'}, 'anchors': [{'name': 'back door', 'type': 'door', 'wall': 'south', 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'hearth / stone fireplace', 'type': 'fireplace', 'location': 'west wall, centered northward', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}], 'objects': [{'name': 'central counter', 'type': 'counter', 'length': '20ft EW', 'width': '4ft NS', 'position': 'north of hearth, parallel to west wall, from x=5 to x=25', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'barrels of ale', 'type': 'barrel', 'diameter': '3ft', 'height': '4ft', 'position': 'lined along central counter, spaced every 6ft', 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'high bar stools with crystal‑cup shelves', 'type': 'stool', 'quantity': 4, 'height': '4ft', 'seat_width': '2x2 ft', 'position': 'eastern end of counter, x=20 to 24, y=28', 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'crystal‑cup shelves', 'type': 'shelf', 'size': '1x2 ft', 'position': 'above each high bar stool', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'back table', 'type': 'table', 'length': '5ft EW', 'width': '3ft NS', 'position': 'behind back door, centered at x=15,y=5; front edge 1ft from south wall', 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'round tables (west side)', 'type': 'table', 'quantity': 3, 'diameter': '3ft', 'position': 'x=5, y=10; x=5,y=20; x=5,y=30', 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'round tables (east side)', 'type': 'table', 'quantity': 3, 'diameter': '3ft', 'position': 'x=25, y=10; x=25,y=20; x=25,y=30', 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'stools for round tables', 'type': 'stool', 'quantity': 6, 'height': '3ft', 'seat_width': '1.5x1.5 ft', 'position': 'each adjacent to its respective round table', 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'lanterns', 'type': 'lantern', 'quantity': 7, 'light_radius': '10ft', 'position': 'hanging above each table (back and all round tables)', 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'stone walls', 'type': 'wall', 'sides': ['north', 'south', 'east', 'west'], 'thickness': '1ft', 'position': 'frame the interior', 'world_state_role': 'support', 'mobility': 'fixed'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~265 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (4.4s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 1, attempt 1/3):
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She wipes the polished table with ale‑scented oil."
+  }
+]
+First story-start Subject classification: Amy in Beat 1 present=True; reason=She wipes the polished table with ale‑scented oil.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~268 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (6.7s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 2, attempt 1/3):
+[{"subject":"Goblin","present":true,"reason":"The goblin is already in the scene, leaning over the counter and clutching a mug."},{"subject":"Amy","present":true,"reason":"Amy is already present, pouring liquid from a barrel beside the hearth."}]
+First story-start Subject classification: Goblin in Beat 2 present=True; reason=The goblin is already in the scene, leaning over the counter and clutching a mug.
+Ignoring later story-start Subject classification for Amy in Beat 2; first classified in Beat 1 as present=True.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~294 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (6.6s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 3, attempt 1/3):
+[
+  {
+    "subject": "Elf",
+    "present": false,
+    "reason": "The elf steps into the tavern, indicating she enters the scene."
+  },
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "Amy pours a cup and sets it on the wood, actions performed while already in the tavern."
+  }
+]
+First story-start Subject classification: Elf in Beat 3 present=False; reason=The elf steps into the tavern, indicating she enters the scene.
+Ignoring later story-start Subject classification for Amy in Beat 3; first classified in Beat 1 as present=True.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~313 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (10.9s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 4, attempt 1/3):
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She greets the creature with a warm smile and lifts a cup from her shelf, indicating she was already in the scene."
+  },
+  {
+    "subject": "Creature",
+    "present": false,
+    "reason": "It slides onto a high bar stool from the doorway, showing it entered the scene."
+  }
+]
+Ignoring later story-start Subject classification for Amy in Beat 4; first classified in Beat 1 as present=True.
+First story-start Subject classification: Dragon‑shaped creature in Beat 4 present=False; reason=It slides onto a high bar stool from the doorway, showing it entered the scene.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~291 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (14.0s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 5, attempt 1/3):
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "Amy is already watching the dragon and wiping the bar, indicating she was present before this beat."
+  },
+  {
+    "subject": "Creature",
+    "present": true,
+    "reason": "The dragon (a dragon‑shaped creature) licks its lips and takes a sip, showing it was in the scene prior to this beat."
+} ]
+Ignoring later story-start Subject classification for Amy in Beat 5; first classified in Beat 1 as present=True.
+Ignoring later story-start Subject classification for Dragon‑shaped creature in Beat 5; first classified in Beat 4 as present=False.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~281 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (5.4s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 6, attempt 1/3):
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She turns off lanterns at tables and pulls a latch while already inside the tavern, indicating her presence before this beat."
+  }
+]
+Ignoring later story-start Subject classification for Amy in Beat 6; first classified in Beat 1 as present=True.
+Story-start Subject classification omitted from dynamic seed because Amy is already defined in subjects.txt.
+Subjects inferred as already present at story start: Goblin (present in the opening scene)
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+LLM request started: registered_subject_story_start_presence (attempt 1/10, ~1109 input tokens, max 2048 output tokens).
+LLM request finished: registered_subject_story_start_presence (5.6s, finish_reason=stop).
+Registered Subject story-start classification: Amy status=present; initial_state=The floor creaks under Amy's feet
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~381 input tokens, max 4096 output tokens).
+LLM request finished: world_state_current_segment_subjects (5.4s, finish_reason=stop).
+WORLDSTATE PROP EXTRACTION REQUEST {"purpose": "world_state_current_segment_props", "attempt": 1, "messages": [{"role": "system", "content": "Identify only new physical props whose distinct identity and placement are needed to represent an explicit persistent state-changing action in CURRENT BEAT. Existing props are listed and must be reused by identity; never duplicate or rename them.\n\n- Each new prop must be directly involved in a transfer, placement, pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.\n- Return exactly one explicit initial_location or initial_holder, using only the registered names below.\n- A support_name may name only a registered support/fixture.\n- Do not guess a placement: omit any prop whose initial placement is not supported by the current sources.\n- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE.\n- Record contents/capabilities only when explicit; otherwise use unknown or an empty contents list.\n- Return JSON in this format:\n{\n  \"props\": [\n    {\n      \"name\": \"object_name\",\n      \"kind\": \"object\",\n      \"mobility\": \"movable\",\n      \"initial_location\": null,\n      \"initial_holder\": \"registered_subject_name\",\n      \"support_name\": null,\n      \"contents\": [\n        {\n          \"substance\": \"substance_name\",\n          \"amount\": \"unknown\",\n          \"consumable\": \"unknown\"\n        }\n      ],\n      \"capabilities\": {\n        \"container\": \"unknown\",\n        \"consumable\": \"unknown\",\n        \"openable\": \"unknown\",\n        \"lockable\": \"unknown\"\n      },\n      \"reason\": \"Why this object needs persistent tracking.\",\n      \"evidence\": \"Exact quotation from CURRENT BEAT or ASSIGNED SOURCE\"\n    }\n  ]\n}\n\n- Notes: All fields are required. Use null for either initial_location or initial_holder—exactly one must have a registered name. The props array can be empty ([]), and contents can also be empty. Capability values can be true, false, or \"unknown\"."}, {"role": "user", "content": "CURRENT BEAT\nThe floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.\n\nASSIGNED SOURCE\nN/A\n\nREGISTERED SUBJECTS\n[{\"name\":\"Amy\",\"presence\":\"present\"},{\"name\":\"Dragon‑shaped creature\",\"presence\":\"unknown\"},{\"name\":\"Elf\",\"presence\":\"unknown\"},{\"name\":\"Goblin\",\"presence\":\"present\"}]\n\nCURRENT WORLDSTATE PROPS\n[{\"name\":\"back door\",\"kind\":\"fixture\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"central counter\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"crystal‑cup shelves\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"hearth / stone fireplace\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"high bar stools with crystal‑cup shelves\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"lanterns\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"stone walls\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"stools for round tables\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}}]\n\nCANONICAL LOCATIONS\n[{\"name\":\"the tavern\"}]\n\nCANONICAL SUPPORTS / FIXTURES\n[{\"name\":\"central counter\",\"location\":\"the tavern\"},{\"name\":\"crystal‑cup shelves\",\"location\":\"the tavern\"},{\"name\":\"hearth / stone fireplace\",\"location\":\"the tavern\"},{\"name\":\"high bar stools with crystal‑cup shelves\",\"location\":\"the tavern\"},{\"name\":\"lanterns\",\"location\":\"the tavern\"},{\"name\":\"stone walls\",\"location\":\"the tavern\"},{\"name\":\"stools for round tables\",\"location\":\"the tavern\"}]\n\nReturn only props needed for a persistent state action in this Segment."}], "registered_subjects": [{"id": "subject_1", "name": "Amy", "presence": "present"}, {"id": "subject_goblin_a0f199af52d0", "name": "Goblin", "presence": "present"}, {"id": "subject_elf_a7b4191901e4", "name": "Elf", "presence": "unknown"}, {"id": "subject_dragon_shaped_creature_246cdedab520", "name": "Dragon‑shaped creature", "presence": "unknown"}], "registered_locations": [{"id": "location_the_tavern_2e7ff416daba", "name": "the tavern"}], "registered_props": [{"id": "prop_location_the_tavern_2e7ff416daba_78c98887b61b", "name": "back door", "kind": "fixture"}, {"id": "prop_location_the_tavern_2e7ff416daba_a5562a84a974", "name": "hearth / stone fireplace", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_d7088e271a02", "name": "central counter", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_54042c84c666", "name": "high bar stools with crystal‑cup shelves", "kind": "support"}, {"id": "prop_location_the_tavern_2e7ff416daba_8e78b7416489", "name": "crystal‑cup shelves", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_137c27de19f9", "name": "stools for round tables", "kind": "support"}, {"id": "prop_location_the_tavern_2e7ff416daba_31f7eb12871c", "name": "lanterns", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_e6304761a768", "name": "stone walls", "kind": "support"}]}
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1044 input tokens, max 4096 output tokens).
+LLM request finished: world_state_current_segment_props (17.2s, finish_reason=stop).
+WORLDSTATE PROP EXTRACTION RESPONSE {"attempt": 1, "raw": {"props": [{"name": "table", "kind": "object", "mobility": "movable", "initial_location": "the tavern", "initial_holder": null, "support_name": null, "contents": [], "capabilities": {"consumable": "unknown", "container": "unknown", "lockable": "unknown", "openable": "unknown"}, "reason": "The table is wiped and its surface gleams, indicating a persistent state change.", "evidence": "\"wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams\""}, {"name": "cloth soaked in ale‑scented oil", "kind": "object", "mobility": "movable", "initial_location": null, "initial_holder": "Amy", "support_name": null, "contents": [{"substance": "ale-scented oil", "amount": "unknown", "consumable": "unknown"}], "capabilities": {"consumable": "unknown", "container": "unknown", "lockable": "unknown", "openable": "unknown"}, "reason": "The cloth is used to transfer oil onto the table, changing both its own state and that of the table.", "evidence": "\"wipes the polished table with a cloth soaked in ale‑scented oil\""}]}}
+WORLDSTATE PROP EXTRACTION REJECTED {"attempt": 1, "error": "Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence."}
+WORLDSTATE PROP EXTRACTION REQUEST {"purpose": "world_state_current_segment_props", "attempt": 2, "messages": [{"role": "system", "content": "Identify only new physical props whose distinct identity and placement are needed to represent an explicit persistent state-changing action in CURRENT BEAT. Existing props are listed and must be reused by identity; never duplicate or rename them.\n\n- Each new prop must be directly involved in a transfer, placement, pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.\n- Return exactly one explicit initial_location or initial_holder, using only the registered names below.\n- A support_name may name only a registered support/fixture.\n- Do not guess a placement: omit any prop whose initial placement is not supported by the current sources.\n- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE.\n- Record contents/capabilities only when explicit; otherwise use unknown or an empty contents list.\n- Return JSON in this format:\n{\n  \"props\": [\n    {\n      \"name\": \"object_name\",\n      \"kind\": \"object\",\n      \"mobility\": \"movable\",\n      \"initial_location\": null,\n      \"initial_holder\": \"registered_subject_name\",\n      \"support_name\": null,\n      \"contents\": [\n        {\n          \"substance\": \"substance_name\",\n          \"amount\": \"unknown\",\n          \"consumable\": \"unknown\"\n        }\n      ],\n      \"capabilities\": {\n        \"container\": \"unknown\",\n        \"consumable\": \"unknown\",\n        \"openable\": \"unknown\",\n        \"lockable\": \"unknown\"\n      },\n      \"reason\": \"Why this object needs persistent tracking.\",\n      \"evidence\": \"Exact quotation from CURRENT BEAT or ASSIGNED SOURCE\"\n    }\n  ]\n}\n\n- Notes: All fields are required. Use null for either initial_location or initial_holder—exactly one must have a registered name. The props array can be empty ([]), and contents can also be empty. Capability values can be true, false, or \"unknown\"."}, {"role": "user", "content": "CURRENT BEAT\nThe floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.\n\nASSIGNED SOURCE\nN/A\n\nREGISTERED SUBJECTS\n[{\"name\":\"Amy\",\"presence\":\"present\"},{\"name\":\"Dragon‑shaped creature\",\"presence\":\"unknown\"},{\"name\":\"Elf\",\"presence\":\"unknown\"},{\"name\":\"Goblin\",\"presence\":\"present\"}]\n\nCURRENT WORLDSTATE PROPS\n[{\"name\":\"back door\",\"kind\":\"fixture\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"central counter\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"crystal‑cup shelves\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"hearth / stone fireplace\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"high bar stools with crystal‑cup shelves\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"lanterns\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"stone walls\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"stools for round tables\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}}]\n\nCANONICAL LOCATIONS\n[{\"name\":\"the tavern\"}]\n\nCANONICAL SUPPORTS / FIXTURES\n[{\"name\":\"central counter\",\"location\":\"the tavern\"},{\"name\":\"crystal‑cup shelves\",\"location\":\"the tavern\"},{\"name\":\"hearth / stone fireplace\",\"location\":\"the tavern\"},{\"name\":\"high bar stools with crystal‑cup shelves\",\"location\":\"the tavern\"},{\"name\":\"lanterns\",\"location\":\"the tavern\"},{\"name\":\"stone walls\",\"location\":\"the tavern\"},{\"name\":\"stools for round tables\",\"location\":\"the tavern\"}]\n\nReturn only props needed for a persistent state action in this Segment.\n\nFIX: Return only new props needed for a persistent state-changing action in this Segment, with exact source evidence and exactly one registered initial location or holder. Do not predict future props. Prior validation error: Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence."}], "registered_subjects": [{"id": "subject_1", "name": "Amy", "presence": "present"}, {"id": "subject_goblin_a0f199af52d0", "name": "Goblin", "presence": "present"}, {"id": "subject_elf_a7b4191901e4", "name": "Elf", "presence": "unknown"}, {"id": "subject_dragon_shaped_creature_246cdedab520", "name": "Dragon‑shaped creature", "presence": "unknown"}], "registered_locations": [{"id": "location_the_tavern_2e7ff416daba", "name": "the tavern"}], "registered_props": [{"id": "prop_location_the_tavern_2e7ff416daba_78c98887b61b", "name": "back door", "kind": "fixture"}, {"id": "prop_location_the_tavern_2e7ff416daba_a5562a84a974", "name": "hearth / stone fireplace", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_d7088e271a02", "name": "central counter", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_54042c84c666", "name": "high bar stools with crystal‑cup shelves", "kind": "support"}, {"id": "prop_location_the_tavern_2e7ff416daba_8e78b7416489", "name": "crystal‑cup shelves", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_137c27de19f9", "name": "stools for round tables", "kind": "support"}, {"id": "prop_location_the_tavern_2e7ff416daba_31f7eb12871c", "name": "lanterns", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_e6304761a768", "name": "stone walls", "kind": "support"}]}
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1134 input tokens, max 4096 output tokens).
+LLM request finished: world_state_current_segment_props (15.4s, finish_reason=stop).
+WORLDSTATE PROP EXTRACTION RESPONSE {"attempt": 2, "raw": {"props": [{"name": "cloth soaked in ale‑scented oil", "kind": "object", "mobility": "movable", "initial_location": null, "initial_holder": "Amy", "support_name": null, "contents": [{"substance": "ale‑scented oil", "amount": "unknown", "consumable": "unknown"}], "capabilities": {"consumable": "unknown", "container": "unknown", "lockable": "unknown", "openable": "unknown"}, "reason": "The cloth is used by Amy to wipe the table, changing its state from dull to gleamed.", "evidence": "\"she wipes the polished table with a cloth soaked in ale‑scented oil until its surface gleams.\""}]}}
+WORLDSTATE PROP EXTRACTION REJECTED {"attempt": 2, "error": "Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence."}
+WORLDSTATE PROP EXTRACTION REQUEST {"purpose": "world_state_current_segment_props", "attempt": 3, "messages": [{"role": "system", "content": "Identify only new physical props whose distinct identity and placement are needed to represent an explicit persistent state-changing action in CURRENT BEAT. Existing props are listed and must be reused by identity; never duplicate or rename them.\n\n- Each new prop must be directly involved in a transfer, placement, pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.\n- Return exactly one explicit initial_location or initial_holder, using only the registered names below.\n- A support_name may name only a registered support/fixture.\n- Do not guess a placement: omit any prop whose initial placement is not supported by the current sources.\n- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE.\n- Record contents/capabilities only when explicit; otherwise use unknown or an empty contents list.\n- Return JSON in this format:\n{\n  \"props\": [\n    {\n      \"name\": \"object_name\",\n      \"kind\": \"object\",\n      \"mobility\": \"movable\",\n      \"initial_location\": null,\n      \"initial_holder\": \"registered_subject_name\",\n      \"support_name\": null,\n      \"contents\": [\n        {\n          \"substance\": \"substance_name\",\n          \"amount\": \"unknown\",\n          \"consumable\": \"unknown\"\n        }\n      ],\n      \"capabilities\": {\n        \"container\": \"unknown\",\n        \"consumable\": \"unknown\",\n        \"openable\": \"unknown\",\n        \"lockable\": \"unknown\"\n      },\n      \"reason\": \"Why this object needs persistent tracking.\",\n      \"evidence\": \"Exact quotation from CURRENT BEAT or ASSIGNED SOURCE\"\n    }\n  ]\n}\n\n- Notes: All fields are required. Use null for either initial_location or initial_holder—exactly one must have a registered name. The props array can be empty ([]), and contents can also be empty. Capability values can be true, false, or \"unknown\"."}, {"role": "user", "content": "CURRENT BEAT\nThe floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.\n\nASSIGNED SOURCE\nN/A\n\nREGISTERED SUBJECTS\n[{\"name\":\"Amy\",\"presence\":\"present\"},{\"name\":\"Dragon‑shaped creature\",\"presence\":\"unknown\"},{\"name\":\"Elf\",\"presence\":\"unknown\"},{\"name\":\"Goblin\",\"presence\":\"present\"}]\n\nCURRENT WORLDSTATE PROPS\n[{\"name\":\"back door\",\"kind\":\"fixture\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"central counter\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"crystal‑cup shelves\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"hearth / stone fireplace\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"high bar stools with crystal‑cup shelves\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"lanterns\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"stone walls\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}},{\"name\":\"stools for round tables\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern\"}}]\n\nCANONICAL LOCATIONS\n[{\"name\":\"the tavern\"}]\n\nCANONICAL SUPPORTS / FIXTURES\n[{\"name\":\"central counter\",\"location\":\"the tavern\"},{\"name\":\"crystal‑cup shelves\",\"location\":\"the tavern\"},{\"name\":\"hearth / stone fireplace\",\"location\":\"the tavern\"},{\"name\":\"high bar stools with crystal‑cup shelves\",\"location\":\"the tavern\"},{\"name\":\"lanterns\",\"location\":\"the tavern\"},{\"name\":\"stone walls\",\"location\":\"the tavern\"},{\"name\":\"stools for round tables\",\"location\":\"the tavern\"}]\n\nReturn only props needed for a persistent state action in this Segment.\n\nFIX: Return only new props needed for a persistent state-changing action in this Segment, with exact source evidence and exactly one registered initial location or holder. Do not predict future props. Prior validation error: Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence."}], "registered_subjects": [{"id": "subject_1", "name": "Amy", "presence": "present"}, {"id": "subject_goblin_a0f199af52d0", "name": "Goblin", "presence": "present"}, {"id": "subject_elf_a7b4191901e4", "name": "Elf", "presence": "unknown"}, {"id": "subject_dragon_shaped_creature_246cdedab520", "name": "Dragon‑shaped creature", "presence": "unknown"}], "registered_locations": [{"id": "location_the_tavern_2e7ff416daba", "name": "the tavern"}], "registered_props": [{"id": "prop_location_the_tavern_2e7ff416daba_78c98887b61b", "name": "back door", "kind": "fixture"}, {"id": "prop_location_the_tavern_2e7ff416daba_a5562a84a974", "name": "hearth / stone fireplace", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_d7088e271a02", "name": "central counter", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_54042c84c666", "name": "high bar stools with crystal‑cup shelves", "kind": "support"}, {"id": "prop_location_the_tavern_2e7ff416daba_8e78b7416489", "name": "crystal‑cup shelves", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_137c27de19f9", "name": "stools for round tables", "kind": "support"}, {"id": "prop_location_the_tavern_2e7ff416daba_31f7eb12871c", "name": "lanterns", "kind": "fixture_support"}, {"id": "prop_location_the_tavern_2e7ff416daba_e6304761a768", "name": "stone walls", "kind": "support"}]}
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1134 input tokens, max 4096 output tokens).
+LLM request finished: world_state_current_segment_props (15.3s, finish_reason=stop).
+WORLDSTATE PROP EXTRACTION RESPONSE {"attempt": 3, "raw": {"props": [{"name": "cloth soaked in ale‑scented oil", "kind": "object", "mobility": "movable", "initial_location": null, "initial_holder": "Amy", "support_name": null, "contents": [{"substance": "ale‑scented oil", "amount": "unknown", "consumable": "unknown"}], "capabilities": {"consumable": "unknown", "container": "unknown", "lockable": "unknown", "openable": "unknown"}, "reason": "The cloth is used to wipe the table, changing its state and potentially being moved or placed elsewhere later.", "evidence": "\"she wipes the polished table with a cloth soaked in ale‑scented oil until its surface gleams.\""}]}}
+WORLDSTATE PROP EXTRACTION REJECTED {"attempt": 3, "error": "Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence."}
+FATAL: prompt-generation run stopped at first real failure: ValueError: Could not extract current-Segment persistent props: Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 41191, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 40038, in _run_main
+    prepare_current_segment_world_state(segment)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 39797, in prepare_current_segment_world_state
+    world_state, added = prepare_segment_world_state_for_director(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 4144, in prepare_segment_world_state_for_director
+    extracted_props = extract_current_segment_persistent_props(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 4504, in extract_current_segment_persistent_props
+    raise ValueError("Could not extract current-Segment persistent props: " + str(last_error))
+ValueError: Could not extract current-Segment persistent props: Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 41256, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 41191, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 40038, in _run_main
+    prepare_current_segment_world_state(segment)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 39797, in prepare_current_segment_world_state
+    world_state, added = prepare_segment_world_state_for_director(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 4144, in prepare_segment_world_state_for_director
+    extracted_props = extract_current_segment_persistent_props(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qi8zorp8\repo\minimax.py", line 4504, in extract_current_segment_persistent_props
+    raise ValueError("Could not extract current-Segment persistent props: " + str(last_error))
+ValueError: Could not extract current-Segment persistent props: Persistent prop 'cloth soaked in ale‑scented oil' requires exact current-source evidence.

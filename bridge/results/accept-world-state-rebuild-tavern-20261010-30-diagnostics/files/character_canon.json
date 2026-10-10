@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "source_sha256": "3f2fbb8f5e34725eb1a8477676a663a107484451d2a964d4183cf65d64841ef9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman",
+    "referenced_in",
+    "skin_color",
+    "hands",
+    "hair_color",
+    "description",
+    "scales_color",
+    "eyes_color"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "Amy wears a rough‑spun tunic, its coarse wool texture reaching mid‑thigh and bearing visible scuffs from years of service in the tavern; over it she dons a dark leather apron with weathered cuffs that show signs of handling mugs and ale barrels. Her lower half is covered by simple grey woolen leggings tucked into worn leather boots whose soles have thickened with use, all cinched at her waist by a plain leather belt holding spare tools and coins",
+      "gender": "female",
+      "confident_woman": "true",
+      "referenced_in": "<Picture 1>"
+    },
+    {
+      "name": "Goblin",
+      "age": "N/A",
+      "clothing": "A small green‑skinned goblin wears a worn dark brown tunic of rough wool that falls just above its knees; the sleeves are frayed and patched from years of use. A simple leather belt cinches the tunic at the waist. Over it, he sports a tiny tan leather apron—slightly oversized for his frame but functional—with multiple pockets to hold mugs and tools. The ensemble is topped by a faded green hood draped over his head",
+      "gender": "N/A",
+      "skin_color": "green",
+      "hands": "tiny, clutching a chipped mug"
+    },
+    {
+      "name": "Elf",
+      "age": "150",
+      "clothing": "A finely woven forest‑green linen tunic tailored to her slender elf form, reaching mid‑thigh and edged with delicate silver filigree along the cuffs and hem; a narrow mossy‑brown leather belt cinches its waist. Beneath it soft mossy‑brown leather leggings hug her calves. Her feet are clad in polished bronze‑strap boots that reach just below the knee. A lightweight deep‑green velvet cloak drapes over her shoulders, fastened at the collar by a small silver leaf brooch. Around her neck hangs an elegant silver pendant set with a tiny emerald; delicate silver earrings dangle from each ear. Her long silver hair is left loose, streaming down to her shoulders",
+      "gender": "female",
+      "hair_color": "silver",
+      "description": "beautiful female elf steps in, silver hair streaming down its shoulders"
+    },
+    {
+      "name": "Dragon‑shaped creature",
+      "age": "N/A",
+      "clothing": "A loosely fitted black leather tunic draped over its polished obsidian scales, cinched at the waist by a wide crimson cord. It wears a simple silver chain necklace around its neck with a small bronze ale‑mug pendant hanging from it",
+      "gender": "N/A",
+      "scales_color": "polished obsidian",
+      "eyes_color": "amber"
+    }
+  ]
+}
