@@ -1229,3 +1229,32 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   subtests, with two existing stale registered-story-start assertions failing
   (`classification`/`evidence` response shape and old prompt wording). Syntax
   compilation and `git diff --check` passed.
+
+## 2026-10-11 — temporary pre-Director replay fixture
+
+- Added a test-only `--pre-director-replay-fixture PATH` option and reusable
+  fixture from bridge job
+  `accept-world-state-rebuild-tavern-20261011-33-director-baseline`. It loads
+  the saved story/arc/Beats/canon, extracted location data, canonical
+  pre-Director WorldState, authored Subject/Picture identity lock, reference
+  mappings, and first-Segment Subject vocabulary. Fixture loading rejects any
+  snapshot with completed Segments or a WorldState hash that differs from the
+  captured first Director opening.
+- The replay bypasses the upstream character canon, Beat, wardrobe, location,
+  story-start, and current-Segment WorldState extraction calls for Segment 1.
+  The normal Director, validators/repairs, H3 assembly, and later Segment path
+  remain active. The option forces prompt-only mode and is ignored entirely
+  when absent.
+- Before Request 1, replay compares its reconstructed messages and opening
+  WorldState hash against job 33's captured request. They matched exactly;
+  the state hash is
+  `d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0`.
+  The artifact recorded zero completed Segments, so no failed Director/repair
+  state is restored. Legacy continuity/prop ledgers are not loaded from the
+  artifact.
+- Example invocation:
+  `python minimax.py 8 6 0.5 --refresh 999999 --vision-continuity 0 --model gpt --image1 amy.jpg --pre-director-replay-fixture tests/acceptance/fixtures/tavern_job33_pre_director/replay.json`
+- Added four replay regressions. Replay, prompt-generation, source-mode, and
+  Director retry tests passed (156 passed, 7 subtests). WorldState foundation
+  had 62 passes, 7 subtests, and the same two stale story-start contract/prompt
+  failures documented above. `py_compile` and `git diff --check` passed.

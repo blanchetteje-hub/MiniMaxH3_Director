@@ -2345,6 +2345,15 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--pre-director-replay-fixture",
+        default=None,
+        metavar="PATH",
+        help=(
+            "test-only: load a captured pre-Director baseline, skip all earlier "
+            "LLM calls, and continue normal Director/H3 processing"
+        ),
+    )
+    parser.add_argument(
         "--vision-continuity",
         type=int,
         default=0,
@@ -2585,6 +2594,24 @@ def parse_args(arguments=None):
                 "or repair modes."
             )
         # Director-only is a prompt-generation test mode by definition.
+        args.test_prompt_generation = True
+
+    if args.pre_director_replay_fixture is not None:
+        if (
+            args.resume != 1
+            or args.repair is not None
+            or args.new_run
+            or args.existing_beats
+            or args.director_only
+            or args.generate_beats is not None
+            or args.generate_prompts is not None
+            or args.generate_from_prompts
+            or args.use_prompts is not None
+        ):
+            parser.error(
+                "--pre-director-replay-fixture starts at Segment 1 and cannot "
+                "be combined with source, resume, repair, or saved-prompt modes."
+            )
         args.test_prompt_generation = True
 
     if args.generate_prompts is not None:
@@ -37951,6 +37978,64 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             "role": "user",
             "content": registered_vocabulary_prompt,
         }]
+    expected_replay_messages = bundle.get(
+        "pre_director_replay_expected_messages"
+    )
+    if expected_replay_messages is not None:
+        if request1_base_messages != expected_replay_messages:
+            mismatch_index = next(
+                (
+                    index for index, (actual, expected) in enumerate(zip(
+                        request1_base_messages, expected_replay_messages,
+                    ))
+                    if actual != expected
+                ),
+                min(len(request1_base_messages), len(expected_replay_messages)),
+            )
+            actual_message = (
+                request1_base_messages[mismatch_index]
+                if mismatch_index < len(request1_base_messages) else {}
+            )
+            expected_message = (
+                expected_replay_messages[mismatch_index]
+                if mismatch_index < len(expected_replay_messages) else {}
+            )
+            actual_content = str(actual_message.get("content") or "")
+            expected_content = str(expected_message.get("content") or "")
+            common_prefix = 0
+            for actual_char, expected_char in zip(actual_content, expected_content):
+                if actual_char != expected_char:
+                    break
+                common_prefix += 1
+            raise BeatGenerationError(
+                "Pre-Director replay Director Request 1 does not match the "
+                "captured job's dynamic messages at message "
+                f"{mismatch_index} (actual/expected lengths "
+                f"{len(actual_content)}/{len(expected_content)}; first "
+                f"content difference at character {common_prefix}; roles "
+                f"{actual_message.get('role')!r}/"
+                f"{expected_message.get('role')!r})."
+            )
+        if bundle.get("opening_state_sha256") != bundle.get(
+            "pre_director_replay_opening_state_sha256"
+        ):
+            raise BeatGenerationError(
+                "Pre-Director replay opening WorldState hash changed before "
+                "Director Request 1."
+            )
+        console_log(
+            "PRE-DIRECTOR REPLAY MATCH " + json.dumps(
+                {
+                    "segment": segment_number,
+                    "opening_world_state_sha256": bundle.get(
+                        "opening_state_sha256"
+                    ),
+                    "message_count": len(request1_base_messages),
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
     request1_topology_contracts = build_director_barrier_topology_contract(
         bundle.get("assigned_state_effects", []),
         bundle.get("subject_definitions", ""),
@@ -39043,6 +39128,100 @@ def require_existing_beats(path, total_segments):
     return beats
 
 
+def load_pre_director_replay_fixture(path):
+    """Load a test-only, immutable pre-Director input/state snapshot."""
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            fixture = json.load(handle)
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(
+            f"Could not load pre-Director replay fixture {path!r}: {error}"
+        ) from error
+    if not isinstance(fixture, dict) or fixture.get("schema_version") != 1:
+        raise ValueError("Unsupported pre-Director replay fixture schema.")
+    inputs = fixture.get("inputs")
+    pre_director = fixture.get("pre_director")
+    provenance = fixture.get("provenance")
+    request = fixture.get("director_request1")
+    if not all(isinstance(value, dict) for value in (
+        inputs, pre_director, provenance, request,
+    )):
+        raise ValueError("Pre-Director replay fixture is missing required sections.")
+    required_inputs = (
+        "story_source", "expanded_story", "story_arc", "beats",
+        "subject_definitions", "character_canon", "phrase_exclusions",
+    )
+    missing = [name for name in required_inputs if name not in inputs]
+    if missing:
+        raise ValueError(
+            "Pre-Director replay fixture is missing inputs: "
+            + ", ".join(missing)
+            + "."
+        )
+    if (
+        not isinstance(inputs.get("story_source"), str)
+        or not isinstance(inputs.get("expanded_story"), str)
+        or not isinstance(inputs.get("story_arc"), dict)
+        or not isinstance(inputs.get("beats"), list)
+        or any(not isinstance(beat, str) for beat in inputs["beats"])
+        or not isinstance(inputs.get("subject_definitions"), str)
+        or not isinstance(inputs.get("character_canon"), dict)
+        or not isinstance(inputs.get("phrase_exclusions"), list)
+        or not isinstance(fixture.get("run_config"), dict)
+    ):
+        raise ValueError("Pre-Director replay fixture inputs have invalid types.")
+    world_state = pre_director.get("world_state")
+    validate_world_state(world_state)
+    if provenance.get("completed_segments") != 0:
+        raise ValueError(
+            "Pre-Director replay fixture must come from before any Segment commit."
+        )
+    recorded_hash = str(provenance.get("opening_world_state_sha256") or "")
+    request_metadata = request.get("metadata")
+    if not isinstance(request_metadata, dict):
+        raise ValueError("Pre-Director replay fixture has no Director request metadata.")
+    request_hash = str(request_metadata.get("opening_state_sha256") or "")
+    actual_hash = world_state_sha256(world_state)
+    if not recorded_hash or recorded_hash != request_hash or recorded_hash != actual_hash:
+        raise ValueError(
+            "Pre-Director replay WorldState does not match the captured first "
+            "Director opening hash."
+        )
+    if (
+        request_metadata.get("purpose") != "director_raw_scene"
+        or request_metadata.get("segment") != 1
+    ):
+        raise ValueError("Replay reference must be the first Director Request 1.")
+    messages = request.get("messages")
+    if (
+        not isinstance(messages, list)
+        or not messages
+        or any(
+            not isinstance(message, dict)
+            or not isinstance(message.get("role"), str)
+            or not isinstance(message.get("content"), str)
+            for message in messages
+        )
+    ):
+        raise ValueError("Replay reference must contain captured Director messages.")
+    names = pre_director.get("current_segment_subject_names")
+    if not isinstance(names, list) or any(
+        not isinstance(name, str) or not name.strip() for name in names
+    ):
+        raise ValueError("Replay fixture must define current-Segment Subject names.")
+    registered_names = {
+        str(subject.get("name") or "").casefold()
+        for subject in world_state.get("subjects", {}).values()
+        if isinstance(subject, dict)
+    }
+    if any(name.casefold() not in registered_names for name in names):
+        raise ValueError(
+            "Replay fixture current-Segment Subject names must be registered "
+            "in its WorldState."
+        )
+    return copy.deepcopy(fixture)
+
+
 def _run_main(
     summary_executor,
     director_prefetch_executor=None,
@@ -39051,6 +39230,12 @@ def _run_main(
 ):
     args = parse_args()
     configure_reference_image_overrides(args)
+    pre_director_replay = None
+    replay_fixture_path = getattr(args, "pre_director_replay_fixture", None)
+    if replay_fixture_path:
+        pre_director_replay = load_pre_director_replay_fixture(
+            replay_fixture_path
+        )
     use_prompts_path = getattr(args, "use_prompts", None)
     if use_prompts_path:
         return render_generated_prompts(args, path=use_prompts_path)
@@ -39081,6 +39266,13 @@ def _run_main(
         console_log(
             "Director-only test: using existing story_arc.json and beats.txt; "
             "arc/beat generation is disabled.",
+            flush=True,
+        )
+    if pre_director_replay is not None:
+        console_log(
+            "Pre-Director replay enabled: captured upstream outputs and the "
+            "pre-Director WorldState are loaded; first Request 1 must match "
+            "the fixture's captured dynamic messages.",
             flush=True,
         )
     configure_formatter(getattr(args, "model", "gpt"))
@@ -39134,16 +39326,55 @@ def _run_main(
         else args.resume
     )
 
-    story_source = load_text_file(
-        STORY_FILE,
-        required=not generate_beats_only,
+    if pre_director_replay is not None:
+        replay_config = pre_director_replay.get("run_config", {})
+        expected_config = {
+            "segment_length": segment_length,
+            "total_length": total_length,
+            "megapixels": megapixels,
+            "total_segments": total_segments,
+            "refresh_interval": refresh_interval,
+            "vision_continuity": args.vision_continuity,
+            "trim_frames": trim_frames,
+            "retention": retention,
+            "no_music": bool(getattr(args, "no_music", False)),
+            "disable_subject_removal": bool(
+                getattr(args, "disable_subject_removal", False)
+            ),
+            "visual_style": normalize_visual_style(requested_visual_style),
+        }
+        mismatches = [
+            key for key, value in expected_config.items()
+            if replay_config.get(key) != value
+        ]
+        if resume_segment != 1 or mismatches:
+            raise ValueError(
+                "Pre-Director replay requires the captured Segment-1 settings; "
+                "mismatched fields: "
+                + (", ".join(mismatches) if mismatches else "resume segment")
+                + "."
+            )
+
+    replay_inputs = (
+        pre_director_replay.get("inputs", {})
+        if pre_director_replay is not None
+        else {}
+    )
+    story_source = (
+        str(replay_inputs.get("story_source") or "")
+        if pre_director_replay is not None
+        else load_text_file(
+            STORY_FILE,
+            required=not generate_beats_only,
+        )
     )
     story, beat_instructions = parse_story_beat_instructions(story_source)
     if not story:
         raise ValueError("story.txt must have a story defined.")
-    base_subject_definitions = load_text_file(
-        SUBJECT_DEFINITIONS_FILE,
-        required=False,
+    base_subject_definitions = (
+        str(replay_inputs.get("subject_definitions") or "")
+        if pre_director_replay is not None
+        else load_text_file(SUBJECT_DEFINITIONS_FILE, required=False)
     )
     subject_definitions = base_subject_definitions
     existing_beats = (
@@ -39151,14 +39382,26 @@ def _run_main(
         if getattr(args, "existing_beats", False)
         else None
     )
-    canonical_data = load_canonical_data()
-    if getattr(args, "new_run", False) and recovery_resume_segment is None:
+    canonical_data = (
+        str(replay_inputs.get("canonical_data") or "")
+        if pre_director_replay is not None
+        else load_canonical_data()
+    )
+    if (
+        pre_director_replay is None
+        and getattr(args, "new_run", False)
+        and recovery_resume_segment is None
+    ):
         prepare_new_generation()
-    character_canon = load_or_generate_character_canon(
-        canonical_data,
-        story=story,
-        subject_definitions=subject_definitions,
-        history_metadata={"run_id": run_id},
+    character_canon = (
+        copy.deepcopy(replay_inputs["character_canon"])
+        if pre_director_replay is not None
+        else load_or_generate_character_canon(
+            canonical_data,
+            story=story,
+            subject_definitions=subject_definitions,
+            history_metadata={"run_id": run_id},
+        )
     )
     subject_information = format_beat_generation_subjects(subject_definitions)
     canonical_character_facts = format_character_canon_for_beats(character_canon)
@@ -39172,15 +39415,25 @@ def _run_main(
         subject_information = (
             subject_information + "\n" + canonical_character_facts
         ).strip()
-    phrase_exclusions_found = os.path.isfile(PHRASE_EXCLUSIONS_FILE)
+    phrase_exclusions_found = (
+        bool(replay_inputs.get("phrase_exclusions"))
+        if pre_director_replay is not None
+        else os.path.isfile(PHRASE_EXCLUSIONS_FILE)
+    )
     phrase_exclusions = (
-        load_phrase_exclusions(PHRASE_EXCLUSIONS_FILE)
-        if phrase_exclusions_found
-        else []
+        list(replay_inputs.get("phrase_exclusions", []))
+        if pre_director_replay is not None
+        else (
+            load_phrase_exclusions(PHRASE_EXCLUSIONS_FILE)
+            if phrase_exclusions_found
+            else []
+        )
     )
     if resume_segment == 1:
         reset_prompt_history()
-    if existing_beats is not None:
+    if pre_director_replay is not None:
+        beats = [str(beat) for beat in replay_inputs["beats"]]
+    elif existing_beats is not None:
         beats = existing_beats
         exclusion_issues = validate_generated_beat_exclusions(beats, phrase_exclusions)
         if exclusion_issues:
@@ -39233,11 +39486,12 @@ def _run_main(
             f"One-beat-per-segment requires exactly {total_segments} beats for "
             f"{total_segments} segments, but beats.txt contains {len(beats)} beats."
         )
-    expanded_story_context = load_text_file(
-        EXPANDED_STORY_FILE,
-        required=False,
+    expanded_story_context = (
+        str(replay_inputs.get("expanded_story") or "")
+        if pre_director_replay is not None
+        else load_text_file(EXPANDED_STORY_FILE, required=False)
     )
-    if expanded_story_context:
+    if expanded_story_context and pre_director_replay is None:
         character_canon = canonicalize_defined_subject_wardrobes(
             character_canon,
             expanded_story_context,
@@ -39271,7 +39525,23 @@ def _run_main(
 
     story_location_metadata = {}
     if resume_segment == 1:
-        if expanded_story_context:
+        if pre_director_replay is not None:
+            prior = pre_director_replay["pre_director"]
+            metadata = prior.get("metadata", {})
+            story_location_metadata = {
+                key: copy.deepcopy(metadata[key])
+                for key in (
+                    "overall_location",
+                    "starting_location",
+                    "setting_description",
+                    "spatial_location_description",
+                )
+                if key in metadata
+            }
+            story_location_metadata["location_state"] = copy.deepcopy(
+                prior.get("location_state", {})
+            )
+        elif expanded_story_context:
             story_location_metadata = extract_story_locations(
                 expanded_story_context,
                 history_metadata={"run_id": run_id},
@@ -39315,9 +39585,21 @@ def _run_main(
                 flush=True,
             )
 
-    initial_location_subjects = []
-    initial_location_subjects_extracted = False
-    if resume_segment == 1 and beats:
+    initial_location_subjects = (
+        copy.deepcopy(
+            pre_director_replay["pre_director"].get(
+                "initial_location_subjects", []
+            )
+        )
+        if pre_director_replay is not None
+        else []
+    )
+    initial_location_subjects_extracted = pre_director_replay is not None
+    if (
+        pre_director_replay is None
+        and resume_segment == 1
+        and beats
+    ):
         initial_location_subjects = extract_initial_location_subjects(
             beats,
             base_subject_definitions,
@@ -39345,7 +39627,13 @@ def _run_main(
         total_segments,
     )
     try:
-        if director_only:
+        if pre_director_replay is not None:
+            macro_arc = parse_beat_arc_plan(
+                pre_director_replay["inputs"]["story_arc"],
+                total_segments,
+                validate_state_effects=False,
+            )
+        elif director_only:
             raw_frozen_arc = load_text_file(STORY_ARC_FILE, required=True)
             declared_count = _story_arc_declared_beat_count(raw_frozen_arc)
             if declared_count is not None and declared_count != int(total_segments):
@@ -39486,9 +39774,32 @@ def _run_main(
             SUBJECT_DEFINITIONS_FILE,
         ),
     )
+    if (
+        pre_director_replay is not None
+        and run_config.get("source_sha256")
+        != pre_director_replay.get("run_config", {}).get("source_sha256")
+    ):
+        raise ValueError(
+            "Pre-Director replay source inputs do not match the captured run."
+        )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
-        if story_location_metadata:
+        if pre_director_replay is not None:
+            replay_state = pre_director_replay["pre_director"]
+            for key in (
+                "world_state",
+                "location_state",
+                "metadata",
+                "initial_location_subjects",
+                "subject_identity_lock",
+                "reference_binding_state",
+                "character_reference_images",
+                "base_reference_image_count",
+            ):
+                if key in replay_state:
+                    generation_state[key] = copy.deepcopy(replay_state[key])
+            validate_world_state(generation_state["world_state"])
+        elif story_location_metadata:
             location_metadata = copy.deepcopy(story_location_metadata)
             generation_state["location_state"] = copy.deepcopy(
                 location_metadata.pop("location_state", {})
@@ -39497,11 +39808,13 @@ def _run_main(
         # Gate C phase 1: compose WorldState only from named authoritative
         # sources before any Segment is generated. Legacy continuity/ledgers,
         # RAW, accepted beats, and visual observations do not enter here.
-        world_state = seed_generation_world_state_subjects(
-            generation_state["world_state"],
-            run_config.get("world_state_seed", {}),
-            character_canon,
-        )
+        world_state = copy.deepcopy(generation_state["world_state"])
+        if pre_director_replay is None:
+            world_state = seed_generation_world_state_subjects(
+                world_state,
+                run_config.get("world_state_seed", {}),
+                character_canon,
+            )
         canonical_location_state = generation_state.get("location_state")
         if not isinstance(canonical_location_state, dict) or not isinstance(
             canonical_location_state.get("location"), dict
@@ -39516,7 +39829,7 @@ def _run_main(
                     "objects": [],
                 }
         location_id = None
-        if isinstance(canonical_location_state, dict) and isinstance(
+        if pre_director_replay is None and isinstance(canonical_location_state, dict) and isinstance(
             canonical_location_state.get("location"), dict
         ):
             world_state, location_id = seed_canonical_static_location_state(
@@ -39526,17 +39839,25 @@ def _run_main(
                     story_location_metadata.get("starting_location") or ""
                 ),
             )
-        if initial_location_subjects_extracted and not location_id:
+        if (
+            pre_director_replay is None
+            and initial_location_subjects_extracted
+            and not location_id
+        ):
             raise ValueError(
                 "WorldState story-start presence requires canonical starting-location state."
             )
-        if initial_location_subjects_extracted and location_id:
+        if (
+            pre_director_replay is None
+            and initial_location_subjects_extracted
+            and location_id
+        ):
             world_state = seed_story_start_presence(
                 world_state,
                 initial_location_subjects,
                 location_id=location_id,
             )
-        if location_id:
+        if pre_director_replay is None and location_id:
             world_state = extract_registered_subject_story_start_presence(
                 world_state,
                 story,
@@ -39988,8 +40309,20 @@ def _run_main(
             sort_keys=True,
         )
 
-    prepared_world_state_segments = set()
-    prepared_world_state_subject_names = {}
+    prepared_world_state_segments = (
+        {1} if pre_director_replay is not None else set()
+    )
+    prepared_world_state_subject_names = (
+        {
+            1: copy.deepcopy(
+                pre_director_replay["pre_director"][
+                    "current_segment_subject_names"
+                ]
+            )
+        }
+        if pre_director_replay is not None
+        else {}
+    )
 
     def prepare_current_segment_world_state(segment_number):
         """Register beat-established identities/props before Request 1."""
@@ -40175,6 +40508,20 @@ def _run_main(
             "subject_definitions": subject_definitions,
             "opening_state_sha256": world_state_sha256(
                 generation_state.get("world_state")
+            ),
+            "pre_director_replay_expected_messages": (
+                copy.deepcopy(
+                    pre_director_replay["director_request1"]["messages"]
+                )
+                if pre_director_replay is not None and segment_number == 1
+                else None
+            ),
+            "pre_director_replay_opening_state_sha256": (
+                pre_director_replay["provenance"][
+                    "opening_world_state_sha256"
+                ]
+                if pre_director_replay is not None and segment_number == 1
+                else None
             ),
             "fingerprint": build_segment_fingerprint(
                 segment_number,
