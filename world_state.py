@@ -2069,6 +2069,121 @@ def build_director_state_action_contract(
     }
 
 
+def build_state_action_only_contract(
+    world_state: dict[str, Any],
+    *,
+    current_segment_text: str = "",
+    current_segment_subject_names: list[str] | None = None,
+) -> dict[str, Any]:
+    """Project the registered action schema into an action-only response."""
+    combined = build_director_state_action_contract(
+        world_state,
+        current_segment_text=current_segment_text,
+        current_segment_subject_names=current_segment_subject_names,
+    )
+    combined_schema = combined["response_format"]["json_schema"]["schema"]
+    action_schema = combined_schema["properties"]["state_actions"]
+    response_format = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "world_state_state_actions",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {"state_actions": deepcopy(action_schema)},
+                "required": ["state_actions"],
+                "additionalProperties": False,
+            },
+        },
+    }
+    return {
+        "response_format": response_format,
+        "vocabulary": combined["vocabulary"],
+        "name_resolution": combined["name_resolution"],
+    }
+
+
+def _resolve_and_dry_run_state_actions(
+    world_state: dict[str, Any],
+    response: dict[str, Any],
+    *,
+    segment_number: int,
+    name_resolution: dict[str, dict[str, list[str]]],
+) -> dict[str, Any]:
+    if not isinstance(name_resolution, dict):
+        raise ValueError("StateAction response has no request vocabulary for name resolution.")
+    resolved_actions = deepcopy(response["state_actions"])
+    if not isinstance(resolved_actions, list):
+        raise ValueError("StateAction response requires a state_actions array.")
+    for action in resolved_actions:
+        if not isinstance(action, dict):
+            continue
+        operation = ACTION_CONTRACT.get(action.get("op"))
+        if operation is None:
+            continue
+        for field_name, field_contract in operation["fields"].items():
+            reference_kind = field_contract.get("ref")
+            if reference_kind is None or field_name not in action:
+                continue
+            reference_name = action[field_name]
+            if reference_name is None and field_contract.get("nullable", False):
+                continue
+            if not isinstance(reference_name, str):
+                raise ValueError(
+                    f"StateAction {action.get('op')}.{field_name} must be an exact "
+                    f"registered {reference_kind} name."
+                )
+            matches = name_resolution.get(reference_kind, {}).get(reference_name, [])
+            if not matches:
+                raise ValueError(
+                    f"unknown_registered_name: StateAction "
+                    f"{action.get('op')}.{field_name} names an "
+                    f"unregistered {reference_kind}: {reference_name!r}."
+                )
+            if len(matches) != 1:
+                raise ValueError(
+                    f"ambiguous_registered_name: StateAction "
+                    f"{action.get('op')}.{field_name} has an ambiguous "
+                    f"registered {reference_kind} name: {reference_name!r}."
+                )
+            action[field_name] = matches[0]
+    outcomes = validate_state_actions(
+        world_state,
+        resolved_actions,
+        segment_number=segment_number,
+    )
+    return {
+        "state_actions": resolved_actions,
+        "outcomes": outcomes,
+        "accepted": all(outcome.accepted for outcome in outcomes),
+    }
+
+
+def parse_and_dry_run_state_actions(
+    world_state: dict[str, Any],
+    raw_result: str | dict[str, Any],
+    *,
+    segment_number: int,
+    name_resolution: dict[str, dict[str, list[str]]],
+) -> dict[str, Any]:
+    """Parse an action-only response and dry-run it with the shared reducer."""
+    if isinstance(raw_result, str):
+        try:
+            response = json.loads(raw_result)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"StateAction response is not valid JSON: {error}") from error
+    else:
+        response = raw_result
+    if not isinstance(response, dict) or set(response) != {"state_actions"}:
+        raise ValueError("StateAction-only response has an invalid shape.")
+    return _resolve_and_dry_run_state_actions(
+        world_state,
+        response,
+        segment_number=segment_number,
+        name_resolution=name_resolution,
+    )
+
+
 def parse_and_dry_run_director_state_actions(
     world_state: dict[str, Any],
     raw_result: str | dict[str, Any],
@@ -2097,52 +2212,13 @@ def parse_and_dry_run_director_state_actions(
         "activity_tools_settled", "beat_complete",
     )):
         raise ValueError("Director completion fields must be booleans.")
-    if not isinstance(name_resolution, dict):
-        raise ValueError("Director action response has no request vocabulary for name resolution.")
-
-    resolved_actions = deepcopy(response["state_actions"])
-    if isinstance(resolved_actions, list):
-        for action in resolved_actions:
-            if not isinstance(action, dict):
-                continue
-            operation = ACTION_CONTRACT.get(action.get("op"))
-            if operation is None:
-                continue
-            for field_name, field_contract in operation["fields"].items():
-                reference_kind = field_contract.get("ref")
-                if reference_kind is None or field_name not in action:
-                    continue
-                reference_name = action[field_name]
-                if reference_name is None and field_contract.get("nullable", False):
-                    continue
-                if not isinstance(reference_name, str):
-                    raise ValueError(
-                        f"StateAction {action.get('op')}.{field_name} must be an exact "
-                        f"registered {reference_kind} name."
-                    )
-                matches = name_resolution.get(reference_kind, {}).get(reference_name, [])
-                if not matches:
-                    raise ValueError(
-                        f"unknown_registered_name: StateAction "
-                        f"{action.get('op')}.{field_name} names an "
-                        f"unregistered {reference_kind}: {reference_name!r}."
-                    )
-                if len(matches) != 1:
-                    raise ValueError(
-                        f"ambiguous_registered_name: StateAction "
-                        f"{action.get('op')}.{field_name} has an ambiguous "
-                        f"registered {reference_kind} name: {reference_name!r}."
-                    )
-                action[field_name] = matches[0]
-
-    outcomes = validate_state_actions(
+    reduction = _resolve_and_dry_run_state_actions(
         world_state,
-        resolved_actions,
+        response,
         segment_number=segment_number,
+        name_resolution=name_resolution,
     )
     return {
         "raw_scene": response["raw_scene"],
-        "state_actions": resolved_actions,
-        "outcomes": outcomes,
-        "accepted": all(outcome.accepted for outcome in outcomes),
+        **reduction,
     }

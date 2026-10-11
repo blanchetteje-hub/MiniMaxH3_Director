@@ -58,7 +58,9 @@ from world_state import (
     empty_world_state,
     new_world_state,
     build_director_state_action_contract,
+    build_state_action_only_contract,
     parse_and_dry_run_director_state_actions,
+    parse_and_dry_run_state_actions,
     register_explicit_persistent_props,
     reduce_world_state,
     seed_canonical_static_location_state,
@@ -416,6 +418,7 @@ BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
 DIRECTOR_RAW_SCENE_ATTEMPTS = 5
 DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS = 5
+DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS = 5
 
 BEAT_VALIDATION_STATE_VERSION = 3
 
@@ -534,6 +537,8 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "accepted_beat_state_extract": EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene": SMART_CREATIVE_LLM_SETTINGS,
     "director_raw_scene_repair": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_state_actions": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_state_actions_repair": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_physical": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_prop_state": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_timing": SMART_EXTRACTOR_LLM_SETTINGS,
@@ -578,6 +583,8 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "beat_repair": 8192,
     "director_raw_scene": 8192,
     "director_raw_scene_repair": 8192,
+    "director_state_actions": 4096,
+    "director_state_actions_repair": 4096,
     "director_h3_music": 512,
     "story_setting_spatial_refine": 3072,
     "story_setting_extract": 4096,
@@ -36882,6 +36889,192 @@ def build_director_raw_scene_repair_messages(raw_prompt, validation_errors):
             ),
         },
     ]
+
+
+def build_director_state_actions_messages(raw_scene, vocabulary):
+    """Build a compact action-extraction request over immutable validated RAW."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract only persistent WorldState StateActions explicitly shown "
+                "in the validated RAW SCENE. Use only registered names and the "
+                "operations allowed by the supplied response schema. Return an "
+                "empty state_actions array when there is no persistent change. "
+                "Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "REGISTERED WORLDSTATE VOCABULARY AND OPENING STATE\n"
+                + json.dumps(vocabulary, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nVALIDATED RAW SCENE\n"
+                + str(raw_scene or "")
+            ),
+        },
+    ]
+
+
+def build_director_state_actions_repair_messages(
+    raw_scene,
+    vocabulary,
+    rejected_state_actions,
+    reducer_failure,
+):
+    """Build a repair request that cannot rewrite the accepted RAW scene."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Repair only the StateActions rejected by the WorldState reducer. "
+                "Keep the validated RAW SCENE unchanged. Use only registered names "
+                "and the operations allowed by the supplied response schema. "
+                "Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "REGISTERED WORLDSTATE VOCABULARY AND OPENING STATE\n"
+                + json.dumps(vocabulary, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nVALIDATED RAW SCENE (IMMUTABLE)\n"
+                + str(raw_scene or "")
+                + "\n\nREJECTED STATE ACTIONS\n"
+                + json.dumps(
+                    rejected_state_actions,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                )
+                + "\n\nFIRST REDUCER FAILURE\n"
+                + str(reducer_failure or "")
+            ),
+        },
+    ]
+
+
+def extract_and_dry_run_director_state_actions(
+    world_state,
+    raw_scene,
+    *,
+    segment_number,
+    run_id=None,
+    run_config=None,
+    current_segment_subject_names=None,
+):
+    """Extract and dry-run StateActions without changing RAW or WorldState.
+
+    This prompt-independent path is intentionally not connected to live
+    Director generation until its existing combined RAW prompt is approved for
+    the action-free response contract.
+    """
+    immutable_raw_scene = str(raw_scene or "")
+    contract = build_state_action_only_contract(
+        world_state,
+        current_segment_text=immutable_raw_scene,
+        current_segment_subject_names=current_segment_subject_names,
+    )
+    metadata_base = {
+        "run_id": run_id,
+        "source_sha256": (run_config or {}).get("source_sha256"),
+        "segment": int(segment_number),
+        "opening_state_sha256": hashlib.sha256(
+            json.dumps(
+                world_state,
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+    }
+    response = ask_llm(
+        build_director_state_actions_messages(
+            immutable_raw_scene,
+            contract["vocabulary"],
+        ),
+        response_format=contract["response_format"],
+        history_metadata={**metadata_base, "purpose": "director_state_actions", "attempt": 1},
+    )
+    console_log(
+        "DIRECTOR STATE ACTION EXTRACTION RESPONSE " + json.dumps(
+            {"segment": segment_number, "attempt": 1, "response": response},
+            ensure_ascii=False,
+            default=str,
+        ),
+        flush=True,
+    )
+
+    def validate_response(candidate):
+        try:
+            result = parse_and_dry_run_state_actions(
+                world_state,
+                candidate,
+                segment_number=int(segment_number),
+                name_resolution=contract["name_resolution"],
+            )
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            return None, "invalid_state_action_response: " + " ".join(str(error).split())
+        if result["accepted"]:
+            return result, ""
+        first_failure = next(
+            (item for item in result["outcomes"] if not item.accepted),
+            None,
+        )
+        if first_failure is None:
+            return None, "invalid_state_action_batch: reducer rejected the batch."
+        return None, (
+            f"{first_failure.op} action {first_failure.action_id}: "
+            f"{first_failure.code}: {first_failure.message}"
+        )
+
+    accepted, failure = validate_response(response)
+    for repair_attempt in range(1, DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS + 1):
+        if accepted is not None:
+            return {
+                **accepted,
+                "raw_scene": immutable_raw_scene,
+                "opening_state_sha256": metadata_base["opening_state_sha256"],
+            }
+        console_log(
+            f"Director StateAction extraction failed for Segment {segment_number} "
+            f"(repair {repair_attempt}/{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS}); "
+            f"retrying actions only: {failure}",
+            flush=True,
+        )
+        repaired_response = ask_llm(
+            build_director_state_actions_repair_messages(
+                immutable_raw_scene,
+                contract["vocabulary"],
+                response.get("state_actions") if isinstance(response, dict) else response,
+                failure,
+            ),
+            response_format=contract["response_format"],
+            history_metadata={
+                **metadata_base,
+                "purpose": "director_state_actions_repair",
+                "attempt": repair_attempt,
+            },
+        )
+        console_log(
+            "DIRECTOR STATE ACTION REPAIR RESPONSE " + json.dumps(
+                {
+                    "segment": segment_number,
+                    "attempt": repair_attempt,
+                    "first_failure": failure,
+                    "response": repaired_response,
+                },
+                ensure_ascii=False,
+                default=str,
+            ),
+            flush=True,
+        )
+        response = repaired_response
+        accepted, failure = validate_response(response)
+
+    raise BeatGenerationError(
+        f"Director StateActions failed for Segment {segment_number} after "
+        f"{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS} action-only repairs: {failure}"
+    )
 
 
 def build_director_raw_scene_physical_messages(

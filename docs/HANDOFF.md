@@ -1201,3 +1201,29 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   canonical-description wardrobe rendering, timed-sentence formatting, and
   speaker-verb wording; those code paths are outside this change and were not
   modified.
+
+## 2026-10-11 — prepare action-only WorldState extraction (not wired)
+
+- Added an action-only contract projection and parser that reuse the current
+  request-scoped registered-name vocabulary, resolver, and reducer. Nested
+  action references still resolve only through the supplied vocabulary; the
+  reducer remains the only action legality check.
+- Added a separately callable Smart Extractor path for validated RAW. Its
+  repair requests carry the same immutable RAW and opening vocabulary, the
+  rejected action response, and only the first concrete reducer diagnostic.
+  It allows five action-only repair calls, logs each raw response, and fails
+  closed without mutating opening WorldState. This path is not connected to
+  live segment generation.
+- Added the two Smart Extractor purpose routes with 4096-token per-purpose
+  output caps. The live Director combined response and its existing prompts
+  remain active until the user approves the Director prompt/schema separation;
+  no incomplete split pipeline is enabled. The raw correction budget and live
+  orchestration are therefore not yet migrated.
+- Added focused tests for the action-only schema/name resolution, repair with
+  unchanged RAW, reducer acceptance, failure after five repairs, and unchanged
+  opening state.
+- Verification: the new focused tests passed (3 passed). The WorldState
+  foundation and Director retry modules together reported 179 passed and 14
+  subtests, with two existing stale registered-story-start assertions failing
+  (`classification`/`evidence` response shape and old prompt wording). Syntax
+  compilation and `git diff --check` passed.

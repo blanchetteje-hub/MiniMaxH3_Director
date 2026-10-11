@@ -1,4 +1,5 @@
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,9 +9,11 @@ import minimax
 from world_state import (
     UNKNOWN,
     build_director_state_action_contract,
+    build_state_action_only_contract,
     empty_world_state,
     new_world_state,
     parse_and_dry_run_director_state_actions,
+    parse_and_dry_run_state_actions,
     props_held_by,
     register_explicit_persistent_props,
     reduce_world_state,
@@ -1067,6 +1070,43 @@ class WorldStateSeedTests(unittest.TestCase):
         self.assertEqual(result["state_actions"][0]["subject_id"], "subject_2")
         self.assertEqual(result["state_actions"][0]["location_id"], location_id)
         self.assertEqual(state["subjects"]["subject_2"]["presence"], "unknown")
+
+    def test_action_only_contract_and_parser_reuse_registered_name_resolution(self):
+        state = make_reducer_state()
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text="Subject One Target vessel",
+        )
+        schema = contract["response_format"]["json_schema"]["schema"]
+        self.assertEqual(schema["required"], ["state_actions"])
+        self.assertEqual(set(schema["properties"]), {"state_actions"})
+        self.assertNotIn("raw_scene", schema["properties"])
+        self.assertNotIn("raw_scene", json.dumps(contract["vocabulary"]))
+        self.assertNotIn("prop_id", json.dumps(contract["vocabulary"]))
+
+        response = {"state_actions": [{
+            "action_id": "pickup-vessel",
+            "op": "pickup",
+            "actor_subject_id": "Subject One",
+            "prop_id": "Target vessel",
+        }]}
+        result = parse_and_dry_run_state_actions(
+            state,
+            response,
+            segment_number=1,
+            name_resolution=contract["name_resolution"],
+        )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["state_actions"][0]["actor_subject_id"], "subject_1")
+        self.assertEqual(result["state_actions"][0]["prop_id"], "prop_target")
+
+        with self.assertRaisesRegex(ValueError, "invalid shape"):
+            parse_and_dry_run_state_actions(
+                state,
+                {"raw_scene": "should not be present", "state_actions": []},
+                segment_number=1,
+                name_resolution=contract["name_resolution"],
+            )
 
     def test_director_name_resolution_rejects_unknown_and_out_of_vocabulary_names(self):
         state = make_reducer_state()

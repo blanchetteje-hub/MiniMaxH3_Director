@@ -333,6 +333,105 @@ def non_audio_llm_calls(request):
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
+    def test_action_only_extractor_repairs_actions_without_changing_raw(self):
+        world_state, _location_id, mug_id = goblin_mug_world_state()
+        opening = copy.deepcopy(world_state)
+        raw_scene = (
+            "At 00:01.000, Goblin1 picks up the mug.\n"
+            "At 00:04.500, Goblin1 hands the same mug to Elf1."
+        )
+        rejected = {"state_actions": [{
+            "action_id": "bad-pickup",
+            "op": "pickup",
+            "actor_subject_id": "Unknown Subject",
+            "prop_id": "mug",
+        }]}
+        repaired = {"state_actions": [
+            {
+                "action_id": "pickup-mug",
+                "op": "pickup",
+                "actor_subject_id": "Goblin1",
+                "prop_id": "mug",
+            },
+            {
+                "action_id": "handoff-mug",
+                "op": "handoff",
+                "from_subject_id": "Goblin1",
+                "to_subject_id": "Elf1",
+                "prop_id": "mug",
+            },
+        ]}
+        request = mock.Mock(side_effect=[rejected, repaired])
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state,
+                raw_scene,
+                segment_number=1,
+                run_id="run-id",
+                run_config={"source_sha256": "source-hash"},
+            )
+
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["raw_scene"], raw_scene)
+        self.assertEqual(result["state_actions"][-1]["prop_id"], mug_id)
+        self.assertEqual(
+            result["state_actions"][-1]["to_subject_id"], "subject_2"
+        )
+        self.assertEqual(world_state, opening)
+        self.assertEqual(request.call_count, 2)
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["director_state_actions"],
+            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
+        )
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["director_state_actions_repair"],
+            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
+        )
+        initial_user = request.call_args_list[0].args[0][-1]["content"]
+        repair_user = request.call_args_list[1].args[0][-1]["content"]
+        self.assertIn(raw_scene, initial_user)
+        self.assertIn(raw_scene, repair_user)
+        self.assertIn("FIRST REDUCER FAILURE", repair_user)
+        self.assertIn("Unknown Subject", repair_user)
+        self.assertEqual(
+            request.call_args_list[0].kwargs["response_format"]["json_schema"]["schema"]["required"],
+            ["state_actions"],
+        )
+        self.assertEqual(
+            request.call_args_list[1].kwargs["history_metadata"]["purpose"],
+            "director_state_actions_repair",
+        )
+
+    def test_action_only_extractor_fails_closed_after_five_repairs(self):
+        world_state, _location_id, _mug_id = goblin_mug_world_state()
+        opening = copy.deepcopy(world_state)
+        raw_scene = "At 00:01.000, Goblin1 moves within the tavern."
+        invalid = {"state_actions": [{
+            "action_id": "invalid-move",
+            "op": "move",
+            "subject_id": "Goblin1",
+            "destination_location_id": "Tavern",
+        }]}
+        request = mock.Mock(return_value=invalid)
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            with self.assertRaisesRegex(
+                minimax.BeatGenerationError,
+                "after 5 action-only repairs",
+            ):
+                minimax.extract_and_dry_run_director_state_actions(
+                    world_state,
+                    raw_scene,
+                    segment_number=1,
+                )
+        self.assertEqual(request.call_count, 6)
+        self.assertEqual(world_state, opening)
+
     def test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths(self):
         state, _location_id = tavern_world_state_from_authorities()
         state, added, subject_names = prepare_tavern_segment(state, 1)
