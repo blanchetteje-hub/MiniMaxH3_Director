@@ -1807,13 +1807,13 @@ def _registered_name_is_referenced(name: str, segment_text: str) -> bool:
     return False
 
 
-def build_director_state_action_contract(
+def build_state_action_only_contract(
     world_state: dict[str, Any],
     *,
     current_segment_text: str = "",
     current_segment_subject_names: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Return compact registered vocabulary and same-response action schema."""
+    """Return registered vocabulary and a strict StateAction-only schema."""
     validate_world_state(world_state)
     all_subjects = [
         {
@@ -1960,27 +1960,18 @@ def build_director_state_action_contract(
     format_schema = {
         "type": "json_schema",
         "json_schema": {
-            "name": "director_raw_scene_with_state_actions",
+            "name": "world_state_state_actions",
             "strict": True,
             "schema": {
                 "type": "object",
                 "properties": {
-                    "raw_scene": {"type": "string", "minLength": 1},
-                    "finite_activity_complete": {"type": "boolean"},
-                    "named_beneficiaries_complete": {"type": "boolean"},
-                    "activity_tools_settled": {"type": "boolean"},
-                    "beat_complete": {"type": "boolean"},
                     "state_actions": {
                         "type": "array",
                         "items": {"oneOf": action_schemas} if action_schemas else {},
                         **({} if action_schemas else {"maxItems": 0}),
                     },
                 },
-                "required": [
-                    "raw_scene", "finite_activity_complete",
-                    "named_beneficiaries_complete", "activity_tools_settled",
-                    "beat_complete", "state_actions",
-                ],
+                "required": ["state_actions"],
                 "additionalProperties": False,
             },
         },
@@ -2058,48 +2049,6 @@ def build_director_state_action_contract(
         "response_format": format_schema,
         "vocabulary": vocabulary,
         "name_resolution": name_resolution,
-        "instruction": (
-            "Return raw_scene and state_actions in this same response. Use only exact "
-            "registered entity names listed in the supplied vocabulary; never invent "
-            "or rename an entity. Add an action "
-            "only when the scene explicitly changes persistent state. Off-camera is "
-            "not an action. Use an empty state_actions array when no represented state "
-            "changes."
-        ),
-    }
-
-
-def build_state_action_only_contract(
-    world_state: dict[str, Any],
-    *,
-    current_segment_text: str = "",
-    current_segment_subject_names: list[str] | None = None,
-) -> dict[str, Any]:
-    """Project the registered action schema into an action-only response."""
-    combined = build_director_state_action_contract(
-        world_state,
-        current_segment_text=current_segment_text,
-        current_segment_subject_names=current_segment_subject_names,
-    )
-    combined_schema = combined["response_format"]["json_schema"]["schema"]
-    action_schema = combined_schema["properties"]["state_actions"]
-    response_format = {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "world_state_state_actions",
-            "strict": True,
-            "schema": {
-                "type": "object",
-                "properties": {"state_actions": deepcopy(action_schema)},
-                "required": ["state_actions"],
-                "additionalProperties": False,
-            },
-        },
-    }
-    return {
-        "response_format": response_format,
-        "vocabulary": combined["vocabulary"],
-        "name_resolution": combined["name_resolution"],
     }
 
 
@@ -2182,43 +2131,3 @@ def parse_and_dry_run_state_actions(
         segment_number=segment_number,
         name_resolution=name_resolution,
     )
-
-
-def parse_and_dry_run_director_state_actions(
-    world_state: dict[str, Any],
-    raw_result: str | dict[str, Any],
-    *,
-    segment_number: int,
-    name_resolution: dict[str, dict[str, list[str]]],
-) -> dict[str, Any]:
-    """Resolve request-scoped registered names, then dry-run reducer actions."""
-    if isinstance(raw_result, str):
-        try:
-            response = json.loads(raw_result)
-        except json.JSONDecodeError as error:
-            raise ValueError(f"Director response is not valid JSON: {error}") from error
-    else:
-        response = raw_result
-    expected = {
-        "raw_scene", "finite_activity_complete", "named_beneficiaries_complete",
-        "activity_tools_settled", "beat_complete", "state_actions",
-    }
-    if not isinstance(response, dict) or set(response) != expected:
-        raise ValueError("Director action-contract response has an invalid shape.")
-    if not isinstance(response["raw_scene"], str) or not response["raw_scene"].strip():
-        raise ValueError("Director action-contract response requires raw_scene.")
-    if any(not isinstance(response[field], bool) for field in (
-        "finite_activity_complete", "named_beneficiaries_complete",
-        "activity_tools_settled", "beat_complete",
-    )):
-        raise ValueError("Director completion fields must be booleans.")
-    reduction = _resolve_and_dry_run_state_actions(
-        world_state,
-        response,
-        segment_number=segment_number,
-        name_resolution=name_resolution,
-    )
-    return {
-        "raw_scene": response["raw_scene"],
-        **reduction,
-    }

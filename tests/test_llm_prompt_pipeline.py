@@ -1649,13 +1649,11 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         normalized = " ".join(rules.split())
         self.assertIn("CURRENT BEAT is the story authority", normalized)
         self.assertIn("CURRENT BEAT wins", normalized)
-        self.assertIn("STATE ACTIONS", normalized)
-        self.assertIn("state_actions", normalized)
-        self.assertIn("Use only the Python-supplied registered IDs", normalized)
-        self.assertIn('"state_actions":[]', normalized)
+        self.assertNotIn("STATE ACTIONS", normalized)
+        self.assertNotIn("state_actions", normalized)
         self.assertIn("finite_activity_complete", normalized)
 
-    def test_director_response_schema_includes_state_actions(self):
+    def test_director_response_schema_contains_only_raw_completion_fields(self):
         schema = minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT[
             "json_schema"
         ]["schema"]
@@ -1664,13 +1662,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             {
                 "raw_scene", "finite_activity_complete",
                 "named_beneficiaries_complete", "activity_tools_settled",
-                "beat_complete", "state_actions",
+                "beat_complete",
             },
         )
-        self.assertIn("state_actions", schema["required"])
-        self.assertEqual(
-            schema["properties"]["state_actions"]["type"], "array"
-        )
+        self.assertNotIn("state_actions", schema["required"])
         self.assertIn(
             "CURRENT BEAT",
             schema["properties"]["raw_scene"]["description"],
@@ -2079,23 +2074,23 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("WORDS AND PHRASES NOT ALLOWED IN DIRECTOR OUTPUT", user_content)
         self.assertIn('- "forbidden phrase"', user_content)
 
-    def test_request_segment_llm_passes_bundle_context_to_h3_formatter(self):
-        request = Mock(side_effect=[
-            {
-                "raw_scene": (
-                    "At 00:00.000, Mark crosses the room.\n"
-                    "End continuity state: Mark stands across the room."
-                ),
-                "beat_complete": True,
-            },
-            {
-                "detailed_description": (
-                    "[Shot 1] At 00:00.000, Mark crosses the room."
-                ),
-                "overall_soundscape": "Footsteps.",
-                "non_diegetic_music": "N/A",
-            },
-        ])
+    def test_request_segment_llm_preserves_raw_for_post_raw_audio(self):
+        scene = (
+            "At 00:00.000, Mark crosses the room.\n"
+            "End continuity state: Mark stands across the room."
+        )
+
+        def respond(*_args, **kwargs):
+            purpose = kwargs["history_metadata"]["purpose"]
+            if purpose == "director_raw_scene":
+                return {"raw_scene": scene, "beat_complete": True}
+            if purpose == "director_h3_soundscape":
+                return {"overall_soundscape": "Footsteps."}
+            if purpose == "director_h3_music":
+                return {"non_diegetic_music": "N/A"}
+            raise AssertionError(f"Unexpected LLM purpose: {purpose}")
+
+        request = Mock(side_effect=respond)
         bundle = {
             "segment": 2,
             "active_beat_id": 2,
@@ -2117,52 +2112,27 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             )
 
         self.assertEqual(payload["h3_mode"], "I2VA")
-        formatter_user = request.call_args_list[1].args[0][1]["content"]
-        self.assertIn("MODE: I2VA", formatter_user)
-        self.assertIn("DURATION: 4.5 seconds", formatter_user)
-        self.assertIn("Mark starts beside the window.", formatter_user)
-        self.assertIn("Mark crosses the room.", formatter_user)
-        self.assertIn("We must leave now!", formatter_user)
-        self.assertIn('"forbidden phrase"', formatter_user)
-        self.assertIn(
-            "AUTHORITATIVE OPENING STATE:\nMark starts beside the window.",
-            formatter_user,
-        )
-        minimax._verify_authoritative_opening_state_handoff(
-            request.call_args_list[1].args[0],
-            "Mark starts beside the window.",
-            2,
-        )
-        self.assertEqual(
-            request.call_args_list[0].kwargs["response_format"]["json_schema"]["name"],
-            "director_raw_scene_with_state_actions",
-        )
-        self.assertEqual(
-            request.call_args_list[1].kwargs["response_format"],
-            minimax.H3_FORMATTER_RESPONSE_FORMAT,
-        )
+        self.assertIn("Mark crosses the room", payload["llm_result"]["detailed_description"])
+        self.assertEqual(payload["llm_result"]["overall_soundscape"], "Footsteps.")
+        self.assertEqual(payload["llm_result"]["non_diegetic_music"], "N/A")
         self.assertEqual(
             [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
-            ["director_raw_scene", "director_h3_formatter"],
+            ["director_raw_scene", "director_h3_soundscape", "director_h3_music"],
+        )
+        self.assertEqual(
+            request.call_args_list[0].kwargs["response_format"],
+            minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
         )
         self.assertEqual(
             request.call_args_list[0].kwargs["history_metadata"]["conditioning_mode"],
             "clean_refresh",
         )
-        self.assertEqual(
-            request.call_args_list[1].kwargs["history_metadata"]["h3_mode"],
-            "I2VA",
-        )
-
 
     def test_request_segment_llm_accepts_missing_end_continuity_state(self):
         request = Mock(side_effect=[
             {"raw_scene": "At 00:00.000, Mark crosses the room."},
-            {
-                "detailed_description": "[Shot 1] At 00:00.000, Mark crosses the room.",
-                "overall_soundscape": "Footsteps.",
-                "non_diegetic_music": "N/A",
-            },
+            {"overall_soundscape": "Footsteps."},
+            {"non_diegetic_music": "N/A"},
         ])
         bundle = {
             "segment": 1,
@@ -2181,8 +2151,9 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                 bundle, [], "run-1", {"source_sha256": "source-1"}
             )
 
-        self.assertEqual(request.call_count, 2)
-        self.assertEqual(payload["raw_scene"], "At 00:00.000, Mark crosses the room.")
+        self.assertEqual(request.call_count, 3)
+        self.assertIn("Mark crosses the room", payload["raw_scene"])
+        self.assertIn("End continuity state: Mark crosses the room.", payload["raw_scene"])
 
     def test_request_segment_llm_ignores_request1_completion_self_report(self):
         scene = (
@@ -2197,12 +2168,8 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                 "activity_tools_settled": False,
                 "beat_complete": False,
             },
-            {
-                "subject_genders": {},
-                "detailed_description": "[Shot 1] At 00:00.000, Amy cooks breakfast.",
-                "overall_soundscape": "Kitchen sounds.",
-                "non_diegetic_music": "Quiet underscore.",
-            },
+            {"overall_soundscape": "Kitchen sounds."},
+            {"non_diegetic_music": "Quiet underscore."},
         ])
         bundle = {
             "segment": 1,
@@ -2214,22 +2181,26 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "messages": [{"role": "user", "content": "Director input."}],
         }
 
-        with patch("minimax.ask_llm", request), patch("builtins.print"):
+        with (
+            patch("minimax.ask_llm", request),
+            patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            patch("builtins.print"),
+        ):
             payload = minimax.request_segment_llm(bundle, [], "run-1", {})
 
-        self.assertEqual(request.call_count, 2)
-        self.assertEqual(payload["raw_scene"], scene)
+        self.assertEqual(request.call_count, 3)
+        self.assertIn("Amy cooks breakfast", payload["raw_scene"])
+        self.assertIn("Amy remains at the stove", payload["raw_scene"])
+        self.assertFalse(payload["request1_result"]["beat_complete"])
 
     def test_independent_completion_validator_is_not_in_generation_path(self):
         scene = "At 00:00.000, Mira serves tea.\nEnd continuity state: Tea is served."
         request = Mock(side_effect=[
             {"raw_scene": scene},
-            {
-                "subject_genders": {},
-                "detailed_description": "[Shot 1] At 00:00.000, Mira serves tea.",
-                "overall_soundscape": "Cups clink.",
-                "non_diegetic_music": "N/A",
-            },
+            {"overall_soundscape": "Cups clink."},
+            {"non_diegetic_music": "N/A"},
         ])
         bundle = {
             "segment": 1,
@@ -2241,7 +2212,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "opening_state": "",
             "messages": [{"role": "user", "content": "Direct the current beat."}],
         }
-        with patch("minimax.ask_llm", request), patch("builtins.print"):
+        with (
+            patch("minimax.ask_llm", request),
+            patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            patch("builtins.print"),
+        ):
             minimax.request_segment_llm(bundle, [], "test", {})
         purposes = [
             call.kwargs["history_metadata"]["purpose"]
@@ -2249,7 +2226,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         ]
         self.assertEqual(
             purposes,
-            ["director_raw_scene", "director_h3_formatter"],
+            ["director_raw_scene", "director_h3_soundscape", "director_h3_music"],
         )
 
     def test_request_segment_llm_reports_dropped_subjects_without_retrying(self):
@@ -2265,12 +2242,8 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                     "End continuity state: Amy stands beside the open basement door."
                 )
             },
-            {
-                "subject_genders": {},
-                "detailed_description": "[Shot 1] At 00:00.000, Amy opens the basement door.",
-                "overall_soundscape": "Door opening.",
-                "non_diegetic_music": "N/A",
-            },
+            {"overall_soundscape": "Door opening."},
+            {"non_diegetic_music": "N/A"},
         ])
         bundle = {
             "segment": 8,
@@ -2283,11 +2256,17 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "messages": [{"role": "user", "content": "Director input."}],
         }
 
-        with patch("minimax.ask_llm", request), patch("builtins.print") as printed:
+        with (
+            patch("minimax.ask_llm", request),
+            patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            patch("builtins.print") as printed,
+        ):
             payload = minimax.request_segment_llm(bundle, [], "run-8", {})
 
-        self.assertEqual(request.call_count, 2)
-        self.assertIn("Amy opens the basement door", payload["raw_scene"])
+        self.assertEqual(request.call_count, 3)
+        self.assertIn("Amy stands beside the open basement door", payload["raw_scene"])
         output = "\n".join(
             " ".join(str(arg) for arg in call.args)
             for call in printed.call_args_list
@@ -2672,3 +2651,23 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
         ):
             with self.assertRaises(minimax.ComfyUIConnectionError):
                 minimax.main()
+
+    def test_main_fails_closed_on_state_action_extraction_failure(self):
+        with (
+            patch.object(minimax.sys, "argv", ["minimax.py", "8", "64", "0.5"]),
+            patch(
+                "minimax._run_main",
+                side_effect=minimax.StateActionExtractionError(
+                    "all action-only repairs failed"
+                ),
+            ) as run_main,
+            patch("minimax.time.sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(
+                minimax.StateActionExtractionError,
+                "all action-only repairs failed",
+            ):
+                minimax.main()
+
+        self.assertEqual(run_main.call_count, 1)
+        sleep.assert_not_called()

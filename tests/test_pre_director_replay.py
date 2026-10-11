@@ -110,9 +110,11 @@ def test_pre_director_replay_skips_upstream_llms_and_matches_request1(tmp_path):
             patcher.stop()
 
     assert first_request["messages"] == original_messages
-    assert first_request["kwargs"]["response_format"]["json_schema"][
+    raw_schema = first_request["kwargs"]["response_format"]["json_schema"][
         "schema"
-    ]["properties"].get("state_actions")
+    ]
+    assert "state_actions" not in raw_schema["properties"]
+    assert "state_actions" not in raw_schema["required"]
     assert first_request["kwargs"]["history_metadata"]["segment"] == 1
     assert first_request["kwargs"]["history_metadata"]["opening_state_sha256"] == (
         fixture["provenance"]["opening_world_state_sha256"]

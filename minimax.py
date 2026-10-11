@@ -57,9 +57,7 @@ from world_state import (
     PROP_CONTENT_SCHEMA,
     empty_world_state,
     new_world_state,
-    build_director_state_action_contract,
     build_state_action_only_contract,
-    parse_and_dry_run_director_state_actions,
     parse_and_dry_run_state_actions,
     register_explicit_persistent_props,
     reduce_world_state,
@@ -814,12 +812,6 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                 "named_beneficiaries_complete": {"type": "boolean"},
                 "activity_tools_settled": {"type": "boolean"},
                 "beat_complete": {"type": "boolean"},
-                # The live Request-1 call replaces this unconstrained
-                # placeholder with ID enums from the registered WorldState.
-                "state_actions": {
-                    "type": "array",
-                    "items": {"type": "object"},
-                },
             },
             "required": [
                 "raw_scene",
@@ -827,7 +819,6 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                 "named_beneficiaries_complete",
                 "activity_tools_settled",
                 "beat_complete",
-                "state_actions",
             ],
             "additionalProperties": False,
         },
@@ -1258,11 +1249,8 @@ COMPLETION CHECK
 - activity_tools_settled: true only if tools/props used by CURRENT BEAT reach the required end condition.
 - beat_complete: true only when all three checks above are true.
 
-STATE ACTIONS
-- Return state_actions in this same JSON response. Describe only explicit persistent changes staged in RAW SCENE. Use only exact registered entity names supplied by Python; never invent or rename an entity. Use [] when this Segment makes no represented persistent change. Off-camera is not a state action.
-
 RETURN JSON ONLY
-{{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true,"state_actions":[]}}
+{{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true}}
 """
 # Request 2 is a formatter/translator. Request 1 owns creative direction.
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
@@ -10186,6 +10174,10 @@ class LLMConnectionError(RuntimeError):
 
 class BeatGenerationError(RuntimeError):
     """Legacy beat-generation exception retained for import compatibility."""
+
+
+class StateActionExtractionError(BeatGenerationError):
+    """Accepted RAW could not be paired with a reducer-valid action batch."""
 
 
 # Repair a narrow local-model error such as ``"growl" snarls``.
@@ -22251,9 +22243,6 @@ def _parse_director_raw_scene_result(raw_result):
                 "activity_tools_settled",
             )
         )
-        state_actions = candidate.get("state_actions", [])
-        if not isinstance(state_actions, list):
-            state_actions = []
         if completion_checks_present:
             finite_activity_complete = (
                 candidate.get("finite_activity_complete") is True
@@ -22286,7 +22275,6 @@ def _parse_director_raw_scene_result(raw_result):
         finite_activity_complete = False
         named_beneficiaries_complete = False
         activity_tools_settled = False
-        state_actions = []
 
     return {
         "raw_scene": raw_scene,
@@ -22294,7 +22282,6 @@ def _parse_director_raw_scene_result(raw_result):
         "named_beneficiaries_complete": named_beneficiaries_complete,
         "activity_tools_settled": activity_tools_settled,
         "beat_complete": beat_complete,
-        "state_actions": state_actions,
     }
 
 
@@ -37036,9 +37023,8 @@ def extract_and_dry_run_director_state_actions(
 ):
     """Extract and dry-run StateActions without changing RAW or WorldState.
 
-    This prompt-independent path is intentionally not connected to live
-    Director generation until its existing combined RAW prompt is approved for
-    the action-free response contract.
+    The validated RAW and opening WorldState remain immutable throughout
+    extraction and the action-only repair loop.
     """
     immutable_raw_scene = str(raw_scene or "")
     contract = build_state_action_only_contract(
@@ -37143,7 +37129,7 @@ def extract_and_dry_run_director_state_actions(
         response = repaired_response
         accepted, failure = validate_response(response)
 
-    raise BeatGenerationError(
+    raise StateActionExtractionError(
         f"Director StateActions failed for Segment {segment_number} after "
         f"{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS} action-only repairs: {failure}"
     )
@@ -37972,55 +37958,15 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
     current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
-    current_segment_action_text = "\n".join(
-        part for part in (
-            current_beat_for_topology,
-            str(bundle.get("assigned_source") or "").strip(),
-        ) if part
-    )
     world_state_opening = copy.deepcopy(
         bundle.get("world_state_opening")
         if isinstance(bundle.get("world_state_opening"), dict)
         else empty_world_state("director_request1_no_registered_world_state")
     )
     validate_world_state(world_state_opening)
-    state_action_contract = build_director_state_action_contract(
-        world_state_opening,
-        current_segment_text=current_segment_action_text,
-        current_segment_subject_names=bundle.get(
-            "world_state_current_segment_subject_names", []
-        ),
-    )
     prop_ledger = world_state_opening
 
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
-    registered_vocabulary_prompt = (
-        "REGISTERED WORLDSTATE VOCABULARY — select only exact registered entity "
-        "names shown here; Python resolves names to IDs:\n"
-        + json.dumps(
-            state_action_contract["vocabulary"],
-            ensure_ascii=False,
-            separators=(",", ":"),
-        )
-        + "\n\nSTATE ACTION CONTRACT — Return state_actions in this same "
-        "response as RAW SCENE. Add only explicit persistent changes staged "
-        "in RAW SCENE; off-camera is not an action. Use [] if no represented "
-        "state changes. The response schema restricts operations and names to "
-        "the registered vocabulary."
-    )
-    if request1_base_messages:
-        last_message = dict(request1_base_messages[-1])
-        last_message["content"] = (
-            str(last_message.get("content") or "")
-            + "\n\n"
-            + registered_vocabulary_prompt
-        )
-        request1_base_messages[-1] = last_message
-    else:
-        request1_base_messages = [{
-            "role": "user",
-            "content": registered_vocabulary_prompt,
-        }]
     expected_replay_messages = bundle.get(
         "pre_director_replay_expected_messages"
     )
@@ -38113,23 +38059,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
         return messages
 
-    def build_request1_state_action_retry_messages(failure):
-        """Retry from the immutable base with only the first reducer failure."""
-        messages = copy.deepcopy(request1_base_messages)
-        messages.append({
-            "role": "user",
-            "content": (
-                "STATE ACTION RETRY — correct the state_actions batch using the "
-                "same opening WorldState and exact registered names. The reducer rejected "
-                "the first failing action with this concrete diagnostic:\n"
-                f"{failure}\n"
-                "Fix this first failure and return the complete corrected action "
-                "batch. Do not carry forward other validation feedback from earlier "
-                "attempts."
-            ),
-        })
-        return messages
-
     request1_messages = request1_base_messages
     for request1_attempt in range(1, DIRECTOR_RAW_SCENE_ATTEMPTS + 1):
         request1_metadata = {
@@ -38143,7 +38072,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         }
         raw_scene_result = ask_llm(
             request1_messages,
-            response_format=state_action_contract["response_format"],
+            response_format=DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
             history_metadata=request1_metadata,
         )
         # Always include every Director candidate in run.log, even if the
@@ -38161,60 +38090,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             ),
             flush=True,
         )
-        try:
-            state_action_dry_run = parse_and_dry_run_director_state_actions(
-                world_state_opening,
-                raw_scene_result,
-                segment_number=segment_number,
-                name_resolution=state_action_contract["name_resolution"],
-            )
-        except (TypeError, ValueError, json.JSONDecodeError) as error:
-            state_action_dry_run = {
-                "accepted": False,
-                "state_actions": [],
-                "outcomes": (),
-            }
-            state_action_failure = (
-                "invalid_state_action_response: "
-                + " ".join(str(error).split())
-            )
-        else:
-            state_action_failure = ""
-            if not state_action_dry_run["accepted"]:
-                first_failure = next(
-                    (
-                        outcome for outcome in state_action_dry_run["outcomes"]
-                        if not outcome.accepted
-                    ),
-                    None,
-                )
-                state_action_failure = (
-                    f"{first_failure.op} action {first_failure.action_id}: "
-                    f"{first_failure.code}: {first_failure.message}"
-                    if first_failure is not None
-                    else "invalid_state_action_batch: reducer rejected the batch."
-                )
-        if state_action_failure:
-            if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                raise BeatGenerationError(
-                    f"Director Request 1 state_actions failed for Segment "
-                    f"{segment_number}: {state_action_failure}"
-                )
-            console_log(
-                f"Director Request 1 state_actions failed "
-                f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                f"retrying from the same opening WorldState: {state_action_failure}",
-                flush=True,
-            )
-            request1_messages = build_request1_state_action_retry_messages(
-                state_action_failure
-            )
-            continue
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
-        request1_result["state_actions"] = copy.deepcopy(
-            state_action_dry_run["state_actions"]
-        )
-        request1_result["state_actions_dry_run_accepted"] = True
         raw_scene = _normalize_director_raw_scene_structure(
             request1_result.get("raw_scene", ""),
             segment_seconds=duration,
@@ -40804,6 +40680,46 @@ def _run_main(
             raise BeatGenerationError(
                 f"Segment {segment} has no confirmed complete Request 1 result."
             )
+        opening_world_state = segment_bundle.get("world_state_opening")
+        if not isinstance(opening_world_state, dict):
+            raise StateActionExtractionError(
+                f"Segment {segment} has no immutable opening WorldState for "
+                "StateAction extraction."
+            )
+        try:
+            state_action_result = extract_and_dry_run_director_state_actions(
+                opening_world_state,
+                resolved_raw_scene,
+                segment_number=segment,
+                run_id=run_id,
+                run_config=run_config,
+                current_segment_subject_names=segment_bundle.get(
+                    "world_state_current_segment_subject_names", []
+                ),
+            )
+        except LLMConnectionError:
+            raise
+        except Exception as error:
+            if isinstance(error, StateActionExtractionError):
+                raise
+            raise StateActionExtractionError(
+                f"Director StateAction extraction failed for Segment {segment}: "
+                f"{error}"
+            ) from error
+        if state_action_result.get("raw_scene") != resolved_raw_scene:
+            raise StateActionExtractionError(
+                f"Segment {segment} StateAction extraction changed the accepted RAW."
+            )
+        request1_result["state_actions"] = copy.deepcopy(
+            state_action_result["state_actions"]
+        )
+        request1_result["state_actions_dry_run_accepted"] = True
+        console_log(
+            f"Director StateActions accepted for Segment {segment}: "
+            f"{len(request1_result['state_actions'])} action(s), opening "
+            f"WorldState {state_action_result['opening_state_sha256']}.",
+            flush=True,
+        )
         reported_beat_ids = (
             [int(payload.get("active_beat_id"))]
             if beats and payload.get("active_beat_id") is not None
@@ -41815,6 +41731,7 @@ def main():
             raise
         except (
             re.error,
+            StateActionExtractionError,
             RequiredEventStateApplicationError,
             WorkflowConfigurationError,
         ):

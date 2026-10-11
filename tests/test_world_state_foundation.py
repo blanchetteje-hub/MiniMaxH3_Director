@@ -8,11 +8,9 @@ from unittest.mock import Mock, patch
 import minimax
 from world_state import (
     UNKNOWN,
-    build_director_state_action_contract,
     build_state_action_only_contract,
     empty_world_state,
     new_world_state,
-    parse_and_dry_run_director_state_actions,
     parse_and_dry_run_state_actions,
     props_held_by,
     register_explicit_persistent_props,
@@ -1042,7 +1040,7 @@ class WorldStateSeedTests(unittest.TestCase):
         self.assertEqual(state["world_state"]["props"], {})
         self.assertEqual(state["world_state"]["locations"], {})
 
-    def test_director_contract_uses_registered_names_and_resolves_them_before_reducer(self):
+    def test_action_contract_uses_registered_names_and_resolves_them_before_reducer(self):
         state = new_world_state({"subjects": {
             "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
             "2": {"subject_id": 2, "name": "Baker", "gender": "unknown", "picture_ids": []},
@@ -1053,13 +1051,12 @@ class WorldStateSeedTests(unittest.TestCase):
         state = seed_story_start_presence(
             state, [{"name": "Amy", "initial_state": "standing"}], location_id=location_id
         )
-        contract = build_director_state_action_contract(state)
+        contract = build_state_action_only_contract(state)
         vocabulary = contract["vocabulary"]
         self.assertEqual(
             {item["name"] for item in vocabulary["subjects"]}, {"Amy", "Baker"}
         )
         self.assertEqual(vocabulary["locations"], [{"name": "Room"}])
-        self.assertIn("exact registered entity names", contract["instruction"])
 
         def assert_no_id_fields(value):
             if isinstance(value, dict):
@@ -1073,8 +1070,8 @@ class WorldStateSeedTests(unittest.TestCase):
 
         assert_no_id_fields(vocabulary)
         schema = contract["response_format"]["json_schema"]["schema"]
-        self.assertIn("raw_scene", schema["required"])
         self.assertIn("state_actions", schema["required"])
+        self.assertEqual(set(schema["properties"]), {"state_actions"})
         action_schemas = schema["properties"]["state_actions"]["items"]["oneOf"]
         enter_schema = next(
             item for item in action_schemas
@@ -1088,11 +1085,6 @@ class WorldStateSeedTests(unittest.TestCase):
         )
 
         response = {
-            "raw_scene": "Baker enters the room.",
-            "finite_activity_complete": True,
-            "named_beneficiaries_complete": True,
-            "activity_tools_settled": True,
-            "beat_complete": True,
             "state_actions": [{
                 "action_id": "baker-enters",
                 "op": "enter",
@@ -1100,7 +1092,7 @@ class WorldStateSeedTests(unittest.TestCase):
                 "location_id": "Room",
             }],
         }
-        result = parse_and_dry_run_director_state_actions(
+        result = parse_and_dry_run_state_actions(
             state,
             response,
             segment_number=1,
@@ -1150,16 +1142,11 @@ class WorldStateSeedTests(unittest.TestCase):
 
     def test_director_name_resolution_rejects_unknown_and_out_of_vocabulary_names(self):
         state = make_reducer_state()
-        contract = build_director_state_action_contract(
+        contract = build_state_action_only_contract(
             state,
             current_segment_text="Subject One Support A",
         )
         response = {
-            "raw_scene": "Subject One acts.",
-            "finite_activity_complete": True,
-            "named_beneficiaries_complete": True,
-            "activity_tools_settled": True,
-            "beat_complete": True,
             "state_actions": [{
                 "action_id": "unknown-prop",
                 "op": "pickup",
@@ -1169,7 +1156,7 @@ class WorldStateSeedTests(unittest.TestCase):
         }
         # Target vessel is in WorldState, but absent from this request's vocabulary.
         with self.assertRaisesRegex(ValueError, "unknown_registered_name"):
-            parse_and_dry_run_director_state_actions(
+            parse_and_dry_run_state_actions(
                 state,
                 response,
                 segment_number=1,
@@ -1177,7 +1164,7 @@ class WorldStateSeedTests(unittest.TestCase):
             )
         response["state_actions"][0]["prop_id"] = "Unregistered object"
         with self.assertRaisesRegex(ValueError, "unknown_registered_name"):
-            parse_and_dry_run_director_state_actions(
+            parse_and_dry_run_state_actions(
                 state,
                 response,
                 segment_number=1,
@@ -1190,7 +1177,7 @@ class WorldStateSeedTests(unittest.TestCase):
         duplicate["id"] = "prop_target_duplicate"
         state["props"][duplicate["id"]] = duplicate
         validate_world_state(state)
-        contract = build_director_state_action_contract(
+        contract = build_state_action_only_contract(
             state,
             current_segment_text="Subject One Target vessel",
         )
@@ -1199,11 +1186,6 @@ class WorldStateSeedTests(unittest.TestCase):
             ["prop_target", "prop_target_duplicate"],
         )
         response = {
-            "raw_scene": "Subject One reaches for the vessel.",
-            "finite_activity_complete": True,
-            "named_beneficiaries_complete": True,
-            "activity_tools_settled": True,
-            "beat_complete": True,
             "state_actions": [{
                 "action_id": "ambiguous-pickup",
                 "op": "pickup",
@@ -1212,7 +1194,7 @@ class WorldStateSeedTests(unittest.TestCase):
             }],
         }
         with self.assertRaisesRegex(ValueError, "ambiguous_registered_name"):
-            parse_and_dry_run_director_state_actions(
+            parse_and_dry_run_state_actions(
                 state,
                 response,
                 segment_number=1,
@@ -1225,7 +1207,7 @@ class WorldStateSeedTests(unittest.TestCase):
             "kind": "held", "subject_id": "subject_2",
         }
         validate_world_state(state)
-        contract = build_director_state_action_contract(
+        contract = build_state_action_only_contract(
             state,
             current_segment_text="Subject One Movable object Support A Target vessel",
         )
@@ -1258,11 +1240,6 @@ class WorldStateSeedTests(unittest.TestCase):
             "Area A",
         )
         response = {
-                "raw_scene": "Subject Two places the vessel on Support A.",
-            "finite_activity_complete": True,
-            "named_beneficiaries_complete": True,
-            "activity_tools_settled": True,
-            "beat_complete": True,
             "state_actions": [{
                 "action_id": "place-object",
                 "op": "place",
@@ -1272,7 +1249,7 @@ class WorldStateSeedTests(unittest.TestCase):
                 "support_id": "Support A",
             }],
         }
-        resolved = parse_and_dry_run_director_state_actions(
+        resolved = parse_and_dry_run_state_actions(
             state,
             response,
             segment_number=1,

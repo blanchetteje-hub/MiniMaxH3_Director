@@ -8,6 +8,7 @@ from unittest import mock
 
 import minimax
 from world_state import (
+    build_state_action_only_contract,
     new_world_state,
     register_explicit_persistent_props,
     seed_canonical_static_location_state,
@@ -226,28 +227,6 @@ def prepare_tavern_segment(state, segment_number):
     return state, added_names, list(dict.fromkeys(included_names))
 
 
-def goblin_mug_transfer_actions(
-    mug_reference="mug",
-    subject_references=("Goblin1", "Elf1"),
-):
-    goblin_reference, elf_reference = subject_references
-    return [
-        {
-            "action_id": "pickup-mug",
-            "op": "pickup",
-            "actor_subject_id": goblin_reference,
-            "prop_id": mug_reference,
-        },
-        {
-            "action_id": "handoff-mug",
-            "op": "handoff",
-            "from_subject_id": goblin_reference,
-            "to_subject_id": elf_reference,
-            "prop_id": mug_reference,
-        },
-    ]
-
-
 def formatter_response(description):
     """A Request 2 H3 formatter reply with the required response fields."""
     description = str(description)
@@ -263,7 +242,7 @@ def formatter_response(description):
     }
 
 
-def director_response(raw_scene, beat_complete=True, state_actions=None):
+def director_response(raw_scene, beat_complete=True):
     """A structurally valid Request 1 reply for unit tests."""
     scene = str(raw_scene).strip()
     if not scene.startswith("At "):
@@ -278,7 +257,6 @@ def director_response(raw_scene, beat_complete=True, state_actions=None):
         "named_beneficiaries_complete": beat_complete,
         "activity_tools_settled": beat_complete,
         "beat_complete": beat_complete,
-        "state_actions": copy.deepcopy(state_actions or []),
     }
 
 
@@ -313,10 +291,7 @@ def pipeline_llm_side_effect(
                 "\n\nReturn raw_scene", 1
             )[0].strip()
             return {"raw_scene": raw, "subject_names": []}
-        response = next(queued)
-        if isinstance(response, dict) and "raw_scene" in response:
-            response = {**response, "state_actions": response.get("state_actions", [])}
-        return response
+        return next(queued)
 
     return respond
 
@@ -424,7 +399,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             mock.patch("minimax.console_log"),
         ):
             with self.assertRaisesRegex(
-                minimax.BeatGenerationError,
+                minimax.StateActionExtractionError,
                 "after 5 action-only repairs",
             ):
                 minimax.extract_and_dry_run_director_state_actions(
@@ -433,6 +408,14 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                     segment_number=1,
                 )
         self.assertEqual(request.call_count, 6)
+        self.assertEqual(
+            [
+                call.kwargs["history_metadata"]["purpose"]
+                for call in request.call_args_list
+            ],
+            ["director_state_actions"]
+            + ["director_state_actions_repair"] * 5,
+        )
         self.assertEqual(world_state, opening)
 
     def test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths(self):
@@ -442,7 +425,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         subject_by_name = {s["name"]: s for s in state["subjects"].values()}
         self.assertEqual(subject_by_name["Amy"]["presence"], "present")
         self.assertEqual(subject_by_name["Goblin1"]["presence"], "present")
-        contract = minimax.build_director_state_action_contract(
+        contract = build_state_action_only_contract(
             state,
             current_segment_text=TAVERN_SEGMENT_BEATS[0] + TAVERN_SEGMENT_SOURCES[0],
             current_segment_subject_names=subject_names,
@@ -476,7 +459,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(elf["location_id"], "unknown")
         self.assertEqual(elf["identity"]["physical_form"], "unknown")
         self.assertEqual(elf["wardrobe"]["upper"][0]["garment"], "wool tunic")
-        contract = minimax.build_director_state_action_contract(
+        contract = build_state_action_only_contract(
             state,
             current_segment_text=TAVERN_SEGMENT_BEATS[2] + TAVERN_SEGMENT_SOURCES[2],
             current_segment_subject_names=subject_names,
@@ -524,7 +507,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(cup["placement"], {
             "kind": "located", "location_id": location_id, "support_id": shelf_id,
         })
-        contract = minimax.build_director_state_action_contract(
+        contract = build_state_action_only_contract(
             state,
             current_segment_text=TAVERN_SEGMENT_BEATS[3] + TAVERN_SEGMENT_SOURCES[3],
             current_segment_subject_names=subject_names,
@@ -563,7 +546,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         operation_sets = []
         for text in variants:
-            contract = minimax.build_director_state_action_contract(
+            contract = build_state_action_only_contract(
                 state,
                 current_segment_text=text,
                 current_segment_subject_names=subject_names,
@@ -584,17 +567,47 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             },
         )
 
-    def test_request_one_dry_runs_valid_goblin_mug_transfer_without_committing(self):
+    def test_request_one_uses_action_free_contract_and_readable_world_state(self):
         bundle = goblin_mug_bundle()
         opening_world_state = copy.deepcopy(bundle["world_state_opening"])
-        _state, _location_id, mug_id = goblin_mug_world_state()
-        actions = goblin_mug_transfer_actions("mug")
+        goblin_id = next(
+            subject_id for subject_id, subject
+            in opening_world_state["subjects"].items()
+            if subject["name"] == "Goblin1"
+        )
+        mug_id = next(
+            prop_id for prop_id, prop
+            in opening_world_state["props"].items()
+            if prop["name"] == "mug"
+        )
+        opening_world_state["props"][mug_id]["placement"] = {
+            "kind": "held", "subject_id": goblin_id,
+        }
+        bundle["world_state_opening"] = copy.deepcopy(opening_world_state)
+        bundle["messages"], _token_estimate, _recent_count = (
+            minimax.build_generation_messages(
+                director_rules=minimax.build_director_rules(
+                    6, 6, 1, "", 1,
+                    conditioning_mode="initial",
+                    is_final_story_segment=True,
+                ),
+                story="",
+                beats=["Goblin1 waits behind the counter."],
+                completed_beat_ids=set(),
+                recent_results=[],
+                current_segment=1,
+                total_segments=1,
+                segment_length=6,
+                total_length=6,
+                subject_definitions=minimax.world_state_subject_definitions(
+                    "", opening_world_state,
+                ),
+                conditioning_mode="initial",
+                world_state=opening_world_state,
+            )
+        )
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
-            director_response(
-                "At 00:01.000, Goblin1 picks up the mug.\n"
-                "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                state_actions=actions,
-            ),
+            director_response("At 00:01.000, Goblin1 waits beside the counter."),
         ]))
         validators = (
             mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
@@ -609,21 +622,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             mock.patch("builtins.print"),
         ):
             payload = minimax.request_segment_llm(
-                bundle, [], "run-transfer", {"source_sha256": "source"}
+                bundle, [], "run-raw-only", {"source_sha256": "source"}
             )
 
-        self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
-        self.assertEqual(
-            payload["request1_result"]["state_actions"],
-            goblin_mug_transfer_actions(
-                mug_id,
-                subject_references=("subject_1", "subject_2"),
-            ),
-        )
+        self.assertNotIn("state_actions", payload["request1_result"])
+        self.assertNotIn("state_actions_dry_run_accepted", payload["request1_result"])
         self.assertEqual(bundle["world_state_opening"], opening_world_state)
         self.assertEqual(
             bundle["world_state_opening"]["props"][mug_id]["placement"],
-            {"kind": "located", "location_id": next(iter(bundle["world_state_opening"]["locations"]))},
+            {"kind": "held", "subject_id": goblin_id},
         )
         request1 = next(
             call for call in request.call_args_list
@@ -633,194 +640,25 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             str(message.get("content") or "")
             for message in request1.args[0]
         )
-        self.assertIn("REGISTERED WORLDSTATE VOCABULARY", prompt)
-        self.assertIn('"name":"Goblin1"', prompt)
-        self.assertNotIn(mug_id, prompt)
-        self.assertIn("exact registered entity names", prompt)
-        self.assertNotIn("Python-assigned IDs", prompt)
-        action_schemas = request1.kwargs["response_format"]["json_schema"]["schema"]["properties"]["state_actions"]["items"]["oneOf"]
+        self.assertIn("PERSISTENT MOVABLE PROP STATE", prompt)
+        self.assertIn("WORLDSTATE OPENING", prompt)
+        self.assertIn("Subject Goblin1: present", prompt)
+        self.assertIn("Prop mug: held by Goblin1", prompt)
+        self.assertNotIn("REGISTERED WORLDSTATE VOCABULARY", prompt)
+        self.assertNotIn("STATE ACTION CONTRACT", prompt)
+        self.assertNotIn("state_actions", prompt)
         self.assertEqual(
-            {schema["properties"]["op"]["const"] for schema in action_schemas},
-            {
-                "pickup", "place", "handoff", "pour", "consume", "enter",
-                "exit", "move", "set_support", "change_clothing", "open",
-                "close", "lock", "unlock",
-            },
+            request1.kwargs["response_format"],
+            minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
         )
-        pickup_schema = next(
-            schema for schema in action_schemas
-            if schema["properties"]["op"]["const"] == "pickup"
-        )
-        self.assertIn("Goblin1", pickup_schema["properties"]["actor_subject_id"]["enum"])
-        self.assertIn("mug", pickup_schema["properties"]["prop_id"]["enum"])
-        self.assertNotIn(mug_id, pickup_schema["properties"]["prop_id"]["enum"])
+        raw_schema = request1.kwargs["response_format"]["json_schema"]["schema"]
+        self.assertNotIn("state_actions", raw_schema["properties"])
+        self.assertNotIn("state_actions", raw_schema["required"])
 
-    def test_director_system_and_retry_instructions_use_names(self):
-        self.assertIn(
-            "exact registered entity names",
-            minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE,
-        )
-        self.assertNotIn(
-            "Python-supplied registered IDs",
-            minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE,
-        )
-
-    def test_request_one_rejects_duplicate_or_unknown_prop_name_then_retries(self):
-        for invalid_actions, expected_code in (
-            (
-                [
-                    {"action_id": "pickup-one", "op": "pickup", "actor_subject_id": "Goblin1", "prop_id": "mug"},
-                    {"action_id": "pickup-twice", "op": "pickup", "actor_subject_id": "Goblin1", "prop_id": "mug"},
-                ],
-                "prop_not_located",
-            ),
-            (
-                [{"action_id": "pickup-unknown", "op": "pickup", "actor_subject_id": "Goblin1", "prop_id": "Unregistered prop"}],
-                "unknown_registered_name",
-            ),
-        ):
-            with self.subTest(code=expected_code):
-                bundle = goblin_mug_bundle()
-                _state, _location_id, mug_id = goblin_mug_world_state()
-                invalid_actions = copy.deepcopy(invalid_actions)
-                request = mock.Mock(side_effect=pipeline_llm_side_effect([
-                    director_response(
-                        "At 00:01.000, Goblin1 picks up the mug.\n"
-                        "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                        state_actions=invalid_actions,
-                    ),
-                    director_response(
-                        "At 00:01.000, Goblin1 picks up the mug.\n"
-                        "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                        state_actions=goblin_mug_transfer_actions("mug"),
-                    ),
-                ]))
-                with (
-                    mock.patch("minimax.ask_llm", request),
-                    mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
-                    mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
-                    mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
-                    mock.patch("builtins.print"),
-                ):
-                    payload = minimax.request_segment_llm(
-                        bundle, [], "run-prop-id", {"source_sha256": "source"}
-                    )
-                request1_calls = [
-                    call for call in request.call_args_list
-                    if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
-                ]
-                self.assertEqual(len(request1_calls), 2)
-                self.assertIn(expected_code, request1_calls[1].args[0][-1]["content"])
-                self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
-                self.assertEqual(
-                    bundle["world_state_opening"]["props"][mug_id]["placement"]["kind"],
-                    "located",
-                )
-
-    def test_request_one_rejects_invalid_handoff(self):
-        bundle = goblin_mug_bundle()
-        bundle["current_beat_text"] = (
-            "Goblin1 hands the mug to Elf1 while Amy watches."
-        )
-        _state, _location_id, mug_id = goblin_mug_world_state()
-        wrong_handoff = [{
-            "action_id": "invalid-handoff",
-            "op": "handoff",
-            "from_subject_id": "Amy",
-            "to_subject_id": "Elf1",
-            "prop_id": "mug",
-        }]
-        request = mock.Mock(side_effect=pipeline_llm_side_effect([
-            director_response(
-                "At 00:01.000, Elf1 attempts to give Amy the mug.",
-                state_actions=wrong_handoff,
-            ),
-            director_response(
-                "At 00:01.000, Goblin1 picks up the mug.\n"
-                "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                state_actions=goblin_mug_transfer_actions("mug"),
-            ),
-        ]))
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
-            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
-            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
-            mock.patch("builtins.print"),
-        ):
-            payload = minimax.request_segment_llm(
-                bundle, [], "run-handoff", {"source_sha256": "source"}
-            )
-        request1_calls = [
-            call for call in request.call_args_list
-            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
-        ]
-        self.assertIn("giver_not_holder", request1_calls[1].args[0][-1]["content"])
-        self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
-
-    def test_reducer_retry_contains_only_first_failure(self):
-        bundle = goblin_mug_bundle()
-        opening_world_state = copy.deepcopy(bundle["world_state_opening"])
-        bundle["current_beat_text"] += " Amy watches."
-        _state, _location_id, mug_id = goblin_mug_world_state()
-        invalid_batch = [
-            {
-                "action_id": "wrong-giver",
-                "op": "handoff",
-                "from_subject_id": "Amy",
-                "to_subject_id": "Elf1",
-                "prop_id": "mug",
-            },
-            {
-                "action_id": "unknown-prop",
-                "op": "pickup",
-                "actor_subject_id": "Goblin1",
-                "prop_id": "mug",
-            },
-        ]
-        request = mock.Mock(side_effect=pipeline_llm_side_effect([
-            director_response(
-                "At 00:01.000, Goblin1 picks up the mug.\n"
-                "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                state_actions=[{
-                    "action_id": "unknown-prop-first",
-                    "op": "pickup",
-                    "actor_subject_id": "Goblin1",
-                    "prop_id": "not-registered",
-                }],
-            ),
-            director_response(
-                "At 00:01.000, Goblin1 picks up the mug.\n"
-                "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                state_actions=invalid_batch,
-            ),
-            director_response(
-                "At 00:01.000, Goblin1 picks up the mug.\n"
-                "At 00:04.500, Goblin1 hands the mug to Elf1.",
-                state_actions=goblin_mug_transfer_actions("mug"),
-            ),
-        ]))
-        physical = mock.Mock(return_value={"valid": True, "issue": ""})
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.validate_director_raw_scene_physical", physical),
-            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
-            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
-            mock.patch("builtins.print"),
-        ):
-            payload = minimax.request_segment_llm(
-                bundle, [], "run-first-failure", {"source_sha256": "source"}
-            )
-        request1_calls = [
-            call for call in request.call_args_list
-            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
-        ]
-        self.assertEqual(len(request1_calls), 3)
-        reducer_retry_prompt = request1_calls[2].args[0][-1]["content"]
-        self.assertIn("giver_not_holder", reducer_retry_prompt)
-        self.assertNotIn("unknown_registered_name", reducer_retry_prompt)
-        self.assertTrue(payload["request1_result"]["state_actions_dry_run_accepted"])
-        self.assertEqual(bundle["world_state_opening"], opening_world_state)
+    def test_director_system_prompt_has_no_state_action_contract(self):
+        self.assertNotIn("STATE ACTIONS", minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE)
+        self.assertNotIn("state_actions", minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE)
+        self.assertNotIn("exact registered entity names", minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE)
 
     def test_h3_soundscape_prompt_is_extraction_only(self):
         messages = minimax.build_h3_soundscape_messages(

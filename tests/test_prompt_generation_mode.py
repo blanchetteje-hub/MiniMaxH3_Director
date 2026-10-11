@@ -214,6 +214,7 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
     durations = []
     completed_world_states = []
     console_messages = []
+    extracted_action_inputs = []
 
     def capture_console_log(*values, **_kwargs):
         console_messages.append(" ".join(str(value) for value in values))
@@ -232,16 +233,29 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         assert _run_config["total_length"] == 8 * count
         payload = dict(bundle)
         payload["llm_result"] = {
-            "detailed_description": "[Shot 1] A scene.",
+            "detailed_description": "[Shot 1] Amy waits behind the counter.",
             "overall_soundscape": "Room tone.",
             "non_diegetic_music": "N/A",
             "completed_beat_ids": [],
         }
+        payload["raw_scene"] = (
+            "At 00:00.000, Amy waits behind the counter.\n"
+            "At 00:07.500, Amy remains behind the counter.\n"
+            "End continuity state: Amy remains behind the counter."
+        )
         payload["request1_result"] = {
-            "state_actions": [],
-            "state_actions_dry_run_accepted": True,
+            "beat_complete": True,
         }
         return payload
+
+    def extract_actions(opening_state, raw_scene, **kwargs):
+        extracted_action_inputs.append((copy.deepcopy(opening_state), raw_scene, kwargs))
+        return {
+            "accepted": True,
+            "state_actions": [],
+            "raw_scene": raw_scene,
+            "opening_state_sha256": minimax.world_state_sha256(opening_state),
+        }
 
     def capture_completed_state(state, *args, **kwargs):
         del args, kwargs
@@ -279,6 +293,10 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         mock.patch("minimax.validate_runtime_environment"),
         mock.patch("minimax.save_generated_prompts_file", side_effect=lambda payload: saved_packages.append(copy.deepcopy(payload))),
         mock.patch("minimax.request_segment_llm", side_effect=request_segment),
+        mock.patch(
+            "minimax.extract_and_dry_run_director_state_actions",
+            side_effect=extract_actions,
+        ),
         mock.patch(
             "minimax.request_combined_continuity",
             return_value={"reduced_state": {}},
@@ -325,10 +343,24 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
             patcher.stop()
 
     assert durations == [8.0] * count
+    assert len(extracted_action_inputs) == count
+    assert all(
+        "Amy waits behind the counter" in raw
+        for _opening, raw, _kwargs in extracted_action_inputs
+    )
+    assert all(
+        kwargs["current_segment_subject_names"] == []
+        for _opening, _raw, kwargs in extracted_action_inputs
+    )
     assert len(saved_packages[-1]["prompts"]) == count
     if not render_enabled:
         assert len(completed_world_states) == count
         assert world_state_commit_mock.call_count == count
+        assert all(
+            call.args[2]["state_actions_dry_run_accepted"]
+            and call.args[2]["state_actions"] == []
+            for call in world_state_commit_mock.call_args_list
+        )
     else:
         assert completed_world_states == []
         world_state_commit_mock.assert_not_called()

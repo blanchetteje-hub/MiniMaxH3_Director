@@ -1310,3 +1310,34 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   postmortem modules had 143 passes, 11 subtests, and 5 failures in unrelated
   stale story-start, wardrobe, legacy-prop, and legacy-H3 expectations.
   Syntax compilation and whitespace checks passed.
+
+## 2026-10-11 — separate Director RAW generation and StateActions
+
+- Removed the StateAction vocabulary and required `state_actions` field from
+  Director Request 1. The existing readable WorldState opening block remains
+  in that request: it presents known Subject presence, location, support and
+  posture, plus each prop's holder/location/support, contents, condition, and
+  mechanism state. No action vocabulary or IDs are sent with creative RAW.
+- After RAW validators/repairs, visible-Subject resolution, and deterministic
+  carry-forward accept the final RAW, the existing Smart Extractor action call
+  receives that immutable RAW, the Segment's opening WorldState, and registered
+  entity names. The existing reducer validates the full action batch; up to
+  five repairs return a complete replacement batch. Exhaustion fails closed
+  with a dedicated error and does not enter RAW repair or the general run
+  recovery loop.
+- Removed the combined Director response parser/contract and its Request-1
+  reducer retry path. StateActions are attached to the accepted segment result
+  only after dry-run acceptance, so the existing completed-segment commit
+  boundary remains in force.
+- Added regressions for the action-free RAW schema, retained readable opening
+  state, action-only reducer/repair behavior, prompt-only sequential commits,
+  and fail-closed exhaustion. The focused Director retry module passed. The
+  Director retry module passed (118 tests and 7 subtests), replay tests passed
+  (4), and sequential prompt-only generation passed for one and five Segments
+  (2). The WorldState foundation module had 65 passes and 11 subtests; two
+  existing stale story-start assertions still fail (old `classification` /
+  `evidence` response shape and old prompt wording). The new recovery-boundary
+  regression passed. The prompt-pipeline module had 97 passes and 18 failures;
+  those failures are existing assertions for older Director/beat/H3 prompt
+  text and formatter behavior, not the new action-free response contract.
+  Syntax compilation and `git diff --check` passed.
