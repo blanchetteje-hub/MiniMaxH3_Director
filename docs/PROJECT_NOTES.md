@@ -82,6 +82,7 @@ A local pipeline expands the source story into filmable detail, plans source-own
 - Both assistants remain subject to the same explicit user approval and prompt-ownership gates below.
 
 ### Approval and prompt ownership — non-negotiable
+- **Every LLM system prompt must explicitly specify the exact JSON response structure**, including required keys and value types/shape, whenever the call returns JSON. The model must see its return contract in the system message; a Python response schema, parser, or API `response_format` alone is not sufficient. Keep the system-prompt contract synchronized with the actual schema. For calls currently returning free text, do not silently convert them to JSON; propose that contract change for user approval first. This rule does not authorize editing existing user-owned prompts without separate approval.
 
 - **All runtime system/user LLM prompts are user-owned**: story, Beat, Director, extractor, validator, repair, and retry. GPT-6, Codex, and other assistants must **not** create, edit, rewrite, append to, or simplify these prompts without **separate explicit user authorization for the specific prompt change**. Approval to change code is **not** approval to edit prompts.
 - A failing prompt or validate/repair loop calls for **diagnosis, not an unauthorized prompt fix**: show the exact sent messages (including dynamic inputs and retry suffixes), recorded raw responses, validation failures, and retry sequence. Present a recommendation and let the user choose or write wording.
