@@ -28,6 +28,46 @@ from world_state import (
 
 
 class CurrentSegmentSubjectDiagnosticTests(unittest.TestCase):
+    @staticmethod
+    def _subject_candidate(evidence):
+        return {
+            "subjects": [{
+                "name": "Goblin_1",
+                "physical_form": "unknown",
+                "gender": "unknown",
+                "source_description": "A green goblin",
+                "evidence": evidence,
+            }],
+        }
+
+    def test_subject_evidence_accepts_one_matching_enclosing_quote_pair(self):
+        source = "A green goblin leans over the counter."
+        for evidence in (
+            f'"{source}"',
+            f"'{source}'",
+            f"“{source}”",
+            f"‘{source}’",
+        ):
+            with self.subTest(evidence=evidence):
+                parsed = minimax.parse_current_segment_subject_result(
+                    self._subject_candidate(evidence), source
+                )
+                self.assertEqual(parsed[0]["name"], "Goblin_1")
+
+    def test_subject_evidence_accepts_unquoted_exact_excerpt(self):
+        source = "A green goblin leans over the counter."
+        parsed = minimax.parse_current_segment_subject_result(
+            self._subject_candidate("leans over the counter"), source
+        )
+        self.assertEqual(parsed[0]["name"], "Goblin_1")
+
+    def test_subject_evidence_rejects_quoted_invented_excerpt(self):
+        with self.assertRaisesRegex(ValueError, "not quoted from the current beat/source"):
+            minimax.parse_current_segment_subject_result(
+                self._subject_candidate("“A green goblin opens the door.”"),
+                "A green goblin leans over the counter.",
+            )
+
     def test_rejected_raw_response_and_exact_error_are_logged_per_attempt(self):
         invalid = {
             "subjects": [{

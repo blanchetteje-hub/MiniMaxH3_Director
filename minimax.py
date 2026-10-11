@@ -4027,7 +4027,17 @@ def parse_current_segment_subject_result(raw_result, current_beat, assigned_sour
         }
         if not normalized["name"] or not normalized["evidence"]:
             raise ValueError("Current-segment Subject name and evidence are required.")
-        if normalized["evidence"].casefold() not in source_text.casefold():
+        evidence_for_match = normalized["evidence"]
+        quote_pairs = (("\"", "\""), ("'", "'"), ("“", "”"), ("‘", "’"))
+        for opening, closing in quote_pairs:
+            if (
+                len(evidence_for_match) >= 2
+                and evidence_for_match.startswith(opening)
+                and evidence_for_match.endswith(closing)
+            ):
+                evidence_for_match = evidence_for_match[1:-1].strip()
+                break
+        if evidence_for_match.casefold() not in source_text.casefold():
             raise ValueError(
                 f"Current-segment Subject evidence for {normalized['name']!r} "
                 "is not quoted from the current beat/source."

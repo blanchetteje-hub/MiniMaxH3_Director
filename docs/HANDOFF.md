@@ -1279,3 +1279,34 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   9 subtests and 24 failures; failures were stale prompt/contract expectations
   in the existing `test_llm_prompt_pipeline.py` suite, outside this change.
   `py_compile` passed.
+
+## 2026-10-11 — quote-wrapped Subject evidence and authored references
+
+- `world_state_current_segment_subjects` now strips one matching enclosing
+  straight or curly quotation-mark pair from a returned evidence excerpt for
+  the existing source-substring check. The check remains case-insensitive and
+  fail-closed; the model's evidence text is not rewritten or used to admit
+  invented text.
+- Added quoted-valid, unquoted-valid, and quoted-invalid evidence regressions.
+- Traced authored Picture preservation from `base_subject_definitions` through
+  `world_state_subject_definitions()` and `build_segment_reference_bindings()`.
+  The current code preserves `<Subject 1>` / `<Picture 1>` for Segment 1 even
+  when RAW does not mention Amy and generated reference images are empty. The
+  regression now exercises this complete helper path through final H3 identity
+  validation. No production binding change was made because the current code
+  already has the preservation behavior.
+- The published artifact named r36 available on `gpt-runtime` is from
+  `object-state-work`, repository revision `33786849d5f7e2fa4949086b0749ee4e44b238a7`;
+  it does not contain the reported empty-binding diagnostic and its Segment 1
+  H3 text includes Amy's Subject 1 / Picture 1 definitions. The exact Job 36
+  log described in the request was not available in that artifact, so the
+  reported empty value could not be traced to its input boundary.
+- The StateAction split remains gated. No RAW prompt/schema or Director action
+  integration was changed; exact proposed RAW prompt/schema removals are being
+  submitted for approval before wiring the existing action-only extraction and
+  repair path.
+- Verification: focused Subject-evidence and authored-binding regressions
+  passed (5 passed, 4 subtests). The combined WorldState foundation and
+  postmortem modules had 143 passes, 11 subtests, and 5 failures in unrelated
+  stale story-start, wardrobe, legacy-prop, and legacy-H3 expectations.
+  Syntax compilation and whitespace checks passed.

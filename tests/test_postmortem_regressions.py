@@ -1920,7 +1920,13 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertNotIn("Goblin1", defs)
 
     def test_authored_subject_picture_binding_survives_across_segments(self):
-        definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+        authored_definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+        definitions = minimax.world_state_subject_definitions(
+            authored_definitions,
+            minimax.new_world_state(),
+        )
+        self.assertIn("<Subject 1> is Amy", definitions)
+        self.assertIn("<Picture 1>", definitions)
         _references, segment_definitions, binding_state, snapshot = (
             minimax.build_segment_reference_bindings(
                 segment_number=1,
