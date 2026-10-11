@@ -1,0 +1,39 @@
+{
+  "version": 3,
+  "source_sha256": "3f2fbb8f5e34725eb1a8477676a663a107484451d2a964d4183cf65d64841ef9",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "hair",
+    "position"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "Amy wears a rough‑spun linen tunic in muted brown, its fabric showing visible scuffs and worn patches from her medieval trade work. Over the tunic she drapes a sturdy leather apron, darkened by oil and ale stains that mark the scuffs of daily service. Tucked into her waist are simple woolen hose in deep tan, tucked neatly under the tunic’s hem. Her feet are shod with worn brown leather boots, thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips, holding a small pouch of tools and a cloth for wiping tables",
+      "gender": "female"
+    },
+    {
+      "name": "Goblin",
+      "age": "20",
+      "clothing": "A green‑skinned, 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips, paired with tan leggings tucked into small leather boots worn at the toes, a frayed brown belt around his waist holding a tiny pouch, and a simple headband woven from reeds",
+      "gender": "male"
+    },
+    {
+      "name": "Elf",
+      "age": "240",
+      "clothing": "A flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap, layered beneath a light hooded cloak draped over her shoulders; she wears soft brown leather boots that reach just below the knee and carries a small satchel on her hip. Her silver hair streams down her shoulders",
+      "gender": "female",
+      "hair": "silver hair streaming down its shoulders",
+      "position": "seated at back table"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "500",
+      "clothing": "N/A",
+      "gender": "male"
+    }
+  ]
+}
