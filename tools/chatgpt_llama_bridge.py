@@ -966,6 +966,29 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
             plan_dir = materialized_plan_dir
         command.extend(["--director-plan-dir", str(plan_dir.resolve())])
 
+    replay_fixture_raw = str(job.get("pre_director_replay_fixture") or "").strip()
+    if replay_fixture_raw:
+        if director_plan_dir_raw or director_plan_job or bool(job.get("planning_only")):
+            raise ValueError(
+                "Pre-Director replay cannot be combined with Director plans or planning-only."
+            )
+        replay_fixture = safe_source_path(exec_root, replay_fixture_raw)
+        fixtures_root = (exec_root / "tests" / "acceptance" / "fixtures").resolve()
+        try:
+            replay_fixture.relative_to(fixtures_root)
+        except ValueError as error:
+            raise ValueError(
+                "Pre-Director replay fixture must be under tests/acceptance/fixtures/."
+            ) from error
+        if not replay_fixture.is_file() or replay_fixture.suffix.lower() != ".json":
+            raise FileNotFoundError(
+                f"Pre-Director replay fixture not found or not JSON: {replay_fixture}"
+            )
+        command.extend([
+            "--extra-minimax-arg=--pre-director-replay-fixture",
+            "--extra-minimax-arg=" + str(replay_fixture.relative_to(exec_root)),
+        ])
+
     developer_capture = start_lmstudio_developer_log(result_dir)
     try:
         process = run_local_process(
