@@ -1,0 +1,10 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).
+LLM request finished: character_canon (20.4s, finish_reason=stop).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-lalrtffz\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-lalrtffz\repo\beats.txt); regenerating the beat plan.
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-lalrtffz\repo\beats.txt with 6 creative story beats.
+LLM request started: story_expansion (attempt 1/10, ~758 input tokens, max 12000 output tokens).
+
+Emergency stop requested; exiting immediately.

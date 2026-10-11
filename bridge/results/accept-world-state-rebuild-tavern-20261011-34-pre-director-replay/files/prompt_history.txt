@@ -1,0 +1,73 @@
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-11T21:48:04Z",
+    "response_format": false,
+    "run_id": "28c85182-c28b-47f6-9785-f441d782d45b",
+    "purpose": "story_expansion",
+    "attempt": 1,
+    "total_segments": 6,
+    "duration_seconds": 48.0,
+    "seed": 1473220229,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 0,
+        "length": 157
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 1,
+        "length": 2411
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 0 LENGTH 157>>>
+Write a short, film-ready story from the supplied summary. Use concrete, literal, physically unambiguous prose while preserving the summary's genre and tone.
+<<<END_PROMPT_HISTORY_CONTENT 0>>>
+<<<PROMPT_HISTORY_CONTENT 1 LENGTH 2411>>>
+SUMMARY
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale-scented oil. She wears a rough-spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon-shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+The entire story must be able to take place within a 48-second timeframe.
+
+Preserve every explicit event and outcome in the summary in the same order.
+Every explicit event in the summary must happen visibly in the story. Do not
+compress, imply, or skip an explicit transition. If a character moves from one
+location to another, write the movement clearly enough that the character's
+location is unambiguous. Describe physical actions literally: make attachment,
+movement, action targets, containers, and destinations explicit. Avoid poetic or
+figurative wording when it could change how an action or object is visualized.
+Write enough concrete sequential action to support 6 distinct film beats.
+You may add connective staging and concrete detail, but do not add a new major
+plot event, outcome, or named character.
+The source's final explicit event must also be the expanded story's final event.
+Do not continue past it with a new destination, containment, escape, surviving
+threat, resolution, or aftermath.
+Write one continuous story, not an outline, beat list, screenplay, or analysis.
+<<<END_PROMPT_HISTORY_CONTENT 1>>>

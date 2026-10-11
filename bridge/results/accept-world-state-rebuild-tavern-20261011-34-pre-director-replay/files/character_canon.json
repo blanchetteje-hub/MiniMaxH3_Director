@@ -1,0 +1,55 @@
+{
+  "version": 3,
+  "source_sha256": "cb86ccfdf8afa04cf438f01c8cd8dc9717836dd618e41a40854dc4d41dc29b83",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confidence_level",
+    "occupation",
+    "skin_color",
+    "hand_size",
+    "mug_type",
+    "hair_color",
+    "position",
+    "shape",
+    "scales_color",
+    "eyes_color"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "28",
+      "clothing": "rough-spun tunic, leather apron",
+      "gender": "female",
+      "confidence_level": "confident",
+      "occupation": "medieval tavern worker"
+    },
+    {
+      "name": "Goblin",
+      "age": "15",
+      "clothing": "N/A",
+      "gender": "male",
+      "skin_color": "green",
+      "hand_size": "tiny",
+      "mug_type": "chipped mug"
+    },
+    {
+      "name": "Elf",
+      "age": "120",
+      "clothing": "N/A",
+      "gender": "female",
+      "hair_color": "silver",
+      "position": "seated at back table"
+    },
+    {
+      "name": "Dragon",
+      "age": "200",
+      "clothing": "N/A",
+      "gender": "male",
+      "shape": "dragon-shaped creature",
+      "scales_color": "polished obsidian",
+      "eyes_color": "amber"
+    }
+  ]
+}

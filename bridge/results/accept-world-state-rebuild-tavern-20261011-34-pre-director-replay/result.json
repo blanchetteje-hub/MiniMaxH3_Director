@@ -1,0 +1,39 @@
+{
+  "job_id": "accept-world-state-rebuild-tavern-20261011-34-pre-director-replay",
+  "kind": "run_acceptance",
+  "started_at": 1791755261.8343534,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--benchmark",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\gold\\amy_medieval_tavern_six.json"
+    ],
+    "returncode": 130,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 6 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-lalrtffz\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261011-174743\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nRun start: cleared files and folders in the video state directory.\nLLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).\nLLM request finished: character_canon (20.4s, finish_reason=stop).\nCould not read C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-lalrtffz\\repo\\beats.txt (Required file not found: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-lalrtffz\\repo\\beats.txt); regenerating the beat plan.\nAsking LLM host to replace C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-lalrtffz\\repo\\beats.txt with 6 creative story beats.\nLLM request started: story_expansion (attempt 1/10, ~758 input tokens, max 12000 output tokens).\n\nEmergency stop requested; exiting immediately.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261011-174743\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6]. Include run.log for diagnosis.\nMiniMax exited with code 130; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1791755262.996892,
+    "finished_at": 1791755300.3875246,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "character_canon.json": "files\\character_canon.json",
+      "prompt_history.txt": "files\\prompt_history.txt",
+      "subjects.txt": "files\\subjects.txt",
+      "story.txt": "files\\story.txt",
+      "source_result_dir": "tests\\acceptance\\results\\amy_medieval_tavern_six-20261011-174743"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1791755300.4187763,
+  "status": "ok"
+}
