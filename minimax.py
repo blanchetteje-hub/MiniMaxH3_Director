@@ -36203,18 +36203,22 @@ def build_director_pronoun_resolution_messages(
         {
             "role": "system",
             "content": (
-                "Make ambiguous person references explicit for a video prompt. Scan the "
-                "supplied timed scene and replace only clear personal subject/object "
+                "- Make ambiguous person references explicit for a video prompt.\n"
+                "- Scan the supplied timed scene and replace only clear personal subject/object "
                 "pronouns whose explicit name would help identify the actor or target "
-                "(especially she, he, they, him, her, them). Prefer names for standalone "
-                "they/them. Leave ordinary possessive determiners unchanged when their "
-                "owner is already clear from the sentence or nearby context: keep "
-                "'her hand', 'his collar', and 'their bowls' as written. Do not rewrite "
-                "a readable local possessive merely to repeat a name. Change only the "
-                "pronoun itself. Preserve every timestamp, action, action order, object, "
-                "location, sound, camera instruction, dialogue, and punctuation meaning. "
-                "Do not add, remove, combine, split, or reinterpret actions. If a "
-                "pronoun's referent is uncertain, leave it unchanged. Return JSON only."
+                "(especially she, he, they, him, her, them).\n"
+                "- Prefer names for standalone they/them.\n"
+                "- Leave ordinary possessive determiners unchanged when their owner is "
+                "already clear from the sentence or nearby context: keep 'her hand', "
+                "'his collar', and 'their bowls' as written.\n"
+                "- Do not rewrite a readable local possessive merely to repeat a name.\n"
+                "- Change only the pronoun itself.\n"
+                "- Preserve every timestamp, action, action order, object, location, "
+                "sound, camera instruction, dialogue, and punctuation meaning.\n"
+                "- Do not alter timestamps.\n"
+                "- Do not add, remove, combine, split, or reinterpret actions.\n"
+                "- If a pronoun's referent is uncertain, leave it unchanged.\n"
+                "- Return JSON only."
             ),
         },
         {
@@ -36267,9 +36271,8 @@ def resolve_director_raw_scene_pronouns(
     if not isinstance(result, dict) or set(result) != {"raw_scene"}:
         raise ValueError("RAW pronoun resolver must return only raw_scene.")
 
-    resolved_timed = _canonicalize_director_timestamps(
-        result.get("raw_scene", "")
-    ).strip()
+    returned_timed_raw = str(result.get("raw_scene", "")).strip()
+    resolved_timed = _canonicalize_director_timestamps(returned_timed_raw).strip()
     console_log(
         "Checking pronouns segment: LLM result="
         + (resolved_timed or "<empty>"),
@@ -36277,8 +36280,24 @@ def resolve_director_raw_scene_pronouns(
     )
     if not resolved_timed:
         raise ValueError("RAW pronoun resolver returned empty raw_scene.")
-    if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
-        raise ValueError("RAW pronoun resolver changed timestamps.")
+    input_timestamp_values = _director_timestamp_lexemes(timed_original)
+    returned_timestamp_values = _director_timestamp_lexemes(returned_timed_raw)
+    if returned_timestamp_values != input_timestamp_values:
+        raise ValueError(
+            "RAW pronoun resolver changed timestamps: expected exact timestamp "
+            f"sequence {input_timestamp_values!r}, received "
+            f"{returned_timestamp_values!r}."
+        )
+
+    range_errors = _director_timestamp_range_errors(
+        resolved_timed,
+        segment_seconds=segment_seconds,
+    )
+    if range_errors:
+        raise ValueError(
+            "RAW pronoun resolver returned out-of-range timestamps: "
+            + "; ".join(range_errors)
+        )
 
     resolved = (resolved_timed + "\n" + end_state_original).strip()
     structure_errors = _director_raw_scene_structure_errors(
@@ -36311,6 +36330,20 @@ def resolve_director_raw_scene_pronouns(
         else:
             console_log("Checking pronouns segment: replacements applied.", flush=True)
     return resolved
+
+
+def _director_timestamp_lexemes(value):
+    """Return the literal timestamp values in appearance order."""
+    text_value = str(value or "")
+    values = []
+    for match in _DIRECTOR_TIMESTAMP_RE.finditer(text_value):
+        end = (
+            match.end("fraction")
+            if match.group("fraction") is not None
+            else match.end("seconds")
+        )
+        values.append(text_value[match.start("minutes"):end])
+    return values
 
 
 def build_director_raw_subject_resolution_messages(
@@ -40680,6 +40713,16 @@ def _run_main(
         resolved_raw_scene = accepted_raw_scene
         subject_resolution_error = None
         subject_resolution_succeeded = False
+        pre_subject_timestamp_errors = _director_timestamp_range_errors(
+            accepted_raw_scene,
+            segment_seconds=segment_bundle["current_duration"],
+        )
+        if pre_subject_timestamp_errors:
+            raise BeatGenerationError(
+                f"Segment {segment} RAW has timestamps outside its duration "
+                "before visible-Subject resolution: "
+                + "; ".join(pre_subject_timestamp_errors)
+            )
         for subject_attempt in range(1, 3):
             try:
                 (

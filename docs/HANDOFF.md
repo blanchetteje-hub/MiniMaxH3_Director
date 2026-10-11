@@ -1258,3 +1258,24 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   Director retry tests passed (156 passed, 7 subtests). WorldState foundation
   had 62 passes, 7 subtests, and the same two stale story-start contract/prompt
   failures documented above. `py_compile` and `git diff --check` passed.
+
+## 2026-10-11 — preserve timestamps during pronoun resolution
+
+- Job 35 exposed a pronoun-resolution response changing a RAW timestamp. The
+  resolver previously compared timestamp values only after canonicalization;
+  it now compares the literal timestamp values in exact order and count before
+  accepting the response, then checks that every returned timestamp is inside
+  the Segment duration. A rejected response follows the existing error path,
+  leaving the accepted Director RAW in place.
+- Added a duration check immediately before visible-Subject resolution. The
+  visible-Subject resolver continues to apply its existing RAW structure and
+  duration validation after its transformation.
+- Added the exact system-prompt rule `- Do not alter timestamps.` and converted
+  the existing pronoun-resolution rules to `- ` bullets without changing their
+  wording or meaning.
+- Verification: all `tests/test_director_retry.py` tests passed (121 passed,
+  9 subtests). Focused Director/timestamp tests passed (12 passed, 2 subtests).
+  The combined Director retry and prompt-pipeline suite had 210 passes plus
+  9 subtests and 24 failures; failures were stale prompt/contract expectations
+  in the existing `test_llm_prompt_pipeline.py` suite, outside this change.
+  `py_compile` passed.

@@ -1144,6 +1144,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("Prefer names for standalone they/them", text)
         self.assertIn("keep 'her hand', 'his collar', and 'their bowls' as written", text)
         self.assertIn("Do not add, remove, combine, split, or reinterpret actions", text)
+        self.assertIn("- Do not alter timestamps.", messages[0]["content"])
+        self.assertTrue(
+            all(
+                line.startswith("- ")
+                for line in messages[0]["content"].splitlines()
+            )
+        )
 
     def test_raw_pronoun_resolution_accepts_name_only_rewrite(self):
         original = (
@@ -1170,6 +1177,22 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             request.call_args.kwargs["history_metadata"]["purpose"],
             "director_raw_scene_pronoun_resolution",
         )
+
+    def test_raw_pronoun_resolution_accepts_unchanged_valid_timestamps(self):
+        original = (
+            "At 00:00.000, Amy opens the door.\n"
+            "At 00:05.500, Amy closes it.\n"
+            "End continuity state: Amy stands by the closed door."
+        )
+        timed_scene = original.split("\nEnd continuity state:", 1)[0]
+        request = mock.Mock(return_value={"raw_scene": timed_scene})
+        result = minimax.resolve_director_raw_scene_pronouns(
+            original,
+            "<Subject 1> is Amy.",
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(result, original)
 
     def test_raw_pronoun_resolution_preserves_clear_local_possessives(self):
         original = (
@@ -1260,6 +1283,75 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "<Subject 1> is Amy. <Subject 2> is Will.",
                 llm_request=request,
                 segment_seconds=6.0,
+            )
+
+    def test_raw_pronoun_resolution_rejects_job35_timestamp_change(self):
+        original = (
+            "At 00:00.000, Amy opens the door.\n"
+            "At 00:07.250, Amy closes it.\n"
+            "End continuity state: Amy stands by the closed door."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": (
+                "At 00:00.000, Amy opens the door.\n"
+                "At 00:08.167, Amy closes it."
+            )
+        })
+        with self.assertRaisesRegex(ValueError, "changed timestamps"):
+            minimax.resolve_director_raw_scene_pronouns(
+                original,
+                "<Subject 1> is Amy.",
+                llm_request=request,
+                segment_seconds=8.0,
+            )
+
+    def test_raw_pronoun_resolution_rejects_timestamp_order_and_count_changes(self):
+        original = (
+            "At 00:00.000, Amy enters.\n"
+            "At 00:03.000, Amy waves.\n"
+            "At 00:07.000, Amy sits.\n"
+            "End continuity state: Amy sits by the door."
+        )
+        altered_scenes = (
+            (
+                "At 00:00.000, Amy enters.\n"
+                "At 00:07.000, Amy waves.\n"
+                "At 00:03.000, Amy sits."
+            ),
+            (
+                "At 00:00.000, Amy enters.\n"
+                "At 00:07.000, Amy sits."
+            ),
+        )
+        for altered_scene in altered_scenes:
+            with self.subTest(altered_scene=altered_scene):
+                request = mock.Mock(return_value={"raw_scene": altered_scene})
+                with self.assertRaisesRegex(ValueError, "changed timestamps"):
+                    minimax.resolve_director_raw_scene_pronouns(
+                        original,
+                        "<Subject 1> is Amy.",
+                        llm_request=request,
+                        segment_seconds=8.0,
+                    )
+
+    def test_raw_pronoun_resolution_rejects_timestamp_outside_duration(self):
+        original = (
+            "At 00:00.000, Amy enters.\n"
+            "At 00:08.167, Amy sits.\n"
+            "End continuity state: Amy sits by the door."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": (
+                "At 00:00.000, Amy enters.\n"
+                "At 00:08.167, Amy sits."
+            )
+        })
+        with self.assertRaisesRegex(ValueError, "out-of-range timestamps"):
+            minimax.resolve_director_raw_scene_pronouns(
+                original,
+                "<Subject 1> is Amy.",
+                llm_request=request,
+                segment_seconds=8.0,
             )
 
     def test_raw_scene_physical_prompt_is_narrow_and_checks_order(self):
