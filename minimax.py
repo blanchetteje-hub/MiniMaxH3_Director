@@ -36930,6 +36930,8 @@ def build_director_state_actions_repair_messages(
                 "Repair only the StateActions rejected by the WorldState reducer. "
                 "Keep the validated RAW SCENE unchanged. Use only registered names "
                 "and the operations allowed by the supplied response schema. "
+                "Return the entire corrected state_actions batch, including actions "
+                "that were already valid; do not return only the failing action. "
                 "Return JSON only."
             ),
         },

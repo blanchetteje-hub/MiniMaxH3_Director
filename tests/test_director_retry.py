@@ -396,6 +396,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn(raw_scene, repair_user)
         self.assertIn("FIRST REDUCER FAILURE", repair_user)
         self.assertIn("Unknown Subject", repair_user)
+        repair_system = request.call_args_list[1].args[0][0]["content"]
+        self.assertIn("entire corrected state_actions batch", repair_system)
+        self.assertIn("do not return only the failing action", repair_system)
         self.assertEqual(
             request.call_args_list[0].kwargs["response_format"]["json_schema"]["schema"]["required"],
             ["state_actions"],

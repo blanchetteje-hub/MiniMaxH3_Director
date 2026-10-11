@@ -1211,6 +1211,8 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
 - Added a separately callable Smart Extractor path for validated RAW. Its
   repair requests carry the same immutable RAW and opening vocabulary, the
   rejected action response, and only the first concrete reducer diagnostic.
+  The repair instruction explicitly requires the entire corrected batch,
+  including actions that already passed, rather than only the rejected action.
   It allows five action-only repair calls, logs each raw response, and fails
   closed without mutating opening WorldState. This path is not connected to
   live segment generation.
