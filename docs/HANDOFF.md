@@ -1458,3 +1458,33 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   tests/test_director_retry.py tests/test_pre_director_replay.py
   tests/test_location_state_reference.py` passed (165 passed, 7 subtests).
   Syntax compilation and `git diff --check` passed.
+
+## 2026-10-12 — split creative and timed Director RAW stages
+
+- Director RAW now starts with a free-text, untimed creative call using the
+  approved creative prompt and Smart Creative profile. It receives the
+  existing deterministic Subject/Picture, WorldState, static-setting, Beat,
+  and previous-shot context, without a JSON-only suffix.
+- Before timing, the movement validator now uses the approved subject-motion
+  prompt. Its exact first physical issue is repaired through the existing
+  `director_raw_scene_repair` call. The existing Director prompt and response
+  contract then format the accepted creative scene into timed RAW. The final
+  formatted candidate still passes shot structure, dialogue, physical,
+  prop/state, and timing checks; any downstream physical issue uses the same
+  bounded repair budget and is revalidated before continuing.
+- Creative, formatter, repair, and validator calls retain separate prompt
+  history/log records. RAW repair attempts are shared across pre-format and
+  post-format corrections within a Director attempt. WorldState, StateAction
+  extraction, segment acceptance, and commit timing were not changed.
+- Added split-pipeline regressions for the untimed creative contract, the
+  west-wall barrel route, preserving cloth/ladle identity, removing an
+  unnecessary stool climb, and repairing a physical error reintroduced by
+  timed formatting. `pytest -q tests/test_split_raw_pipeline.py` passed (6).
+  `py_compile` and `git diff --check` passed. A broader run of
+  `tests/test_director_retry.py` and `tests/test_llm_prompt_pipeline.py` had
+  45 failures, 200 passes, and 2 passing subtests. Most failures are old
+  single-call mocks/assertions that assume one structured RAW call or the
+  previous physical prompt; those expectations need migration before that
+  combined suite can serve as a gate. `tests/test_world_state_foundation.py`
+  had 66 passes, 2 unrelated stale story-start extractor expectations, and 11
+  passing subtests.

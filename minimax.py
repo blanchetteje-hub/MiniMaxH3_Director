@@ -533,6 +533,7 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "beat_coherence_validation": SMART_EXTRACTOR_LLM_SETTINGS,
     "beat_repair": SMART_CREATIVE_LLM_SETTINGS,
     "accepted_beat_state_extract": EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_creative": SMART_CREATIVE_LLM_SETTINGS,
     "director_raw_scene": SMART_CREATIVE_LLM_SETTINGS,
     "director_raw_scene_repair": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_state_actions": SMART_EXTRACTOR_LLM_SETTINGS,
@@ -579,6 +580,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "macro_arc_repair": 8192,
     "beat_generation": 8192,
     "beat_repair": 8192,
+    "director_raw_scene_creative": 8192,
     "director_raw_scene": 8192,
     "director_raw_scene_repair": 8192,
     "director_state_actions": 4096,
@@ -1216,6 +1218,22 @@ _BEAT_ABBREVIATIONS = {
 # DIRECTOR AND H3 FORMATTER PROMPTS
 # System prompts and parser patterns for Director and H3 formatting requests.
 # ------------------------------------------------------------
+
+DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE = """You are to expand on a single BEAT.  The actions must be able to fit within an {segment_length} second video clip.
+
+JOB
+- CURRENT BEAT is the story authority for what happens now and the scene to stage in this clip.
+- PREVIOUS SHOT END is frame-0 context for continuation shots. Start there without replaying it; if it conflicts with CURRENT BEAT, CURRENT BEAT wins.
+- CANONICAL STARTING CHARACTER FACTS, when provided, are authoritative identity/appearance facts. Establish applicable visible facts for characters already present in CURRENT BEAT or ASSIGNED SOURCE; never introduce a character only to show a canonical fact.
+
+WRITE THE SCENE
+- Show CURRENT BEAT clearly with concrete visible/audible action.
+- Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the final continuity state.
+- Add only details needed to physically connect or clearly show CURRENT BEAT.
+
+RETURN
+Sentences of actions that occur in the scene separated by new lines.
+"""
 
 DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the creative director for one {segment_seconds}-second video segment.
 
@@ -10788,6 +10806,7 @@ def ask_llm(
         "beat_state_validation",
     }
     response_history_purposes = beat_history_purposes | {
+        "director_raw_scene_creative",
         "director_raw_scene",
         "director_raw_scene_repair",
         "director_raw_scene_physical",
@@ -37518,22 +37537,11 @@ def build_director_raw_scene_physical_messages(
         {
             "role": "system",
             "content": (
-                "Validate only subject movement in RAW. A participant listed in KNOWN SUBJECT "
-                "STATE is already established in the scene and does not need an entrance; it "
-                "may first become visible through ordinary camera framing/reveal. Reject if: "
-                "1) a participant not listed in KNOWN SUBJECT STATE is not shown entering or "
-                "revealed by the camera; 2) a subject interacts at a different established "
-                "location without visibly moving there first; 3) a subject changes support or "
-                "elevation without showing that movement; 4) RAW adds a climb, step, or "
-                "stand on a furniture (counter, table, shelf, etc.) or other furniture that "
-                "CURRENT BEAT does not require and the previous state does not establish, "
-                "including a gratuitous climb to reach an ordinary prop or perform routine "
-                "work; 5) End continuity moves a subject after the final timed action. "
-                "Ordinary furniture "
-                "required by CURRENT BEAT is allowed. Ignore prop identity, contents, "
-                "ownership, transfers, prose, camera taste, and timing. Return exactly one "
-                "JSON object with boolean valid and string issue. Report only the first "
-                "concrete problem."
+                "Validate only subject movement in the RAW SCENE.  Update subject positions "
+                "after each sentence internally and determine if the following sentence's "
+                "actions, whether movement or not, can occur spatially.\n\n"
+                "Return only one JSON object with boolean valid and string issue. Report "
+                "only the first concrete problem."
             ),
         },
         {
@@ -38330,14 +38338,75 @@ def validate_director_raw_scene_coherence(
     )
 
 
-# Run the two-stage Director micro-prompt pipeline for one segment.
-def request_segment_llm(bundle, beats, run_id, run_config):
-    """Run the two-stage Director pipeline with baseline-first acceptance.
+# Build the untimed and timed RAW stages for one Director segment.
+def build_director_raw_scene_creative_messages(base_messages, segment_length):
+    """Build the untimed creative request from the established Director context."""
+    messages = copy.deepcopy(base_messages or [])
+    user_message = next(
+        (message for message in reversed(messages) if message.get("role") == "user"),
+        None,
+    )
+    if user_message is None:
+        raise ValueError("Director creative RAW request has no user context.")
+    user_content = str(user_message.get("content") or "")
+    user_content = re.sub(
+        r"(?m)^RETURN only JSON\.\s*$", "", user_content
+    ).strip()
+    user_message["content"] = user_content
+    system_message = next(
+        (message for message in messages if message.get("role") == "system"),
+        None,
+    )
+    if system_message is None:
+        messages.insert(0, {"role": "system", "content": ""})
+        system_message = messages[0]
+    try:
+        duration = float(segment_length)
+    except (TypeError, ValueError):
+        duration = 0.0
+    system_message["content"] = DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+        segment_length=f"{duration:g}"
+    )
+    return messages
 
-    ARC/BEATS own story semantics. Request 1 creates a scene. Existing Director
-    state/continuity guards are diagnostics only while the baseline is rebuilt;
-    they must not prevent later segments from being generated. Request 2 is a
-    best-effort H3 formatter/translator.
+
+def build_director_raw_scene_formatting_messages(base_messages, creative_scene):
+    """Add the accepted untimed scene to the existing timed Director contract."""
+    messages = copy.deepcopy(base_messages or [])
+    user_message = next(
+        (message for message in reversed(messages) if message.get("role") == "user"),
+        None,
+    )
+    if user_message is None:
+        raise ValueError("Director formatting request has no user context.")
+    content = str(user_message.get("content") or "")
+    accepted_scene = str(creative_scene or "").strip()
+    formatting_instruction = (
+        "ACCEPTED CREATIVE RAW — preserve its physical actions, participants, "
+        "results, and order while formatting it into the timed scene required "
+        "by this request. Do not add or omit physical actions.\n"
+        f"{accepted_scene}\n\n"
+    )
+    return_marker = "RETURN only JSON."
+    marker_index = content.rfind(return_marker)
+    if marker_index >= 0:
+        content = (
+            content[:marker_index]
+            + formatting_instruction
+            + content[marker_index:]
+        )
+    else:
+        content = content.rstrip() + "\n\n" + formatting_instruction
+    user_message["content"] = content
+    return messages
+
+
+def request_segment_llm(bundle, beats, run_id, run_config):
+    """Run creative RAW, physical repair, timed formatting, and validation.
+
+    The untimed creative scene is movement-checked and repaired before the
+    existing timed Director contract formats it. All final RAW validators then
+    run before the segment can proceed to StateAction extraction.
     """
     del beats
     try:
@@ -38473,28 +38542,218 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     request1_messages = request1_base_messages
     for request1_attempt in range(1, DIRECTOR_RAW_SCENE_ATTEMPTS + 1):
-        request1_metadata = {
+        current_beat_text = str(bundle.get("current_beat_text") or "").strip()
+        raw_repair_attempt = 0
+        regenerate_raw = False
+        validator_metadata = {
             "run_id": run_id,
             "source_sha256": (run_config or {}).get("source_sha256"),
-            "purpose": "director_raw_scene",
             "segment": segment_number,
             "attempt": request1_attempt,
             "conditioning_mode": conditioning_mode,
             "opening_state_sha256": bundle.get("opening_state_sha256"),
         }
-        raw_scene_result = ask_llm(
-            request1_messages,
-            response_format=DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
-            history_metadata=request1_metadata,
+        previous_shot_end = (
+            bundle.get("previous_final_frame", "")
+            if segment_number > 1
+            else ""
         )
-        # Always include every Director candidate in run.log, even if the
-        # reducer or a later validator rejects it before checkpointing.
+        static_setting_description = bundle.get("static_setting_description", "")
+
+        def raw_validator_metadata(repair_attempt):
+            metadata = dict(validator_metadata)
+            if repair_attempt is not None:
+                metadata["repair_attempt"] = repair_attempt
+            return metadata
+
+        creative_messages = build_director_raw_scene_creative_messages(
+            request1_messages,
+            duration,
+        )
+        creative_metadata = {
+            **validator_metadata,
+            "purpose": "director_raw_scene_creative",
+            "attempt": request1_attempt,
+            "stage": "untimed_creative",
+        }
+        creative_scene_result = ask_llm(
+            creative_messages,
+            response_format=None,
+            parse_json_response=False,
+            history_metadata=creative_metadata,
+        )
+        creative_scene = _normalize_raw_scene_result(creative_scene_result).strip()
         console_log(
-            "DIRECTOR REQUEST 1 RAW RESPONSE " + json.dumps(
+            "DIRECTOR CREATIVE RAW RESPONSE " + json.dumps(
                 {
                     "segment": segment_number,
                     "attempt": request1_attempt,
                     "opening_state_sha256": bundle.get("opening_state_sha256"),
+                    "response": creative_scene_result,
+                },
+                ensure_ascii=False,
+                default=str,
+            ),
+            flush=True,
+        )
+
+        if not creative_scene or creative_scene == "N/A":
+            if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                raise BeatGenerationError(
+                    f"Director creative RAW returned no usable scene for Segment "
+                    f"{segment_number} after {DIRECTOR_RAW_SCENE_ATTEMPTS} attempts."
+                )
+            request1_messages = build_request1_retry_messages(
+                "Return a non-empty untimed scene for CURRENT BEAT."
+            )
+            continue
+
+        def validate_creative_candidate(candidate, repair_attempt=None):
+            """Validate movement and spatial feasibility before timing."""
+            if not current_beat_text:
+                return None
+            try:
+                result = validate_director_raw_scene_physical(
+                    current_beat_text,
+                    candidate,
+                    previous_shot_end=previous_shot_end,
+                    static_setting_description=static_setting_description,
+                    known_subject_state=world_state_opening,
+                    subject_definitions=subject_definitions,
+                    canonical_location_state=canonical_location_state,
+                    character_references=character_references,
+                    history_metadata=raw_validator_metadata(repair_attempt),
+                )
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+            ) as error:
+                result = {
+                    "valid": False,
+                    "issue": f"RAW physical validator failed: {error}",
+                }
+            log_director_raw_validator_result(
+                "physical/spatial creative",
+                result,
+                segment_number=segment_number,
+                director_attempt=request1_attempt,
+                repair_attempt=repair_attempt,
+            )
+            if result.get("valid"):
+                return None
+            return result.get("issue") or (
+                "RAW SCENE has an impossible subject movement or action order."
+            )
+
+        while True:
+            creative_issue = validate_creative_candidate(
+                creative_scene,
+                raw_repair_attempt or None,
+            )
+            if creative_issue is None:
+                break
+            if raw_repair_attempt >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
+                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    raise BeatGenerationError(
+                        f"Director RAW movement validation remained invalid for "
+                        f"Segment {segment_number} after "
+                        f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS} repairs: "
+                        f"{creative_issue}"
+                    )
+                console_log(
+                    "Director RAW repair exhausted before timed formatting; "
+                    f"regenerating creative RAW (Director attempt "
+                    f"{request1_attempt + 1}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                    f"last issue={creative_issue}",
+                    flush=True,
+                )
+                request1_messages = build_request1_retry_messages(
+                    f"PHYSICAL/SPATIAL: {creative_issue}"
+                )
+                regenerate_raw = True
+                break
+
+            raw_repair_attempt += 1
+            console_log(
+                "DIRECTOR RAW REPAIR DISPATCH " + json.dumps(
+                    {
+                        "purpose": "director_raw_scene_repair",
+                        "stage": "untimed_creative",
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "repair_attempt": raw_repair_attempt,
+                        "validator": "PHYSICAL/SPATIAL",
+                        "issue": creative_issue,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+            repaired_creative = ask_llm(
+                build_director_raw_scene_repair_messages(
+                    creative_scene,
+                    [creative_issue],
+                ),
+                response_format=None,
+                parse_json_response=False,
+                history_metadata={
+                    **validator_metadata,
+                    "purpose": "director_raw_scene_repair",
+                    "attempt": raw_repair_attempt,
+                    "director_attempt": request1_attempt,
+                    "validator": "PHYSICAL/SPATIAL",
+                    "stage": "untimed_creative",
+                },
+            )
+            console_log(
+                "DIRECTOR RAW SCENE REPAIR RESPONSE " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "repair_attempt": raw_repair_attempt,
+                        "validator": "PHYSICAL/SPATIAL",
+                        "issue": creative_issue,
+                        "response": repaired_creative,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+            if isinstance(repaired_creative, str) and repaired_creative.strip():
+                creative_scene = _normalize_raw_scene_result(
+                    repaired_creative
+                ).strip()
+
+        if regenerate_raw:
+            continue
+
+        request1_metadata = {
+            **validator_metadata,
+            "purpose": "director_raw_scene",
+            "attempt": request1_attempt,
+            "stage": "timed_format",
+        }
+        request1_format_messages = build_director_raw_scene_formatting_messages(
+            request1_messages,
+            creative_scene,
+        )
+        raw_scene_result = ask_llm(
+            request1_format_messages,
+            response_format=DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
+            history_metadata=request1_metadata,
+        )
+        console_log(
+            "DIRECTOR TIMED RAW FORMAT RESPONSE " + json.dumps(
+                {
+                    "segment": segment_number,
+                    "attempt": request1_attempt,
+                    "opening_state_sha256": bundle.get("opening_state_sha256"),
+                    "accepted_creative_raw": creative_scene,
                     "response": raw_scene_result,
                 },
                 ensure_ascii=False,
@@ -38509,31 +38768,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         ).strip()
         if raw_scene and raw_scene != "N/A":
             request1_result["raw_scene"] = raw_scene
-            current_beat_text = str(bundle.get("current_beat_text") or "").strip()
-            raw_repair_attempt = 0
-            regenerate_raw = False
-
-            validator_metadata = {
-                "run_id": run_id,
-                "source_sha256": (run_config or {}).get("source_sha256"),
-                "segment": segment_number,
-                "attempt": request1_attempt,
-                "conditioning_mode": conditioning_mode,
-            }
-            previous_shot_end = (
-                bundle.get("previous_final_frame", "")
-                if segment_number > 1
-                else ""
-            )
-            static_setting_description = bundle.get(
-                "static_setting_description", ""
-            )
-
-            def raw_validator_metadata(repair_attempt):
-                metadata = dict(validator_metadata)
-                if repair_attempt is not None:
-                    metadata["repair_attempt"] = repair_attempt
-                return metadata
 
             def validate_raw_candidate(candidate, repair_attempt=None):
                 """Return the first failing RAW-scene validator and its issue."""

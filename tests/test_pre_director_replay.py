@@ -109,8 +109,17 @@ def test_pre_director_replay_skips_upstream_llms_and_matches_request1(tmp_path):
         for patcher in reversed(patches):
             patcher.stop()
 
-    assert first_request["messages"] == original_messages
-    raw_schema = first_request["kwargs"]["response_format"]["json_schema"][
+    assert first_request["messages"] == (
+        minimax.build_director_raw_scene_creative_messages(
+            original_messages,
+            args.segment_length,
+        )
+    )
+    assert first_request["kwargs"]["history_metadata"]["purpose"] == (
+        "director_raw_scene_creative"
+    )
+    assert first_request["kwargs"]["response_format"] is None
+    raw_schema = minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT["json_schema"][
         "schema"
     ]
     assert "state_actions" not in raw_schema["properties"]
