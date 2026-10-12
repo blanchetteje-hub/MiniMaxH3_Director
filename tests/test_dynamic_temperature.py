@@ -199,6 +199,9 @@ def test_request_context_and_output_budgets_are_independent_of_profiles():
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["story_to_beats"] == 4096
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_h3_music"] == 512
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["source_unit_state_effects"] == 2048
+    assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS[
+        "director_raw_scene_visible_subject_resolution"
+    ] == 3172
     assert minimax.LLM_DEFAULT_MAX_OUTPUT_TOKENS == 2048
     assert 1024 not in minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS.values()
 
@@ -227,6 +230,28 @@ def test_request_context_and_output_budgets_are_independent_of_profiles():
                 history_metadata={"purpose": "story_location_extract"},
             )
         assert post.call_count == 1
+
+
+def test_visible_subject_resolver_uses_3172_max_output_tokens():
+    response = mock.Mock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = {
+        "choices": [{"message": {"content": "{}"}, "finish_reason": "stop"}]
+    }
+    with (
+        mock.patch.object(minimax.requests, "post", return_value=response) as post,
+        mock.patch.object(minimax, "append_prompt_history"),
+        mock.patch.object(minimax, "estimate_message_tokens", return_value=10),
+        mock.patch.object(minimax, "generate_random_llm_seed", return_value=123),
+    ):
+        minimax.ask_llm(
+            [{"role": "user", "content": "resolve visible subjects"}],
+            history_metadata={
+                "purpose": "director_raw_scene_visible_subject_resolution"
+            },
+        )
+
+    assert post.call_args.kwargs["json"]["max_tokens"] == 3172
 
 
 def test_unknown_purpose_uses_extractor_profile_and_default_budgets():

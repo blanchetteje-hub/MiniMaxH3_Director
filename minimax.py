@@ -613,7 +613,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "director_raw_scene_prop_state": 2048,
     "director_raw_scene_timing": 2048,
     "director_raw_scene_pronoun_resolution": 2048,
-    "director_raw_scene_visible_subject_resolution": 2048,
+    "director_raw_scene_visible_subject_resolution": 3172,
     "final_h3_action_preservation": 2048,
     "json_repair": 2048,
     "macro_arc_majority_validate": 2048,

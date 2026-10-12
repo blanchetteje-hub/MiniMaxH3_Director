@@ -1,5 +1,12 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — visible Subject resolver output budget
+
+- Raised the `director_raw_scene_visible_subject_resolution` per-purpose
+  maximum output-token limit from 2048 to 3172. Its profile and other request
+  settings are unchanged. Added a regression asserting the configured value
+  and the actual request's `max_tokens` when context capacity permits.
+
 ## 2026-10-12 — timestamp-only timing refiner output
 
 - Changed `add_scene_timing_refiner` to receive numbered, nonempty RAW action
