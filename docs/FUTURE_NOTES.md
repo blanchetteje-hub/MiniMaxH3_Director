@@ -6,6 +6,7 @@ This file is for promising ideas, heuristics, and experiments that are **not cur
 
 These are **not approved implementation tasks**. Revisit only when they become relevant; detailed notes remain below.
 
+- [ ] **Optional user-defined RAW validator:** consider a single opt-in system-prompt `.txt` file for story-specific plausibility checks, reusing existing RAW validator inputs and repair loop; no call by default. See [Optional custom RAW validator](#optional-custom-raw-validator).
 - [ ] **Parallel Director validators:** benchmark concurrent independent LLM validation and aggregate failures into one RAW repair request. See [Parallel Director validation experiment](#parallel-director-validation-experiment).
 - [ ] **Modularize `minimax.py`:** after WorldState/Director acceptance is stable, incrementally separate pipeline, LLM, planning, Director, and rendering responsibilities into modules, without changing behavior or adding OOP ceremony. See [Future modularization of minimax.py](#future-modularization-of-minimaxpy).
 - [ ] **Minimum local LLM context and long-story chunking:** evaluate **6,044 tokens** as the minimum supported context window; redesign story-dependent requests so expanded stories of **50+ beats** and other large story chunks can be processed in bounded, coherent pieces without losing source coverage, beat ordering, or cross-chunk continuity. See [Minimum-context / long-story scaling](#minimum-context--long-story-scaling).
@@ -327,3 +328,15 @@ Questions to validate:
 
 Status: back-pocket experiment only; do not integrate until clothing-state continuity needs
 it and controlled tests show that refreshed state videos improve persistence.
+
+## Optional custom RAW validator
+
+Back-pocket experiment if implausible staging (for example, unnecessary climbing or standing on furniture) continues despite refinements to the existing `director_raw_scene_physical` check. Do **not** add a permanent furniture-specific validator.
+
+- Opt-in only: load one user-authored `.txt` file as the validator **system prompt**; if no file is configured, skip it and make no LLM request.
+- Supply the same relevant RAW, CURRENT BEAT, opening WorldState, and physical/spatial context already supplied to existing RAW validators; do not create another context assembly subsystem.
+- Use the existing validator verdict contract `{"valid": true, "issue": ""}` with its exact JSON structure stated in the system prompt, following `PROJECT_NOTES.md`.
+- Feed an invalid verdict into the **existing** `director_raw_scene_repair` path and shared RAW repair budget. No new repair loop, state authority, plugin framework, or schema family.
+- Keep judgment user-configurable: unusual staging may be intentionally appropriate to the authored story. Treat the file as an optional extra check, subordinate to `story.txt` and `subjects.txt`.
+
+Status: deferred. Revisit only with repeated acceptance evidence that the existing physical/spatial validator cannot adequately handle the desired stylistic/behavioral constraint.
