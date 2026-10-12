@@ -188,6 +188,34 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
         self.assertIn("At 00:07.917, Amy sets", shifted)
         self.assertIn("End continuity state: Amy stands beside the mug.", shifted)
 
+    def test_shifted_timestamp_uses_extended_guide_timeline_duration(self):
+        director_raw = (
+            "At 00:00.000, Amy begins the task.\n"
+            "At 00:07.900, Amy finishes and steps back.\n"
+            "End continuity state: Amy stands beside the table."
+        )
+        shifted = minimax._shift_continuation_timestamps_for_guide(director_raw)
+        prompt_duration = minimax._director_raw_scene_timeline_duration(
+            8.0,
+            "continuation",
+        )
+
+        self.assertIn("At 00:08.817, Amy finishes", shifted)
+        self.assertAlmostEqual(prompt_duration, 8.0 + 22 / 24)
+        self.assertEqual(
+            minimax._director_timestamp_range_errors(
+                shifted,
+                segment_seconds=prompt_duration,
+            ),
+            [],
+        )
+        self.assertTrue(
+            minimax._director_timestamp_range_errors(
+                shifted,
+                segment_seconds=8.0,
+            )
+        )
+
     def test_append_guide_render_budget_preserves_eight_second_delivery(self):
         self.assertEqual(minimax.h3_frame_count_for_duration(8.0), 192)
         self.assertEqual(minimax.h3_guide_render_frame_count(8.0), 226)

@@ -121,18 +121,108 @@ def test_pre_director_replay_skips_upstream_llms_and_matches_request1(tmp_path):
     )
 
 
-def test_replay_option_rejects_resume_and_remains_opt_in():
+def test_replay_option_allows_checkpoint_resume_and_remains_opt_in():
     assert minimax.parse_args(["8", "6", ".5"]).pre_director_replay_fixture is None
     args = minimax.parse_args([
-        "8", "6", ".5", "--pre-director-replay-fixture", str(FIXTURE),
+        "8", "6", ".5", "--resume", "2",
+        "--pre-director-replay-fixture", str(FIXTURE),
     ])
     assert args.pre_director_replay_fixture == str(FIXTURE.resolve())
+    assert args.resume == 2
     assert args.test_prompt_generation is True
     with pytest.raises(SystemExit):
         minimax.parse_args([
-            "8", "6", ".5", "--resume", "2",
+            "8", "6", ".5", "--new",
             "--pre-director-replay-fixture", str(FIXTURE),
         ])
+
+
+def test_replay_resume_uses_segment_checkpoint_without_reseeding_fixture():
+    fixture = minimax.load_pre_director_replay_fixture(FIXTURE)
+    args = minimax.parse_args([
+        "8", "6", ".5",
+        "--resume", "2",
+        "--refresh", "999999",
+        "--vision-continuity", "0",
+        "--model", "gpt",
+        "--pre-director-replay-fixture", str(FIXTURE),
+    ])
+    fixture_state = fixture["pre_director"]["world_state"]
+    checkpoint_state = json.loads(json.dumps(fixture_state))
+    checkpoint_state["revision"] += 1
+    state = minimax.new_generation_state(fixture["run_config"])
+    state["world_state"] = checkpoint_state
+    state["metadata"] = json.loads(json.dumps(fixture["pre_director"]["metadata"]))
+    state["location_state"] = json.loads(
+        json.dumps(fixture["pre_director"]["location_state"])
+    )
+    state["reference_binding_state"] = json.loads(
+        json.dumps(fixture["pre_director"]["reference_binding_state"])
+    )
+    state["character_reference_images"] = json.loads(
+        json.dumps(fixture["pre_director"]["character_reference_images"])
+    )
+    restore = mock.Mock(return_value={
+        "state": state,
+        "completed_beat_ids": {1},
+        "recent_results": [(1, {"detailed_description": "accepted segment 1"})],
+        "video_paths": [],
+        "previous_video_path": None,
+    })
+
+    class _ReachedRestoredCheckpoint(BaseException):
+        pass
+
+    def check_restored_world_state(base_definitions, restored_world_state):
+        assert minimax.world_state_sha256(restored_world_state) == (
+            minimax.world_state_sha256(checkpoint_state)
+        )
+        assert minimax.world_state_sha256(restored_world_state) != (
+            minimax.world_state_sha256(fixture_state)
+        )
+        raise _ReachedRestoredCheckpoint()
+
+    patches = [
+        mock.patch.object(minimax, "parse_args", return_value=args),
+        mock.patch.object(minimax, "configure_reference_image_overrides"),
+        mock.patch.object(minimax, "configure_formatter"),
+        mock.patch.object(minimax, "save_generated_prompts_file"),
+        mock.patch.object(minimax, "load_generated_prompts_file", return_value={
+            "prompts": [], "reference_jobs": [], "config": {},
+        }),
+        mock.patch.object(minimax, "save_generation_state"),
+        mock.patch.object(minimax, "restore_generation_state", restore),
+        mock.patch.object(
+            minimax,
+            "world_state_subject_definitions",
+            side_effect=check_restored_world_state,
+        ),
+        mock.patch.object(minimax, "console_log"),
+    ]
+    for name in (
+        "seed_generation_world_state_subjects",
+        "seed_canonical_static_location_state",
+        "seed_story_start_presence",
+        "extract_registered_subject_story_start_presence",
+    ):
+        patches.append(
+            mock.patch.object(
+                minimax,
+                name,
+                side_effect=AssertionError(f"fixture opening was reseeded via {name}"),
+            )
+        )
+    for patcher in patches:
+        patcher.start()
+    try:
+        with pytest.raises(_ReachedRestoredCheckpoint):
+            minimax._run_main(None)
+    finally:
+        for patcher in reversed(patches):
+            patcher.stop()
+
+    restore.assert_called_once()
+    assert restore.call_args.args[0] == 2
 
 
 def test_replay_fixture_rejects_a_worldstate_changed_after_capture(tmp_path):

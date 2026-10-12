@@ -1377,3 +1377,40 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   restricted to captured Segment-1 settings. The retry loop was stopped. This
   replay confirms the first-segment action-only path and commit, but it does
   not establish six-Segment completion or action-extraction completeness.
+
+## 2026-10-12 — use the continuation timeline for timestamp checks and replay resume
+
+- Segment 2's `00:08.817` was not invented by a later LLM transformation.
+  Director Request 1 supplied `00:07.900`; Python shifted nonzero continuation
+  timestamps by the 22-frame pinned-guide offset (`22 / 24 = 0.9167s`) before
+  pronoun resolution, producing `00:08.817`. This is within the extended H3
+  prompt timeline of about `8.9167s`; removing the pinned guide returns it to
+  local `00:07.900` in the delivered eight-second Segment.
+- The confirmed defect was the pre-visible-Subject check using the delivered
+  eight-second duration for already-shifted RAW. It now uses the same effective
+  timeline duration as pronoun resolution and visible-Subject resolution. The
+  Python guide shift also checks the shifted RAW against that duration. Existing
+  Request-1 and repair checks remain on the unshifted Segment timeline; the
+  pronoun and visible-Subject transformations retain deterministic timestamp
+  range/structure checks. The identity carry-forward after Subject resolution
+  changes names/end-state text only and does not alter timestamps.
+- Pre-Director replay now accepts `--resume N` for later Segments. It reuses the
+  fixture's captured upstream inputs but restores the completed-Segment
+  checkpoint; only a Segment-1 start loads and seeds the fixture WorldState.
+  Internal recovery follows the same path, so Segment 1's opening fixture is
+  not reapplied over its committed ending.
+- Segment 1's extracted support actions were, in order, Amy setting support to
+  the polished table, then clearing support (`support_id=null`) when she steps
+  down. Both transitions are explicitly staged in finalized RAW. The committed
+  ending has Amy standing on the tavern floor with no support, matching the
+  second action. The table climb is unusual and unnecessary for the assigned
+  wiping beat, but it is present in RAW; the StateAction batch accurately
+  records it rather than introducing the choreography. This does not establish
+  action-extraction completeness beyond this Segment.
+- Added regressions for the shifted `00:08.817` timestamp/effective duration,
+  out-of-range timestamps at visible-Subject resolution, and replay resume from
+  a checkpoint whose WorldState differs from the fixture opening. Verification:
+  `pytest -q tests/test_continuation_frame_anchor.py
+  tests/test_pre_director_replay.py tests/test_director_retry.py` — 136 passed,
+  7 subtests; `py_compile` and `git diff --check` passed. No runtime prompts,
+  response schemas, validator rules, or WorldState operations changed.

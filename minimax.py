@@ -2586,8 +2586,7 @@ def parse_args(arguments=None):
 
     if args.pre_director_replay_fixture is not None:
         if (
-            args.resume != 1
-            or args.repair is not None
+            args.repair is not None
             or args.new_run
             or args.existing_beats
             or args.director_only
@@ -2597,8 +2596,8 @@ def parse_args(arguments=None):
             or args.use_prompts is not None
         ):
             parser.error(
-                "--pre-director-replay-fixture starts at Segment 1 and cannot "
-                "be combined with source, resume, repair, or saved-prompt modes."
+                "--pre-director-replay-fixture cannot be combined with source, "
+                "repair, or saved-prompt modes."
             )
         args.test_prompt_generation = True
 
@@ -22754,6 +22753,14 @@ def _anchor_continuation_frame_zero_to_guide(raw_scene):
     )
 
 
+def _director_raw_scene_timeline_duration(segment_seconds, conditioning_mode):
+    """Return the timestamp domain used by Director/H3 for one segment."""
+    duration = float(segment_seconds)
+    if str(conditioning_mode or "").strip().lower() == "continuation":
+        duration += APPEND_GUIDE_CONTEXT_SECONDS
+    return duration
+
+
 def _shift_continuation_timestamps_for_guide(raw_scene, offset_seconds=APPEND_GUIDE_CONTEXT_SECONDS):
     """Shift nonzero Director timestamps onto H3's raw render timeline."""
     offset_ms = int(round(float(offset_seconds) * 1000.0))
@@ -37977,11 +37984,11 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             flush=True,
         )
     conditioning_mode = bundle.get("conditioning_mode")
-    continuation_offset = (
-        APPEND_GUIDE_CONTEXT_SECONDS
-        if str(conditioning_mode or "").strip().lower() == "continuation"
-        else 0.0
+    h3_prompt_duration = _director_raw_scene_timeline_duration(
+        duration,
+        conditioning_mode,
     )
+    continuation_offset = h3_prompt_duration - duration
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
     current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
@@ -38517,13 +38524,22 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             "Director Request 1 returned no usable scene result."
         )
 
-    h3_prompt_duration = duration + continuation_offset
     if continuation_offset:
         raw_scene = _shift_continuation_timestamps_for_guide(
             raw_scene,
             continuation_offset,
         )
         raw_scene = _anchor_continuation_frame_zero_to_guide(raw_scene)
+        shifted_range_errors = _director_timestamp_range_errors(
+            raw_scene,
+            segment_seconds=h3_prompt_duration,
+        )
+        if shifted_range_errors:
+            raise BeatGenerationError(
+                f"Segment {segment_number} continuation timestamp shift produced "
+                "out-of-range RAW timestamps: "
+                + "; ".join(shifted_range_errors)
+            )
         request1_result["raw_scene"] = raw_scene
 
     try:
@@ -39293,12 +39309,20 @@ def _run_main(
             key for key, value in expected_config.items()
             if replay_config.get(key) != value
         ]
-        if resume_segment != 1 or mismatches:
+        resuming_after_replay_start = resume_segment > 1
+        if mismatches:
             raise ValueError(
-                "Pre-Director replay requires the captured Segment-1 settings; "
+                "Pre-Director replay requires the captured run settings; "
                 "mismatched fields: "
-                + (", ".join(mismatches) if mismatches else "resume segment")
+                + ", ".join(mismatches)
                 + "."
+            )
+        if resuming_after_replay_start:
+            console_log(
+                f"Pre-Director replay resume at Segment {resume_segment}: "
+                "reuse captured upstream inputs and restore WorldState from the "
+                "completed-segment checkpoint; do not reseed the fixture opening.",
+                flush=True,
             )
 
     replay_inputs = (
@@ -40626,9 +40650,13 @@ def _run_main(
         resolved_raw_scene = accepted_raw_scene
         subject_resolution_error = None
         subject_resolution_succeeded = False
+        raw_scene_timeline_duration = _director_raw_scene_timeline_duration(
+            segment_bundle["current_duration"],
+            segment_bundle.get("conditioning_mode"),
+        )
         pre_subject_timestamp_errors = _director_timestamp_range_errors(
             accepted_raw_scene,
-            segment_seconds=segment_bundle["current_duration"],
+            segment_seconds=raw_scene_timeline_duration,
         )
         if pre_subject_timestamp_errors:
             raise BeatGenerationError(
@@ -40655,7 +40683,7 @@ def _run_main(
                         "segment": segment,
                         "attempt": subject_attempt,
                     },
-                    segment_seconds=segment_bundle["current_duration"],
+                    segment_seconds=raw_scene_timeline_duration,
                 )
                 subject_resolution_succeeded = True
                 break

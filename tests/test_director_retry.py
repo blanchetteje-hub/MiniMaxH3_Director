@@ -308,6 +308,56 @@ def non_audio_llm_calls(request):
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
+    def test_continuation_raw_uses_extended_timeline_after_guide_shift(self):
+        bundle = segment_bundle()
+        bundle.update({
+            "segment": 2,
+            "current_duration": 8.0,
+            "conditioning_mode": "continuation",
+            "current_beat_text": "Amy completes the task and steps back.",
+            "subject_definitions": "<Subject 1> is Amy.",
+            "messages": [{"role": "user", "content": "Direct segment 2."}],
+        })
+        response = director_response(
+            "At 00:00.000, Amy continues the task.\n"
+            "At 00:07.900, Amy finishes and steps back."
+        )
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([response]))
+        pronoun_resolver = mock.Mock(side_effect=lambda raw_scene, **kwargs: raw_scene)
+        validators = (
+            mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.resolve_director_raw_scene_pronouns", pronoun_resolver),
+        )
+        with (
+            mock.patch("minimax.ask_llm", request),
+            validators[0],
+            validators[1],
+            validators[2],
+            validators[3],
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-continuation-time", {"source_sha256": "source"}
+            )
+
+        self.assertIn("At 00:08.817, Amy finishes", payload["raw_scene"])
+        pronoun_resolver.assert_called_once()
+        self.assertIn("At 00:08.817, Amy finishes", pronoun_resolver.call_args.args[0])
+        self.assertAlmostEqual(
+            pronoun_resolver.call_args.kwargs["segment_seconds"],
+            8.0 + 22 / 24,
+        )
+        self.assertTrue(
+            minimax._director_timestamp_range_errors(
+                payload["raw_scene"],
+                segment_seconds=minimax._director_raw_scene_timeline_duration(
+                    8.0, "continuation"
+                ),
+            ) == []
+        )
+
     def test_action_only_extractor_repairs_actions_without_changing_raw(self):
         world_state, _location_id, mug_id = goblin_mug_world_state()
         opening = copy.deepcopy(world_state)
@@ -978,6 +1028,27 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "",
                 llm_request=request,
                 segment_seconds=6.0,
+            )
+
+    def test_raw_subject_resolution_rejects_timestamp_outside_effective_timeline(self):
+        original = (
+            "At 00:00.000, a guard enters.\n"
+            "At 00:08.917, the guard sits.\n"
+            "End continuity state: the guard sits by the door."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": (
+                "At 00:00.000, Guard1 enters.\n"
+                "At 00:08.917, Guard1 sits."
+            ),
+            "subject_names": ["Guard1"],
+        })
+        with self.assertRaisesRegex(ValueError, "timestamp must be before"):
+            minimax.resolve_director_raw_scene_subjects(
+                original,
+                "<Subject 1> is Mara.",
+                llm_request=request,
+                segment_seconds=8.0 + 22 / 24,
             )
 
     def test_raw_pronoun_resolution_prompt_is_narrow(self):
