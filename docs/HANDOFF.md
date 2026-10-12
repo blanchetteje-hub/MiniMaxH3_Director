@@ -1414,3 +1414,26 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   tests/test_pre_director_replay.py tests/test_director_retry.py` — 136 passed,
   7 subtests; `py_compile` and `git diff --check` passed. No runtime prompts,
   response schemas, validator rules, or WorldState operations changed.
+
+## 2026-10-12 — concise Director Request 1 state context
+
+- Reworked the deterministic `director_raw_scene` user-message context. The
+  Subject list now keeps authored `<Subject N>` numbering and available
+  `<Picture N>` bindings while dropping verbose identity descriptions, unknown
+  placeholders, and redundant default speaker IDs. Subject locations and
+  posture are rendered from explicit WorldState facts only. Current wardrobe
+  is omitted when an active clothing reference matches its recorded wardrobe;
+  otherwise WorldState clothing remains visible and takes precedence over a
+  stale reference. Static fixture positions come from canonical location state,
+  while dynamic positions and prop placement come from WorldState. Props are a
+  concise name-first list; unknown placements remain unstated.
+- Passed canonical location state and character-reference metadata into the
+  existing prompt builder. Updated the saved pre-Director replay's Request 1
+  message to the newly formatted deterministic context, retaining its captured
+  WorldState and other replay inputs.
+- Added regressions for canonical Subject/Picture numbering, explicit posture,
+  concise static positions versus dynamic support/holder state, unknown
+  locations, matching/stale wardrobe references, and the action-free Request 1
+  path. `pytest -q tests/test_director_request1_context.py
+  tests/test_director_retry.py tests/test_pre_director_replay.py` passed (130
+  passed, 7 subtests). Syntax compilation and `git diff --check` passed.

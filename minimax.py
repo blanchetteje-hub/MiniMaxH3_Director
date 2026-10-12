@@ -28206,6 +28206,286 @@ def director_opening_handoff(previous_result, structured_summary=""):
     return shot_end
 
 
+# Render concise identity/reference bindings for Director Request 1.
+def _director_subject_prompt_context(subject_definitions, world_state):
+    registry = parse_subject_registry(subject_definitions)
+    records = {
+        record["name"].casefold(): {
+            "number": int(number),
+            "name": record["name"],
+            "pictures": list(record.get("picture_ids") or []),
+            "speaker": str(record.get("speaker_id") or "").strip(),
+        }
+        for number, record in registry.items()
+        if str(record.get("name") or "").strip()
+    }
+    for key, subject in (world_state.get("subjects") or {}).items():
+        if not isinstance(subject, dict):
+            continue
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        if name and name.casefold() not in records:
+            number = _world_state_prompt_subject_number(subject, key)
+            records[name.casefold()] = {
+                "number": number,
+                "name": name,
+                "pictures": list(subject.get("picture_ids") or []),
+                "speaker": str(subject.get("speaker_id") or "").strip(),
+            }
+
+    # The current wardrobe references are declared on Picture lines; attach
+    # those registered numbers to their canonical Subject name.
+    for line in str(subject_definitions or "").splitlines():
+        match = re.match(r"(?i)^\s*<Picture\s+(\d+)>\s+(.+)$", line)
+        if not match:
+            continue
+        candidates = [
+            record for record in records.values()
+            if re.search(
+                rf"(?<![\w]){re.escape(record['name'])}(?![\w])",
+                match.group(2), re.I,
+            )
+        ]
+        if len(candidates) == 1:
+            picture = int(match.group(1))
+            if picture not in candidates[0]["pictures"]:
+                candidates[0]["pictures"].append(picture)
+
+    lines = []
+    refs = {}
+    for record in sorted(records.values(), key=lambda item: (item["number"], item["name"].casefold())):
+        number = record["number"]
+        name = record["name"]
+        pictures = list(dict.fromkeys(
+            int(value) for value in record["pictures"]
+            if isinstance(value, int) or str(value).isdigit()
+        ))
+        fields = [f"<Subject {number}> {name}"]
+        speaker = record["speaker"]
+        if speaker and speaker.casefold() != f"S{number}".casefold():
+            fields.append(f"speaker {speaker}")
+        fields.extend(f"<Picture {picture}>" for picture in pictures)
+        lines.append("- " + "; ".join(fields))
+        refs[name.casefold()] = pictures
+    return "\n".join(lines), refs
+
+
+def _director_static_position_map(location_state):
+    positions = {}
+    if not isinstance(location_state, dict):
+        return positions
+    for field in ("anchors", "objects"):
+        for record in location_state.get(field, []) or []:
+            if not isinstance(record, dict):
+                continue
+            name = " ".join(str(record.get("name") or "").split()).strip()
+            position = " ".join(str(record.get("position") or "").split()).strip()
+            if position:
+                position = re.split(r",\s*", position, maxsplit=1)[0]
+                position = re.sub(r"(?i)^rear\s+", "", position)
+                position = re.sub(
+                    r"(?i)^hanging\s+\d+(?:\.\d+)?\s*(?:ft|feet)\s+",
+                    "", position,
+                )
+            if not position:
+                position = " ".join(str(record.get("location") or "").split()).strip()
+            if not position and record.get("wall"):
+                position = f"{record['wall']} wall"
+            if not position and record.get("near"):
+                nearby = record["near"]
+                nearby = [nearby] if isinstance(nearby, str) else nearby
+                if isinstance(nearby, (list, tuple)):
+                    position = "near " + _english_join(
+                        " ".join(str(value).split()) for value in nearby
+                    )
+            if name and position:
+                positions[name.casefold()] = position
+    return positions
+
+
+def _director_wardrobe_prompt_context(subject, active_picture_ids, references):
+    wardrobe = subject.get("wardrobe", {})
+    if not isinstance(wardrobe, dict):
+        return ""
+    current = {}
+    for slot in ("upper", "lower", "footwear", "other"):
+        value = wardrobe.get(slot, "unknown")
+        if isinstance(value, list):
+            garments = []
+            for item in value:
+                if not isinstance(item, dict) or not _world_state_known(item.get("garment")):
+                    continue
+                garment = " ".join(str(item["garment"]).split())
+                condition = item.get("condition")
+                if _world_state_known(condition):
+                    garment += f" ({condition})"
+                garments.append(garment)
+            if garments:
+                current[slot] = ", ".join(garments)
+        elif isinstance(value, str) and value.strip().casefold() == "n/a":
+            current[slot] = "N/A"
+    if not current:
+        return ""
+
+    reference_matches = False
+    stale_reference = False
+    for name, reference in normalize_character_reference_images(references).items():
+        if name.casefold() not in active_picture_ids:
+            continue
+        if int(reference.get("picture_number") or 0) not in active_picture_ids[name.casefold()]:
+            continue
+        if reference.get("authority") not in {"clothing_only", "identity_and_clothing"}:
+            continue
+        snapshot = reference.get("wardrobe", {})
+        if not snapshot:
+            stale_reference = True
+            continue
+        matches = True
+        has_match = False
+        for slot, value in current.items():
+            snapshot_value = " ".join(str(snapshot.get(slot) or "").split()).casefold()
+            current_value = " ".join(value.split()).casefold()
+            if value == "N/A":
+                if snapshot_value:
+                    matches = False
+                    break
+            elif not snapshot_value or snapshot_value != current_value:
+                matches = False
+                break
+            else:
+                has_match = True
+        if matches and has_match:
+            reference_matches = True
+            break
+        stale_reference = True
+    if reference_matches:
+        return ""
+    attire = "; ".join(
+        f"{slot}: {value}" for slot, value in current.items() if value != "N/A"
+    )
+    if not attire:
+        return ""
+    precedence = (
+        "; current WorldState overrides older reference clothing"
+        if stale_reference else ""
+    )
+    return f"- {subject.get('name')}: {attire}{precedence}"
+
+
+def _director_worldstate_prompt_context(
+    world_state,
+    *,
+    subject_definitions="",
+    location_state=None,
+    character_references=None,
+):
+    """Render concise, authority-separated identity and physical state."""
+    if not isinstance(world_state, dict) or "schema_version" not in world_state:
+        return {"subjects": "", "locations": "", "wardrobe": "", "props": ""}
+    validate_world_state(world_state)
+    subjects = world_state.get("subjects", {})
+    props = world_state.get("props", {})
+    locations = world_state.get("locations", {})
+    subject_text, references_by_subject = _director_subject_prompt_context(
+        subject_definitions, world_state,
+    )
+    static_positions = _director_static_position_map(location_state)
+    subject_lines, wardrobe_lines, prop_lines = [], [], []
+    for subject_id, subject in sorted(
+        subjects.items(), key=lambda item: (str(item[1].get("subject_id", "")), item[0])
+    ):
+        name = str(subject.get("name") or "").strip()
+        if not name:
+            continue
+        if subject.get("presence") == "absent":
+            subject_lines.append(f"- {name}: absent")
+        else:
+            support = props.get(subject.get("support_id"), {})
+            support_name = str(support.get("name") or "").strip()
+            location = locations.get(subject.get("location_id"), {})
+            location_name = " ".join(str(location.get("name") or "").split()).strip()
+            posture = subject.get("posture")
+            posture = " ".join(str(posture).split()).strip() if _world_state_known(posture) else ""
+            if support_name:
+                position = f"on {support_name}"
+            elif location_name:
+                location_name = re.sub(r"(?i)^(?:the|a|an)\s+", "", location_name)
+                possessive = re.match(r"(?i)^(.+?)[’']s\s+(.+)$", location_name)
+                if possessive:
+                    location_name = f"{possessive.group(1)} {possessive.group(2).split()[-1]}"
+                preposition = "on" if re.search(r"(?i)\b(?:floor|ground|surface)$", location_name) else "in"
+                position = f"{preposition} {location_name}"
+            else:
+                position = ""
+            facts = " ".join(value for value in (posture, position) if value)
+            if not facts and subject.get("presence") == "present":
+                facts = "present"
+            if facts:
+                subject_lines.append(f"- {name}: {facts}")
+        wardrobe_line = _director_wardrobe_prompt_context(
+            subject,
+            {name.casefold(): references_by_subject.get(name.casefold(), [])},
+            character_references,
+        )
+        if wardrobe_line:
+            wardrobe_lines.append(wardrobe_line)
+
+    names_by_id = {
+        **{key: str(value.get("name") or "").strip() for key, value in subjects.items()},
+        **{key: str(value.get("name") or "").strip() for key, value in props.items()},
+    }
+    for _prop_id, prop in sorted(
+        props.items(), key=lambda item: (str(item[1].get("name", "")).casefold(), item[0])
+    ):
+        name = " ".join(str(prop.get("name") or "").split()).strip()
+        if not name:
+            continue
+        facts = []
+        if prop.get("status") in {"consumed", "destroyed", "lost"}:
+            facts.append(prop["status"])
+        else:
+            placement = prop.get("placement", {})
+            provenance = prop.get("provenance", {}).get("registration", {})
+            is_static = (
+                prop.get("mobility") == "fixed"
+                or provenance.get("authority") == "canonical_location_state"
+            )
+            static_position = static_positions.get(name.casefold())
+            if is_static and static_position:
+                facts.append(static_position)
+            elif placement.get("kind") == "held":
+                holder = names_by_id.get(placement.get("subject_id"), "")
+                if holder:
+                    facts.append(f"held by {holder}")
+            elif placement.get("kind") == "located":
+                support = names_by_id.get(placement.get("support_id"), "")
+                if support:
+                    facts.append(f"on {support}")
+                else:
+                    location = locations.get(placement.get("location_id"), {})
+                    location_name = str(location.get("name") or "").strip()
+                    if location_name:
+                        location_name = re.sub(r"(?i)^(?:the|a|an)\s+", "", location_name)
+                        possessive = re.match(r"(?i)^(.+?)[’']s\s+(.+)$", location_name)
+                        if possessive:
+                            location_name = f"{possessive.group(1)} {possessive.group(2).split()[-1]}"
+                        preposition = "on" if re.search(r"(?i)\b(?:floor|ground|surface)$", location_name) else "in"
+                        facts.append(f"{preposition} {location_name}")
+        for content in prop.get("contents", []):
+            if isinstance(content, dict) and _world_state_known(content.get("substance")) and content.get("amount") not in {"none", "unknown"}:
+                facts.append(f"contains {content['amount']} {content['substance']}")
+        if _world_state_known(prop.get("condition")):
+            facts.append(f"condition {prop['condition']}")
+        if _world_state_known(prop.get("mechanism_state")):
+            facts.append(f"mechanism {prop['mechanism_state']}")
+        prop_lines.append("- " + name + (": " + "; ".join(facts) if facts else ""))
+    return {
+        "subjects": subject_text,
+        "locations": "\n".join(subject_lines),
+        "wardrobe": "\n".join(wardrobe_lines),
+        "props": "\n".join(prop_lines),
+    }
+
+
 # Build Request 1 of the two-stage Director micro-prompt pipeline.
 def build_generation_messages(
     director_rules,
@@ -28229,6 +28509,8 @@ def build_generation_messages(
     persistent_movable_prop_state=None,
     initial_location_subjects=(),
     world_state=None,
+    canonical_location_state=None,
+    character_references=None,
     previous_shot_choreography="",
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
@@ -28245,33 +28527,24 @@ def build_generation_messages(
     # is retained separately as Director-owned choreography.
     continuity_text = str(previous_shot_choreography or "").strip() or "N/A"
 
-    subject_text = str(subject_definitions or "").strip()
-    if isinstance(world_state, dict) and "schema_version" in world_state:
-        subject_text = "\n".join(
-            _strip_character_description_clothing(line)
-            for line in subject_text.splitlines()
-        ).strip()
-    starting_facts = str(
-        canonical_character_facts
-        if isinstance(world_state, dict) and "schema_version" in world_state
-        else (canonical_character_facts or canonical_data)
-        or ""
-    ).strip()
-    if isinstance(world_state, dict) and "schema_version" in world_state:
-        starting_facts = "\n".join(
-            _strip_character_description_clothing(line)
-            for line in starting_facts.splitlines()
-        ).strip()
-    if (
-        int(current_segment) == 1
-        and starting_facts
-        and starting_facts not in subject_text
-    ):
-        subject_text = (
-            f"{subject_text}\n{starting_facts}"
-            if subject_text
-            else starting_facts
+    has_world_state = isinstance(world_state, dict) and "schema_version" in world_state
+    if has_world_state:
+        context = _director_worldstate_prompt_context(
+            world_state,
+            subject_definitions=subject_definitions,
+            location_state=canonical_location_state,
+            character_references=character_references,
         )
+        subject_text = context["subjects"]
+    else:
+        subject_text = str(subject_definitions or "").strip()
+        starting_facts = str(canonical_character_facts or canonical_data or "").strip()
+        if (
+            int(current_segment) == 1
+            and starting_facts
+            and starting_facts not in subject_text
+        ):
+            subject_text = f"{subject_text}\n{starting_facts}" if subject_text else starting_facts
     subject_text = subject_text or "N/A"
     phrase_exclusion_text = format_phrase_exclusions_section(
         phrase_exclusions
@@ -28279,7 +28552,14 @@ def build_generation_messages(
     static_setting = " ".join(
         str(static_setting_description or "").split()
     ).strip()
-    sections = [f"SUBJECT DEFINITIONS:\n{subject_text}"]
+    sections = [f"SUBJECTS:\n{subject_text}" if has_world_state else f"SUBJECT DEFINITIONS:\n{subject_text}"]
+    if has_world_state and context["locations"]:
+        sections.append("SUBJECT LOCATIONS (WorldState):\n" + context["locations"])
+    if has_world_state and context["wardrobe"]:
+        sections.append(
+            "WARDROBE (current WorldState; reference images never override a "
+            "different current outfit):\n" + context["wardrobe"]
+        )
     initial_subject_text = (
         ""
         if isinstance(world_state, dict) and "schema_version" in world_state
@@ -28321,13 +28601,11 @@ def build_generation_messages(
     ])
     if phrase_exclusion_text:
         sections.append(phrase_exclusion_text)
-    if isinstance(world_state, dict) and "schema_version" in world_state:
+    if has_world_state:
         sections.append(
-            "PERSISTENT MOVABLE PROP STATE — authoritative physical state. "
-            "Owner/holder fields are exclusive continuity facts: do not treat another "
-            "subject's owned or held prop as shared inventory unless CURRENT BEAT "
-            "explicitly authorizes that use or transfer:\n"
-            + format_world_state_prompt_context(world_state)
+            "PROPS:\nWorldState placement and persistent facts; held props are "
+            "exclusive unless CURRENT BEAT explicitly transfers them:\n"
+            + (context["props"] or "- No persistent props are registered.")
         )
     sections.append("RETURN only JSON.")
     user_content = "\n\n".join(sections)
@@ -40427,6 +40705,12 @@ def _run_main(
                 if isinstance(generation_state.get("world_state"), dict)
                 else empty_world_state("director_bundle_world_state_unavailable")
             ),
+            canonical_location_state=(
+                generation_state.get("location_state")
+                if isinstance(generation_state.get("location_state"), dict)
+                else None
+            ),
+            character_references=generation_state.get("character_reference_images", {}),
             previous_shot_choreography=director_opening_summary,
         )
         return {
