@@ -1,0 +1,48 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Pre-Director replay enabled: captured upstream outputs and the pre-Director WorldState are loaded; first Request 1 must match the fixture's captured dynamic messages.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 1226/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+PRE-DIRECTOR REPLAY MATCH {"segment": 1, "opening_world_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "message_count": 2}
+LLM request started: director_raw_scene_creative (attempt 1/10, ~1511 input tokens, max 6553 output tokens).
+LLM request finished: director_raw_scene_creative (16.6s, finish_reason=stop).
+DIRECTOR CREATIVE RAW RESPONSE {"segment": 1, "attempt": 1, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "response": "Amy steps onto the stone tavern floor, her weight producing a low creak from the old wooden boards.  \nShe holds a cloth soaked in ale‑scented oil and leans over a polished table along the counter.  \nWith smooth strokes she wipes the table’s surface, her rough‑spun linen tunic and thick‑topped protection visible beneath her feet on the creaking floor.  \nThe oil glides across the wood, turning its dull sheen into a bright gleam that catches the lantern light above.  \nShe continues until every inch of the polished table shines uniformly."}
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1404 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_physical (10.0s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "physical/spatial creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~1386 input tokens, max 2048 output tokens).
+
+Emergency stop requested; exiting immediately.

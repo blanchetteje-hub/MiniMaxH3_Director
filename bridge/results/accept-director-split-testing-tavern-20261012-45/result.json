@@ -1,0 +1,41 @@
+{
+  "job_id": "accept-director-split-testing-tavern-20261012-45",
+  "kind": "run_acceptance",
+  "started_at": 1791849161.6880963,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--benchmark",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\gold\\amy_medieval_tavern_six.json",
+      "--extra-minimax-arg=--pre-director-replay-fixture",
+      "--extra-minimax-arg=tests\\acceptance\\fixtures\\tavern_job33_pre_director\\replay.json"
+    ],
+    "returncode": 130,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 6 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999 --pre-director-replay-fixture tests\\acceptance\\fixtures\\tavern_job33_pre_director\\replay.json\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-51kzvjb5\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261012-195243\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nRun start: cleared files and folders in the video state directory.\nPre-Director replay enabled: captured upstream outputs and the pre-Director WorldState are loaded; first Request 1 must match the fixture's captured dynamic messages.\nPrompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.\nPrompt-only mode planned the persistent location reference for the later ComfyUI pass.\n\n================================================================\nH3 AUTOMATED DIRECTOR\n================================================================\nSegment length:       8 seconds\nTotal story length:   48 seconds\nTotal segments:       6\nStarting segment:     1\nInitial megapixels:   0.5\nSteps:                6\nVisual Continuity:    disabled (prompt-generation test)\nStitch trim:          2 frames after segment 1\nRetention analysis:   disabled\nPrompt generation test: enabled\nFormatter:            gpt\nGlobal LoRAs:         0\nAuto refresh:         every 999999 segment(s)\nVision continuity:    disabled (prompt-generation test)\nDirector prompting:    2-stage raw scene -> H3 formatter\nStory beats:          6\nPersistent state:     generation_state.json\n================================================================\nImage C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg decoded and verified.\nActive base Picture references: 1\nSubject reference removal: enabled after 3 segment(s) without explicit visual appearance\nPrompt-only setup validation passed.\n\n================================================================\nSEGMENT 1/6 (8 seconds)\n================================================================\nEstimated LLM input context: 1226/4500 tokens (recent exact segments: 0)\nSegment 1 Director continuity source: initial\nPRE-DIRECTOR REPLAY MATCH {\"segment\": 1, \"opening_world_state_sha256\": \"d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0\", \"message_count\": 2}\nLLM request started: director_raw_scene_creative (attempt 1/10, ~1511 input tokens, max 6553 output tokens).\nLLM request finished: director_raw_scene_creative (16.6s, finish_reason=stop).\nDIRECTOR CREATIVE RAW RESPONSE {\"segment\": 1, \"attempt\": 1, \"opening_state_sha256\": \"d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0\", \"response\": \"Amy steps onto the stone tavern floor, her weight producing a low creak from the old wooden boards.  \\nShe holds a cloth soaked in ale?scented oil and leans over a polished table along the counter.  \\nWith smooth strokes she wipes the table’s surface, her rough?spun linen tunic and thick?topped protection visible beneath her feet on the creaking floor.  \\nThe oil glides across the wood, turning its dull sheen into a bright gleam that catches the lantern light above.  \\nShe continues until every inch of the polished table shines uniformly.\"}\nLLM request started: director_raw_scene_physical (attempt 1/10, ~1404 input tokens, max 2048 output tokens).\nLLM request finished: director_raw_scene_physical (10.0s, finish_reason=stop).\nDIRECTOR RAW VALIDATOR RESULT {\"validator\": \"physical/spatial creative\", \"segment\": 1, \"director_attempt\": 1, \"repair_attempt\": null, \"valid\": true, \"issue\": \"\"}\nLLM request started: director_raw_scene_prop_state (attempt 1/10, ~1386 input tokens, max 2048 output tokens).\n\nEmergency stop requested; exiting immediately.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261012-195243\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6]. Include run.log for diagnosis.\nMiniMax exited with code 130; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1791849162.9629312,
+    "finished_at": 1791849195.801731,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "generation_state.json": "files\\generation_state.json",
+      "prompt_history.txt": "files\\prompt_history.txt",
+      "subjects.txt": "files\\subjects.txt",
+      "story.txt": "files\\story.txt",
+      "source_result_dir": "tests\\acceptance\\results\\amy_medieval_tavern_six-20261012-195243"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1791849195.8486052,
+  "status": "ok"
+}
