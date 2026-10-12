@@ -1,0 +1,116 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Pre-Director replay enabled: captured upstream outputs and the pre-Director WorldState are loaded; first Request 1 must match the fixture's captured dynamic messages.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 1226/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+PRE-DIRECTOR REPLAY MATCH {"segment": 1, "opening_world_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "message_count": 2}
+LLM request started: director_raw_scene_creative (attempt 1/10, ~1511 input tokens, max 6553 output tokens).
+LLM request finished: director_raw_scene_creative (13.3s, finish_reason=stop).
+DIRECTOR CREATIVE RAW RESPONSE {"segment": 1, "attempt": 1, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "response": "Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  \nA soft creak echoes as her foot lands on the floorboards.  \nShe walks to a polished table along the east side counter.  \nHolding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  \nWith each swipe, the table gleams brighter until it shines like fresh ale."}
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1350 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_physical (13.3s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "physical/spatial creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~1332 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_prop_state (8.8s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "prop/state creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~220 input tokens, max 7844 output tokens).
+LLM request finished: add_scene_timing_refiner (13.5s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 1, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "creative_scene": "Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  \nA soft creak echoes as her foot lands on the floorboards.  \nShe walks to a polished table along the east side counter.  \nHolding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  \nWith each swipe, the table gleams brighter until it shines like fresh ale.", "response": {"status": "ok", "timestamps": ["0.00", "0.30", "0.90", "3.50", "5.20"]}, "issue": "Timestamp 1 is malformed; expected MM:SS.mmm."}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~239 input tokens, max 7825 output tokens).
+LLM request finished: add_scene_timing_refiner (13.2s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 2, "creative_scene": "Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  \nA soft creak echoes as her foot lands on the floorboards.  \nShe walks to a polished table along the east side counter.  \nHolding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  \nWith each swipe, the table gleams brighter until it shines like fresh ale.", "response": {"status": "ok", "timestamps": ["00:00.000", "00:01.200", "00:02.400", "00:04.800", "00:06.600"]}, "accepted": true}
+LLM request started: director_raw_scene_timing (attempt 1/10, ~616 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_timing (12.9s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "timing", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_camera_refiner (attempt 1/10, ~375 input tokens, max 7689 output tokens).
+LLM request finished: add_camera_refiner (17.3s, finish_reason=stop).
+DIRECTOR CAMERA REFINER RESPONSE {"segment": 1, "director_attempt": 1, "camera_attempt": 1, "timed_scene": "At 00:00.000, Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  \nAt 00:01.200, A soft creak echoes as her foot lands on the floorboards.  \nAt 00:02.400, She walks to a polished table along the east side counter.  \nAt 00:04.800, Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  \nAt 00:06.600, With each swipe, the table gleams brighter until it shines like fresh ale.", "response": "At 00:00.000 [CAMERA: low‑angle tracking from Amy’s feet up into her face] , Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.\nAt 00:01.200 [CAMERA: close‑up on foot, then follow with a steady dolly to reveal the floorboards] , A soft creak echoes as her foot lands on the floorboards.\nAt 00:02.400 [CAMERA: tracking shot following Amy’s stride toward the east side counter] , She walks to a polished table along the east side counter.\nAt 00:04.800 [CAMERA: medium close‑up framing Amy holding the cloth, then a slight tilt up as she wipes] , Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.\nAt 00:06.600 [CAMERA: slow zoom in on the table surface to capture each gleam] , With each swipe, the table gleams brighter until it shines like fresh ale.", "issue": "Camera output changed or removed timestamp line 1."}
+LLM request started: add_camera_refiner (attempt 1/10, ~375 input tokens, max 7689 output tokens).
+LLM request finished: add_camera_refiner (17.5s, finish_reason=stop).
+DIRECTOR CAMERA REFINER RESPONSE {"segment": 1, "director_attempt": 1, "camera_attempt": 2, "timed_scene": "At 00:00.000, Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  \nAt 00:01.200, A soft creak echoes as her foot lands on the floorboards.  \nAt 00:02.400, She walks to a polished table along the east side counter.  \nAt 00:04.800, Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  \nAt 00:06.600, With each swipe, the table gleams brighter until it shines like fresh ale.", "response": "At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  \nAt 00:01.200, [CAMERA: Tracking shot follows her foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as her foot lands on the floorboards.  \nAt 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] She walks to a polished table along the east side counter.  \nAt 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  \nAt 00:06.600, [CAMERA: Slow zoom into the table as each swipe brightens its gleam to shine like fresh ale.] With each swipe, the table gleams brighter until it shines like fresh ale.", "accepted": true}
+DIRECTOR RAW VALIDATOR RESULT {"validator": "shot-script structure", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+DIRECTOR RAW VALIDATOR RESULT {"validator": "dialogue", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+Checking pronouns segment:
+LLM request started: director_raw_scene_pronoun_resolution (attempt 1/10, ~684 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_pronoun_resolution (6.5s, finish_reason=stop).
+Checking pronouns segment: LLM result=At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.
+At 00:01.200, [CAMERA: Tracking shot follows Amy's foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as Amy's foot lands on the floorboards.
+At 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] Amy walks to a polished table along the east side counter.
+At 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, Amy begins wiping the table’s surface.
+At 00:06.600, [CAMERA: Slow zoom into the table as each swipe brightens its gleam to shine like fresh ale.] With each swipe, the table gleams brighter until it shines like fresh ale.
+Checking pronouns segment: replaced At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern. -> At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.
+Checking pronouns segment: replaced At 00:01.200, [CAMERA: Tracking shot follows her foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as her foot lands on the floorboards. -> At 00:01.200, [CAMERA: Tracking shot follows Amy's foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as Amy's foot lands on the floorboards.
+Checking pronouns segment: replaced At 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] She walks to a polished table along the east side counter. -> At 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] Amy walks to a polished table along the east side counter.
+Checking pronouns segment: replaced At 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface. -> At 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, Amy begins wiping the table’s surface.
+Segment 1 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.
+At 00:01.200, [CAMERA: Tracking shot follows Amy's foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as Amy's foot lands on the floorboards.
+At 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] Amy walks to a polished table along the east side counter.
+At 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, Amy begins wiping the table’s surface.
+At 00:06.600, [CAMERA: Slow zoom into the table as each swipe brightens its gleam to shine like fresh ale.] With each swipe, the table gleams brighter until it shines like fresh ale.
+End continuity state: With each swipe, the table gleams brighter until it shines like fresh ale.
+================================================================
+
+================================================================
+H3 SOUNDSCAPE REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_soundscape (attempt 1/10, ~696 input tokens, max 2048 output tokens).
+LLM request finished: director_h3_soundscape (4.5s, finish_reason=stop).
+H3 soundscape segment 1: "soft creak of wooden floor at 0:00; soft creak echo when Amy's foot lands on the floorboard at 0:01"
+H3 MUSIC REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_music (attempt 1/10, ~569 input tokens, max 512 output tokens).
+LLM request finished: director_h3_music (4.4s, finish_reason=stop).
+H3 music segment 1: 'Soft acoustic guitar arpeggios echo the creaking floorboards, mellow and warm, swelling to gentle brass glissandi as the table gleams brighter.'
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1716 input tokens, max 3172 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (17.3s, finish_reason=stop).
+Checking RAW Subjects segment: no dynamic Subjects
+LLM request started: director_state_actions (attempt 1/10, ~1781 input tokens, max 4096 output tokens).
+LLM request finished: director_state_actions (13.4s, finish_reason=stop).
+DIRECTOR STATE ACTION EXTRACTION RESPONSE {"segment": 1, "attempt": 1, "response": {"state_actions": []}}
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-i4l6nca9\repo\minimax.py", line 42562, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-i4l6nca9\repo\minimax.py", line 42496, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-i4l6nca9\repo\minimax.py", line 41486, in _run_main
+    raise StateActionExtractionError(
+StateActionExtractionError: Segment 1 StateAction extraction changed the accepted RAW.

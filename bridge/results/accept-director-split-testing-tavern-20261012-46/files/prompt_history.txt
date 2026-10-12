@@ -1,0 +1,1338 @@
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:53:55Z",
+    "response_format": false,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "director_raw_scene_creative",
+    "stage": "untimed_creative",
+    "seed": 84775168,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 0,
+        "length": 1016
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 1,
+        "length": 4186
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 0 LENGTH 1016>>>
+You are to expand on a single BEAT.  The actions must be able to fit within an 8 second video clip.
+
+JOB
+- CURRENT BEAT is the story authority for what happens now and the scene to stage in this clip.
+- PREVIOUS SHOT END is frame-0 context for continuation shots. Start there without replaying it; if it conflicts with CURRENT BEAT, CURRENT BEAT wins.
+- CANONICAL STARTING CHARACTER FACTS, when provided, are authoritative identity/appearance facts. Establish applicable visible facts for characters already present in CURRENT BEAT or ASSIGNED SOURCE; never introduce a character only to show a canonical fact.
+
+WRITE THE SCENE
+- Show CURRENT BEAT clearly with concrete visible/audible action.
+- Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the final continuity state.
+- Add only details needed to physically connect or clearly show CURRENT BEAT.
+
+RETURN
+Sentences of actions that occur in the scene separated by new lines.
+<<<END_PROMPT_HISTORY_CONTENT 0>>>
+<<<PROMPT_HISTORY_CONTENT 1 LENGTH 4186>>>
+SUBJECTS:
+- <Subject 1> Amy; <Picture 1>
+- <Subject 75843344593765> Dragon-shaped creature
+- <Subject 243430124958720> Elf
+- <Subject 267280715056018> Goblin
+
+SUBJECT LOCATIONS (WorldState):
+- Amy: on tavern floor
+- Goblin: on tavern floor
+
+WARDROBE (current WorldState; reference images never override a different current outfit):
+- Amy: upper: Amy wears a rough‑spun linen tunic in muted brown; other: thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips
+- Elf: upper: flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap; footwear: she wears soft brown leather boots that reach just below the knee and
+- Goblin: upper: 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips; other: brown belt around his waist holding a tiny pouch (frayed)
+
+STATIC SETTING AUTHORITY — preserve these established static environment facts:
+The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth.
+These facts constrain static architecture, fixed fixtures, persistent furniture, entrances, surfaces, and lighting sources only. Do not relocate, duplicate, replace, or restyle an explicitly described fixed element unless CURRENT BEAT explicitly changes it. When CURRENT BEAT interacts with one, use its established placement/form. Do not force off-camera fixtures into the frame.
+
+PREVIOUS BEAT - BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:
+N/A
+
+CURRENT BEAT — EXECUTE ONLY THIS:
+1. The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:
+2. A green-skinned goblin leans over the counter clutching a chipped mug while Amy refills it by pouring liquid from a barrel beside the hearth.
+
+PREVIOUS SHOT END — START HERE, DO NOT REPLAY:
+N/A
+
+PROPS:
+WorldState placement and persistent facts; held props are exclusive unless CURRENT BEAT explicitly transfers them:
+- back table: northwest corner
+- barrel: beside hearth on west wall
+- cloth soaked in ale-scented oil: held by Amy
+- counter: east side
+- entrance: south wall
+- hearth: west wall
+- high bar stool: near back end of counter
+- lantern (back table): above back table
+- lantern (counter tables): above each polished table on counter
+- polished table: along counter
+- shelf of crystal cups: adjacent to high bar stool
+- wooden latch: near entrance
+<<<END_PROMPT_HISTORY_CONTENT 1>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:08Z",
+    "response_format": false,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "director_raw_scene_creative",
+    "stage": "untimed_creative",
+    "seed": 84775168,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 2,
+        "length": 350
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 2 LENGTH 350>>>
+Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+A soft creak echoes as her foot lands on the floorboards.  
+She walks to a polished table along the east side counter.  
+Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+With each swipe, the table gleams brighter until it shines like fresh ale.
+<<<END_PROMPT_HISTORY_CONTENT 2>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:08Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "director_raw_scene_physical",
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 3,
+        "length": 673
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 4,
+        "length": 3964
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 3 LENGTH 673>>>
+Validate only subject movement in the RAW SCENE.  Update subject positions after each sentence internally and determine if the following sentence's actions, whether movement or not, can occur spatially.
+Reject unnecessary changes of support or elevation, including climbing, stepping, or standing on furniture, unless CURRENT BEAT requires it or the previous state establishes it. Ordinary interactions with furniture do not imply climbing onto it. When rejecting such a change, identify the unsupported movement itself as the error, not merely a later contradiction.
+
+Return only one JSON object with boolean valid and string issue. Report only the first concrete problem.
+<<<END_PROMPT_HISTORY_CONTENT 3>>>
+<<<PROMPT_HISTORY_CONTENT 4 LENGTH 3964>>>
+CURRENT BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+PREVIOUS SHOT END
+N/A
+
+KNOWN SUBJECT STATE
+SUBJECTS:
+- <Subject 1> Amy; <Picture 1>
+- <Subject 75843344593765> Dragon-shaped creature
+- <Subject 243430124958720> Elf
+- <Subject 267280715056018> Goblin
+
+SUBJECT LOCATIONS (WorldState):
+- Amy: on tavern floor
+- Goblin: on tavern floor
+
+WARDROBE (current WorldState; reference images never override a different current outfit):
+- Amy: upper: Amy wears a rough‑spun linen tunic in muted brown; other: thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips
+- Elf: upper: flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap; footwear: she wears soft brown leather boots that reach just below the knee and
+- Goblin: upper: 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips; other: brown belt around his waist holding a tiny pouch (frayed)
+
+PROPS:
+WorldState placement and persistent facts; held props are exclusive unless CURRENT BEAT explicitly transfers them:
+- back table: northwest corner
+- barrel: beside hearth on west wall
+- cloth soaked in ale-scented oil: held by Amy
+- counter: east side
+- entrance: south wall
+- hearth: west wall
+- high bar stool: near back end of counter
+- lantern (back table): above back table
+- lantern (counter tables): above each polished table on counter
+- polished table: along counter
+- shelf of crystal cups: adjacent to high bar stool
+- wooden latch: near entrance
+
+STATIC SETTING AUTHORITY
+The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth.
+
+RAW SCENE
+Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+A soft creak echoes as her foot lands on the floorboards.  
+She walks to a polished table along the east side counter.  
+Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+With each swipe, the table gleams brighter until it shines like fresh ale.
+
+If physical/spatial continuity is valid: {"valid": true, "issue": ""}
+If invalid: {"valid": false, "issue": "short concrete physical/spatial explanation"}
+<<<END_PROMPT_HISTORY_CONTENT 4>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:22Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "director_raw_scene_physical",
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 5,
+        "length": 28
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 5 LENGTH 28>>>
+{"valid": true, "issue": ""}
+<<<END_PROMPT_HISTORY_CONTENT 5>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:22Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "director_raw_scene_prop_state",
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 6,
+        "length": 628
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 7,
+        "length": 3945
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 6 LENGTH 628>>>
+Validate only prop continuity in RAW. A prop introduced by CURRENT BEAT may first appear in this scene. For props already in PROP LEDGER, preserve identity, holder, location, and contents until a visible action changes them. Reject if a prop changes identity or holder/location without a visible action, a transfer lacks a source or destination, pouring/filling lacks a real source container, or End continuity contradicts the final prop state. Ignore subject movement, entry staging, camera movement, prose, and timing. Return exactly one JSON object with boolean valid and string issue. Report only the first concrete problem.
+<<<END_PROMPT_HISTORY_CONTENT 6>>>
+<<<PROMPT_HISTORY_CONTENT 7 LENGTH 3945>>>
+CURRENT BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+PREVIOUS SHOT END
+N/A
+
+PROP LEDGER
+SUBJECTS:
+- <Subject 1> Amy; <Picture 1>
+- <Subject 75843344593765> Dragon-shaped creature
+- <Subject 243430124958720> Elf
+- <Subject 267280715056018> Goblin
+
+SUBJECT LOCATIONS (WorldState):
+- Amy: on tavern floor
+- Goblin: on tavern floor
+
+WARDROBE (current WorldState; reference images never override a different current outfit):
+- Amy: upper: Amy wears a rough‑spun linen tunic in muted brown; other: thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips
+- Elf: upper: flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap; footwear: she wears soft brown leather boots that reach just below the knee and
+- Goblin: upper: 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips; other: brown belt around his waist holding a tiny pouch (frayed)
+
+PROPS:
+WorldState placement and persistent facts; held props are exclusive unless CURRENT BEAT explicitly transfers them:
+- back table: northwest corner
+- barrel: beside hearth on west wall
+- cloth soaked in ale-scented oil: held by Amy
+- counter: east side
+- entrance: south wall
+- hearth: west wall
+- high bar stool: near back end of counter
+- lantern (back table): above back table
+- lantern (counter tables): above each polished table on counter
+- polished table: along counter
+- shelf of crystal cups: adjacent to high bar stool
+- wooden latch: near entrance
+
+STATIC SETTING AUTHORITY
+The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth.
+
+RAW SCENE
+Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+A soft creak echoes as her foot lands on the floorboards.  
+She walks to a polished table along the east side counter.  
+Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+With each swipe, the table gleams brighter until it shines like fresh ale.
+
+If prop/result continuity is valid: {"valid": true, "issue": ""}
+If invalid: {"valid": false, "issue": "short concrete prop/state explanation"}
+<<<END_PROMPT_HISTORY_CONTENT 7>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:30Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "director_raw_scene_prop_state",
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 8,
+        "length": 28
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 8 LENGTH 28>>>
+{"valid": true, "issue": ""}
+<<<END_PROMPT_HISTORY_CONTENT 8>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:30Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "add_scene_timing_refiner",
+    "director_attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 9,
+        "length": 307
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 10,
+        "length": 375
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 9 LENGTH 307>>>
+Assign a start timestamp to each numbered action in RAW SCENE for a 8-second video.
+
+Use realistic timing based on the actions. Preserve action order. Do not assign physically impossible durations.
+
+If all actions cannot reasonably fit, return not_enough_time.
+
+Return only JSON with status and timestamps.
+<<<END_PROMPT_HISTORY_CONTENT 9>>>
+<<<PROMPT_HISTORY_CONTENT 10 LENGTH 375>>>
+RAW SCENE
+1. Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+2. A soft creak echoes as her foot lands on the floorboards.  
+3. She walks to a polished table along the east side counter.  
+4. Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+5. With each swipe, the table gleams brighter until it shines like fresh ale.
+<<<END_PROMPT_HISTORY_CONTENT 10>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:44Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "add_scene_timing_refiner",
+    "director_attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 11,
+        "length": 82
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 11 LENGTH 82>>>
+{"status":"ok","timestamps":[
+  "0.00",
+  "0.30",
+  "0.90",
+  "3.50",
+  "5.20"
+] }
+<<<END_PROMPT_HISTORY_CONTENT 11>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:44Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 2,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "add_scene_timing_refiner",
+    "director_attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 12,
+        "length": 307
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 13,
+        "length": 443
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 12 LENGTH 307>>>
+Assign a start timestamp to each numbered action in RAW SCENE for a 8-second video.
+
+Use realistic timing based on the actions. Preserve action order. Do not assign physically impossible durations.
+
+If all actions cannot reasonably fit, return not_enough_time.
+
+Return only JSON with status and timestamps.
+<<<END_PROMPT_HISTORY_CONTENT 12>>>
+<<<PROMPT_HISTORY_CONTENT 13 LENGTH 443>>>
+RAW SCENE
+1. Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+2. A soft creak echoes as her foot lands on the floorboards.  
+3. She walks to a polished table along the east side counter.  
+4. Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+5. With each swipe, the table gleams brighter until it shines like fresh ale.
+
+TIMING REFINER ISSUE
+Timestamp 1 is malformed; expected MM:SS.mmm.
+<<<END_PROMPT_HISTORY_CONTENT 13>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:57Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 2,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "add_scene_timing_refiner",
+    "director_attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 14,
+        "length": 91
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 14 LENGTH 91>>>
+{"status":"ok","timestamps": ["00:00.000","00:01.200","00:02.400","00:04.800","00:06.600"]}
+<<<END_PROMPT_HISTORY_CONTENT 14>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:54:57Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "director_raw_scene_timing",
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 15,
+        "length": 1433
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 16,
+        "length": 637
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 15 LENGTH 1433>>>
+Validate only whether the sequential physical actions in one timed RAW SCENE can visibly occur within the time available between its timestamps as one continuous shot. Read each consecutive timed micro-beat literally. Reject only obvious time compression that would force a hidden cut, teleport, skipped prerequisite, or instantaneous relocation/manipulation. Pay special attention when a subject or object must enter, cross meaningful space, reach a new established position, sit or stand, acquire or position a prop, or complete multiple dependent physical steps before the next timestamp. Also inspect multiple verbs inside one timestamp: simultaneous motions may share a timestamp, but a sequential dependency chain such as opening/unlatching a barrier, crossing it, closing it, and securing it cannot be treated as one instantaneous action. Reject when that chain would require hidden time or a cut instead of being split across executable timestamps. Do not impose a fixed minimum interval: simple gestures may be quick and nearby actions may need little time. Camera movement does not erase the time required for subjects or objects to move. Judge only timing feasibility, not prose style, camera taste, story choices, or whether an invented detail was necessary. Return exactly one JSON object with boolean valid and string issue. When invalid, report only the first clearly compressed transition and name its two timestamps.
+<<<END_PROMPT_HISTORY_CONTENT 15>>>
+<<<PROMPT_HISTORY_CONTENT 16 LENGTH 637>>>
+RAW SCENE
+At 00:00.000, Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+At 00:01.200, A soft creak echoes as her foot lands on the floorboards.  
+At 00:02.400, She walks to a polished table along the east side counter.  
+At 00:04.800, Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+At 00:06.600, With each swipe, the table gleams brighter until it shines like fresh ale.
+
+If every consecutive physical transition has enough visible time: {"valid": true, "issue": ""}
+If one is clearly too compressed: {"valid": false, "issue": "short concrete explanation with both timestamps"}
+<<<END_PROMPT_HISTORY_CONTENT 16>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:55:10Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "director_raw_scene_timing",
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 17,
+        "length": 28
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 17 LENGTH 28>>>
+{"valid": true, "issue": ""}
+<<<END_PROMPT_HISTORY_CONTENT 17>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:55:10Z",
+    "response_format": false,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "add_camera_refiner",
+    "director_attempt": 1,
+    "seed": 1716208121,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 18,
+        "length": 443
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 19,
+        "length": 782
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 18 LENGTH 443>>>
+Add camera movements to TIMED SCENE.
+
+Preserve all existing timestamps and action text exactly. Do not add, remove, reorder, or rewrite any action.
+
+Add only camera instructions to existing timestamp lines. Use a continuous shot unless CURRENT BEAT explicitly requires a cut. Camera movement must follow, reveal, or frame the existing action.
+
+If no camera movement is needed, leave the scene unchanged.
+
+Return only the camera-refined scene.
+<<<END_PROMPT_HISTORY_CONTENT 18>>>
+<<<PROMPT_HISTORY_CONTENT 19 LENGTH 782>>>
+CURRENT BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+TIMED SCENE
+At 00:00.000, Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+At 00:01.200, A soft creak echoes as her foot lands on the floorboards.  
+At 00:02.400, She walks to a polished table along the east side counter.  
+At 00:04.800, Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+At 00:06.600, With each swipe, the table gleams brighter until it shines like fresh ale.
+
+CAMERA INSTRUCTION FORMAT
+If adding a camera instruction, place it immediately after the existing timestamp as `[CAMERA: instruction] `, followed by the original action text unchanged. Add no other text.
+<<<END_PROMPT_HISTORY_CONTENT 19>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:55:27Z",
+    "response_format": false,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "add_camera_refiner",
+    "director_attempt": 1,
+    "seed": 1716208121,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 20,
+        "length": 799
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 20 LENGTH 799>>>
+At 00:00.000 [CAMERA: low‑angle tracking from Amy’s feet up into her face] , Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.
+At 00:01.200 [CAMERA: close‑up on foot, then follow with a steady dolly to reveal the floorboards] , A soft creak echoes as her foot lands on the floorboards.
+At 00:02.400 [CAMERA: tracking shot following Amy’s stride toward the east side counter] , She walks to a polished table along the east side counter.
+At 00:04.800 [CAMERA: medium close‑up framing Amy holding the cloth, then a slight tilt up as she wipes] , Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.
+At 00:06.600 [CAMERA: slow zoom in on the table surface to capture each gleam] , With each swipe, the table gleams brighter until it shines like fresh ale.
+<<<END_PROMPT_HISTORY_CONTENT 20>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:55:27Z",
+    "response_format": false,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 2,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "add_camera_refiner",
+    "director_attempt": 1,
+    "seed": 824402635,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "entry_type": "request"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 21,
+        "length": 443
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 22,
+        "length": 782
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 21 LENGTH 443>>>
+Add camera movements to TIMED SCENE.
+
+Preserve all existing timestamps and action text exactly. Do not add, remove, reorder, or rewrite any action.
+
+Add only camera instructions to existing timestamp lines. Use a continuous shot unless CURRENT BEAT explicitly requires a cut. Camera movement must follow, reveal, or frame the existing action.
+
+If no camera movement is needed, leave the scene unchanged.
+
+Return only the camera-refined scene.
+<<<END_PROMPT_HISTORY_CONTENT 21>>>
+<<<PROMPT_HISTORY_CONTENT 22 LENGTH 782>>>
+CURRENT BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+TIMED SCENE
+At 00:00.000, Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+At 00:01.200, A soft creak echoes as her foot lands on the floorboards.  
+At 00:02.400, She walks to a polished table along the east side counter.  
+At 00:04.800, Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+At 00:06.600, With each swipe, the table gleams brighter until it shines like fresh ale.
+
+CAMERA INSTRUCTION FORMAT
+If adding a camera instruction, place it immediately after the existing timestamp as `[CAMERA: instruction] `, followed by the original action text unchanged. Add no other text.
+<<<END_PROMPT_HISTORY_CONTENT 22>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:55:45Z",
+    "response_format": false,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 2,
+    "conditioning_mode": "initial",
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "add_camera_refiner",
+    "director_attempt": 1,
+    "seed": 824402635,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    },
+    "finish_reason": "stop",
+    "entry_type": "response"
+  },
+  "messages": [
+    {
+      "role": "assistant",
+      "content": {
+        "__prompt_history_content__": 23,
+        "length": 914
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 23 LENGTH 914>>>
+At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+At 00:01.200, [CAMERA: Tracking shot follows her foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as her foot lands on the floorboards.  
+At 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] She walks to a polished table along the east side counter.  
+At 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+At 00:06.600, [CAMERA: Slow zoom into the table as each swipe brightens its gleam to shine like fresh ale.] With each swipe, the table gleams brighter until it shines like fresh ale.
+<<<END_PROMPT_HISTORY_CONTENT 23>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:55:45Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "conditioning_mode": "initial",
+    "purpose": "director_raw_scene_pronoun_resolution",
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "medium",
+      "thinking_budget_tokens": 256,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 24,
+        "length": 881
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 25,
+        "length": 1427
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 24 LENGTH 881>>>
+- Make ambiguous person references explicit for a video prompt.
+- Scan the supplied timed scene and replace only clear personal subject/object pronouns whose explicit name would help identify the actor or target (especially she, he, they, him, her, them).
+- Prefer names for standalone they/them.
+- Leave ordinary possessive determiners unchanged when their owner is already clear from the sentence or nearby context: keep 'her hand', 'his collar', and 'their bowls' as written.
+- Do not rewrite a readable local possessive merely to repeat a name.
+- Change only the pronoun itself.
+- Preserve every timestamp, action, action order, object, location, sound, camera instruction, dialogue, and punctuation meaning.
+- Do not alter timestamps.
+- Do not add, remove, combine, split, or reinterpret actions.
+- If a pronoun's referent is uncertain, leave it unchanged.
+- Return JSON only.
+<<<END_PROMPT_HISTORY_CONTENT 24>>>
+<<<PROMPT_HISTORY_CONTENT 25 LENGTH 1427>>>
+KNOWN SUBJECTS
+<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.
+<Subject 75843344593765> is Dragon-shaped creature (S75843344593765). unknown
+<Subject 243430124958720> is Elf (S243430124958720). unknown
+<Subject 267280715056018> is Goblin (S267280715056018). unknown
+
+RAW SCENE
+At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.  
+At 00:01.200, [CAMERA: Tracking shot follows her foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as her foot lands on the floorboards.  
+At 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] She walks to a polished table along the east side counter.  
+At 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, she begins wiping the table’s surface.  
+At 00:06.600, [CAMERA: Slow zoom into the table as each swipe brightens its gleam to shine like fresh ale.] With each swipe, the table gleams brighter until it shines like fresh ale.
+
+Return {"raw_scene":"same RAW SCENE with only unambiguous person pronouns replaced by explicit names"}.
+<<<END_PROMPT_HISTORY_CONTENT 25>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:55:51Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "purpose": "director_h3_soundscape",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "seed": 671104019,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "medium",
+      "thinking_budget_tokens": 256,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 26,
+        "length": 1298
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 27,
+        "length": 1053
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 26 LENGTH 1298>>>
+Extract only the overall soundscape for one already-finalized video scene. RAW SCENE is authoritative. Return only sounds a microphone could hear. Include sounds explicitly stated by RAW and sounds necessarily produced by an audible depicted event such as a slam, crash, gunshot, spoken line, explicitly described footsteps, laughter, groans, or other stated audio. Preserve the stated source, count, duration, and intensity when RAW makes them clear; do not turn one step into generic/plural footsteps or amplify an ordinary cue into a heavy or prolonged sound. Each listed item must itself name an audible event or audible ambience, not a silent action. Do not turn motion verbs into sounds: sliding a hand, swinging an arm or blade, lifting, reaching, turning, emerging, surging, or rising steam are silent unless RAW explicitly states an audible result. Omit lighting, visibility, expressions, stillness, positions, silent gestures, and other purely visual facts. Do not infer a new sound from a state description such as 'pistol still fired', 'door open', or 'body fallen'. Do not invent optional or merely plausible sounds. Use concise natural-language phrasing rather than identifier-style labels with underscores. Do not rewrite, summarize, interpret, or add story action. Return JSON only.
+<<<END_PROMPT_HISTORY_CONTENT 26>>>
+<<<PROMPT_HISTORY_CONTENT 27 LENGTH 1053>>>
+RAW SCENE
+At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.
+At 00:01.200, [CAMERA: Tracking shot follows Amy's foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as Amy's foot lands on the floorboards.
+At 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] Amy walks to a polished table along the east side counter.
+At 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, Amy begins wiping the table’s surface.
+At 00:06.600, [CAMERA: Slow zoom into the table as each swipe brightens its gleam to shine like fresh ale.] With each swipe, the table gleams brighter until it shines like fresh ale.
+End continuity state: With each swipe, the table gleams brighter until it shines like fresh ale.
+
+Return exactly overall_soundscape.
+<<<END_PROMPT_HISTORY_CONTENT 27>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:55:56Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "purpose": "director_h3_music",
+    "segment": 1,
+    "attempt": 1,
+    "conditioning_mode": "initial",
+    "seed": 23511402,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "medium",
+      "thinking_budget_tokens": 256,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 28,
+        "length": 733
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 29,
+        "length": 1172
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 28 LENGTH 733>>>
+Generate only the non-diegetic music for one already-finalized video scene. RAW SCENE is authoritative for this segment's emotional arc and ending; PREVIOUS MUSIC, when supplied, defines only how the score begins. The score should evolve when the RAW SCENE's tone changes instead of preserving an outdated mood. Describe only the underscore's mood, style, instrumentation, and any broad emotional transition. Do not name characters, narrate scene actions, describe individual sound effects, or synchronize the score to specific actions. Return one musical cue sentence. After any required continuation prefix, use at most 24 words. Use natural-language phrasing rather than identifier-style labels with underscores. Return JSON only.
+<<<END_PROMPT_HISTORY_CONTENT 28>>>
+<<<PROMPT_HISTORY_CONTENT 29 LENGTH 1172>>>
+Choose a minimal scene-appropriate non-diegetic underscore unless the RAW SCENE explicitly requires silence/no score.
+
+RAW SCENE
+At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.
+At 00:01.200, [CAMERA: Tracking shot follows Amy's foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as Amy's foot lands on the floorboards.
+At 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] Amy walks to a polished table along the east side counter.
+At 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, Amy begins wiping the table’s surface.
+At 00:06.600, [CAMERA: Slow zoom into the table as each swipe brightens its gleam to shine like fresh ale.] With each swipe, the table gleams brighter until it shines like fresh ale.
+End continuity state: With each swipe, the table gleams brighter until it shines like fresh ale.
+
+Return exactly non_diegetic_music.
+<<<END_PROMPT_HISTORY_CONTENT 29>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:56:00Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "attempt": 1,
+    "purpose": "director_raw_scene_visible_subject_resolution",
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 30,
+        "length": 2799
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 31,
+        "length": 3122
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 30 LENGTH 2799>>>
+Resolve only unnamed foreground animate identities in one finalized timed RAW scene. Keep every timestamp, action, action order, object, location, sound, camera instruction, dialogue, and punctuation meaning unchanged. Keep already-named Subjects unchanged. For each distinct unnamed foreground animate participant who acts or is acted on, replace EVERY reference to that participant in returned raw_scene with one stable functional name; every name listed in subject_names must literally appear in returned raw_scene. Make the functional name from its most specific explicit role/species plus an integer. Use a neutral generic type label only when the specific type is truly unknown. Capitalization alone does not make a role/species noun an established name. Reuse a KNOWN SUBJECT when RAW continues that same individual; when exactly one KNOWN SUBJECT has the same role/species stem, reuse it unless RAW explicitly says another/new/second individual appears. Use the next unused suffix only for a genuinely new identity. Do not label interchangeable background crowds/groups. For each newly named Subject, also return subject_descriptions with one short stable visual identity sentence using only explicit non-clothing appearance facts already present in RAW or CURRENT BEAT (species/type, sex/gender wording, age, hair, skin/scales/fur, build, body/anatomy, and distinguishing features). If an already-named KNOWN SUBJECT is visible in RAW but its definition lacks stable appearance or wardrobe details, include that Subject in subject_names too and return only its missing subject_descriptions and/or subject_wardrobes metadata; keep its established name unchanged. Never put clothing in subject_descriptions. Also return subject_wardrobes using exactly upper, lower, footwear, and other. Preserve clothing explicitly stated in RAW. If RAW does not state clothing and the Subject is a human or has a humanoid physical form, choose one simple setting-appropriate outfit now; this becomes canonical and must not be re-invented later. Use STORY CONTEXT only when RAW does not specify clothing, so the chosen outfit matches the established setting, period, culture, and visual world. Do not use STORY CONTEXT to change RAW actions or explicit appearance facts. For a non-humanoid form that normally does not wear clothing, use N/A for all four wardrobe fields unless RAW explicitly gives clothing. Use absent only for a specifically removed garment when the subject remains clothed in other attire. Humanoid subjects must never be rendered nude or assigned N/A clothing, even when RAW omits their outfit; fill missing coverage with simple setting-appropriate clothing. Barefoot may be used when RAW explicitly says so. Exclude action, pose, location, held props, camera, and mood. Return JSON only.
+<<<END_PROMPT_HISTORY_CONTENT 30>>>
+<<<PROMPT_HISTORY_CONTENT 31 LENGTH 3122>>>
+CURRENT BEAT
+The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+
+STORY CONTEXT
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil. She wears a rough‑spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+KNOWN SUBJECTS
+<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.
+<Subject 75843344593765> is Dragon-shaped creature (S75843344593765). unknown
+<Subject 243430124958720> is Elf (S243430124958720). unknown
+<Subject 267280715056018> is Goblin (S267280715056018). unknown
+
+RAW SCENE
+At 00:00.000, [CAMERA: Wide establishing shot of the Stone Hearth Tavern’s creaking wooden floor.] Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.
+At 00:01.200, [CAMERA: Tracking shot follows Amy's foot as it lands on a board, revealing a soft creak in close‑up.] A soft creak echoes as Amy's foot lands on the floorboards.
+At 00:02.400, [CAMERA: Medium tracking shot continues along the east side counter toward the polished table.] Amy walks to a polished table along the east side counter.
+At 00:04.800, [CAMERA: Close‑up of Amy’s hands holding a cloth soaked in ale‑scented oil as she begins wiping the table’s surface.] Holding a cloth soaked in ale‑scented oil, Amy begins wiping the table’s surface.
+At 00:06.600, [CAMERA: Slow zoom into the table as each swipe brightens its gleam to shine like fresh ale.] With each swipe, the table gleams brighter until it shines like fresh ale.
+
+Return raw_scene plus subject_names containing only the functional Subject names used in the returned RAW scene, subject_descriptions mapping each newly named Subject to its concise non-clothing visual identity sentence, and subject_wardrobes mapping each newly named Subject to its canonical upper/lower/footwear/other wardrobe.
+<<<END_PROMPT_HISTORY_CONTENT 31>>>
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-12T23:56:18Z",
+    "response_format": true,
+    "run_id": "745cc87c-6558-472e-b923-684665c4e900",
+    "source_sha256": "8d8562f037b07a4d953f1a76cb8b7bb25e4db1e37382018497273997544c1988",
+    "segment": 1,
+    "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0",
+    "purpose": "director_state_actions",
+    "attempt": 1,
+    "seed": 42,
+    "sampling_parameters": {
+      "temperature": 0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 32,
+        "length": 3906
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 33,
+        "length": 2243
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 32 LENGTH 3906>>>
+Extract only persistent WorldState StateActions explicitly shown in the validated RAW SCENE. Use only registered names and the operations allowed for this request. Return exactly this JSON structure:
+{
+  "state_actions": []
+}
+The array may be empty. Include an action only when RAW explicitly changes a persistent fact representable by an allowed WorldState operation. If an action is transient or has no representable persistent state change, omit it. Do not invent transfers, pouring, consumption, contents, or substitute an unrelated operation to encode an action. Otherwise, each item must be one StateAction object matching exactly one permitted operation structure below. Include every shown field and no others. Use exact registered entity names from the vocabulary, never Python-assigned IDs. Replace angle-bracketed placeholders with values of the shown type; use null only where shown.
+PERMITTED STATEACTION OBJECT STRUCTURES
+[
+  {
+    "action_id": "<unique action id>",
+    "op": "pickup",
+    "actor_subject_id": "<registered Subject name>",
+    "prop_id": "<registered prop name>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "place",
+    "actor_subject_id": "<registered Subject name>",
+    "prop_id": "<registered prop name>",
+    "location_id": "<registered location name>",
+    "support_id": "<registered support name or null>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "handoff",
+    "from_subject_id": "<registered Subject name>",
+    "to_subject_id": "<registered Subject name>",
+    "prop_id": "<registered prop name>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "pour",
+    "actor_subject_id": "<registered Subject name>",
+    "source_prop_id": "<registered prop name>",
+    "target_prop_id": "<registered prop name>",
+    "substance": "<non-empty string>",
+    "amount": "<all|partial>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "consume",
+    "actor_subject_id": "<registered Subject name>",
+    "prop_id": "<registered prop name>",
+    "amount": "<all|partial>",
+    "substance": "<non-empty string or null>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "enter",
+    "subject_id": "<registered Subject name>",
+    "location_id": "<registered location name>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "exit",
+    "subject_id": "<registered Subject name>",
+    "destination_location_id": "<registered location name or null>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "move",
+    "subject_id": "<registered Subject name>",
+    "destination_location_id": "<registered location name>",
+    "support_id": "<registered support name or null>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "set_support",
+    "subject_id": "<registered Subject name>",
+    "support_id": "<registered support name or null>",
+    "resulting_posture": "<non-empty string or null>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "change_clothing",
+    "subject_id": "<registered Subject name>",
+    "change": "<put_on|remove|replace|set_condition>",
+    "slot": "<upper|lower|footwear|other>",
+    "garment": "<non-empty string>",
+    "replaces": "<non-empty string or null>",
+    "condition": "<non-empty string or null>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "open",
+    "actor_subject_id": "<registered Subject name>",
+    "prop_id": "<registered prop name>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "close",
+    "actor_subject_id": "<registered Subject name>",
+    "prop_id": "<registered prop name>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "lock",
+    "actor_subject_id": "<registered Subject name>",
+    "prop_id": "<registered prop name>"
+  },
+  {
+    "action_id": "<unique action id>",
+    "op": "unlock",
+    "actor_subject_id": "<registered Subject name>",
+    "prop_id": "<registered prop name>"
+  }
+]Return JSON only.
+<<<END_PROMPT_HISTORY_CONTENT 32>>>
+<<<PROMPT_HISTORY_CONTENT 33 LENGTH 2243>>>
+REGISTERED WORLDSTATE VOCABULARY AND OPENING STATE
+{"subjects":[{"name":"Amy","presence":"present","location":"the tavern's wooden floor"},{"name":"Goblin","presence":"present","location":"the tavern's wooden floor"}],"locations":[{"name":"the tavern's wooden floor"}],"props":[{"name":"polished table","kind":"support","mobility":"fixed","status":"present","placement":{"kind":"located","location":"the tavern's wooden floor"},"contents":[],"capabilities":{"openable":"unknown","consumable":"unknown","lockable":"unknown","container":"unknown"},"mechanism_state":"unknown"},{"name":"counter","kind":"support","mobility":"fixed","status":"present","placement":{"kind":"located","location":"the tavern's wooden floor"},"contents":[],"capabilities":{"openable":"unknown","consumable":"unknown","lockable":"unknown","container":"unknown"},"mechanism_state":"unknown"},{"name":"hearth","kind":"support","mobility":"fixed","status":"present","placement":{"kind":"located","location":"the tavern's wooden floor"},"contents":[],"capabilities":{"openable":"unknown","consumable":"unknown","lockable":"unknown","container":"unknown"},"mechanism_state":"unknown"},{"name":"cloth soaked in ale-scented oil","kind":"object","mobility":"movable","status":"present","placement":{"kind":"held","subject":"Amy"},"contents":[{"substance":"ale-scented oil","amount":"unknown","consumable":"unknown"}],"capabilities":{"openable":"unknown","consumable":"unknown","lockable":"unknown","container":"unknown"},"mechanism_state":"unknown"}],"supports":[{"name":"polished table","location":"the tavern's wooden floor"},{"name":"counter","location":"the tavern's wooden floor"},{"name":"hearth","location":"the tavern's wooden floor"}]}
+
+VALIDATED RAW SCENE
+At 00:00.000, Amy steps onto the creaking wooden floor of the Stone Hearth Tavern.
+At 00:01.200, A soft creak echoes as Amy's foot lands on the floorboards.
+At 00:02.400, Amy walks to a polished table along the east side counter.
+At 00:04.800, Holding a cloth soaked in ale‑scented oil, Amy begins wiping the table’s surface.
+At 00:06.600, With each swipe, the table gleams brighter until it shines like fresh ale.
+End continuity state: With each swipe, the table gleams brighter until it shines like fresh ale.
+<<<END_PROMPT_HISTORY_CONTENT 33>>>
