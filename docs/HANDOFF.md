@@ -1,5 +1,24 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — classify and resolve the 45 Director test failures
+
+- Re-ran the failing Director retry and prompt-pipeline files. The 45 failures
+  were stale expectations for the retired monolithic Director contract: old
+  creative prompt wording, one-call request counts, and fixtures that skipped
+  the untimed creative stage and downstream timed formatter. Updated those
+  tests to exercise the current split stages instead of deleting the behavior
+  coverage.
+- The review also found one real integration gap: the new creative system
+  prompt names `ASSIGNED SOURCE` as an authority, but the deterministic prompt
+  builder did not include the current assignment. The builder now accepts and
+  renders that source, and both normal and repair prompt construction pass the
+  assignment selected for the current segment. No runtime prompt wording,
+  validator behavior, or retry budget changed.
+- Verification: `tests/test_director_retry.py` and
+  `tests/test_llm_prompt_pipeline.py` — 235 passed, 7 subtests. Split RAW,
+  pre-Director replay, and Request 1 context tests — 17 passed. `py_compile`
+  and `git diff --check` passed.
+
 ## 2026-10-09 — seed canonical Subjects after checkpoint recovery fallback
 
 - When checkpoint restoration failed, `_run_main()` created a fresh generation

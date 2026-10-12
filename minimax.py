@@ -28552,6 +28552,7 @@ def build_generation_messages(
     canonical_location_state=None,
     character_references=None,
     previous_shot_choreography="",
+    assigned_source="",
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
@@ -28610,6 +28611,12 @@ def build_generation_messages(
     )
     if initial_subject_text:
         sections.append(initial_subject_text)
+    assigned_source_text = str(assigned_source or "").strip()
+    if assigned_source_text:
+        sections.append(
+            "ASSIGNED SOURCE — authoritative work for this segment:\n"
+            + assigned_source_text
+        )
     if static_setting:
         sections.append(
             "STATIC SETTING AUTHORITY — preserve these established static "
@@ -35351,6 +35358,7 @@ def repair_existing_segment(
         dialogue_exclusions=dialogue_exclusions,
         current_phase=current_phase,
         phrase_exclusions=phrase_exclusions,
+        assigned_source=director_assigned_source(current_phase, segment_number),
         persistent_movable_prop_state=repair.get("state", {}).get(
             "prop_ledger", {}
         ),
@@ -41032,6 +41040,10 @@ def _run_main(
             dialogue_exclusions=dialogue_exclusions,
             current_phase=current_phase,
             phrase_exclusions=phrase_exclusions,
+            assigned_source=director_assigned_source(
+                current_phase,
+                active_beat_id,
+            ),
             canonical_character_facts=canonical_character_facts,
             canonical_data=canonical_data,
             static_setting_description=location_setting_description,

@@ -266,11 +266,40 @@ def pipeline_llm_side_effect(
     soundscape="Room tone.",
     music="N/A",
 ):
-    """Return current Director pipeline responses without coupling unrelated tests."""
+    """Adapt legacy scenario fixtures to the split creative/format stages.
+
+    The supplied non-audio responses describe the same historical scenarios,
+    but are routed through the current creative -> timed-format contract.
+    """
     queued = iter(non_audio_responses)
+    pending_format_response = None
+
+    def untimed_scene(response):
+        if isinstance(response, dict):
+            scene = response.get("raw_scene", "")
+        else:
+            scene = response
+        scene = str(scene or "").strip()
+        scene = re.sub(r"(?m)^At\s+\d{2}:\d{2}\.\d{1,3},\s*", "", scene)
+        scene = re.sub(r"(?m)^End continuity state:.*$", "", scene)
+        return scene.strip()
 
     def respond(*args, **kwargs):
+        nonlocal pending_format_response
         purpose = str((kwargs.get("history_metadata") or {}).get("purpose", ""))
+        metadata = kwargs.get("history_metadata") or {}
+        if purpose == "director_raw_scene_creative":
+            pending_format_response = next(queued)
+            return untimed_scene(pending_format_response)
+        if purpose == "director_raw_scene":
+            if pending_format_response is None:
+                raise AssertionError("Timed formatter called without creative fixture")
+            return pending_format_response
+        if purpose == "director_raw_scene_repair":
+            repaired = next(queued)
+            if metadata.get("stage") == "untimed_creative":
+                pending_format_response = director_response(untimed_scene(repaired))
+            return repaired
         if purpose == "director_h3_soundscape":
             return {"overall_soundscape": soundscape}
         if purpose == "director_h3_music":
@@ -798,6 +827,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     @mock.patch("minimax.ask_llm")
     def test_audio_contract_retries_malformed_soundscape(self, ask_llm):
         ask_llm.side_effect = [
+            "Mark closes a door with a thud.",
             director_response("Mark closes a door with a thud."),
             {"overall_soundscape": ":["},
             {"overall_soundscape": "door thud"},
@@ -1291,11 +1321,19 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             ),
         )
         text = messages[0]["content"] + "\n" + messages[1]["content"]
-        self.assertIn("Validate only subject movement in RAW", text)
+        self.assertEqual(
+            messages[0]["content"],
+            "Validate only subject movement in the RAW SCENE.  Update subject "
+            "positions after each sentence internally and determine if the "
+            "following sentence's actions, whether movement or not, can occur "
+            "spatially.\n\nReturn only one JSON object with boolean valid and "
+            "string issue. Report only the first concrete problem.",
+        )
         self.assertIn("KNOWN SUBJECT STATE", text)
-        self.assertIn("does not need an entrance", text)
-        self.assertIn("changes support or elevation", text)
-        self.assertIn("Ignore prop identity", text)
+        self.assertIn("CURRENT BEAT", text)
+        self.assertIn("STATIC SETTING AUTHORITY", text)
+        self.assertIn("RAW SCENE", text)
+        self.assertIn('{"valid": true, "issue": ""}', text)
 
 
     def test_request_one_repairs_physically_incoherent_raw_scene(self):
@@ -1316,6 +1354,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             good_raw,
         ]))
         physical = mock.Mock(side_effect=[
+            {"valid": True, "issue": ""},
             {"valid": False, "issue": "The door closes before Will enters."},
             {"valid": True, "issue": ""},
         ])
@@ -1342,8 +1381,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 2)
-        self.assertEqual(physical.call_count, 2)
+        self.assertEqual(len(semantic_calls), 3)
+        self.assertEqual(physical.call_count, 3)
         self.assertEqual(prop_state.call_count, 1)
         self.assertEqual(timing.call_count, 1)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
@@ -1389,7 +1428,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "- The door closes before Will enters.",
         )
         self.assertEqual(
-            physical.call_args_list[1].args[1],
+            physical.call_args_list[2].args[1],
             minimax._normalize_director_raw_scene_structure(
                 good_raw, segment_seconds=6.0
             ).strip(),
@@ -1414,7 +1453,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         physical = mock.Mock(side_effect=[
             {"valid": False, "issue": "The door closes before Will enters."}
             for _ in range(minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS + 1)
-        ] + [{"valid": True, "issue": ""}])
+        ] + [
+            {"valid": True, "issue": ""},
+            {"valid": True, "issue": ""},
+        ])
         with (
             mock.patch("minimax.ask_llm", request),
             mock.patch("minimax.validate_director_raw_scene_physical", physical),
@@ -1433,7 +1475,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             call for call in request.call_args_list
             if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene_repair"
         ]
-        self.assertEqual(len(director_calls), 2)
+        creative_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene_creative"
+        ]
+        self.assertEqual(len(creative_calls), 2)
+        self.assertEqual(len(director_calls), 1)
         self.assertEqual(len(repair_calls), 5)
         self.assertEqual(
             [call.kwargs["history_metadata"]["attempt"] for call in repair_calls],
@@ -1497,8 +1545,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 2)
-        self.assertEqual(physical.call_count, 2)
+        self.assertEqual(len(semantic_calls), 3)
+        self.assertEqual(physical.call_count, 3)
         self.assertEqual(prop_state.call_count, 2)
         self.assertEqual(timing.call_count, 1)
         self.assertIn("filled cup", payload["raw_scene"])
@@ -1578,7 +1626,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                     if function_name == "validate_director_raw_scene_timing"
                     else mock.patch(
                         "minimax." + function_name,
-                        side_effect=[first_result, next_result],
+                        side_effect=(
+                            [
+                                {"valid": True, "issue": ""},
+                                first_result,
+                                next_result,
+                            ]
+                            if function_name == "validate_director_raw_scene_physical"
+                            else [first_result, next_result]
+                        ),
                     )
                 )
                 timing_patch = mock.patch(
@@ -1625,6 +1681,14 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 ]
                 self.assertEqual(len(repair_calls), 1)
                 self.assertEqual(len(director_calls), 1)
+                self.assertEqual(
+                    sum(
+                        call.kwargs.get("history_metadata", {}).get("purpose")
+                        == "director_raw_scene_creative"
+                        for call in request.call_args_list
+                    ),
+                    1,
+                )
                 self.assertEqual(
                     repair_calls[0].kwargs["history_metadata"]["validator"],
                     expected_validator,
@@ -1675,10 +1739,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
 
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 2)
-        second_prompt = semantic_calls[1].args[0][-1]["content"]
-        self.assertIn("VALIDATOR ERRORS:", second_prompt)
-        self.assertIn("mug_1 is still listed as held by Amy", second_prompt)
+        self.assertEqual(len(semantic_calls), 3)
+        repair_prompt = next(
+            call.args[0][-1]["content"]
+            for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene_repair"
+        )
+        self.assertIn("VALIDATOR ERRORS:", repair_prompt)
+        self.assertIn("mug_1 is still listed as held by Amy", repair_prompt)
         self.assertIn("visibly transfers the mug", payload["raw_scene"])
 
     def test_request_one_completion_self_report_is_non_blocking(self):
@@ -1689,7 +1758,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 1)
+        self.assertEqual(len(non_audio_llm_calls(request)), 2)
         self.assertFalse(payload["request1_result"]["beat_complete"])
         self.assertIn("Mark starts the action.", payload["raw_scene"])
 
@@ -1703,7 +1772,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 2)
+        self.assertEqual(len(non_audio_llm_calls(request)), 3)
         self.assertIn("Mark completes the action.", payload["raw_scene"])
 
     def test_request_one_python_normalizes_missing_end_state_marker_without_retry(self):
@@ -1724,7 +1793,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 1)
+        self.assertEqual(len(non_audio_llm_calls(request)), 2)
         self.assertEqual(payload["raw_scene"].count("End continuity state:"), 1)
         self.assertTrue(
             payload["raw_scene"].endswith(
@@ -1749,7 +1818,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 1)
+        self.assertEqual(len(non_audio_llm_calls(request)), 2)
         self.assertIn("only two tools", payload["raw_scene"])
 
     def test_request_two_result_does_not_contain_completion_metadata(self):
@@ -2311,7 +2380,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             {"source_sha256": "source-hash"},
         )
 
-        self.assertEqual(ask_llm.call_count, 3)
+        self.assertEqual(ask_llm.call_count, 4)
         legacy_director.assert_not_called()
         formatter.assert_not_called()
         validator.assert_not_called()
@@ -2323,17 +2392,18 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(
             purposes,
             [
+                "director_raw_scene_creative",
                 "director_raw_scene",
                 "director_h3_soundscape",
                 "director_h3_music",
             ],
         )
         self.assertEqual(
-            ask_llm.call_args_list[1].kwargs["response_format"],
+            ask_llm.call_args_list[2].kwargs["response_format"],
             minimax.H3_SOUNDSCAPE_RESPONSE_FORMAT,
         )
         self.assertEqual(
-            ask_llm.call_args_list[2].kwargs["response_format"],
+            ask_llm.call_args_list[3].kwargs["response_format"],
             minimax.H3_MUSIC_RESPONSE_FORMAT,
         )
         self.assertIn(

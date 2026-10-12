@@ -784,17 +784,19 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("basement", state_text)
 
 
-    def test_director_prompt_keeps_state_advisory_and_beat_authoritative(self):
-        rules = minimax.build_director_rules(
-            64, 8, 8, "", 2,
+    def test_creative_director_keeps_current_beat_authoritative(self):
+        messages, _, _ = minimax.build_generation_messages(
+            "timed formatting rules", "unused", ["Door opens", "Room revealed"],
+            set(), [], 2, 2, 8, 16,
             conditioning_mode="continuation",
-            is_final_story_segment=False,
+            current_phase={"phase_number": 1, "beat_start": 1, "beat_end": 2},
         )
-        normalized = " ".join(rules.split())
-        self.assertIn("CURRENT BEAT is the scene to stage", normalized)
-        self.assertIn("broad or generic continuity summary conflicts", normalized)
-        self.assertIn("CURRENT BEAT wins", normalized)
-        self.assertNotIn("Only explicitly authorized subjects may cross a barrier", normalized)
+        creative = minimax.build_director_raw_scene_creative_messages(messages, 8)
+        prompt = creative[0]["content"]
+        self.assertIn("CURRENT BEAT is the story authority", prompt)
+        self.assertIn("if it conflicts with CURRENT BEAT, CURRENT BEAT wins", prompt)
+        self.assertNotIn("broad or generic continuity summary", prompt)
+        self.assertIn("CURRENT BEAT — EXECUTE ONLY THIS:\n2. Room revealed", creative[1]["content"])
     def test_completion_prompt_protects_authoritative_persistent_state(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Amy defeats one attacker with the katana.",
@@ -813,25 +815,24 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
 
 
     def test_director_prompt_is_minimal_scene_contract(self):
-        rules = minimax.build_director_rules(
-            64, 8, 8, "", 3,
-            conditioning_mode="continuation",
-            is_final_story_segment=False,
+        messages, _, _ = minimax.build_generation_messages(
+            "timed formatting rules", "unused", ["Current beat", "Next beat"],
+            set(), [], 1, 2, 8, 16,
         )
-        normalized = " ".join(rules.split())
-        self.assertIn("concrete visible/audible action", normalized)
-        self.assertIn("Complete every finite action explicitly assigned by CURRENT BEAT", normalized)
-        self.assertIn("every named person or target", normalized)
-        self.assertIn("natural physical staging", normalized)
-        self.assertIn("one continuous camera take", normalized)
-        self.assertIn("move the camera instead of cutting", normalized)
-        self.assertIn("tracks with a moving subject", normalized)
-        self.assertIn("CONTINUATION AIRLOCK", normalized)
-        self.assertIn("Start CURRENT BEAT at or after 00:01.000", normalized)
-        self.assertIn("Explicitly locate every named subject whose final position matters", normalized)
-        self.assertIn("NEXT BEAT is boundary context only", normalized)
-        self.assertNotIn("Do not invent persistent changes", normalized)
-    def test_director_camera_choreography_periodically_reframes_without_cuts(self):
+        creative = minimax.build_director_raw_scene_creative_messages(messages, 8)
+        creative_system = creative[0]["content"]
+        timed_rules = minimax.build_director_rules(64, 8, 8, "", 3)
+        self.assertIn("concrete visible/audible action", creative_system)
+        self.assertIn("Complete every finite action explicitly assigned by CURRENT BEAT", creative_system)
+        self.assertIn("every named person or target", creative_system)
+        self.assertNotIn("timestamp", creative_system.casefold())
+        self.assertNotIn("RETURN JSON", creative_system)
+        self.assertIn("one continuous camera take", timed_rules)
+        self.assertIn("move the camera instead of cutting", timed_rules)
+        self.assertIn("tracks with a moving subject", timed_rules)
+        self.assertIn("Use timestamp lines", timed_rules)
+        self.assertIn("End continuity state:", timed_rules)
+    def test_timed_director_preserves_camera_movement_without_forced_reframes(self):
         segment_3 = " ".join(minimax.build_director_rules(
             80, 8, 10, "", 3,
             conditioning_mode="continuation",
@@ -848,16 +849,11 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             is_final_story_segment=False,
         ).split())
 
-        self.assertIn("one continuous camera take", segment_4)
-        self.assertIn("cuts, cutaways, insert shots", segment_4)
-        self.assertIn("pushes in, pulls out, pans left/right", segment_4)
-        self.assertIn("REFRAME THIS SEGMENT", segment_4)
-        self.assertIn("After about 1 second", segment_4)
-        self.assertIn("materially different composition", segment_4)
-        self.assertIn("Do not cut", segment_4)
-        self.assertIn("REFRAME THIS SEGMENT", segment_7)
-        self.assertNotIn("REFRAME THIS SEGMENT", segment_3)
-        self.assertIn("Do not force a new composition", segment_3)
+        for segment in (segment_3, segment_4, segment_7):
+            self.assertIn("one continuous camera take", segment)
+            self.assertIn("pushes in, pulls out, pans left/right", segment)
+            self.assertIn("move the camera instead of cutting", segment)
+            self.assertNotIn("REFRAME THIS SEGMENT", segment)
 
     def test_continuation_structure_rejects_action_inside_native_guide_airlock(self):
         raw = (
@@ -874,13 +870,14 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertTrue(errors)
         self.assertIn("Continuation airlock", errors[0])
 
-    def test_director_camera_choreography_segment_one_establishes_composition(self):
+    def test_timed_director_initial_scene_does_not_inherit_continuation_frame(self):
         rules = " ".join(minimax.build_director_rules(
             8, 8, 1, "", 1,
             conditioning_mode="initial",
             is_final_story_segment=True,
         ).split())
-        self.assertIn("Establish a useful opening composition", rules)
+        self.assertIn("A static shot is valid when movement would not help", rules)
+        self.assertIn("Use timestamp lines", rules)
         self.assertNotIn("inherited opening composition", rules)
         self.assertNotIn("REFRAME THIS SEGMENT", rules)
 
@@ -931,7 +928,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("movement between rooms, hallways, or subareas", prompt)
         self.assertIn("does NOT require another set_location effect", prompt)
 
-    def test_beat_validator_does_not_require_effect_for_new_incidental_target(self):
+    def test_beat_story_validator_uses_job_and_participants_without_effect_rule(self):
         messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy is armed and ready.",
             current_state=minimax.new_beat_canonical_state(),
@@ -941,14 +938,9 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_state_effects=[],
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn(
-            "For entities already in CURRENT STATE or STATE EFFECTS IF VALID, new persistent changes require a matching assigned effect",
-            prompt,
-        )
-        self.assertIn(
-            "Do not require effects for new incidental entities",
-            prompt,
-        )
+        self.assertIn("CURRENT JOB is the only required work", prompt)
+        self.assertIn("candidate must preserve each listed identity", prompt)
+        self.assertNotIn("new incidental entities", prompt)
 
     def test_beat_closed_boundary_contract_lists_contained_occupants(self):
         state = minimax.new_beat_canonical_state()
@@ -1106,7 +1098,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             [],
         )
 
-    def test_beat_validator_forbids_retrieving_interior_prop_across_closed_boundary(self):
+    def test_beat_story_validator_does_not_claim_boundary_state_authority(self):
         state = minimax.new_beat_canonical_state()
         state["characters"] = {
             "Amy": {"location": "home"},
@@ -1129,9 +1121,11 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_state_effects=[],
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertNotIn("retrieve/use an object located inside", prompt)
-        self.assertNotIn("protected destination", prompt)
-        self.assertIn("Boundary, barrier, door/window, and containment changes are intentionally outside this validation phase.", prompt)
+        current_state = prompt.split("CURRENT STATE", 1)[1].split("CURRENT JOB", 1)[0]
+        self.assertIn("Amy retrieves and equips her hidden weapons", prompt)
+        self.assertNotIn("locked", current_state)
+        self.assertNotIn("accessible", current_state)
+        self.assertNotIn("Boundary, barrier, door/window, and containment changes", prompt)
 
     def test_beat_validator_forbids_cross_boundary_contact_with_contained_occupant(self):
         state = minimax.new_beat_canonical_state()
@@ -1478,7 +1472,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("COMPLETE", prompt)
         self.assertIn("ONGOING", prompt)
         self.assertIn("NOT_APPLICABLE", prompt)
-        self.assertIn("Progressive source wording", prompt)
+        self.assertIn("ongoing/repeated wording", prompt)
 
     def test_finite_endpoint_parser_is_strict(self):
         self.assertEqual(
@@ -1531,10 +1525,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Reapplying an already-complete irreversible result", prompt)
         self.assertIn("does not satisfy the source action", prompt)
     def test_director_prompt_does_not_encode_terminal_state_machine(self):
-        rules = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            story_segment_ending_rules="",
-        )
+        rules = minimax.build_director_rules(8, 8, 1, "", 1)
         normalized = " ".join(rules.split())
         self.assertNotIn("already-dead corpse", normalized)
         self.assertNotIn("terminal target", normalized.casefold())
@@ -1699,8 +1690,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "finishing choice",
             initial[0]["content"],
         )
-        self.assertIn("every materially audible sound", initial[0]["content"])
-        self.assertIn("identifier-style labels with underscores", initial[0]["content"])
+        self.assertIn("overall_soundscape may contain only sounds supported by RAW SCENE", initial[0]["content"])
+        normalized_system = " ".join(initial[0]["content"].split())
+        self.assertIn("choose a minimal scene-appropriate non-diegetic underscore", normalized_system)
+        self.assertNotIn("every materially audible sound", initial[0]["content"])
 
     def test_previous_visible_subjects_resolve_plain_names_for_video_origin(self):
         definitions = (
@@ -1728,11 +1721,12 @@ class DirectorPromptCallContractTests(unittest.TestCase):
 
 
     def test_director_dialogue_rule_is_minimal_and_detector_handles_quotes(self):
-        rules = minimax.build_director_rules(
-            8, 4, 1, "<Subject 1> is Amy, a woman.", 2,
+        messages, _, _ = minimax.build_generation_messages(
+            "unused", "unused", ["Amy speaks."], set(), [], 1, 1, 4, 4,
         )
-        self.assertIn("write a brief direct spoken line using <d>...</d>", rules)
-        self.assertIn("Do not add intelligible dialogue", rules)
+        creative = minimax.build_director_raw_scene_creative_messages(messages, 4)
+        self.assertIn("Sentences of actions that occur in the scene", creative[0]["content"])
+        self.assertNotIn("<d>...</d>", creative[0]["content"])
         self.assertTrue(minimax._h3_contains_spoken_dialogue(
             "Amy asks, 'Who wants eggs?'"
         ))
@@ -1769,6 +1763,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "Director rules.", "Story context.",
             ["Mira makes tea while Oren watches.", "Oren departs."],
             set(), [], 1, 2, 8, 16, current_phase=phase,
+            assigned_source=source,
         )
         assignment = messages[1]["content"].split(
             "ASSIGNED SOURCE — authoritative work for this segment:\n", 1
@@ -1813,10 +1808,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "3. Room revealed",
             user_content,
         )
-        self.assertNotIn("1. Opening", user_content)
+        self.assertIn(
+            "PREVIOUS BEAT - BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n1. Opening",
+            user_content,
+        )
         self.assertNotIn("BEATS:", user_content)
         self.assertIn("PREVIOUS SHOT END — START HERE, DO NOT REPLAY:", user_content)
-        self.assertIn("Mark is at the door.", user_content)
+        self.assertIn("PREVIOUS SHOT END — START HERE, DO NOT REPLAY:\nN/A", user_content)
 
     def test_generation_messages_include_only_current_and_next_beat(self):
         phase = {"phase_number": 1, "beat_start": 1, "beat_end": 4}
@@ -1846,7 +1844,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "3. Room revealed",
             user_content,
         )
-        self.assertNotIn("1. Opening", user_content)
+        self.assertIn(
+            "PREVIOUS BEAT - BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n1. Opening",
+            user_content,
+        )
         self.assertNotIn("4. Leaves room", user_content)
         self.assertNotIn("BEATS:", user_content)
 
@@ -1882,7 +1883,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             ("1. Only beat", "N/A"),
         )
 
-    def test_recent_dialogue_exclusions_are_added_to_generation_prompt(self):
+    def test_recent_dialogue_exclusions_are_added_to_h3_formatter_prompt(self):
         rules = minimax.build_director_rules(30, 6, 5, SUBJECTS, 5)
 
         messages, _, _ = minimax.build_generation_messages(
@@ -1900,11 +1901,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
 
         user_content = messages[1]["content"]
-        self.assertIn(
-            "RECENT SPOKEN SENTENCE EXCLUSIONS (previous 5 segments)",
-            user_content,
-        )
-        self.assertIn("- We must leave now!", user_content)
+        self.assertNotIn("RECENT SPOKEN SENTENCE EXCLUSIONS", user_content)
 
         formatter_messages = minimax.build_h3_formatter_messages(
             "Mark crosses the room.",
@@ -2082,6 +2079,8 @@ class DirectorPromptCallContractTests(unittest.TestCase):
 
         def respond(*_args, **kwargs):
             purpose = kwargs["history_metadata"]["purpose"]
+            if purpose == "director_raw_scene_creative":
+                return "Mark crosses the room."
             if purpose == "director_raw_scene":
                 return {"raw_scene": scene, "beat_complete": True}
             if purpose == "director_h3_soundscape":
@@ -2117,19 +2116,24 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertEqual(payload["llm_result"]["non_diegetic_music"], "N/A")
         self.assertEqual(
             [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
-            ["director_raw_scene", "director_h3_soundscape", "director_h3_music"],
+            ["director_raw_scene_creative", "director_raw_scene", "director_h3_soundscape", "director_h3_music"],
         )
         self.assertEqual(
             request.call_args_list[0].kwargs["response_format"],
+            None,
+        )
+        self.assertEqual(
+            request.call_args_list[1].kwargs["response_format"],
             minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
         )
         self.assertEqual(
-            request.call_args_list[0].kwargs["history_metadata"]["conditioning_mode"],
+            request.call_args_list[1].kwargs["history_metadata"]["conditioning_mode"],
             "clean_refresh",
         )
 
     def test_request_segment_llm_accepts_missing_end_continuity_state(self):
         request = Mock(side_effect=[
+            "Mark crosses the room.",
             {"raw_scene": "At 00:00.000, Mark crosses the room."},
             {"overall_soundscape": "Footsteps."},
             {"non_diegetic_music": "N/A"},
@@ -2151,7 +2155,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                 bundle, [], "run-1", {"source_sha256": "source-1"}
             )
 
-        self.assertEqual(request.call_count, 3)
+        self.assertEqual(request.call_count, 4)
         self.assertIn("Mark crosses the room", payload["raw_scene"])
         self.assertIn("End continuity state: Mark crosses the room.", payload["raw_scene"])
 
@@ -2161,6 +2165,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "End continuity state: Amy remains at the stove."
         )
         request = Mock(side_effect=[
+            "Amy cooks breakfast.",
             {
                 "raw_scene": scene,
                 "finite_activity_complete": False,
@@ -2190,7 +2195,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         ):
             payload = minimax.request_segment_llm(bundle, [], "run-1", {})
 
-        self.assertEqual(request.call_count, 3)
+        self.assertEqual(request.call_count, 4)
         self.assertIn("Amy cooks breakfast", payload["raw_scene"])
         self.assertIn("Amy remains at the stove", payload["raw_scene"])
         self.assertFalse(payload["request1_result"]["beat_complete"])
@@ -2198,6 +2203,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
     def test_independent_completion_validator_is_not_in_generation_path(self):
         scene = "At 00:00.000, Mira serves tea.\nEnd continuity state: Tea is served."
         request = Mock(side_effect=[
+            "Mira serves tea.",
             {"raw_scene": scene},
             {"overall_soundscape": "Cups clink."},
             {"non_diegetic_music": "N/A"},
@@ -2226,7 +2232,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         ]
         self.assertEqual(
             purposes,
-            ["director_raw_scene", "director_h3_soundscape", "director_h3_music"],
+            ["director_raw_scene_creative", "director_raw_scene", "director_h3_soundscape", "director_h3_music"],
         )
 
     def test_request_segment_llm_reports_dropped_subjects_without_retrying(self):
@@ -2236,6 +2242,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "<Subject 3> is Amber, a 14-year-old girl."
         )
         request = Mock(side_effect=[
+            "Amy opens the basement door.",
             {
                 "raw_scene": (
                     "At 00:00.000, Amy opens the basement door.\n"
@@ -2265,7 +2272,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         ):
             payload = minimax.request_segment_llm(bundle, [], "run-8", {})
 
-        self.assertEqual(request.call_count, 3)
+        self.assertEqual(request.call_count, 4)
         self.assertIn("Amy stands beside the open basement door", payload["raw_scene"])
         output = "\n".join(
             " ".join(str(arg) for arg in call.args)
@@ -2336,10 +2343,12 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("Do not copy unrelated continuity facts", system_prompt)
         self.assertIn("overall_soundscape", system_prompt)
         self.assertIn("non_diegetic_music", system_prompt)
+        self.assertIn("Python inserts the configured run-level visual style", system_prompt)
+        self.assertIn("Do not add a global visual style phrase", system_prompt)
         self.assertNotIn("Video Prompt Writing Guide", system_prompt)
         self.assertNotIn("Motion type", system_prompt)
         self.assertNotIn("Construction Example", system_prompt)
-        self.assertEqual(system_prompt.count("Live-action, cinematic"), 1)
+        self.assertNotIn("Live-action, cinematic", system_prompt)
 
         user_prompt = messages[1]["content"]
         self.assertIn("AUTHORITATIVE OPENING STATE:", user_prompt)
@@ -2372,29 +2381,19 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             conditioning_mode="initial",
         )[1]["content"]
 
-        self.assertIn("<Video 1>", continuation)
         self.assertIn(
             "Preserve every camera movement explicitly present in RAW SCENE",
             continuation,
         )
         self.assertIn(
-            "including camera movement beginning at 00:00.000",
-            continuation,
-        )
-        self.assertIn(
-            "Keep it at its original timestamp and do not move it later",
+            "The pinned guide owns the opening airlock",
             continuation,
         )
         self.assertIn(raw_scene, continuation)
-        self.assertNotIn("not a camera movement", continuation)
-        self.assertNotIn("Camera movement may occur later", continuation)
+        self.assertNotIn("Do not use N/A for an ordinary scored continuation", clean_refresh)
         self.assertIn("supplied first frame", clean_refresh)
         self.assertIn("CLEAN-REFRESH OPENING RULE", clean_refresh)
-        self.assertNotIn(
-            "<Video 1> already establish the opening composition",
-            clean_refresh,
-        )
-        self.assertNotIn("<Video 1>", initial)
+        self.assertNotIn("CONTINUATION OPENING RULE", clean_refresh)
         self.assertNotIn("OPENING RULE", initial)
 
         opening = minimax.format_authoritative_opening_state(
@@ -2418,7 +2417,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
         self.assertTrue(
             final_prompt.split("detailed_description: ", 1)[1].startswith(
-                "[Shot 1] The opening composition is established by "
+                "[Shot 1] Live-action cinematic, The opening composition is established by "
                 "the supplied first frame."
             )
         )
@@ -2525,8 +2524,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         prompt = minimax.build_h3_prompt(
             {
                 "detailed_description": (
-                    "[Shot 1] Live-action, cinematic, seamless continuation. "
-                    "Mark crosses the room."
+                    "[Shot 1] Mark crosses the room."
                 ),
                 "overall_soundscape": "Footsteps.",
                 "non_diegetic_music": (
@@ -2577,10 +2575,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn("Mark remains at the door.", continuation)
         self.assertTrue(
             continuation.split("detailed_description: ", 1)[1].startswith(
-                "[Shot 1] Live-action, cinematic, seamless continuation."
+                "[Shot 1] Live-action cinematic, seamless continuation."
             )
         )
-        self.assertIn("SPOKEN DIALOGUE: None.", continuation)
+        self.assertIn("No intelligible spoken dialogue is heard", continuation)
 
 
 if __name__ == "__main__":
