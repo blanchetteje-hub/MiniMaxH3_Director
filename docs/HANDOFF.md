@@ -1437,3 +1437,24 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   path. `pytest -q tests/test_director_request1_context.py
   tests/test_director_retry.py tests/test_pre_director_replay.py` passed (130
   passed, 7 subtests). Syntax compilation and `git diff --check` passed.
+
+## 2026-10-12 — share concise WorldState context with RAW validators
+
+- The physical RAW validator previously received the verbose generic
+  `format_world_state_prompt_context()` output under KNOWN SUBJECT STATE. It now
+  uses the same deterministic Subject/Picture, location, wardrobe/reference,
+  and prop sections as `director_raw_scene`. The full STATIC SETTING AUTHORITY,
+  current Beat, previous shot end, RAW scene, system prompt, and response
+  contract remain in place.
+- The prop/state validator previously received canonical WorldState as compact
+  raw JSON with internal IDs. It now receives those same readable context
+  sections under its existing PROP LEDGER heading. The timing validator takes
+  RAW only and has no WorldState context, so it was not changed. No validator
+  rules, retries, or system prompts changed.
+- Added a regression comparing all shared context sections across Director
+  generation, physical validation, and prop-state validation, while checking
+  that both validator requests retain their Beat, previous-shot, RAW, and full
+  static-setting inputs. `pytest -q tests/test_director_request1_context.py
+  tests/test_director_retry.py tests/test_pre_director_replay.py
+  tests/test_location_state_reference.py` passed (165 passed, 7 subtests).
+  Syntax compilation and `git diff --check` passed.

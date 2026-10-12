@@ -139,3 +139,55 @@ def test_unknown_subject_and_prop_locations_are_not_filled_in():
     assert "cloth soaked in ale-scented oil" in props
     assert "cloth soaked in ale-scented oil:" not in props
     assert "held by" not in props
+
+
+def test_raw_validators_reuse_director_worldstate_context():
+    _fixture, state, location_state, definitions = _fixture_parts()
+    references = {}
+    shared_context = minimax._director_worldstate_prompt_context(
+        state,
+        subject_definitions=definitions,
+        location_state=location_state,
+        character_references=references,
+    )
+    shared_sections = minimax._director_worldstate_prompt_sections(shared_context)
+    director_user = _request1_user_text(
+        state, location_state, definitions, references,
+    )
+    physical_messages = minimax.build_director_raw_scene_physical_messages(
+        "Amy moves to the counter.",
+        "At 00:01.000, Amy steps to the counter.",
+        previous_shot_end="Amy stands by the door.",
+        static_setting_description="The counter is along the east wall.",
+        known_subject_state=state,
+        subject_definitions=definitions,
+        canonical_location_state=location_state,
+        character_references=references,
+    )
+    prop_messages = minimax.build_director_raw_scene_prop_state_messages(
+        "Amy moves the mug.",
+        "At 00:01.000, Amy moves the mug to the counter.",
+        previous_shot_end="Amy holds the mug.",
+        prop_ledger=state,
+        static_setting_description="The counter is along the east wall.",
+        subject_definitions=definitions,
+        canonical_location_state=location_state,
+        character_references=references,
+    )
+    physical_user = physical_messages[1]["content"]
+    prop_user = prop_messages[1]["content"]
+
+    for section_name in ("subjects", "locations", "wardrobe", "props"):
+        rendered = shared_sections[section_name]
+        if rendered:
+            assert rendered in director_user
+            assert rendered in physical_user
+            assert rendered in prop_user
+    assert "CURRENT BEAT\nAmy moves to the counter." in physical_user
+    assert "PREVIOUS SHOT END\nAmy stands by the door." in physical_user
+    assert "RAW SCENE\nAt 00:01.000, Amy steps to the counter." in physical_user
+    assert "STATIC SETTING AUTHORITY\nThe counter is along the east wall." in physical_user
+    assert "CURRENT BEAT\nAmy moves the mug." in prop_user
+    assert "PREVIOUS SHOT END\nAmy holds the mug." in prop_user
+    assert "RAW SCENE\nAt 00:01.000, Amy moves the mug to the counter." in prop_user
+    assert "STATIC SETTING AUTHORITY\nThe counter is along the east wall." in prop_user

@@ -28486,6 +28486,27 @@ def _director_worldstate_prompt_context(
     }
 
 
+def _director_worldstate_prompt_sections(context):
+    """Return the shared readable WorldState sections used across Director calls."""
+    return {
+        "subjects": "SUBJECTS:\n" + (context.get("subjects") or "N/A"),
+        "locations": (
+            "SUBJECT LOCATIONS (WorldState):\n" + context["locations"]
+            if context.get("locations") else ""
+        ),
+        "wardrobe": (
+            "WARDROBE (current WorldState; reference images never override a "
+            "different current outfit):\n" + context["wardrobe"]
+            if context.get("wardrobe") else ""
+        ),
+        "props": (
+            "PROPS:\nWorldState placement and persistent facts; held props are "
+            "exclusive unless CURRENT BEAT explicitly transfers them:\n"
+            + (context.get("props") or "- No persistent props are registered.")
+        ),
+    }
+
+
 # Build Request 1 of the two-stage Director micro-prompt pipeline.
 def build_generation_messages(
     director_rules,
@@ -28535,7 +28556,8 @@ def build_generation_messages(
             location_state=canonical_location_state,
             character_references=character_references,
         )
-        subject_text = context["subjects"]
+        context_sections = _director_worldstate_prompt_sections(context)
+        subject_text = context["subjects"] or "N/A"
     else:
         subject_text = str(subject_definitions or "").strip()
         starting_facts = str(canonical_character_facts or canonical_data or "").strip()
@@ -28552,14 +28574,14 @@ def build_generation_messages(
     static_setting = " ".join(
         str(static_setting_description or "").split()
     ).strip()
-    sections = [f"SUBJECTS:\n{subject_text}" if has_world_state else f"SUBJECT DEFINITIONS:\n{subject_text}"]
-    if has_world_state and context["locations"]:
-        sections.append("SUBJECT LOCATIONS (WorldState):\n" + context["locations"])
-    if has_world_state and context["wardrobe"]:
-        sections.append(
-            "WARDROBE (current WorldState; reference images never override a "
-            "different current outfit):\n" + context["wardrobe"]
-        )
+    sections = [
+        context_sections["subjects"]
+        if has_world_state else f"SUBJECT DEFINITIONS:\n{subject_text}"
+    ]
+    if has_world_state and context_sections["locations"]:
+        sections.append(context_sections["locations"])
+    if has_world_state and context_sections["wardrobe"]:
+        sections.append(context_sections["wardrobe"])
     initial_subject_text = (
         ""
         if isinstance(world_state, dict) and "schema_version" in world_state
@@ -28602,11 +28624,7 @@ def build_generation_messages(
     if phrase_exclusion_text:
         sections.append(phrase_exclusion_text)
     if has_world_state:
-        sections.append(
-            "PROPS:\nWorldState placement and persistent facts; held props are "
-            "exclusive unless CURRENT BEAT explicitly transfers them:\n"
-            + (context["props"] or "- No persistent props are registered.")
-        )
+        sections.append(context_sections["props"])
     sections.append("RETURN only JSON.")
     user_content = "\n\n".join(sections)
 
@@ -37447,6 +37465,29 @@ def extract_and_dry_run_director_state_actions(
     )
 
 
+def _format_director_validator_worldstate_context(
+    world_state,
+    *,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
+):
+    if not isinstance(world_state, dict) or "schema_version" not in world_state:
+        return ""
+    context = _director_worldstate_prompt_context(
+        world_state,
+        subject_definitions=subject_definitions,
+        location_state=canonical_location_state,
+        character_references=character_references,
+    )
+    sections = _director_worldstate_prompt_sections(context)
+    return "\n\n".join(
+        sections[key]
+        for key in ("subjects", "locations", "wardrobe", "props")
+        if sections[key]
+    )
+
+
 def build_director_raw_scene_physical_messages(
     current_beat,
     raw_scene,
@@ -37454,8 +37495,25 @@ def build_director_raw_scene_physical_messages(
     *,
     static_setting_description="",
     known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
 ):
     """Check only subject movement, spatial continuity, and physical action order."""
+    if (
+        isinstance(known_subject_state, dict)
+        and "schema_version" in known_subject_state
+    ):
+        known_subject_context = _format_director_validator_worldstate_context(
+            known_subject_state,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
+        )
+    else:
+        known_subject_context = format_known_subject_state_for_validator(
+            known_subject_state
+        )
     return [
         {
             "role": "system",
@@ -37486,7 +37544,7 @@ def build_director_raw_scene_physical_messages(
                 "PREVIOUS SHOT END\n"
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
                 "KNOWN SUBJECT STATE\n"
-                f"{format_known_subject_state_for_validator(known_subject_state)}\n\n"
+                f"{known_subject_context}\n\n"
                 "STATIC SETTING AUTHORITY\n"
                 f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
@@ -37507,8 +37565,20 @@ def build_director_raw_scene_prop_state_messages(
     *,
     prop_ledger=None,
     static_setting_description="",
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
 ):
     """Check only prop identity, transfers, beat-role fidelity, and final prop state."""
+    if isinstance(prop_ledger, dict) and "schema_version" in prop_ledger:
+        prop_context = _format_director_validator_worldstate_context(
+            prop_ledger,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
+        )
+    else:
+        prop_context = format_prop_ledger_for_prompt(prop_ledger)
     return [
         {
             "role": "system",
@@ -37532,7 +37602,7 @@ def build_director_raw_scene_prop_state_messages(
                 "PREVIOUS SHOT END\n"
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
                 "PROP LEDGER\n"
-                f"{format_prop_ledger_for_prompt(prop_ledger)}\n\n"
+                f"{prop_context}\n\n"
                 "STATIC SETTING AUTHORITY\n"
                 f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
@@ -37554,6 +37624,9 @@ def build_director_raw_scene_coherence_messages(
     prop_ledger=None,
     static_setting_description="",
     known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
 ):
     """Compatibility alias for the old combined validator prompt."""
     return build_director_raw_scene_physical_messages(
@@ -37562,6 +37635,9 @@ def build_director_raw_scene_coherence_messages(
         previous_shot_end=previous_shot_end,
         static_setting_description=static_setting_description,
         known_subject_state=known_subject_state,
+        subject_definitions=subject_definitions,
+        canonical_location_state=canonical_location_state,
+        character_references=character_references,
     )
 
 
@@ -38139,6 +38215,9 @@ def validate_director_raw_scene_physical(
     previous_shot_end="",
     static_setting_description="",
     known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -38157,6 +38236,9 @@ def validate_director_raw_scene_physical(
             previous_shot_end=previous_shot_end,
             static_setting_description=static_setting_description,
             known_subject_state=known_subject_state,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
         ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
@@ -38175,6 +38257,9 @@ def validate_director_raw_scene_prop_state(
     previous_shot_end="",
     prop_ledger=None,
     static_setting_description="",
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -38188,6 +38273,9 @@ def validate_director_raw_scene_prop_state(
             previous_shot_end=previous_shot_end,
             prop_ledger=prop_ledger,
             static_setting_description=static_setting_description,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
         ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
@@ -38207,6 +38295,9 @@ def validate_director_raw_scene_coherence(
     prop_ledger=None,
     static_setting_description="",
     known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -38217,6 +38308,9 @@ def validate_director_raw_scene_coherence(
         previous_shot_end=previous_shot_end,
         static_setting_description=static_setting_description,
         known_subject_state=known_subject_state,
+        subject_definitions=subject_definitions,
+        canonical_location_state=canonical_location_state,
+        character_references=character_references,
         llm_request=llm_request,
         history_metadata=history_metadata,
     )
@@ -38228,6 +38322,9 @@ def validate_director_raw_scene_coherence(
         previous_shot_end=previous_shot_end,
         prop_ledger=prop_ledger,
         static_setting_description=static_setting_description,
+        subject_definitions=subject_definitions,
+        canonical_location_state=canonical_location_state,
+        character_references=character_references,
         llm_request=llm_request,
         history_metadata=history_metadata,
     )
@@ -38277,6 +38374,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     )
     validate_world_state(world_state_opening)
     prop_ledger = world_state_opening
+    subject_definitions = str(bundle.get("subject_definitions") or "")
+    canonical_location_state = bundle.get("canonical_location_state")
+    character_references = bundle.get("character_references")
 
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
     expected_replay_messages = bundle.get(
@@ -38496,6 +38596,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         previous_shot_end=previous_shot_end,
                         static_setting_description=static_setting_description,
                         known_subject_state=world_state_opening,
+                        subject_definitions=subject_definitions,
+                        canonical_location_state=canonical_location_state,
+                        character_references=character_references,
                         history_metadata=raw_validator_metadata(repair_attempt),
                     )
                 except (
@@ -38531,6 +38634,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         previous_shot_end=previous_shot_end,
                         prop_ledger=prop_ledger,
                         static_setting_description=static_setting_description,
+                        subject_definitions=subject_definitions,
+                        canonical_location_state=canonical_location_state,
+                        character_references=character_references,
                         history_metadata=raw_validator_metadata(repair_attempt),
                     )
                 except (
@@ -40750,6 +40856,14 @@ def _run_main(
             ),
             "prop_ledger": {},
             "static_setting_description": location_setting_description,
+            "canonical_location_state": copy.deepcopy(
+                generation_state.get("location_state")
+                if isinstance(generation_state.get("location_state"), dict)
+                else None
+            ),
+            "character_references": copy.deepcopy(
+                generation_state.get("character_reference_images", {})
+            ),
             "opening_summary": director_opening_summary,
             "h3_opening_summary": h3_opening_summary,
             "continuity_source": (
