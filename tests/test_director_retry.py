@@ -489,6 +489,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         for system_prompt in (initial_system, repair_system):
             self.assertIn('"state_actions": []', system_prompt)
+            self.assertIn("If an action is transient or has no representable persistent state change, omit it.", system_prompt)
+            self.assertIn("Do not invent transfers, pouring, consumption, contents", system_prompt)
             self.assertIn("PERMITTED STATEACTION OBJECT STRUCTURES", system_prompt)
             self.assertIn(operation_shapes, system_prompt)
             self.assertIn('"op": "pickup"', system_prompt)
@@ -504,6 +506,27 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             request.call_args_list[1].kwargs["history_metadata"]["purpose"],
             "director_state_actions_repair",
         )
+
+    def test_transient_surface_wiping_accepts_empty_state_action_batch(self):
+        world_state, _location_id, _mug_id = goblin_mug_world_state()
+        opening = copy.deepcopy(world_state)
+        raw_scene = "At 00:00.000, Amy wipes the counter with a cloth."
+        request = mock.Mock(return_value={"state_actions": []})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state,
+                raw_scene,
+                segment_number=1,
+            )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["state_actions"], [])
+        self.assertEqual(world_state, opening)
+        self.assertEqual(request.call_count, 1)
+        system_prompt = request.call_args.args[0][0]["content"]
+        self.assertIn("If an action is transient", system_prompt)
 
     def test_action_only_extractor_fails_closed_after_five_repairs(self):
         world_state, _location_id, _mug_id = goblin_mug_world_state()
@@ -1350,7 +1373,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "Validate only subject movement in the RAW SCENE.  Update subject "
             "positions after each sentence internally and determine if the "
             "following sentence's actions, whether movement or not, can occur "
-            "spatially.\n\nReturn only one JSON object with boolean valid and "
+            "spatially.\n"
+            "Reject unnecessary changes of support or elevation, including climbing, "
+            "stepping, or standing on furniture, unless CURRENT BEAT requires it or "
+            "the previous state establishes it. Ordinary interactions with furniture "
+            "do not imply climbing onto it. When rejecting such a change, identify the "
+            "unsupported movement itself as the error, not merely a later contradiction.\n\n"
+            "Return only one JSON object with boolean valid and "
             "string issue. Report only the first concrete problem.",
         )
         self.assertIn("KNOWN SUBJECT STATE", text)
@@ -1358,6 +1387,45 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("STATIC SETTING AUTHORITY", text)
         self.assertIn("RAW SCENE", text)
         self.assertIn('{"valid": true, "issue": ""}', text)
+
+    def test_physical_validator_rejects_unsupported_furniture_climbing(self):
+        raw = "The subject climbs onto the table without a story reason."
+        request = mock.Mock(return_value={
+            "valid": False,
+            "issue": "The subject unnecessarily climbs onto the table.",
+        })
+        result = minimax.validate_director_raw_scene_physical(
+            "The subject waits beside the table.",
+            raw,
+            llm_request=request,
+        )
+        self.assertFalse(result["valid"])
+        prompt = request.call_args.args[0][0]["content"]
+        self.assertIn("unless CURRENT BEAT requires it", prompt)
+        self.assertIn("identify the unsupported movement itself", prompt)
+        self.assertIn("unnecessarily climbs onto the table", result["issue"])
+
+    def test_physical_validator_allows_ordinary_leaning_and_reaching(self):
+        raw = "The subject leans against the counter and reaches for a cup."
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+        result = minimax.validate_director_raw_scene_physical(
+            "The subject reaches for a cup at the counter.",
+            raw,
+            llm_request=request,
+        )
+        self.assertTrue(result["valid"])
+        self.assertIn("ordinary interactions with furniture", request.call_args.args[0][0]["content"].casefold())
+
+    def test_physical_validator_allows_climbing_when_current_beat_requires_it(self):
+        raw = "The subject climbs onto the table to reach the high window."
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+        result = minimax.validate_director_raw_scene_physical(
+            "The subject climbs onto the table to reach the high window.",
+            raw,
+            llm_request=request,
+        )
+        self.assertTrue(result["valid"])
+        self.assertIn("unless CURRENT BEAT requires it", request.call_args.args[0][0]["content"])
 
 
     def test_request_one_repairs_physically_incoherent_raw_scene(self):
@@ -1369,16 +1437,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:01.000, Amy closes the closet door.\n"
             "At 00:04.500, Will steps into the closet."
         )
-        good_raw = director_response(
-            "At 00:00.000, Will steps into the closet.\n"
-            "At 00:04.500, Amy closes the closet door behind him."
-        )["raw_scene"]
+        good_raw = (
+            "Will steps into the closet.\n"
+            "Amy closes the closet door behind him."
+        )
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             bad,
             good_raw,
         ]))
         physical = mock.Mock(side_effect=[
-            {"valid": True, "issue": ""},
             {"valid": False, "issue": "The door closes before Will enters."},
             {"valid": True, "issue": ""},
         ])
@@ -1405,8 +1472,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 4)  # creative, timing, camera, repair
-        self.assertEqual(physical.call_count, 3)
+        self.assertEqual(len(semantic_calls), 6)  # creative, repair, timing/camera, Subject resolution
+        self.assertEqual(physical.call_count, 2)
         self.assertEqual(prop_state.call_count, 1)
         self.assertEqual(timing.call_count, 1)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
@@ -1419,7 +1486,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             if message.startswith("DIRECTOR RAW VALIDATOR RESULT ")
         ]
         self.assertEqual(
-            [item["valid"] for item in physical_verdicts if item["validator"] == "physical/spatial"],
+            [item["valid"] for item in physical_verdicts if item["validator"] == "physical/spatial creative"],
             [False, True],
         )
         self.assertTrue(any(
@@ -1445,17 +1512,14 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(
             repair_call.args[0][-1]["content"],
             "RAW PROMPT\n"
-            + "At 00:00.000, Amy closes the closet door.\n"
-            + "At 00:00.100, Will steps into the closet.\n"
-            + "End continuity state: Will steps into the closet."
+            + "Amy closes the closet door.\n"
+            + "Will steps into the closet."
             + "\n\nVALIDATOR ERRORS:\n"
             "- The door closes before Will enters.",
         )
         self.assertEqual(
-            physical.call_args_list[2].args[1],
-            minimax._normalize_director_raw_scene_structure(
-                good_raw, segment_seconds=6.0
-            ).strip(),
+            physical.call_args_list[1].args[1],
+            good_raw,
         )
 
     def test_five_failed_raw_repairs_regenerate_director_raw(self):
@@ -1469,20 +1533,22 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:00.000, Will enters the closet.\n"
             "At 00:04.500, Amy closes the closet door behind him."
         )
+        bad_creative = (
+            "Amy closes the closet door.\n"
+            "Will steps into the closet."
+        )
+        good_creative = (
+            "Will enters the closet.\n"
+            "Amy closes the closet door behind him."
+        )
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             bad,
-            *([bad["raw_scene"]] * minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS),
-            good,
+            *([bad_creative] * minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS),
+            good_creative,
         ]))
-        first_attempt_physical_calls = 0
-
         def physical_result(*args, **kwargs):
-            nonlocal first_attempt_physical_calls
             attempt = (kwargs.get("history_metadata") or {}).get("attempt", 1)
             if attempt > 1:
-                return {"valid": True, "issue": ""}
-            first_attempt_physical_calls += 1
-            if first_attempt_physical_calls == 1:
                 return {"valid": True, "issue": ""}
             return {
                 "valid": False,
@@ -1514,7 +1580,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             == "director_raw_scene_creative"
         ]
         self.assertEqual(len(creative_calls), 2)
-        self.assertEqual(len(director_calls), 2)
+        self.assertEqual(len(director_calls), 1)
         self.assertEqual(len(repair_calls), 5)
         self.assertEqual(
             [call.kwargs["history_metadata"]["attempt"] for call in repair_calls],
@@ -1556,9 +1622,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:00.000, Amy pours brew into the cup.\n"
             "At 00:04.500, Amy hands the filled cup to Will."
         )
+        good_creative = "Amy pours brew into the cup.\nAmy hands the filled cup to Will."
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             bad,
-            good["raw_scene"],
+            good_creative,
         ]))
         physical = mock.Mock(return_value={"valid": True, "issue": ""})
         prop_state = mock.Mock(side_effect=[
@@ -1578,8 +1645,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 4)  # creative, timing, camera, repair
-        self.assertEqual(physical.call_count, 3)
+        self.assertEqual(len(semantic_calls), 6)  # creative, repair, timing/camera, Subject resolution
+        self.assertEqual(physical.call_count, 2)
         self.assertEqual(prop_state.call_count, 2)
         self.assertEqual(timing.call_count, 1)
         self.assertIn("filled cup", payload["raw_scene"])
@@ -1600,7 +1667,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             json.loads(message.removeprefix("DIRECTOR RAW VALIDATOR RESULT "))
             for message in log_messages
             if message.startswith("DIRECTOR RAW VALIDATOR RESULT ")
-            and '"validator": "prop/state"' in message
+            and '"validator": "prop/state creative"' in message
         ]
         self.assertEqual(
             [item["valid"] for item in prop_verdicts],
@@ -1617,84 +1684,47 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "PROP/STATE",
         )
 
-    def test_structure_dialogue_and_timing_failures_use_raw_repair(self):
-        cases = [
-            (
-                "_director_raw_scene_structure_errors",
-                "SHOT SCRIPT",
-                ["A required shot-script field is missing."],
-                [],
-            ),
-            (
-                "director_required_dialogue_issue",
-                "DIALOGUE",
-                "Required direct dialogue is missing.",
-                "",
-            ),
-            (
-                "validate_director_raw_scene_timing",
-                "TIMING",
-                {"valid": False, "issue": "The movement is compressed."},
-                {"valid": True, "issue": ""},
-            ),
-        ]
-        for function_name, expected_validator, first_result, next_result in cases:
+    def test_final_structure_dialogue_and_timing_failures_regenerate_creative(self):
+        cases = ["SHOT SCRIPT", "DIALOGUE", "TIMING"]
+        for expected_validator in cases:
             with self.subTest(validator=expected_validator):
                 bundle = segment_bundle()
                 bundle["current_beat_text"] = "Mira crosses the room and reaches the door."
-                initial_raw = director_response(
-                    "At 00:01.000, Mira remains beside the table.\n"
-                    "At 00:04.500, Mira reaches the door."
+                first = director_response(
+                    "Mira remains beside the table.\nMira reaches the door."
                 )
-                repaired_raw = (
-                    "At 00:00.000, Mira leaves the table.\n"
-                    "At 00:04.500, Mira reaches the door."
+                second = director_response(
+                    "Mira leaves the table.\nMira reaches the door."
                 )
-                request = mock.Mock(side_effect=pipeline_llm_side_effect([
-                    initial_raw,
-                    repaired_raw,
-                ]))
-                validator_patch = (
-                    nullcontext()
-                    if function_name == "validate_director_raw_scene_timing"
-                    else mock.patch(
-                        "minimax." + function_name,
-                        side_effect=(
-                            [
-                                {"valid": True, "issue": ""},
-                                first_result,
-                                next_result,
-                            ]
-                            if function_name == "validate_director_raw_scene_physical"
-                            else [first_result, next_result]
-                        ),
-                    )
-                )
-                timing_patch = mock.patch(
-                    "minimax.validate_director_raw_scene_timing",
-                    side_effect=(
-                        [first_result, next_result]
-                        if function_name == "validate_director_raw_scene_timing"
-                        else None
-                    ),
-                    return_value=(
-                        None
-                        if function_name == "validate_director_raw_scene_timing"
-                        else {"valid": True, "issue": ""}
-                    ),
-                )
+                request = mock.Mock(side_effect=pipeline_llm_side_effect([first, second]))
+                structure = mock.Mock(side_effect=(
+                    [["A required shot-script field is missing."], []]
+                    if expected_validator == "SHOT SCRIPT"
+                    else [[], []]
+                ))
+                dialogue = mock.Mock(side_effect=(
+                    ["Required direct dialogue is missing.", ""]
+                    if expected_validator == "DIALOGUE"
+                    else ["", ""]
+                ))
+                timing = mock.Mock(side_effect=(
+                    [
+                        {"valid": False, "issue": "The movement is compressed."},
+                        {"valid": True, "issue": ""},
+                    ]
+                    if expected_validator == "TIMING"
+                    else [
+                        {"valid": True, "issue": ""},
+                        {"valid": True, "issue": ""},
+                    ]
+                ))
                 with (
                     mock.patch("minimax.ask_llm", request),
-                    validator_patch,
-                    mock.patch(
-                        "minimax.validate_director_raw_scene_physical",
-                        return_value={"valid": True, "issue": ""},
-                    ),
-                    mock.patch(
-                        "minimax.validate_director_raw_scene_prop_state",
-                        return_value={"valid": True, "issue": ""},
-                    ),
-                    timing_patch,
+                    mock.patch("minimax._director_raw_scene_structure_errors", structure),
+                    mock.patch("minimax.director_required_dialogue_issue", dialogue),
+                    mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+                    mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+                    mock.patch("minimax.validate_director_raw_scene_timing", timing),
                     mock.patch("minimax.console_log"),
                     mock.patch("builtins.print"),
                 ):
@@ -1702,31 +1732,21 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                         bundle, [], "run-id", {"source_sha256": "source-hash"}
                     )
 
-                repair_calls = [
-                    call for call in request.call_args_list
-                    if call.kwargs.get("history_metadata", {}).get("purpose")
-                    == "director_raw_scene_repair"
+                purposes = [
+                    call.kwargs.get("history_metadata", {}).get("purpose")
+                    for call in request.call_args_list
                 ]
-                timing_calls = [
-                    call for call in request.call_args_list
-                    if call.kwargs.get("history_metadata", {}).get("purpose")
-                    == "add_scene_timing_refiner"
-                ]
-                self.assertEqual(len(repair_calls), 1)
-                self.assertEqual(len(timing_calls), 1)
-                self.assertEqual(
-                    sum(
-                        call.kwargs.get("history_metadata", {}).get("purpose")
-                        == "director_raw_scene_creative"
-                        for call in request.call_args_list
-                    ),
-                    1,
-                )
-                self.assertEqual(
-                    repair_calls[0].kwargs["history_metadata"]["validator"],
-                    expected_validator,
-                )
+                self.assertEqual(purposes.count("director_raw_scene_creative"), 2)
+                self.assertEqual(purposes.count("add_scene_timing_refiner"), 2)
+                self.assertEqual(purposes.count("director_raw_scene_repair"), 0)
                 self.assertIn("Mira reaches the door", payload["raw_scene"])
+                creative_calls = [
+                    call for call in request.call_args_list
+                    if call.kwargs.get("history_metadata", {}).get("purpose")
+                    == "director_raw_scene_creative"
+                ]
+                retry_content = creative_calls[1].args[0][-1]["content"]
+                self.assertIn(expected_validator, retry_content)
 
     def test_python_structure_normalization_leaves_only_semantic_retry_blockers(self):
         bundle = segment_bundle()
@@ -1746,9 +1766,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:00.000, Amy begins the exchange.\n"
             "At 00:04.500, Amy visibly transfers the mug to Will."
         )
+        good_creative = "Amy begins the exchange.\nAmy visibly transfers the mug to Will."
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             early,
-            good["raw_scene"],
+            good_creative,
         ]))
         physical = mock.Mock(return_value={"valid": True, "issue": ""})
         prop_state = mock.Mock(side_effect=[
@@ -1772,7 +1793,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
 
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 4)  # creative, timing, camera, repair
+        self.assertEqual(len(semantic_calls), 6)  # creative, repair, timing/camera, Subject resolution
         repair_prompt = next(
             call.args[0][-1]["content"]
             for call in request.call_args_list

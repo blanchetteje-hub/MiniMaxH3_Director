@@ -71,6 +71,7 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
         repair_scenes=(),
         physical_verdicts=(),
         other_validator_verdicts=(),
+        validator_events=None,
     ):
         bundle = _bundle(beat)
         creative_iter = iter(creative_scenes or [creative_scene])
@@ -87,6 +88,8 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
             metadata = kwargs.get("history_metadata") or {}
             purpose = metadata.get("purpose")
             llm_calls.append((purpose, messages, kwargs))
+            if validator_events is not None:
+                validator_events.append(f"llm:{purpose}")
             if purpose == "director_raw_scene_creative":
                 return next(creative_iter)
             if purpose == "director_raw_scene_repair":
@@ -110,6 +113,8 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
         def fake_physical(beat_text, raw_text, **kwargs):
             physical_candidates.append(raw_text)
             physical_contexts.append(kwargs)
+            if validator_events is not None:
+                validator_events.append("validator:physical")
             try:
                 return next(physical_iter)
             except StopIteration:
@@ -117,7 +122,17 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
 
         other_iter = iter(other_validator_verdicts)
 
-        def fake_other_validator(*args, **kwargs):
+        def fake_prop_validator(*args, **kwargs):
+            if validator_events is not None:
+                validator_events.append("validator:prop")
+            try:
+                return next(other_iter)
+            except StopIteration:
+                return {"valid": True, "issue": ""}
+
+        def fake_timing_validator(*args, **kwargs):
+            if validator_events is not None:
+                validator_events.append("validator:timing")
             try:
                 return next(other_iter)
             except StopIteration:
@@ -127,19 +142,15 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
             mock.patch("minimax.ask_llm", side_effect=fake_ask_llm),
             mock.patch(
                 "minimax.validate_director_raw_scene_physical",
-                return_value={"valid": True, "issue": ""},
-            ),
-            mock.patch(
-                "minimax.validate_director_raw_scene_physical",
                 side_effect=fake_physical,
             ),
             mock.patch(
                 "minimax.validate_director_raw_scene_prop_state",
-                side_effect=fake_other_validator,
+                side_effect=fake_prop_validator,
             ),
             mock.patch(
                 "minimax.validate_director_raw_scene_timing",
-                side_effect=fake_other_validator,
+                side_effect=fake_timing_validator,
             ),
             mock.patch(
                 "minimax.resolve_director_raw_scene_pronouns",
@@ -204,8 +215,7 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
         self.assertEqual(camera_call[1][0]["content"], minimax.ADD_CAMERA_REFINER_SYSTEM)
         self.assertIn("CURRENT BEAT", camera_call[1][1]["content"])
         self.assertIn(timed, camera_call[1][1]["content"])
-        self.assertEqual(physical_candidates[0], creative)
-        self.assertEqual(physical_candidates[1], _accepted_raw(timed))
+        self.assertEqual(physical_candidates, [creative])
         self.assertEqual(physical_contexts[0]["static_setting_description"], STATIC_TAVERN)
         self.assertEqual(
             payload["raw_scene"],
@@ -216,6 +226,26 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
             minimax._director_strip_camera_instructions(payload["raw_scene"]),
             _accepted_raw(timed),
         )
+
+    def test_content_validators_run_before_refiners_without_repeating(self):
+        action = "Amy sets the mug on the counter."
+        timed = _timed_scene([action], timestamps=[0])
+        events = []
+        payload, _calls, physical_candidates, _contexts = self._run_pipeline(
+            action,
+            action,
+            timed,
+            validator_events=events,
+        )
+        self.assertEqual(physical_candidates, [action])
+        self.assertEqual(events.count("validator:physical"), 1)
+        self.assertEqual(events.count("validator:prop"), 1)
+        self.assertEqual(events.count("validator:timing"), 1)
+        self.assertLess(events.index("validator:physical"), events.index("validator:prop"))
+        self.assertLess(events.index("validator:prop"), events.index("llm:add_scene_timing_refiner"))
+        self.assertLess(events.index("llm:add_scene_timing_refiner"), events.index("validator:timing"))
+        self.assertLess(events.index("validator:timing"), events.index("llm:add_camera_refiner"))
+        self.assertEqual(payload["raw_scene"], _accepted_raw(timed))
 
     def test_timestamp_validator_and_python_assembly_preserve_action_text(self):
         source = "Amy opens the door.\nAmy steps through it."
@@ -308,6 +338,7 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
                 "minimax.validate_director_raw_scene_physical",
                 return_value={"valid": True, "issue": ""},
             ),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
             mock.patch(
                 "minimax.resolve_director_raw_scene_pronouns",
                 side_effect=lambda raw, *args, **kwargs: raw,
@@ -344,6 +375,8 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
         bundle = _bundle(creative)
         with (
             mock.patch("minimax.ask_llm", side_effect=fake_ask_llm),
+            mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
             mock.patch(
                 "minimax.resolve_director_raw_scene_pronouns",
                 side_effect=lambda raw, *args, **kwargs: raw,
@@ -416,7 +449,7 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             physical_candidates[:3],
-            [impossible, corrected, _accepted_raw(timed)],
+            [impossible, corrected],
         )
         self.assertTrue(all(
             context["static_setting_description"] == STATIC_TAVERN

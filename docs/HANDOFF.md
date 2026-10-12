@@ -1,5 +1,40 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — RAW validation before timing and camera refinement
+
+- Reordered RAW content validation so `director_raw_scene_physical` and
+  `director_raw_scene_prop_state` each validate/repair/revalidate the untimed
+  creative scene before `add_scene_timing_refiner`. Timestamp assignment is
+  followed by `director_raw_scene_timing`; an infeasible result regenerates
+  creative RAW with its issue as feedback under the existing Director attempt
+  bound. It does not rewrite the accepted actions.
+- The final camera-refined scene runs deterministic shot-script and dialogue
+  checks. Physical and prop/state LLM validators are not repeated because the
+  timing and camera refiners already have deterministic action-preservation
+  checks. Their failures cannot be repaired by mutating timed text; the
+  existing Director retry budget regenerates creative RAW instead.
+- Added the requested generic physical rule against unsupported support or
+  elevation changes. It allows movement required by CURRENT BEAT or established
+  by prior state, and tells the validator to report the unsupported movement
+  itself. Ordinary furniture interaction remains permitted.
+- Tightened the shared StateAction prompt contract: omit transient or
+  unrepresentable actions and never invent transfers, pouring, consumption, or
+  an unrelated operation. The empty batch remains valid; existing reducer
+  operations and authority are unchanged. Job #44's artifacts were not present
+  in this checkout, so the reported wiping output could not be independently
+  inspected here.
+- Added regressions for support/elevation movement, pre-refinement validator
+  order, no redundant physical/prop checks, timing-driven creative retries,
+  wiping as an empty StateAction batch, and transfer-preserving extraction.
+- Verification: `pytest -q tests/test_split_raw_pipeline.py
+  tests/test_director_retry.py tests/test_llm_prompt_pipeline.py` passed (251
+  tests, 7 subtests). `python -m py_compile minimax.py
+  tests/test_split_raw_pipeline.py tests/test_director_retry.py` and
+  `git diff --check` passed. `tests/test_world_state_foundation.py` had 66
+  passes, 11 subtests, and 2 unrelated existing story-start contract failures:
+  an outdated `classification`/`evidence` fixture and an obsolete prompt-text
+  assertion.
+
 ## 2026-10-12 — visible Subject resolver output budget
 
 - Raised the `director_raw_scene_visible_subject_resolution` per-purpose
