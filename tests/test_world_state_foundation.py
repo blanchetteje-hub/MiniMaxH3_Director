@@ -1140,6 +1140,35 @@ class WorldStateSeedTests(unittest.TestCase):
                 name_resolution=contract["name_resolution"],
             )
 
+    def test_action_prompt_shapes_match_the_dynamic_response_schema(self):
+        state = make_reducer_state()
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text="Subject One Target vessel Support A Room",
+        )
+        action_schemas = contract["response_format"]["json_schema"]["schema"]
+        action_schemas = action_schemas["properties"]["state_actions"]["items"]["oneOf"]
+        prompt_shapes = contract["prompt_operation_shapes"]
+        self.assertEqual(
+            {shape["op"] for shape in prompt_shapes},
+            {schema["properties"]["op"]["const"] for schema in action_schemas},
+        )
+        for shape in prompt_shapes:
+            schema = next(
+                item for item in action_schemas
+                if item["properties"]["op"]["const"] == shape["op"]
+            )
+            self.assertEqual(set(shape), set(schema["properties"]))
+            for field, value in shape.items():
+                if field.endswith("_subject_id") or field == "subject_id":
+                    if value is not None:
+                        self.assertIn("registered Subject name", value)
+                if field.endswith("_prop_id") or field == "prop_id":
+                    if value is not None:
+                        self.assertIn("registered prop name", value)
+        self.assertFalse(any("subject_1" in str(shape) for shape in prompt_shapes))
+        self.assertFalse(any("prop_target" in str(shape) for shape in prompt_shapes))
+
     def test_director_name_resolution_rejects_unknown_and_out_of_vocabulary_names(self):
         state = make_reducer_state()
         contract = build_state_action_only_contract(

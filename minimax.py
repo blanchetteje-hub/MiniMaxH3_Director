@@ -36948,7 +36948,29 @@ def build_director_raw_scene_repair_messages(raw_prompt, validation_errors):
     ]
 
 
-def build_director_state_actions_messages(raw_scene, vocabulary):
+def _director_state_action_prompt_contract(operation_shapes):
+    """Format the shared JSON envelope and request-specific action shapes."""
+    prompt = (
+        'Return exactly this JSON structure:\n{\n  "state_actions": []\n}\n'
+        "The array may be empty. Otherwise, each item must be one StateAction "
+        "object matching exactly one permitted operation structure below. "
+        "Include every shown field and no others. Use exact registered entity "
+        "names from the vocabulary, never Python-assigned IDs. Replace angle-"
+        "bracketed placeholders with values of the shown type; use null only "
+        "where shown.\n"
+    )
+    if operation_shapes:
+        prompt += "PERMITTED STATEACTION OBJECT STRUCTURES\n" + json.dumps(
+            operation_shapes,
+            ensure_ascii=False,
+            indent=2,
+        )
+    else:
+        prompt += "No StateAction object is permitted for this request."
+    return prompt
+
+
+def build_director_state_actions_messages(raw_scene, vocabulary, operation_shapes):
     """Build a compact action-extraction request over immutable validated RAW."""
     return [
         {
@@ -36956,9 +36978,9 @@ def build_director_state_actions_messages(raw_scene, vocabulary):
             "content": (
                 "Extract only persistent WorldState StateActions explicitly shown "
                 "in the validated RAW SCENE. Use only registered names and the "
-                "operations allowed by the supplied response schema. Return an "
-                "empty state_actions array when there is no persistent change. "
-                "Return JSON only."
+                "operations allowed for this request. "
+                + _director_state_action_prompt_contract(operation_shapes)
+                + "Return JSON only."
             ),
         },
         {
@@ -36978,6 +37000,7 @@ def build_director_state_actions_repair_messages(
     vocabulary,
     rejected_state_actions,
     reducer_failure,
+    operation_shapes,
 ):
     """Build a repair request that cannot rewrite the accepted RAW scene."""
     return [
@@ -36986,7 +37009,9 @@ def build_director_state_actions_repair_messages(
             "content": (
                 "Repair only the StateActions rejected by the WorldState reducer. "
                 "Keep the validated RAW SCENE unchanged. Use only registered names "
-                "and the operations allowed by the supplied response schema. "
+                "and the operations allowed for this request. "
+                + _director_state_action_prompt_contract(operation_shapes)
+                + " "
                 "Return the entire corrected state_actions batch, including actions "
                 "that were already valid; do not return only the failing action. "
                 "Return JSON only."
@@ -37049,6 +37074,7 @@ def extract_and_dry_run_director_state_actions(
         build_director_state_actions_messages(
             immutable_raw_scene,
             contract["vocabulary"],
+            contract["prompt_operation_shapes"],
         ),
         response_format=contract["response_format"],
         history_metadata={**metadata_base, "purpose": "director_state_actions", "attempt": 1},
@@ -37105,6 +37131,7 @@ def extract_and_dry_run_director_state_actions(
                 contract["vocabulary"],
                 response.get("state_actions") if isinstance(response, dict) else response,
                 failure,
+                contract["prompt_operation_shapes"],
             ),
             response_format=contract["response_format"],
             history_metadata={

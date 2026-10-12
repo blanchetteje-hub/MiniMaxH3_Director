@@ -371,7 +371,25 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn(raw_scene, repair_user)
         self.assertIn("FIRST REDUCER FAILURE", repair_user)
         self.assertIn("Unknown Subject", repair_user)
+        initial_system = request.call_args_list[0].args[0][0]["content"]
         repair_system = request.call_args_list[1].args[0][0]["content"]
+        action_contract = build_state_action_only_contract(
+            world_state,
+            current_segment_text=raw_scene,
+            current_segment_subject_names=["Goblin1", "Elf1"],
+        )
+        operation_shapes = json.dumps(
+            action_contract["prompt_operation_shapes"],
+            ensure_ascii=False,
+            indent=2,
+        )
+        for system_prompt in (initial_system, repair_system):
+            self.assertIn('"state_actions": []', system_prompt)
+            self.assertIn("PERMITTED STATEACTION OBJECT STRUCTURES", system_prompt)
+            self.assertIn(operation_shapes, system_prompt)
+            self.assertIn('"op": "pickup"', system_prompt)
+            self.assertIn('"actor_subject_id": "<registered Subject name>"', system_prompt)
+            self.assertNotIn('"subject_1"', system_prompt)
         self.assertIn("entire corrected state_actions batch", repair_system)
         self.assertIn("do not return only the failing action", repair_system)
         self.assertEqual(

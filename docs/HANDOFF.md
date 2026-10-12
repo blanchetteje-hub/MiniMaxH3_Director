@@ -1341,3 +1341,39 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   those failures are existing assertions for older Director/beat/H3 prompt
   text and formatter behavior, not the new action-free response contract.
   Syntax compilation and `git diff --check` passed.
+
+## 2026-10-11 — explicit StateAction JSON contracts and replay review
+
+- Added the exact `{"state_actions": []}` return envelope to both the
+  `director_state_actions` and `director_state_actions_repair` system prompts.
+  Each prompt now says the array may be empty and otherwise contains complete
+  StateAction objects matching one permitted operation structure, with no
+  extra fields and registered entity names in place of Python IDs. The
+  operation object structures are derived from the current per-request action
+  schema, so the prompt and structured response schema expose the same allowed
+  operations and fields without maintaining a second contract.
+- Added regressions asserting both prompt paths include the envelope and
+  schema-derived operation shapes, and that the action-only response keeps
+  using registered names. The focused extractor/repair and WorldState schema
+  tests passed (2 passed); the full Director retry module passed (118 passed,
+  7 subtests).
+- Re-ran `tests/test_llm_prompt_pipeline.py`: 97 passed, 18 failed. Fifteen
+  failures are stale assertions for prior beat-validator, Director, camera,
+  dialogue, music, and H3 prompt wording/formatting; one also formats the
+  current Director template without required fields. Two failures expose
+  independent behavior mismatches worth separate review: recent spoken
+  dialogue exclusions are discarded by `build_generation_messages()`, and
+  continuation H3 assembly duplicates “seamless continuation.” A third test
+  expects Request 1 to include the current assigned source; the builder
+  currently omits it. That source-context mismatch could affect how faithfully
+  RAW represents assigned work and should be resolved as a separate design
+  decision. No failing prompt-pipeline tests were edited in this change.
+- Ran the six-Segment pre-Director replay fixture with its captured settings.
+  Segment 1's request matched the fixture opening hash and dynamic inputs,
+  passed RAW checks, extracted two reducer-valid support actions, and committed
+  revision 7. Segment 2 then produced a RAW timestamp at 00:08.817, outside
+  its 8-second duration, so the segment was rejected. Recovery restarted from
+  Segment 2; the replay fixture correctly rejected this restart because it is
+  restricted to captured Segment-1 settings. The retry loop was stopped. This
+  replay confirms the first-segment action-only path and commit, but it does
+  not establish six-Segment completion or action-extraction completeness.

@@ -1,6 +1,6 @@
 # LLM Prompt / Call Inventory
 
-**Branch audited:** `world-state-rebuild` (2026-10-09). **Primary source:** `minimax.py` and `story_planner.py`, including the text request profile map and observed call sites. This is an **index of LLM calls, not verbatim user/system prompt text**: runtime prompts remain user-owned in source. Do not edit prompts merely to make the descriptions here match.
+**Branch audited:** `world-state-rebuild` (2026-10-11). **Primary source:** `minimax.py` and `story_planner.py`, including the text request profile map and observed call sites. This is an **index of LLM calls, not verbatim user/system prompt text**: runtime prompts remain user-owned in source. Do not edit prompts merely to make the descriptions here match.
 
 **How to read:** `purpose` selects one of four immutable sampling/reasoning profiles. Context budgets and output-token limits are maintained separately per purpose. Unknown text purposes use `EXTRACTOR_LLM_SETTINGS` plus the standard context/output defaults. `visual_end_state` uses a separate multimodal vision request. A listed purpose does not guarantee execution on every run; some calls are conditional, diagnostic, compatibility, or legacy paths.
 
@@ -22,6 +22,8 @@
 | `registered_subject_story_start_presence` | `SMART_EXTRACTOR_LLM_SETTINGS` | Classify one authored Subject's opening presence | Full beats/story and one registered Subject with source evidence | Present/absent/unknown classification with evidence |
 | `world_state_current_segment_subjects` | `SMART_EXTRACTOR_LLM_SETTINGS` | Register identities needed for the current Beat before RAW | Current Beat/source, registered Subject context | New current-segment identity records; no inferred entry/presence |
 | `world_state_current_segment_props` | `SMART_EXTRACTOR_LLM_SETTINGS` | Identify explicitly needed persistent props for this Beat | Current Beat/source and registered Subject, prop, location/support vocabulary | Narrow prop registration candidates and initial placement |
+| `director_state_actions` | `SMART_EXTRACTOR_LLM_SETTINGS` | Extract persistent StateActions from finalized validated RAW | Immutable accepted RAW, opening WorldState and request-scoped registered vocabulary | `{"state_actions": [...]}` with operation-specific named-entity action objects |
+| `director_state_actions_repair` | `SMART_EXTRACTOR_LLM_SETTINGS` | Repair the complete StateAction batch after reducer rejection | Same immutable RAW/opening vocabulary, rejected batch and first reducer failure | Complete corrected `{"state_actions": [...]}` batch |
 | `source_unit_state_effects` | `SMART_EXTRACTOR_LLM_SETTINGS` | Extract explicit durable source effects | One exact source unit and state context | Typed persistent effects, not activity alone |
 | `source_unit_terminal` | `SMART_EXTRACTOR_LLM_SETTINGS` | Classify whether a source unit is terminal | Story and current source unit | Binary terminal decision |
 | `source_unit_hard_reset` | `SMART_EXTRACTOR_LLM_SETTINGS` | Classify whether a new source unit resets story state | Adjacent source units | Binary hard-reset decision |
@@ -43,7 +45,7 @@
 | `beat_coherence_validation` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check physical and causal plausibility inside a Beat | Accepted-candidate Beat, source and relevant known state | Coherence validity and issue |
 | `beat_repair` | `SMART_CREATIVE_LLM_SETTINGS` | Repair a specific assigned Beat | Original assignment, failed Beat and validator issue | Corrected Beat |
 | `accepted_beat_state_extract` | `EXTRACTOR_LLM_SETTINGS` | Capture auxiliary post-Beat persistent facts | Accepted Beat and prior state/source context | Structured state patch |
-| `director_raw_scene` | `SMART_CREATIVE_LLM_SETTINGS` | Stage the current Beat as timed RAW, with reducer actions | Assigned source, current/next Beat, opening continuity, static setting, prop state and registered WorldState vocabulary | Timed RAW scene, completion fields, registered state_actions for dry-run |
+| `director_raw_scene` | `SMART_CREATIVE_LLM_SETTINGS` | Stage the current Beat as timed RAW | Current/next Beat, readable opening WorldState, previous-shot choreography, static setting and Subject definitions | Timed RAW scene and completion fields |
 | `director_raw_scene_physical` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check RAW spatial/action order | Current Beat, RAW, previous shot end, known Subjects and fixed setting | Physical validity and concrete issue |
 | `director_raw_scene_prop_state` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check RAW object provenance and transfers | Current Beat, RAW, previous shot end, prop ledger and static setting | Prop/state validity and issue |
 | `director_raw_scene_timing` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check feasible sequential timed actions | Timed RAW scene and segment duration contract | Timing validity and issue |
@@ -67,7 +69,7 @@
 
 - Text calls use one non-overlapping `LLM_PURPOSE_PROFILES` mapping. Purpose-specific context and max-output requirements are independent maps; the four profiles contain neither value.
 - `visual_end_state` uses the separate image-capable request implementation and `VISION_LLM_SETTINGS`; it does not fit one of the four text profiles and remains the only call outside the standardized profile router.
-- `director_raw_scene` now includes WorldState actions in the **same** response. At this checkpoint, state actions are dry-run validated but not committed as the canonical reducer result.
+- Director RAW generation and StateAction extraction are separate. The action extractor runs only after RAW validators/repairs and Subject resolution accept the RAW; reducer-valid actions are attached to the completed Segment result for the existing commit boundary. The RAW request retains readable WorldState continuity, including Subject locations/supports and held props, without receiving the StateAction vocabulary.
 - Some compatibility helpers (for example recent-results summary, continuity delta/validation or generic JSON repair) can be called through injected `llm_request` and inherited metadata. The table names the stable explicit purposes; helper calls without an explicit identifier are not separate canonical `purpose` names.
 - Context and max-output budgets remain per-request requirements, including 60,000-token story-pipeline contexts and specialized completion sizes. The default text-request output cap is 2048 tokens; purpose caps that were 1024 are now 2048. Smaller and larger task-specific caps remain unchanged. The separate image-capable `visual_end_state` request cannot use a text profile.
 - The settings profile, live input shape, output schema, and prompt strings can change independently. When a call is added/removed or its route/contracts change, update this file from actual call sites and update the handoff with the active implementation details. Do not use this index as an alternative runtime source of truth.

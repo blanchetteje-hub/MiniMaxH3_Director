@@ -1791,6 +1791,55 @@ def _action_field_schema(
     )
 
 
+def _state_action_prompt_shapes(
+    action_schemas: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Describe the request's exact permitted object shapes for LLM prompts."""
+    reference_labels = {
+        "subject": "Subject",
+        "location": "location",
+        "prop": "prop",
+        "support": "support",
+    }
+    shapes = []
+    for action_schema in action_schemas:
+        properties = action_schema.get("properties", {})
+        op = properties.get("op", {}).get("const")
+        operation = ACTION_CONTRACT.get(op)
+        if not isinstance(operation, dict):
+            continue
+        shape = {
+            "action_id": "<unique action id>",
+            "op": op,
+        }
+        for field_name, field_contract in operation["fields"].items():
+            if field_name not in properties:
+                continue
+            reference_kind = field_contract.get("ref")
+            if reference_kind:
+                label = reference_labels[reference_kind]
+                nullable = bool(field_contract.get("nullable"))
+                values = properties[field_name].get("enum", [])
+                has_registered_name = any(value is not None for value in values)
+                if nullable and not has_registered_name:
+                    value = None
+                elif nullable:
+                    value = f"<registered {label} name or null>"
+                else:
+                    value = f"<registered {label} name>"
+            elif "enum" in field_contract:
+                value = "<" + "|".join(
+                    str(item) for item in field_contract["enum"]
+                ) + ">"
+            elif "null" in field_contract.get("type", []):
+                value = "<non-empty string or null>"
+            else:
+                value = "<non-empty string>"
+            shape[field_name] = value
+        shapes.append(shape)
+    return shapes
+
+
 def _registered_name_is_referenced(name: str, segment_text: str) -> bool:
     text = " ".join(str(segment_text or "").casefold().split())
     normalized_name = " ".join(str(name or "").casefold().split())
@@ -2049,6 +2098,7 @@ def build_state_action_only_contract(
         "response_format": format_schema,
         "vocabulary": vocabulary,
         "name_resolution": name_resolution,
+        "prompt_operation_shapes": _state_action_prompt_shapes(action_schemas),
     }
 
 
