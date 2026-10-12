@@ -119,11 +119,11 @@ def test_pre_director_replay_skips_upstream_llms_and_matches_request1(tmp_path):
         "director_raw_scene_creative"
     )
     assert first_request["kwargs"]["response_format"] is None
-    raw_schema = minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT["json_schema"][
-        "schema"
-    ]
-    assert "state_actions" not in raw_schema["properties"]
-    assert "state_actions" not in raw_schema["required"]
+    timing_schema = minimax.ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT[
+        "json_schema"
+    ]["schema"]
+    assert set(timing_schema["properties"]) == {"status", "timed_scene"}
+    assert timing_schema["required"] == ["status", "timed_scene"]
     assert first_request["kwargs"]["history_metadata"]["segment"] == 1
     assert first_request["kwargs"]["history_metadata"]["opening_state_sha256"] == (
         fixture["provenance"]["opening_world_state_sha256"]

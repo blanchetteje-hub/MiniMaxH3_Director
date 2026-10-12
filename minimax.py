@@ -416,6 +416,7 @@ BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
 DIRECTOR_RAW_SCENE_ATTEMPTS = 5
 DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS = 5
+DIRECTOR_RAW_REFINER_ATTEMPTS = 3
 DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS = 5
 
 BEAT_VALIDATION_STATE_VERSION = 3
@@ -534,7 +535,8 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "beat_repair": SMART_CREATIVE_LLM_SETTINGS,
     "accepted_beat_state_extract": EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_creative": SMART_CREATIVE_LLM_SETTINGS,
-    "director_raw_scene": SMART_CREATIVE_LLM_SETTINGS,
+    "add_scene_timing_refiner": SMART_EXTRACTOR_LLM_SETTINGS,
+    "add_camera_refiner": SMART_CREATIVE_LLM_SETTINGS,
     "director_raw_scene_repair": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_state_actions": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_state_actions_repair": SMART_EXTRACTOR_LLM_SETTINGS,
@@ -581,7 +583,8 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "beat_generation": 8192,
     "beat_repair": 8192,
     "director_raw_scene_creative": 8192,
-    "director_raw_scene": 8192,
+    "add_scene_timing_refiner": 8192,
+    "add_camera_refiner": 8192,
     "director_raw_scene_repair": 8192,
     "director_state_actions": 4096,
     "director_state_actions_repair": 4096,
@@ -795,33 +798,23 @@ H3_MUSIC_RESPONSE_FORMAT = {
     },
 }
 
-DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
+ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
-        "name": "director_raw_scene",
-        "strict": False,
+        "name": "add_scene_timing_refiner",
+        "strict": True,
         "schema": {
             "type": "object",
             "properties": {
-                "raw_scene": {
+                "status": {
                     "type": "string",
-                    "description": (
-                        "Concrete timed scene that stages CURRENT BEAT without "
-                        "beginning NEXT BEAT."
-                    ),
+                    "enum": ["ok", "not_enough_time"],
                 },
-                "finite_activity_complete": {"type": "boolean"},
-                "named_beneficiaries_complete": {"type": "boolean"},
-                "activity_tools_settled": {"type": "boolean"},
-                "beat_complete": {"type": "boolean"},
+                "timed_scene": {
+                    "type": "string",
+                },
             },
-            "required": [
-                "raw_scene",
-                "finite_activity_complete",
-                "named_beneficiaries_complete",
-                "activity_tools_settled",
-                "beat_complete",
-            ],
+            "required": ["status", "timed_scene"],
             "additionalProperties": False,
         },
     },
@@ -1235,40 +1228,26 @@ RETURN
 Sentences of actions that occur in the scene separated by new lines.
 """
 
-DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the creative director for one {segment_seconds}-second video segment.
+ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE = """Add timestamps to RAW SCENE for a {segment_length}-second video.
 
-JOB
-- CURRENT BEAT is the story authority for what happens now and the scene to stage in this clip.
-- PREVIOUS SHOT END is frame-0 context for continuation shots. Start there without replaying it; if it conflicts with CURRENT BEAT, CURRENT BEAT wins.
-- CANONICAL STARTING CHARACTER FACTS, when provided, are authoritative identity/appearance facts. Establish applicable visible facts for characters already present in CURRENT BEAT or ASSIGNED SOURCE; never introduce a character only to show a canonical fact.
+Preserve every action, word, participant, prop, location, and their order exactly. Only add timestamps.
 
-WRITE THE SCENE
-- Show CURRENT BEAT clearly with concrete visible/audible action.
-- Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the final continuity state.
-- Add only details needed to physically connect or clearly show CURRENT BEAT.
-- Preserve spatial continuity. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
-- Preserve body support/elevation literally. Do not put a subject onto, over, across, or down from a counter, table, bar, shelf, stool, or other support unless the prior state establishes that route/position or CURRENT BEAT requires it. Prefer ordinary floor routes over gratuitous climbing. A subject may not climb furniture merely to reach an ordinary prop, perform routine work, or add visual business when a floor-level route or reachable surface is available.
-- Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
-- Preserve prop identity.
+Assign realistic times based on the duration of the actions. Do not compress physically impossible sequences to fit.
 
-CAMERA CHOREOGRAPHY
-{camera_choreography_rules}
-- CONTINUATION: the supplied opening guide is the visual authority for frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. Describe only the inherited continuation frame before CURRENT BEAT; do not reconstruct every known subject into view.
-- Keep all timed action inside the {segment_seconds}-second clip.
-- Spread CURRENT BEAT naturally across the clip with at least {segment_min_beats} timed micro-beats, with the final timed micro-beat in the final quarter.
-- Use timestamp lines in the form "At 00:ss.mmm," and begin at 00:00.000.
-- After the timed action, include exactly one short "End continuity state:" sentence describing the actual last visible frame. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state.
+If the entire scene cannot reasonably fit, return not_enough_time.
 
-{story_segment_ending_rules}
+Return only JSON with status and timed_scene.
+"""
 
-COMPLETION CHECK
-- finite_activity_complete: true only if finite action assigned by CURRENT BEAT reaches an observable endpoint in this clip.
-- named_beneficiaries_complete: true only if every named person or target explicitly required by CURRENT BEAT receives the assigned action/result.
-- activity_tools_settled: true only if tools/props used by CURRENT BEAT reach the required end condition.
-- beat_complete: true only when all three checks above are true.
+ADD_CAMERA_REFINER_SYSTEM = """Add camera movements to TIMED SCENE.
 
-RETURN JSON ONLY
-{{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true}}
+Preserve all existing timestamps and action text exactly. Do not add, remove, reorder, or rewrite any action.
+
+Add only camera instructions to existing timestamp lines. Use a continuous shot unless CURRENT BEAT explicitly requires a cut. Camera movement must follow, reveal, or frame the existing action.
+
+If no camera movement is needed, leave the scene unchanged.
+
+Return only the camera-refined scene.
 """
 # Request 2 is a formatter/translator. Request 1 owns creative direction.
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
@@ -10807,7 +10786,8 @@ def ask_llm(
     }
     response_history_purposes = beat_history_purposes | {
         "director_raw_scene_creative",
-        "director_raw_scene",
+        "add_scene_timing_refiner",
+        "add_camera_refiner",
         "director_raw_scene_repair",
         "director_raw_scene_physical",
         "director_raw_scene_prop_state",
@@ -22127,20 +22107,9 @@ def build_story_segment_ending_rules(is_final_story_segment):
 
 # Return the Director camera choreography rules.
 def build_director_camera_choreography_rules(segment_number, conditioning_mode=None):
-    """Return the shared camera rules used by every Director segment."""
+    """Retired; camera choreography is handled by add_camera_refiner."""
     del segment_number, conditioning_mode
-    lines = [
-        "- Stage the entire segment as one continuous camera take. Do not use "
-        "cuts unless CURRENT BEAT explicitly requires a location change that "
-        "cannot be shown continuously.",
-        "- When framing, angle, distance, height, or viewed subject must change, "
-        "move the camera instead of cutting. Use natural English camera actions "
-        "such as pushes in, pulls out, pans left/right, trucks left/right, tilts "
-        "up/down, pedestals up/down, arcs around, or tracks with a moving subject. "
-        "A static shot is valid when movement would not help.",
-        "- Camera movement must follow, reveal, or refocus important story action.",
-    ]
-    return "\n".join(lines)
+    return ""
 
 
 # Return the narrow Request-1 Director system prompt.
@@ -22154,34 +22123,18 @@ def build_director_rules(
     conditioning_mode=None,
     is_final_story_segment=None,
 ):
-    """Return the narrow Request-1 Director system prompt.
-
-    The legacy signature is retained so repair/resume callers do not need a
-    separate compatibility path.  Segment duration, beat number, and the
-    deterministic story-ending status matter to this micro-prompt; all narrative
-    context is supplied in the user turn.
-    """
-    del total_length, subject_definitions, beats_enabled
-    delivered_seconds = float(segment_length)
-    director_seconds = delivered_seconds
-    if is_final_story_segment is None:
-        # Compatibility for direct callers that predate the explicit runtime
-        # boolean. Production callers pass this value explicitly.
-        is_final_story_segment = int(segment_number) == int(total_segments)
-    rules = DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-        segment_seconds=f"{director_seconds:g}",
-        final_quarter_start=f"{delivered_seconds * 0.75:g}",
-        segment_min_beats=max(0, int(math.ceil(delivered_seconds / 2))),
-        beat_number=int(segment_number),
-        story_segment_ending_rules=build_story_segment_ending_rules(
-            is_final_story_segment
-        ),
-        camera_choreography_rules=build_director_camera_choreography_rules(
-            segment_number,
-            conditioning_mode=conditioning_mode,
-        ),
+    """Retired legacy formatter builder; creative prompts are built separately."""
+    del (
+        total_length,
+        segment_length,
+        total_segments,
+        subject_definitions,
+        segment_number,
+        beats_enabled,
+        conditioning_mode,
+        is_final_story_segment,
     )
-    return rules
+    return ""
 
 
 # Return the active beat and the immediately following beat separately.
@@ -22232,75 +22185,139 @@ def _normalize_raw_scene_result(raw_result):
     return text
 
 
-# Parse Request 1's structured raw-scene response.
-def _parse_director_raw_scene_result(raw_result):
-    """Return Request 1's scene text and model-owned completion claim."""
+def _parse_add_scene_timing_refiner_result(raw_result):
+    """Parse the strict status/timed-scene response from the timing refiner."""
     candidate = raw_result
-    if isinstance(raw_result, str):
-        try:
-            candidate = parse_llm_json_content(
-                raw_result,
-                repair_on_failure=False,
-            )
-        except (TypeError, ValueError, json.JSONDecodeError):
-            candidate = raw_result
-
-    if isinstance(candidate, dict):
-        raw_scene_value = candidate.get("raw_scene")
-        raw_scene = (
-            _normalize_raw_scene_result(raw_scene_value)
-            if isinstance(raw_scene_value, str)
-            else ""
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"status", "timed_scene"}:
+        raise ValueError(
+            "Timing refiner response must contain exactly status and timed_scene."
         )
-        reported_beat_complete = candidate.get("beat_complete") is True
-        completion_checks_present = all(
-            key in candidate
-            for key in (
-                "finite_activity_complete",
-                "named_beneficiaries_complete",
-                "activity_tools_settled",
+    status = candidate.get("status")
+    timed_scene = candidate.get("timed_scene")
+    if status not in {"ok", "not_enough_time"}:
+        raise ValueError("Timing refiner returned an unknown status.")
+    if not isinstance(timed_scene, str):
+        raise ValueError("Timing refiner timed_scene must be a string.")
+    if status == "not_enough_time":
+        if timed_scene:
+            raise ValueError(
+                "not_enough_time requires an empty timed_scene."
             )
-        )
-        if completion_checks_present:
-            finite_activity_complete = (
-                candidate.get("finite_activity_complete") is True
-            )
-            named_beneficiaries_complete = (
-                candidate.get("named_beneficiaries_complete") is True
-            )
-            activity_tools_settled = (
-                candidate.get("activity_tools_settled") is True
-            )
-            beat_complete = (
-                reported_beat_complete
-                and finite_activity_complete
-                and named_beneficiaries_complete
-                and activity_tools_settled
-            )
-        else:
-            # Preserve legacy/mock callers that predate the expanded Request-1
-            # response contract. Production structured output requires all
-            # three explicit completion checks.
-            beat_complete = reported_beat_complete
-            finite_activity_complete = beat_complete
-            named_beneficiaries_complete = beat_complete
-            activity_tools_settled = beat_complete
-    else:
-        # Legacy/free-form responses contain no trustworthy completion claim.
-        # Preserve their text for diagnostics, but force Request 1 retry logic.
-        raw_scene = _normalize_raw_scene_result(candidate)
-        beat_complete = False
-        finite_activity_complete = False
-        named_beneficiaries_complete = False
-        activity_tools_settled = False
+        return {"status": status, "timed_scene": ""}
+    if not timed_scene.strip():
+        raise ValueError("Timing refiner returned an empty timed_scene.")
+    return {"status": status, "timed_scene": timed_scene}
 
-    return {
-        "raw_scene": raw_scene,
-        "finite_activity_complete": finite_activity_complete,
-        "named_beneficiaries_complete": named_beneficiaries_complete,
-        "activity_tools_settled": activity_tools_settled,
-        "beat_complete": beat_complete,
-    }
+
+def _timing_refiner_content_error(raw_scene, timed_scene, segment_seconds):
+    """Require timestamps to be the only changes to original action lines."""
+    source_lines = str(raw_scene or "").splitlines()
+    timed_lines = str(timed_scene or "").splitlines()
+    if len(source_lines) != len(timed_lines):
+        return (
+            "Timed output changed the number of RAW SCENE lines; only timestamp "
+            "prefixes may be added."
+        )
+    times = []
+    for line_number, (source_line, timed_line) in enumerate(
+        zip(source_lines, timed_lines),
+        start=1,
+    ):
+        if not source_line.strip():
+            if timed_line != source_line:
+                return f"Timed output changed blank line {line_number}."
+            continue
+        match = re.match(
+            r"^At (?P<minutes>\d{2}):(?P<seconds>\d{2})\."
+            r"(?P<milliseconds>\d{3}), (?P<action>.*)$",
+            timed_line,
+        )
+        if match is None:
+            return f"Timed output line {line_number} has no canonical timestamp prefix."
+        if match.group("action") != source_line:
+            return (
+                f"Timed output changed action text on line {line_number}; only a "
+                "timestamp prefix may be added."
+            )
+        minutes = int(match.group("minutes"))
+        seconds = int(match.group("seconds"))
+        milliseconds = int(match.group("milliseconds"))
+        if seconds >= 60:
+            return f"Timed output has invalid seconds on line {line_number}."
+        absolute_ms = (minutes * 60 + seconds) * 1000 + milliseconds
+        if absolute_ms >= float(segment_seconds) * 1000:
+            return (
+                f"Timed output timestamp on line {line_number} is outside the "
+                "segment duration."
+            )
+        times.append(absolute_ms)
+    if not times:
+        return "Timed output contains no timestamped actions."
+    if times[0] != 0:
+        return "Timed output must begin at 00:00.000."
+    if any(current <= previous for previous, current in zip(times, times[1:])):
+        return "Timed output timestamps must increase with the original action order."
+    return ""
+
+
+_DIRECTOR_CAMERA_PREFIX_RE = re.compile(
+    r"^At (?P<timestamp>\d{2}:\d{2}\.\d{3}, )(?P<body>.*)$"
+)
+_DIRECTOR_CAMERA_TAG_RE = re.compile(r"^\[CAMERA: [^\]\r\n]+\] (?P<action>.*)$")
+
+
+def _camera_refiner_content_error(timed_scene, camera_scene):
+    """Require camera output to preserve all lines and actions exactly."""
+    source_lines = str(timed_scene or "").splitlines()
+    camera_lines = str(camera_scene or "").splitlines()
+    if len(source_lines) != len(camera_lines):
+        return "Camera output changed the number of scene lines."
+    for line_number, (source_line, camera_line) in enumerate(
+        zip(source_lines, camera_lines),
+        start=1,
+    ):
+        if not source_line.strip():
+            if camera_line != source_line:
+                return f"Camera output changed blank line {line_number}."
+            continue
+        source_match = _DIRECTOR_CAMERA_PREFIX_RE.match(source_line)
+        camera_match = _DIRECTOR_CAMERA_PREFIX_RE.match(camera_line)
+        if source_match is None or camera_match is None:
+            return f"Camera output changed or removed timestamp line {line_number}."
+        if source_match.group("timestamp") != camera_match.group("timestamp"):
+            return f"Camera output changed timestamp on line {line_number}."
+        expected_action = source_match.group("body")
+        actual_body = camera_match.group("body")
+        tag_match = _DIRECTOR_CAMERA_TAG_RE.match(actual_body)
+        if tag_match is not None:
+            actual_body = tag_match.group("action")
+        if actual_body != expected_action:
+            return (
+                f"Camera output changed action text on line {line_number}; only a "
+                "[CAMERA: ...] annotation may be added."
+            )
+    return ""
+
+
+def _director_strip_camera_instructions(raw_scene):
+    """Remove only separately tagged camera instructions from RAW action lines."""
+    result = []
+    for line in str(raw_scene or "").splitlines():
+        match = _DIRECTOR_CAMERA_PREFIX_RE.match(line)
+        if match is None:
+            result.append(line)
+            continue
+        tag = _DIRECTOR_CAMERA_TAG_RE.match(match.group("body"))
+        if tag is None:
+            result.append(line)
+            continue
+        result.append(
+            line[:match.start("body")]
+            + tag.group("action")
+        )
+    return "\n".join(result)
 
 
 def _director_timestamp_range_errors(value, segment_seconds=None):
@@ -22507,7 +22524,7 @@ def _director_unassigned_release_from_storage_errors(raw_scene, assigned_source)
 
 def _director_raw_scene_last_timed_action(raw_scene):
     """Return the final timed action text without its timestamp."""
-    text = str(raw_scene or "")
+    text = _director_strip_camera_instructions(raw_scene)
     matches = list(_DIRECTOR_TIMESTAMP_RE.finditer(text))
     if not matches:
         return ""
@@ -22556,92 +22573,13 @@ def _normalize_director_end_continuity_marker(raw_scene):
     ).strip()
 
 
-def _format_director_timestamp_ms(absolute_ms):
-    """Return one canonical Director timestamp token for absolute milliseconds."""
-    absolute_ms = max(0, int(round(absolute_ms)))
-    minutes, remainder = divmod(absolute_ms, 60_000)
-    seconds, milliseconds = divmod(remainder, 1000)
-    return f"At {minutes:02d}:{seconds:02d}.{milliseconds:03d},"
-
-
-def _normalize_director_frame_zero(raw_scene):
-    """Insert Python-owned frame-zero staging when Request 1 starts later."""
-    text = str(raw_scene or "").strip()
-    marker = re.search(
-        r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
-        text,
-    )
-    if marker is None:
-        return text
-    timed_scene = text[:marker.start()].rstrip()
-    ending = text[marker.start():].lstrip()
-    timestamps = _director_timestamps(timed_scene)
-    if not timestamps or timestamps[0] == (0, 0):
-        return text
-
-    anchor = (
-        "At 00:00.000, The shot begins from the established opening state."
-    )
-    return f"{anchor}\n{timed_scene}\n{ending}".strip()
-
-
-def _normalize_director_final_quarter_timing(raw_scene, segment_seconds=None):
-    """Move only the final timestamp into the final quarter when needed."""
-    text = str(raw_scene or "").strip()
-    try:
-        duration = float(segment_seconds) if segment_seconds is not None else None
-    except (TypeError, ValueError):
-        duration = None
-    if duration is None or not math.isfinite(duration) or duration <= 0:
-        return text
-
-    marker = re.search(
-        r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
-        text,
-    )
-    if marker is None:
-        return text
-    timed_scene = text[:marker.start()].rstrip()
-    ending = text[marker.start():].lstrip()
-    matches = list(_DIRECTOR_CANONICAL_TIMESTAMP_RE.finditer(timed_scene))
-    timestamps = _director_timestamps(timed_scene)
-    if not matches or not timestamps:
-        return text
-
-    last_seconds, last_milliseconds = timestamps[-1]
-    last_ms = last_seconds * 1000 + last_milliseconds
-    target_ms = int(round(duration * 0.75 * 1000.0))
-    if last_ms >= target_ms:
-        return text
-
-    if last_ms <= 0:
-        hold = (
-            _format_director_timestamp_ms(target_ms)
-            + " The camera holds on the final visible result of the completed action."
-        )
-        return f"{timed_scene}\n{hold}\n{ending}".strip()
-
-    last_match = matches[-1]
-    retimed = (
-        timed_scene[:last_match.start()]
-        + _format_director_timestamp_ms(target_ms)
-        + timed_scene[last_match.end():]
-    )
-    return f"{retimed.rstrip()}\n{ending}".strip()
-
-
 def _normalize_director_raw_scene_structure(raw_scene, segment_seconds=None):
-    """Repair deterministic RAW structure before semantic validation."""
+    """Canonicalize existing timestamps and ensure the trailing state marker."""
     text = _canonicalize_director_timestamps(raw_scene).strip()
     if not text or text == "N/A":
         return text
-    text = _normalize_director_end_continuity_marker(text)
-    text = _normalize_director_frame_zero(text)
-    text = _normalize_director_final_quarter_timing(
-        text,
-        segment_seconds=segment_seconds,
-    )
-    return text
+    del segment_seconds
+    return _normalize_director_end_continuity_marker(text)
 
 
 def _director_raw_scene_structure_errors(
@@ -22715,20 +22653,6 @@ def _director_raw_scene_structure_errors(
     )
     if range_errors:
         return range_errors
-    try:
-        duration = float(segment_seconds) if segment_seconds is not None else None
-    except (TypeError, ValueError):
-        duration = None
-    if duration is not None and math.isfinite(duration) and duration > 0:
-        last_seconds, last_milliseconds = timestamps[-1]
-        last_time = last_seconds + (last_milliseconds / 1000.0)
-        coverage_floor = duration * 0.75
-        if last_time < coverage_floor:
-            return [
-                f"RAW SCENE ends its timed action at {last_time:g}s, too early for "
-                f"a {duration:g}-second segment; the final timed micro-beat must "
-                f"land in the final quarter (at or after {coverage_floor:g}s)."
-            ]
     if _DIRECTOR_TIMESTAMP_RE.search(ending_state):
         return ["End continuity state must be the trailing untimed final-frame statement."]
     state_restatement_errors = _director_timed_state_restatement_errors(timed_scene)
@@ -22751,25 +22675,6 @@ def _director_timestamps(value):
             )
         )
     return timestamps
-
-
-_CONTINUATION_FRAME_ZERO_RE = re.compile(
-    r"(?im)^[ \t]*At 00:00\.000,[^\r\n]*"
-)
-
-
-def _anchor_continuation_frame_zero_to_guide(raw_scene):
-    """Make the native Guide, not prompt-derived state, own visible frame zero."""
-    replacement = (
-        "At 00:00.000, The shot continues exactly from the supplied opening guide, "
-        "preserving its camera composition, currently visible subjects, positions, "
-        "poses, props, lighting, and ongoing motion."
-    )
-    return _CONTINUATION_FRAME_ZERO_RE.sub(
-        replacement,
-        str(raw_scene or ""),
-        count=1,
-    )
 
 
 def _director_raw_scene_timeline_duration(segment_seconds, conditioning_mode):
@@ -38378,35 +38283,54 @@ def build_director_raw_scene_creative_messages(base_messages, segment_length):
     return messages
 
 
-def build_director_raw_scene_formatting_messages(base_messages, creative_scene):
-    """Add the accepted untimed scene to the existing timed Director contract."""
-    messages = copy.deepcopy(base_messages or [])
-    user_message = next(
-        (message for message in reversed(messages) if message.get("role") == "user"),
-        None,
-    )
-    if user_message is None:
-        raise ValueError("Director formatting request has no user context.")
-    content = str(user_message.get("content") or "")
-    accepted_scene = str(creative_scene or "").strip()
-    formatting_instruction = (
-        "ACCEPTED CREATIVE RAW — preserve its physical actions, participants, "
-        "results, and order while formatting it into the timed scene required "
-        "by this request. Do not add or omit physical actions.\n"
-        f"{accepted_scene}\n\n"
-    )
-    return_marker = "RETURN only JSON."
-    marker_index = content.rfind(return_marker)
-    if marker_index >= 0:
-        content = (
-            content[:marker_index]
-            + formatting_instruction
-            + content[marker_index:]
-        )
-    else:
-        content = content.rstrip() + "\n\n" + formatting_instruction
-    user_message["content"] = content
+def build_add_scene_timing_refiner_messages(raw_scene, segment_seconds, issue=""):
+    """Build the dedicated timing-only request for the original RAW actions."""
+    try:
+        duration = float(segment_seconds)
+    except (TypeError, ValueError):
+        duration = 0.0
+    messages = [
+        {
+            "role": "system",
+            "content": ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE.format(
+                segment_length=f"{duration:g}"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "RAW SCENE\n"
+                f"{str(raw_scene or '')}"
+                + (
+                    "\n\nTIMING REFINER ISSUE\n"
+                    + str(issue).strip()
+                    if str(issue or "").strip()
+                    else ""
+                )
+            ),
+        },
+    ]
     return messages
+
+
+def build_add_camera_refiner_messages(current_beat, timed_scene):
+    """Build the camera-only request with a parseable annotation convention."""
+    return [
+        {"role": "system", "content": ADD_CAMERA_REFINER_SYSTEM},
+        {
+            "role": "user",
+            "content": (
+                "CURRENT BEAT\n"
+                f"{str(current_beat or 'N/A').strip()}\n\n"
+                "TIMED SCENE\n"
+                f"{str(timed_scene or '')}\n\n"
+                "CAMERA INSTRUCTION FORMAT\n"
+                "If adding a camera instruction, place it immediately after the "
+                "existing timestamp as `[CAMERA: instruction] `, followed by "
+                "the original action text unchanged. Add no other text."
+            ),
+        },
+    ]
 
 
 def request_segment_llm(bundle, beats, run_id, run_config):
@@ -38460,23 +38384,34 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         "pre_director_replay_expected_messages"
     )
     if expected_replay_messages is not None:
-        if request1_base_messages != expected_replay_messages:
+        # The fixture may contain the retired one-call system prompt. Replay
+        # equivalence is about the deterministic dynamic user context; each
+        # current stage owns its own system prompt.
+        actual_replay_context = [
+            message for message in request1_base_messages
+            if message.get("role") != "system"
+        ]
+        expected_replay_context = [
+            message for message in expected_replay_messages
+            if message.get("role") != "system"
+        ]
+        if actual_replay_context != expected_replay_context:
             mismatch_index = next(
                 (
                     index for index, (actual, expected) in enumerate(zip(
-                        request1_base_messages, expected_replay_messages,
+                        actual_replay_context, expected_replay_context,
                     ))
                     if actual != expected
                 ),
-                min(len(request1_base_messages), len(expected_replay_messages)),
+                min(len(actual_replay_context), len(expected_replay_context)),
             )
             actual_message = (
-                request1_base_messages[mismatch_index]
-                if mismatch_index < len(request1_base_messages) else {}
+                actual_replay_context[mismatch_index]
+                if mismatch_index < len(actual_replay_context) else {}
             )
             expected_message = (
-                expected_replay_messages[mismatch_index]
-                if mismatch_index < len(expected_replay_messages) else {}
+                expected_replay_context[mismatch_index]
+                if mismatch_index < len(expected_replay_context) else {}
             )
             actual_content = str(actual_message.get("content") or "")
             expected_content = str(expected_message.get("content") or "")
@@ -38740,45 +38675,234 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         if regenerate_raw:
             continue
 
-        request1_metadata = {
-            **validator_metadata,
-            "purpose": "director_raw_scene",
-            "attempt": request1_attempt,
-            "stage": "timed_format",
-        }
-        request1_format_messages = build_director_raw_scene_formatting_messages(
-            request1_messages,
-            creative_scene,
-        )
-        raw_scene_result = ask_llm(
-            request1_format_messages,
-            response_format=DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
-            history_metadata=request1_metadata,
-        )
-        console_log(
-            "DIRECTOR TIMED RAW FORMAT RESPONSE " + json.dumps(
-                {
-                    "segment": segment_number,
-                    "attempt": request1_attempt,
-                    "opening_state_sha256": bundle.get("opening_state_sha256"),
-                    "accepted_creative_raw": creative_scene,
-                    "response": raw_scene_result,
-                },
-                ensure_ascii=False,
-                default=str,
-            ),
-            flush=True,
-        )
-        request1_result = _parse_director_raw_scene_result(raw_scene_result)
-        raw_scene = _normalize_director_raw_scene_structure(
-            request1_result.get("raw_scene", ""),
-            segment_seconds=duration,
+        timed_scene = ""
+        timing_failure = ""
+        timing_infeasible = False
+        for timing_attempt in range(1, DIRECTOR_RAW_REFINER_ATTEMPTS + 1):
+            timing_output = None
+            try:
+                timing_output = ask_llm(
+                    build_add_scene_timing_refiner_messages(
+                        creative_scene,
+                        duration,
+                        issue=timing_failure,
+                    ),
+                    response_format=ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT,
+                    history_metadata={
+                        **validator_metadata,
+                        "purpose": "add_scene_timing_refiner",
+                        "attempt": timing_attempt,
+                        "director_attempt": request1_attempt,
+                    },
+                )
+                timing_result = _parse_add_scene_timing_refiner_result(
+                    timing_output
+                )
+                if timing_result["status"] == "not_enough_time":
+                    timing_infeasible = True
+                    timing_failure = (
+                        "The accepted creative scene cannot reasonably fit in "
+                        f"{duration:g} seconds."
+                    )
+                    console_log(
+                        "DIRECTOR TIMING REFINER RESPONSE " + json.dumps(
+                            {
+                                "segment": segment_number,
+                                "director_attempt": request1_attempt,
+                                "timing_attempt": timing_attempt,
+                                "creative_scene": creative_scene,
+                                "response": timing_output,
+                                "issue": timing_failure,
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        ),
+                        flush=True,
+                    )
+                    break
+                timing_failure = _timing_refiner_content_error(
+                    creative_scene,
+                    timing_result["timed_scene"],
+                    duration,
+                )
+                if not timing_failure:
+                    timed_scene = timing_result["timed_scene"]
+                    console_log(
+                        "DIRECTOR TIMING REFINER RESPONSE " + json.dumps(
+                            {
+                                "segment": segment_number,
+                                "director_attempt": request1_attempt,
+                                "timing_attempt": timing_attempt,
+                                "creative_scene": creative_scene,
+                                "response": timing_output,
+                                "accepted": True,
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        ),
+                        flush=True,
+                    )
+                    break
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+                json.JSONDecodeError,
+            ) as error:
+                timing_failure = f"Malformed timing-refiner response: {error}"
+            console_log(
+                "DIRECTOR TIMING REFINER RESPONSE " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "timing_attempt": timing_attempt,
+                        "opening_state_sha256": bundle.get(
+                            "opening_state_sha256"
+                        ),
+                        "creative_scene": creative_scene,
+                        "response": timing_output,
+                        "issue": timing_failure,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+        if timing_infeasible:
+            console_log(
+                "DIRECTOR TIMING INFEASIBLE " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "issue": timing_failure,
+                    },
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
+            if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                raise BeatGenerationError(
+                    f"Director timing remained infeasible for Segment "
+                    f"{segment_number} after {DIRECTOR_RAW_SCENE_ATTEMPTS} "
+                    f"creative attempts: {timing_failure}"
+                )
+            request1_messages = build_request1_retry_messages(
+                f"TIMING INFEASIBLE: {timing_failure}"
+            )
+            continue
+        if not timed_scene:
+            raise BeatGenerationError(
+                f"Timing refiner failed to preserve the accepted RAW scene for "
+                f"Segment {segment_number} after "
+                f"{DIRECTOR_RAW_REFINER_ATTEMPTS} attempts: {timing_failure}"
+            )
+
+        camera_scene = timed_scene
+        camera_failure = ""
+        camera_accepted = False
+        for camera_attempt in range(1, DIRECTOR_RAW_REFINER_ATTEMPTS + 1):
+            camera_output = None
+            try:
+                camera_output = ask_llm(
+                    build_add_camera_refiner_messages(
+                        current_beat_text,
+                        timed_scene,
+                    ),
+                    response_format=None,
+                    parse_json_response=False,
+                    history_metadata={
+                        **validator_metadata,
+                        "purpose": "add_camera_refiner",
+                        "attempt": camera_attempt,
+                        "director_attempt": request1_attempt,
+                    },
+                )
+                if not isinstance(camera_output, str):
+                    raise ValueError("Camera refiner must return scene text.")
+                camera_failure = _camera_refiner_content_error(
+                    timed_scene,
+                    camera_output,
+                )
+                if not camera_failure:
+                    camera_scene = camera_output
+                    camera_accepted = True
+                    console_log(
+                        "DIRECTOR CAMERA REFINER RESPONSE " + json.dumps(
+                            {
+                                "segment": segment_number,
+                                "director_attempt": request1_attempt,
+                                "camera_attempt": camera_attempt,
+                                "timed_scene": timed_scene,
+                                "response": camera_output,
+                                "accepted": True,
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        ),
+                        flush=True,
+                    )
+                    break
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+            ) as error:
+                camera_failure = f"Malformed camera-refiner response: {error}"
+            console_log(
+                "DIRECTOR CAMERA REFINER RESPONSE " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "camera_attempt": camera_attempt,
+                        "timed_scene": timed_scene,
+                        "response": camera_output,
+                        "issue": camera_failure,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+        if not camera_accepted:
+            camera_scene = timed_scene
+            console_log(
+                "DIRECTOR CAMERA REFINER FALLBACK " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "attempts": DIRECTOR_RAW_REFINER_ATTEMPTS,
+                        "issue": camera_failure,
+                        "fallback": "accepted timed scene unchanged",
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+
+        raw_scene = _normalize_director_end_continuity_marker(
+            camera_scene
         ).strip()
+        request1_result = {
+            "raw_scene": raw_scene,
+            "finite_activity_complete": False,
+            "named_beneficiaries_complete": False,
+            "activity_tools_settled": False,
+            "beat_complete": False,
+            "completion_metadata_source": "existing_raw_validation_pending",
+        }
         if raw_scene and raw_scene != "N/A":
             request1_result["raw_scene"] = raw_scene
 
             def validate_raw_candidate(candidate, repair_attempt=None):
                 """Return the first failing RAW-scene validator and its issue."""
+                semantic_candidate = _director_strip_camera_instructions(
+                    candidate
+                )
                 structure_errors = _director_raw_scene_structure_errors(
                     candidate,
                     duration,
@@ -38803,7 +38927,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
                 dialogue_issue = director_required_dialogue_issue(
                     current_beat_text,
-                    candidate,
+                    semantic_candidate,
                 )
                 if dialogue_issue:
                     issue = (
@@ -38834,7 +38958,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 try:
                     physical = validate_director_raw_scene_physical(
                         current_beat_text,
-                        candidate,
+                        semantic_candidate,
                         previous_shot_end=previous_shot_end,
                         static_setting_description=static_setting_description,
                         known_subject_state=world_state_opening,
@@ -38872,7 +38996,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 try:
                     prop_state = validate_director_raw_scene_prop_state(
                         current_beat_text,
-                        candidate,
+                        semantic_candidate,
                         previous_shot_end=previous_shot_end,
                         prop_ledger=prop_ledger,
                         static_setting_description=static_setting_description,
@@ -38909,7 +39033,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
                 try:
                     timing = validate_director_raw_scene_timing(
-                        candidate,
+                        semantic_candidate,
                         history_metadata=raw_validator_metadata(repair_attempt),
                     )
                 except (
@@ -39026,6 +39150,17 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
             if regenerate_raw:
                 continue
+
+            # The old combined formatter's self-reported completion flags no
+            # longer exist. Preserve their downstream shape as a record that
+            # the accepted split RAW pipeline passed every blocking validator.
+            request1_result.update({
+                "finite_activity_complete": True,
+                "named_beneficiaries_complete": True,
+                "activity_tools_settled": True,
+                "beat_complete": True,
+                "completion_metadata_source": "validated_split_raw_pipeline",
+            })
 
             # Baseline-reset rule: old deterministic Director guards report
             # defects but do not reject or regenerate the scene. This lets a
@@ -39155,7 +39290,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             raw_scene,
             continuation_offset,
         )
-        raw_scene = _anchor_continuation_frame_zero_to_guide(raw_scene)
         shifted_range_errors = _director_timestamp_range_errors(
             raw_scene,
             segment_seconds=h3_prompt_duration,
@@ -39776,7 +39910,10 @@ def load_pre_director_replay_fixture(path):
             "Director opening hash."
         )
     if (
-        request_metadata.get("purpose") != "director_raw_scene"
+        request_metadata.get("purpose") not in {
+            "director_raw_scene",
+            "director_raw_scene_creative",
+        }
         or request_metadata.get("segment") != 1
     ):
         raise ValueError("Replay reference must be the first Director Request 1.")
@@ -41388,7 +41525,7 @@ def _run_main(
         try:
             state_action_result = extract_and_dry_run_director_state_actions(
                 opening_world_state,
-                resolved_raw_scene,
+                _director_strip_camera_instructions(resolved_raw_scene),
                 segment_number=segment,
                 run_id=run_id,
                 run_config=run_config,

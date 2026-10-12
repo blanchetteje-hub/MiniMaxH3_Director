@@ -985,7 +985,7 @@ class LlmHostIntegrationTests(unittest.TestCase):
                 max_retries=2,
                 retry_delay=0,
                 response_format=None,
-                history_metadata={"purpose": "director_raw_scene"},
+                history_metadata={"purpose": "director_raw_scene_creative"},
             ),
             payload,
         )

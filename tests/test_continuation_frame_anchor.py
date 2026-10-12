@@ -161,20 +161,6 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
             batch_connections,
         )
 
-    def test_continuation_frame_zero_uses_guide_instead_of_reconstructing_cast(self):
-        raw = (
-            "At 00:00.000, Amy, Goblin1, and Dragon1 fill a reconstructed wide shot.\n\n"
-            "At 00:01.000, Griffin1 enters from the far end.\n\n"
-            "End continuity state: Griffin1 stands beside Amy."
-        )
-        anchored = minimax._anchor_continuation_frame_zero_to_guide(raw)
-        first_line = anchored.splitlines()[0]
-        self.assertIn("supplied opening guide", first_line)
-        self.assertNotIn("Goblin1", first_line)
-        self.assertNotIn("Dragon1", first_line)
-        self.assertIn("At 00:01.000, Griffin1 enters", anchored)
-        self.assertIn("End continuity state: Griffin1 stands beside Amy.", anchored)
-
     def test_continuation_timestamp_shift_hides_guide_math_from_director(self):
         raw = (
             "At 00:00.000, Amy stands beside the barrel.\n\n"

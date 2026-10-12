@@ -21,7 +21,8 @@ EXPECTED_PROFILE_PURPOSES = {
         "macro_arc_repair",
         "beat_generation",
         "beat_repair",
-        "director_raw_scene",
+        "director_raw_scene_creative",
+        "add_camera_refiner",
     },
     "extractor": {
         "story_location_extract",
@@ -60,6 +61,7 @@ EXPECTED_PROFILE_PURPOSES = {
         "director_raw_scene_physical",
         "director_raw_scene_prop_state",
         "director_raw_scene_timing",
+        "add_scene_timing_refiner",
         "director_raw_scene_visible_subject_resolution",
         "director_raw_scene_coherence",
         "continuity_combined_reduced_state",
@@ -67,6 +69,8 @@ EXPECTED_PROFILE_PURPOSES = {
         "combined_continuity",
         "subject_continuity",
         "final_h3_action_preservation",
+        "director_state_actions",
+        "director_state_actions_repair",
     },
 }
 

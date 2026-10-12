@@ -52,11 +52,16 @@ class LocationStatePostmortemTests(unittest.TestCase):
             48,
             total_segments=6,
         )
-        text = "\n".join(message["content"] for message in messages)
+        text = " ".join(
+            "\n".join(message["content"] for message in messages).split()
+        )
         self.assertIn("film-ready", text)
         self.assertIn("physically unambiguous", text)
         self.assertIn("Describe physical actions literally", text)
-        self.assertIn("Avoid poetic or figurative wording", text)
+        self.assertIn(
+            "Avoid poetic or figurative wording when it could change how an action or object is visualized.",
+            text,
+        )
         self.assertNotIn("You are a novelist", text)
 
     def test_director_requires_direct_dialogue_for_explicit_speech_beat(self):
@@ -74,24 +79,27 @@ class LocationStatePostmortemTests(unittest.TestCase):
             "",
         )
 
-    def test_director_prompt_forbids_spatial_teleport_and_indirect_speech(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE
-        self.assertIn("show the actor moving there first", prompt)
-        self.assertIn("do not use impossible reach, teleportation, or a hidden cut", prompt)
-        self.assertIn("write a brief direct spoken line using <d>...</d>", prompt)
-        self.assertIn("Do not add intelligible dialogue", prompt)
+    def test_spatial_and_dialogue_rules_remain_in_their_existing_validators(self):
+        physical = minimax.build_director_raw_scene_physical_messages(
+            "Amy crosses the room.",
+            "At 00:00.000, Amy crosses the room.",
+        )
+        text = "\n".join(message["content"] for message in physical)
+        self.assertIn("subject movement", text)
+        self.assertIn("CURRENT BEAT", text)
+        self.assertIn("STATIC SETTING AUTHORITY", text)
+        issue = minimax.director_required_dialogue_issue(
+            "Amy asks for help.",
+            "At 00:00.000, Amy looks toward Will.",
+        )
+        self.assertIn("no <d>...</d> dialogue", issue)
 
-    def test_director_prompt_requires_subject_prop_and_position_provenance(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE
-        self.assertIn("newly introduced foreground subject", prompt)
-        self.assertIn("physically entering through a stated route/boundary", prompt)
-        self.assertIn('Do not use "appears"', prompt)
-        self.assertIn("Preserve prop identity and provenance", prompt)
-        self.assertIn("must not silently become a different object", prompt)
-        self.assertIn("source container and destination container distinct", prompt)
-        self.assertIn("This applies to every established position", prompt)
+    def test_retired_monolithic_director_prompt_is_not_still_exposed(self):
+        self.assertFalse(hasattr(minimax, "DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE"))
+        self.assertFalse(hasattr(minimax, "DIRECTOR_RAW_SCENE_RESPONSE_FORMAT"))
+        self.assertEqual(minimax.build_director_rules(8, 8, 1, "", 1), "")
 
-    def test_coherence_validator_checks_subject_prop_and_position_provenance(self):
+    def test_coherence_compatibility_builder_uses_physical_prompt_contract(self):
         messages = minimax.build_director_raw_scene_coherence_messages(
             "A goblin arrives and Amy serves it.",
             (
@@ -103,11 +111,10 @@ class LocationStatePostmortemTests(unittest.TestCase):
             previous_shot_end="Amy stands beside the barrel holding a bucket.",
         )
         text = "\n".join(message["content"] for message in messages)
-        self.assertIn("first appearance needs visible provenance", text)
-        self.assertIn("'appears'", text)
-        self.assertIn("different established position", text)
-        self.assertIn("prop cannot silently become another prop", text)
-        self.assertIn("source and destination containers", text)
+        self.assertIn("subject movement", text)
+        self.assertIn("CURRENT BEAT", text)
+        self.assertIn("STATIC SETTING AUTHORITY", text)
+        self.assertIn("RAW SCENE", text)
 
     def test_registered_subject_said_dialogue_gets_stable_speaker_id(self):
         definitions = (

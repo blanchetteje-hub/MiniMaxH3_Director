@@ -1,6 +1,6 @@
 # LLM Prompt / Call Inventory
 
-**Branch audited:** `world-state-rebuild` (2026-10-11). **Primary source:** `minimax.py` and `story_planner.py`, including the text request profile map and observed call sites. This is an **index of LLM calls, not verbatim user/system prompt text**: runtime prompts remain user-owned in source. Do not edit prompts merely to make the descriptions here match.
+**Branch audited:** `director-split-testing` (2026-10-12). **Primary source:** `minimax.py` and `story_planner.py`, including the text request profile map and observed call sites. This is an **index of LLM calls, not verbatim user/system prompt text**: runtime prompts remain user-owned in source. Do not edit prompts merely to make the descriptions here match.
 
 **How to read:** `purpose` selects one of four immutable sampling/reasoning profiles. Context budgets and output-token limits are maintained separately per purpose. Unknown text purposes use `EXTRACTOR_LLM_SETTINGS` plus the standard context/output defaults. `visual_end_state` uses a separate multimodal vision request. A listed purpose does not guarantee execution on every run; some calls are conditional, diagnostic, compatibility, or legacy paths.
 
@@ -45,7 +45,9 @@
 | `beat_coherence_validation` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check physical and causal plausibility inside a Beat | Accepted-candidate Beat, source and relevant known state | Coherence validity and issue |
 | `beat_repair` | `SMART_CREATIVE_LLM_SETTINGS` | Repair a specific assigned Beat | Original assignment, failed Beat and validator issue | Corrected Beat |
 | `accepted_beat_state_extract` | `EXTRACTOR_LLM_SETTINGS` | Capture auxiliary post-Beat persistent facts | Accepted Beat and prior state/source context | Structured state patch |
-| `director_raw_scene` | `SMART_CREATIVE_LLM_SETTINGS` | Stage the current Beat as timed RAW | Current/next Beat, readable opening WorldState, previous-shot choreography, static setting and Subject definitions | Timed RAW scene and completion fields |
+| `director_raw_scene_creative` | `SMART_CREATIVE_LLM_SETTINGS` | Write an untimed creative scene for the current Beat | Current/next Beat, readable opening WorldState, previous-shot context, static setting and Subject definitions | Untimed action sentences |
+| `add_scene_timing_refiner` | `SMART_EXTRACTOR_LLM_SETTINGS` | Add timestamps without changing scene content | Accepted untimed RAW scene and segment duration | `{"status":"ok","timed_scene":"..."}` or `{"status":"not_enough_time","timed_scene":""}` |
+| `add_camera_refiner` | `SMART_CREATIVE_LLM_SETTINGS` | Add separately tagged camera instructions without changing timed actions | Accepted timed RAW and current Beat | Camera-refined scene or unchanged timed scene |
 | `director_raw_scene_physical` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check RAW spatial/action order | Current Beat, RAW, previous shot end, known Subjects and fixed setting | Physical validity and concrete issue |
 | `director_raw_scene_prop_state` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check RAW object provenance and transfers | Current Beat, RAW, previous shot end, prop ledger and static setting | Prop/state validity and issue |
 | `director_raw_scene_timing` | `SMART_EXTRACTOR_LLM_SETTINGS` | Check feasible sequential timed actions | Timed RAW scene and segment duration contract | Timing validity and issue |

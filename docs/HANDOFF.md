@@ -1,5 +1,36 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — split RAW timing and camera refiners
+
+- Replaced the monolithic `director_raw_scene` formatter stage with a separate
+  `add_scene_timing_refiner` call. It returns the exact `{status, timed_scene}`
+  contract and receives the approved timestamp-only system prompt. Python
+  rejects changed, reordered, missing, extra, malformed, non-monotonic, or
+  out-of-duration action lines. A `not_enough_time` result adds feedback to
+  the existing creative retry input and regenerates creative RAW; it never
+  enters the normal RAW repair loop. The existing five Director attempts and
+  five RAW repairs remain bounded.
+- Added `add_camera_refiner` after successful timing. It receives the approved
+  camera-only prompt and uses `[CAMERA: ...]` tags immediately after timestamps
+  so validators can compare the underlying action text. Altered/malformed
+  output retries three times, then falls back to the accepted timed scene
+  without camera additions. No camera movement is a valid unchanged response.
+- Existing RAW validators still run on the final formatted scene, with camera
+  tags removed for semantic validation. The existing StateAction and H3 paths
+  retain their accepted input contracts. Removed obsolete timestamp surgery
+  that could add opening/final-quarter actions and the continuation frame-zero
+  substitution that could replace an accepted first action. Continuation
+  timestamp offsetting remains for the renderer timeline.
+- Added coverage for content-preserving timestamping, malformed timing retry,
+  `not_enough_time` regeneration and attempt exhaustion, camera preservation
+  and fallback, RAW repair budget, final structure metadata, and downstream
+  compatibility. The profile/prompt inventory now lists both refiners.
+- Verification: the Director Request 1 context, Director retry, prompt pipeline,
+  split RAW, pre-Director replay, profile routing, integration, continuation
+  frame, and location postmortem suites passed: 337 passed, 1 skipped, 7
+  subtests. `py_compile` and `git diff --check` passed. No acceptance job was
+  queued.
+
 ## 2026-10-12 — classify and resolve the 45 Director test failures
 
 - Re-ran the failing Director retry and prompt-pipeline files. The 45 failures

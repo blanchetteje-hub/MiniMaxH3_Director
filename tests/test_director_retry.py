@@ -243,12 +243,10 @@ def formatter_response(description):
 
 
 def director_response(raw_scene, beat_complete=True):
-    """A structurally valid Request 1 reply for unit tests."""
+    """A legacy-shaped RAW fixture without synthetic action padding."""
     scene = str(raw_scene).strip()
     if not scene.startswith("At "):
         scene = "At 00:00.000, " + scene
-    if not re.search(r"At 00:0[4-9]\.\d{1,3},", scene):
-        scene += "\nAt 00:04.500, The action settles into its final visible state."
     if "End continuity state:" not in scene:
         scene += "\nEnd continuity state: The described action has reached its final visible state."
     return {
@@ -266,13 +264,15 @@ def pipeline_llm_side_effect(
     soundscape="Room tone.",
     music="N/A",
 ):
-    """Adapt legacy scenario fixtures to the split creative/format stages.
+    """Adapt legacy scenario fixtures to the sequential RAW refiner stages.
 
     The supplied non-audio responses describe the same historical scenarios,
     but are routed through the current creative -> timed-format contract.
     """
     queued = iter(non_audio_responses)
     pending_format_response = None
+    pending_creative_scene = ""
+    pending_timed_scene = ""
 
     def untimed_scene(response):
         if isinstance(response, dict):
@@ -285,18 +285,49 @@ def pipeline_llm_side_effect(
         return scene.strip()
 
     def respond(*args, **kwargs):
-        nonlocal pending_format_response
+        nonlocal pending_format_response, pending_creative_scene, pending_timed_scene
         purpose = str((kwargs.get("history_metadata") or {}).get("purpose", ""))
         metadata = kwargs.get("history_metadata") or {}
         if purpose == "director_raw_scene_creative":
             pending_format_response = next(queued)
-            return untimed_scene(pending_format_response)
-        if purpose == "director_raw_scene":
-            if pending_format_response is None:
-                raise AssertionError("Timed formatter called without creative fixture")
-            return pending_format_response
+            pending_creative_scene = untimed_scene(pending_format_response)
+            return pending_creative_scene
+        if purpose == "add_scene_timing_refiner":
+            original_scene = (
+                pending_format_response.get("raw_scene", "")
+                if isinstance(pending_format_response, dict)
+                else ""
+            )
+            original_scene = re.sub(
+                r"(?m)^End continuity state:.*$", "", str(original_scene)
+            ).strip()
+            if (
+                original_scene
+                and not minimax._timing_refiner_content_error(
+                    pending_creative_scene,
+                    original_scene,
+                    1000,
+                )
+            ):
+                pending_timed_scene = original_scene
+            else:
+                pending_timed_scene = "\n".join(
+                    f"At 00:00.{index * 100:03d}, {line}"
+                    for index, line in enumerate(
+                        pending_creative_scene.splitlines()
+                    )
+                    if line.strip()
+                )
+            return {"status": "ok", "timed_scene": pending_timed_scene}
+        if purpose == "add_camera_refiner":
+            return pending_timed_scene
         if purpose == "director_raw_scene_repair":
-            repaired = next(queued)
+            try:
+                repaired = next(queued)
+            except StopIteration as error:
+                raise AssertionError(
+                    f"Unscripted {purpose} call metadata={metadata!r}"
+                ) from error
             if metadata.get("stage") == "untimed_creative":
                 pending_format_response = director_response(untimed_scene(repaired))
             return repaired
@@ -731,7 +762,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         request1 = next(
             call for call in request.call_args_list
-            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
+            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene_creative"
         )
         prompt = "\n".join(
             str(message.get("content") or "")
@@ -745,18 +776,16 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertNotIn("REGISTERED WORLDSTATE VOCABULARY", prompt)
         self.assertNotIn("STATE ACTION CONTRACT", prompt)
         self.assertNotIn("state_actions", prompt)
-        self.assertEqual(
-            request1.kwargs["response_format"],
-            minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
-        )
-        raw_schema = request1.kwargs["response_format"]["json_schema"]["schema"]
-        self.assertNotIn("state_actions", raw_schema["properties"])
-        self.assertNotIn("state_actions", raw_schema["required"])
+        self.assertIsNone(request1.kwargs["response_format"])
+        self.assertIn("CURRENT BEAT", prompt)
 
     def test_director_system_prompt_has_no_state_action_contract(self):
-        self.assertNotIn("STATE ACTIONS", minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE)
-        self.assertNotIn("state_actions", minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE)
-        self.assertNotIn("exact registered entity names", minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE)
+        for prompt in (
+            minimax.ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE,
+            minimax.ADD_CAMERA_REFINER_SYSTEM,
+        ):
+            self.assertNotIn("state_actions", prompt)
+            self.assertNotIn("registered entity names", prompt)
 
     def test_h3_soundscape_prompt_is_extraction_only(self):
         messages = minimax.build_h3_soundscape_messages(
@@ -828,7 +857,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_audio_contract_retries_malformed_soundscape(self, ask_llm):
         ask_llm.side_effect = [
             "Mark closes a door with a thud.",
-            director_response("Mark closes a door with a thud."),
+            {"status": "ok", "timed_scene": "At 00:00.000, Mark closes a door with a thud."},
+            "At 00:00.000, Mark closes a door with a thud.",
             {"overall_soundscape": ":["},
             {"overall_soundscape": "door thud"},
             {"non_diegetic_music": "Sparse piano."},
@@ -1346,7 +1376,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:04.500, Will steps into the closet."
         )
         good_raw = director_response(
-            "At 00:01.000, Will steps into the closet.\n"
+            "At 00:00.000, Will steps into the closet.\n"
             "At 00:04.500, Amy closes the closet door behind him."
         )["raw_scene"]
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
@@ -1381,7 +1411,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 3)
+        self.assertEqual(len(semantic_calls), 4)  # creative, timing, camera, repair
         self.assertEqual(physical.call_count, 3)
         self.assertEqual(prop_state.call_count, 1)
         self.assertEqual(timing.call_count, 1)
@@ -1421,9 +1451,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(
             repair_call.args[0][-1]["content"],
             "RAW PROMPT\n"
-            + minimax._normalize_director_raw_scene_structure(
-                bad["raw_scene"], segment_seconds=6.0
-            ).strip()
+            + "At 00:00.000, Amy closes the closet door.\n"
+            + "At 00:00.100, Will steps into the closet.\n"
+            + "End continuity state: Will steps into the closet."
             + "\n\nVALIDATOR ERRORS:\n"
             "- The door closes before Will enters.",
         )
@@ -1442,7 +1472,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:04.500, Will steps into the closet."
         )
         good = director_response(
-            "At 00:01.000, Will enters the closet.\n"
+            "At 00:00.000, Will enters the closet.\n"
             "At 00:04.500, Amy closes the closet door behind him."
         )
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
@@ -1450,13 +1480,22 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             *([bad["raw_scene"]] * minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS),
             good,
         ]))
-        physical = mock.Mock(side_effect=[
-            {"valid": False, "issue": "The door closes before Will enters."}
-            for _ in range(minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS + 1)
-        ] + [
-            {"valid": True, "issue": ""},
-            {"valid": True, "issue": ""},
-        ])
+        first_attempt_physical_calls = 0
+
+        def physical_result(*args, **kwargs):
+            nonlocal first_attempt_physical_calls
+            attempt = (kwargs.get("history_metadata") or {}).get("attempt", 1)
+            if attempt > 1:
+                return {"valid": True, "issue": ""}
+            first_attempt_physical_calls += 1
+            if first_attempt_physical_calls == 1:
+                return {"valid": True, "issue": ""}
+            return {
+                "valid": False,
+                "issue": "The door closes before Will enters.",
+            }
+
+        physical = mock.Mock(side_effect=physical_result)
         with (
             mock.patch("minimax.ask_llm", request),
             mock.patch("minimax.validate_director_raw_scene_physical", physical),
@@ -1469,7 +1508,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
         director_calls = [
             call for call in request.call_args_list
-            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene"
+            if call.kwargs.get("history_metadata", {}).get("purpose") == "add_scene_timing_refiner"
         ]
         repair_calls = [
             call for call in request.call_args_list
@@ -1481,7 +1520,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             == "director_raw_scene_creative"
         ]
         self.assertEqual(len(creative_calls), 2)
-        self.assertEqual(len(director_calls), 1)
+        self.assertEqual(len(director_calls), 2)
         self.assertEqual(len(repair_calls), 5)
         self.assertEqual(
             [call.kwargs["history_metadata"]["attempt"] for call in repair_calls],
@@ -1520,7 +1559,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:04.500, Amy hands the empty cup to Will."
         )
         good = director_response(
-            "At 00:01.000, Amy pours brew into the cup.\n"
+            "At 00:00.000, Amy pours brew into the cup.\n"
             "At 00:04.500, Amy hands the filled cup to Will."
         )
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
@@ -1545,7 +1584,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 3)
+        self.assertEqual(len(semantic_calls), 4)  # creative, timing, camera, repair
         self.assertEqual(physical.call_count, 3)
         self.assertEqual(prop_state.call_count, 2)
         self.assertEqual(timing.call_count, 1)
@@ -1614,7 +1653,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                     "At 00:04.500, Mira reaches the door."
                 )
                 repaired_raw = (
-                    "At 00:01.000, Mira leaves the table.\n"
+                    "At 00:00.000, Mira leaves the table.\n"
                     "At 00:04.500, Mira reaches the door."
                 )
                 request = mock.Mock(side_effect=pipeline_llm_side_effect([
@@ -1674,13 +1713,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                     if call.kwargs.get("history_metadata", {}).get("purpose")
                     == "director_raw_scene_repair"
                 ]
-                director_calls = [
+                timing_calls = [
                     call for call in request.call_args_list
                     if call.kwargs.get("history_metadata", {}).get("purpose")
-                    == "director_raw_scene"
+                    == "add_scene_timing_refiner"
                 ]
                 self.assertEqual(len(repair_calls), 1)
-                self.assertEqual(len(director_calls), 1)
+                self.assertEqual(len(timing_calls), 1)
                 self.assertEqual(
                     sum(
                         call.kwargs.get("history_metadata", {}).get("purpose")
@@ -1739,7 +1778,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
 
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 3)
+        self.assertEqual(len(semantic_calls), 4)  # creative, timing, camera, repair
         repair_prompt = next(
             call.args[0][-1]["content"]
             for call in request.call_args_list
@@ -1758,8 +1797,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 2)
-        self.assertFalse(payload["request1_result"]["beat_complete"])
+        self.assertEqual(len(non_audio_llm_calls(request)), 3)
+        self.assertTrue(payload["request1_result"]["beat_complete"])
+        self.assertEqual(
+            payload["request1_result"]["completion_metadata_source"],
+            "validated_split_raw_pipeline",
+        )
         self.assertIn("Mark starts the action.", payload["raw_scene"])
 
 
@@ -1772,7 +1815,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 3)
+        self.assertEqual(len(non_audio_llm_calls(request)), 4)
         self.assertIn("Mark completes the action.", payload["raw_scene"])
 
     def test_request_one_python_normalizes_missing_end_state_marker_without_retry(self):
@@ -1793,7 +1836,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 2)
+        self.assertEqual(len(non_audio_llm_calls(request)), 3)
         self.assertEqual(payload["raw_scene"].count("End continuity state:"), 1)
         self.assertTrue(
             payload["raw_scene"].endswith(
@@ -1818,7 +1861,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 2)
+        self.assertEqual(len(non_audio_llm_calls(request)), 3)
         self.assertIn("only two tools", payload["raw_scene"])
 
     def test_request_two_result_does_not_contain_completion_metadata(self):
@@ -2205,24 +2248,19 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
 
     def test_director_prompt_is_compact_creative_contract(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            segment_min_beats=4,
-            final_quarter_start=6,
-            beat_number=1,
-            story_segment_ending_rules="",
-            camera_choreography_rules=minimax.build_director_camera_choreography_rules(1, "initial"),
+        prompt = minimax.DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+            segment_length="8"
         )
-        self.assertIn("You are the creative director", prompt)
+        self.assertIn("expand on a single BEAT", prompt)
         self.assertIn("CURRENT BEAT is the story authority", prompt)
-        self.assertIn("the scene to stage in this clip", prompt)
-        self.assertIn("Add only details needed to physically connect or clearly show CURRENT BEAT", prompt)
-        self.assertIn("begin at 00:00.000", prompt)
-        self.assertNotIn("AUTHORITATIVE FINAL STATE CONTRACT", prompt)
-        self.assertIn("finite_activity_complete", prompt)
-        self.assertIn("beat_complete", prompt)
-        self.assertLess(len(prompt), 4300)
-    def test_director_raw_scene_rejects_early_timeline_completion(self):
+        self.assertIn("ASSIGNED SOURCE", prompt)
+        self.assertNotIn("camera", prompt.casefold())
+        self.assertNotIn("timestamp", prompt.casefold())
+        self.assertNotIn("End continuity state", prompt)
+        self.assertNotIn("beat_complete", prompt)
+        self.assertEqual(minimax.build_director_rules(8, 8, 1, "", 1), "")
+
+    def test_director_raw_scene_allows_action_to_finish_before_segment_end(self):
         raw_scene = (
             "At 00:00.000, Alex reaches for the latch.\n"
             "At 00:01.300, Alex closes the hatch.\n"
@@ -2232,9 +2270,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             raw_scene,
             segment_seconds=8,
         )
-        self.assertTrue(errors)
-        self.assertIn("too early", errors[0])
-        self.assertIn("at or after 6s", errors[0])
+        self.assertEqual(errors, [])
 
     def test_director_raw_scene_accepts_final_quarter_timeline(self):
         raw_scene = (
@@ -2380,7 +2416,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             {"source_sha256": "source-hash"},
         )
 
-        self.assertEqual(ask_llm.call_count, 4)
+        self.assertEqual(ask_llm.call_count, 5)
         legacy_director.assert_not_called()
         formatter.assert_not_called()
         validator.assert_not_called()
@@ -2393,17 +2429,22 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             purposes,
             [
                 "director_raw_scene_creative",
-                "director_raw_scene",
+                "add_scene_timing_refiner",
+                "add_camera_refiner",
                 "director_h3_soundscape",
                 "director_h3_music",
             ],
         )
         self.assertEqual(
             ask_llm.call_args_list[2].kwargs["response_format"],
-            minimax.H3_SOUNDSCAPE_RESPONSE_FORMAT,
+            None,
         )
         self.assertEqual(
             ask_llm.call_args_list[3].kwargs["response_format"],
+            minimax.H3_SOUNDSCAPE_RESPONSE_FORMAT,
+        )
+        self.assertEqual(
+            ask_llm.call_args_list[4].kwargs["response_format"],
             minimax.H3_MUSIC_RESPONSE_FORMAT,
         )
         self.assertIn(
@@ -2464,7 +2505,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 return {"unexpected": "bad field"}
             if purpose == "director_h3_music":
                 return {"non_diegetic_music": "Soft low strings."}
-            return director_response(raw_scene)
+            if purpose == "director_raw_scene_creative":
+                return raw_scene
+            if purpose == "add_scene_timing_refiner":
+                return {"status": "ok", "timed_scene": "At 00:00.000, " + raw_scene}
+            if purpose == "add_camera_refiner":
+                return "At 00:00.000, " + raw_scene
+            raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
 
         ask_llm.side_effect = respond
         with mock.patch("builtins.print"):
@@ -2489,7 +2536,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_python_h3_copy_uses_canonical_raw_timestamps(self, ask_llm):
         raw_scene = (
-            "At 00:00.0, Mark enters the room.\n"
+            "At 00:00.000, Mark enters the room.\n"
             "At 00:04.500, Mark looks toward the window."
         )
         ask_llm.side_effect = pipeline_llm_side_effect([
@@ -2551,7 +2598,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 return ""
             if purpose == "director_h3_music":
                 return {"non_diegetic_music": "Sparse piano."}
-            return director_response(raw_scene)
+            if purpose == "director_raw_scene_creative":
+                return raw_scene
+            if purpose == "add_scene_timing_refiner":
+                return {"status": "ok", "timed_scene": "At 00:00.000, " + raw_scene}
+            if purpose == "add_camera_refiner":
+                return "At 00:00.000, " + raw_scene
+            raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
 
         ask_llm.side_effect = respond
         with mock.patch("builtins.print"):
@@ -2598,7 +2651,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 return {"overall_soundscape": "Quiet room tone."}
             if purpose == "director_h3_music":
                 return ""
-            return director_response(raw_scene)
+            if purpose == "director_raw_scene_creative":
+                return raw_scene
+            if purpose == "add_scene_timing_refiner":
+                return {"status": "ok", "timed_scene": "At 00:00.000, " + raw_scene}
+            if purpose == "add_camera_refiner":
+                return "At 00:00.000, " + raw_scene
+            raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
 
         ask_llm.side_effect = respond
         with mock.patch("builtins.print"):
@@ -3070,17 +3129,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
 
     def test_director_prompt_allows_small_route_details(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            segment_min_beats=4,
-            final_quarter_start=6,
-            beat_number=1,
-            story_segment_ending_rules="",
-            camera_choreography_rules=minimax.build_director_camera_choreography_rules(1, "initial"),
+        prompt = minimax.DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+            segment_length="8"
         )
-        self.assertIn("Add only details needed to physically connect or clearly show CURRENT BEAT", prompt)
-        self.assertIn("Preserve spatial continuity", prompt)
-        self.assertNotIn("Do not invent structural geography", prompt)
+        self.assertIn("Add only details needed to physically connect", prompt)
+        self.assertNotIn("timestamps", prompt.casefold())
+        self.assertNotIn("camera choreography", prompt.casefold())
     def test_completion_prompt_allows_small_route_details(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Amy gets Will and Amber into the basement and locks the door.",
@@ -3132,13 +3186,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
 
     def test_director_prompt_keeps_source_and_current_beat_as_authority(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            segment_min_beats=4,
-            final_quarter_start=6,
-            beat_number=1,
-            story_segment_ending_rules="",
-            camera_choreography_rules=minimax.build_director_camera_choreography_rules(1, "initial"),
+        prompt = minimax.DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+            segment_length="8"
         )
         self.assertIn("CURRENT BEAT is the story authority", prompt)
         self.assertIn("the scene to stage in this clip", prompt)
@@ -3166,13 +3215,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
 
     def test_director_prompt_does_not_encode_terminal_target_rules(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            segment_min_beats=4,
-            final_quarter_start=6,
-            beat_number=1,
-            story_segment_ending_rules="",
-            camera_choreography_rules=minimax.build_director_camera_choreography_rules(1, "initial"),
+        prompt = minimax.DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+            segment_length="8"
         )
         self.assertNotIn("already terminal target", prompt)
         self.assertNotIn("new, another, or incoming target", prompt)
