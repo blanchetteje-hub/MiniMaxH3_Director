@@ -1,0 +1,77 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Pre-Director replay enabled: captured upstream outputs and the pre-Director WorldState are loaded; first Request 1 must match the fixture's captured dynamic messages.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 1226/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+PRE-DIRECTOR REPLAY MATCH {"segment": 1, "opening_world_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "message_count": 2}
+LLM request started: director_raw_scene_creative (attempt 1/10, ~1511 input tokens, max 6553 output tokens).
+LLM request finished: director_raw_scene_creative (16.1s, finish_reason=stop).
+DIRECTOR CREATIVE RAW RESPONSE {"segment": 1, "attempt": 1, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "response": "Amy steps onto the wooden floor; each weight shift makes a soft creak sound.\n\nShe walks toward one of the polished tables along the counter and positions herself beside it.\n\nHolding a cloth soaked in ale‑scented oil, she begins wiping the tabletop with smooth, circular strokes.\n\nAs she wipes, the surface catches light and gleams brightly."}
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1242 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_physical (13.5s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "physical/spatial creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~235 input tokens, max 7829 output tokens).
+LLM request finished: add_scene_timing_refiner (14.1s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 1, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "creative_scene": "Amy steps onto the wooden floor; each weight shift makes a soft creak sound.\n\nShe walks toward one of the polished tables along the counter and positions herself beside it.\n\nHolding a cloth soaked in ale‑scented oil, she begins wiping the tabletop with smooth, circular strokes.\n\nAs she wipes, the surface catches light and gleams brightly.", "response": {"status": "ok", "timed_scene": "0s-1s: Amy steps onto the wooden floor; each weight shift makes a soft creak sound.\n1s-3s: She walks toward one of the polished tables along the counter and positions herself beside it.\n3s-6.5s: Holding a cloth soaked in ale‑scented oil, she begins wiping the tabletop with smooth, circular strokes.\n6.5s-8s: As she wipes, the surface catches light and gleams brightly."}, "issue": "Timed output changed the number of RAW SCENE lines; only timestamp prefixes may be added."}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~267 input tokens, max 7797 output tokens).
+LLM request finished: add_scene_timing_refiner (14.0s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 2, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "creative_scene": "Amy steps onto the wooden floor; each weight shift makes a soft creak sound.\n\nShe walks toward one of the polished tables along the counter and positions herself beside it.\n\nHolding a cloth soaked in ale‑scented oil, she begins wiping the tabletop with smooth, circular strokes.\n\nAs she wipes, the surface catches light and gleams brightly.", "response": {"status": "ok", "timed_scene": "[00:00] Amy steps onto the wooden floor; each weight shift makes a soft creak sound.\n[00:01] She walks toward one of the polished tables along the counter and positions herself beside it.\n[00:03] Holding a cloth soaked in ale‑scented oil, she begins wiping the tabletop with smooth, circular strokes.\n[00:06] As she wipes, the surface catches light and gleams brightly."}, "issue": "Timed output changed the number of RAW SCENE lines; only timestamp prefixes may be added."}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~267 input tokens, max 7797 output tokens).
+LLM request finished: add_scene_timing_refiner (13.9s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 3, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "creative_scene": "Amy steps onto the wooden floor; each weight shift makes a soft creak sound.\n\nShe walks toward one of the polished tables along the counter and positions herself beside it.\n\nHolding a cloth soaked in ale‑scented oil, she begins wiping the tabletop with smooth, circular strokes.\n\nAs she wipes, the surface catches light and gleams brightly.", "response": {"status": "ok", "timed_scene": "[0.00] Amy steps onto the wooden floor; each weight shift makes a soft creak sound.\n[0.50] She walks toward one of the polished tables along the counter and positions herself beside it.\n[2.80] Holding a cloth soaked in ale‑scented oil, she begins wiping the tabletop with smooth, circular strokes.\n[5.20] As she wipes, the surface catches light and gleams brightly."}, "issue": "Timed output changed the number of RAW SCENE lines; only timestamp prefixes may be added."}
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Timing refiner failed to preserve the accepted RAW scene for Segment 1 after 3 attempts: Timed output changed the number of RAW SCENE lines; only timestamp prefixes may be added.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-bc9g2vbk\repo\minimax.py", line 42556, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-bc9g2vbk\repo\minimax.py", line 41418, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-bc9g2vbk\repo\minimax.py", line 38796, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Timing refiner failed to preserve the accepted RAW scene for Segment 1 after 3 attempts: Timed output changed the number of RAW SCENE lines; only timestamp prefixes may be added.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-bc9g2vbk\repo\minimax.py", line 42622, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-bc9g2vbk\repo\minimax.py", line 42556, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-bc9g2vbk\repo\minimax.py", line 41418, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-bc9g2vbk\repo\minimax.py", line 38796, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Timing refiner failed to preserve the accepted RAW scene for Segment 1 after 3 attempts: Timed output changed the number of RAW SCENE lines; only timestamp prefixes may be added.
