@@ -301,24 +301,18 @@ def pipeline_llm_side_effect(
             original_scene = re.sub(
                 r"(?m)^End continuity state:.*$", "", str(original_scene)
             ).strip()
-            if (
-                original_scene
-                and not minimax._timing_refiner_content_error(
-                    pending_creative_scene,
-                    original_scene,
-                    1000,
-                )
-            ):
-                pending_timed_scene = original_scene
-            else:
-                pending_timed_scene = "\n".join(
-                    f"At 00:00.{index * 100:03d}, {line}"
-                    for index, line in enumerate(
-                        pending_creative_scene.splitlines()
-                    )
-                    if line.strip()
-                )
-            return {"status": "ok", "timed_scene": pending_timed_scene}
+            action_lines = minimax._normalize_timing_refiner_action_lines(
+                pending_creative_scene
+            )
+            timestamps = [
+                f"{int(match.group('minutes')):02d}:{int(match.group('seconds')):02d}."
+                f"{int((match.group('fraction') or '0').ljust(3, '0')):03d}"
+                for match in minimax._DIRECTOR_TIMESTAMP_RE.finditer(original_scene)
+            ]
+            if len(timestamps) != len(action_lines) or (timestamps and timestamps[0] != "00:00.000"):
+                timestamps = [f"00:00.{index * 100:03d}" for index in range(len(action_lines))]
+            pending_timed_scene = minimax._assemble_timed_scene(action_lines, timestamps)
+            return {"status": "ok", "timestamps": timestamps}
         if purpose == "add_camera_refiner":
             return pending_timed_scene
         if purpose == "director_raw_scene_repair":
@@ -857,7 +851,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_audio_contract_retries_malformed_soundscape(self, ask_llm):
         ask_llm.side_effect = [
             "Mark closes a door with a thud.",
-            {"status": "ok", "timed_scene": "At 00:00.000, Mark closes a door with a thud."},
+            {"status": "ok", "timestamps": ["00:00.000"]},
             "At 00:00.000, Mark closes a door with a thud.",
             {"overall_soundscape": ":["},
             {"overall_soundscape": "door thud"},
@@ -2508,7 +2502,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             if purpose == "director_raw_scene_creative":
                 return raw_scene
             if purpose == "add_scene_timing_refiner":
-                return {"status": "ok", "timed_scene": "At 00:00.000, " + raw_scene}
+                return {"status": "ok", "timestamps": ["00:00.000"]}
             if purpose == "add_camera_refiner":
                 return "At 00:00.000, " + raw_scene
             raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
@@ -2601,7 +2595,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             if purpose == "director_raw_scene_creative":
                 return raw_scene
             if purpose == "add_scene_timing_refiner":
-                return {"status": "ok", "timed_scene": "At 00:00.000, " + raw_scene}
+                return {"status": "ok", "timestamps": ["00:00.000"]}
             if purpose == "add_camera_refiner":
                 return "At 00:00.000, " + raw_scene
             raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
@@ -2654,7 +2648,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             if purpose == "director_raw_scene_creative":
                 return raw_scene
             if purpose == "add_scene_timing_refiner":
-                return {"status": "ok", "timed_scene": "At 00:00.000, " + raw_scene}
+                return {"status": "ok", "timestamps": ["00:00.000"]}
             if purpose == "add_camera_refiner":
                 return "At 00:00.000, " + raw_scene
             raise AssertionError(f"Unexpected LLM purpose {purpose!r}")

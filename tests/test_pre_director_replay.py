@@ -122,8 +122,8 @@ def test_pre_director_replay_skips_upstream_llms_and_matches_request1(tmp_path):
     timing_schema = minimax.ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT[
         "json_schema"
     ]["schema"]
-    assert set(timing_schema["properties"]) == {"status", "timed_scene"}
-    assert timing_schema["required"] == ["status", "timed_scene"]
+    assert set(timing_schema["properties"]) == {"status", "timestamps"}
+    assert timing_schema["required"] == ["status", "timestamps"]
     assert first_request["kwargs"]["history_metadata"]["segment"] == 1
     assert first_request["kwargs"]["history_metadata"]["opening_state_sha256"] == (
         fixture["provenance"]["opening_world_state_sha256"]

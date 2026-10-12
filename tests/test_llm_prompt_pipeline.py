@@ -832,7 +832,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         camera = minimax.build_add_camera_refiner_messages(
             "Mark enters the room.", "At 00:00.000, Mark enters the room."
         )
-        self.assertIn("Only add timestamps", timing[0]["content"])
+        self.assertIn("Assign a start timestamp to each numbered action", timing[0]["content"])
         self.assertIn("not_enough_time", timing[0]["content"])
         self.assertIn("Add only camera instructions", camera[0]["content"])
         self.assertIn("unless CURRENT BEAT explicitly requires a cut", camera[0]["content"])
@@ -1631,15 +1631,15 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn("state_actions", normalized)
         self.assertNotIn("finite_activity_complete", normalized)
 
-    def test_timing_refiner_schema_contains_only_status_and_timed_scene(self):
+    def test_timing_refiner_schema_contains_only_status_and_timestamps(self):
         schema = minimax.ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT[
             "json_schema"
         ]["schema"]
         self.assertEqual(
             set(schema["properties"]),
-            {"status", "timed_scene"},
+            {"status", "timestamps"},
         )
-        self.assertEqual(schema["required"], ["status", "timed_scene"])
+        self.assertEqual(schema["required"], ["status", "timestamps"])
         self.assertEqual(
             schema["properties"]["status"]["enum"],
             ["ok", "not_enough_time"],
@@ -2067,7 +2067,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             if purpose == "add_scene_timing_refiner":
                 return {
                     "status": "ok",
-                    "timed_scene": scene.split("\nEnd continuity state:", 1)[0],
+                    "timestamps": ["00:00.000"],
                 }
             if purpose == "add_camera_refiner":
                 return scene.split("\nEnd continuity state:", 1)[0]
@@ -2122,7 +2122,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
     def test_request_segment_llm_accepts_missing_end_continuity_state(self):
         request = Mock(side_effect=[
             "Mark crosses the room.",
-            {"status": "ok", "timed_scene": "At 00:00.000, Mark crosses the room."},
+            {"status": "ok", "timestamps": ["00:00.000"]},
             "At 00:00.000, Mark crosses the room.",
             {"overall_soundscape": "Footsteps."},
             {"non_diegetic_music": "N/A"},
@@ -2151,7 +2151,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
     def test_request_segment_llm_completion_metadata_comes_from_validated_pipeline(self):
         request = Mock(side_effect=[
             "Amy cooks breakfast.",
-            {"status": "ok", "timed_scene": "At 00:00.000, Amy cooks breakfast."},
+            {"status": "ok", "timestamps": ["00:00.000"]},
             "At 00:00.000, Amy cooks breakfast.",
             {"overall_soundscape": "Kitchen sounds."},
             {"non_diegetic_music": "Quiet underscore."},
@@ -2187,7 +2187,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         scene = "At 00:00.000, Mira serves tea.\nEnd continuity state: Tea is served."
         request = Mock(side_effect=[
             "Mira serves tea.",
-            {"status": "ok", "timed_scene": "At 00:00.000, Mira serves tea."},
+            {"status": "ok", "timestamps": ["00:00.000"]},
             "At 00:00.000, Mira serves tea.",
             {"overall_soundscape": "Cups clink."},
             {"non_diegetic_music": "N/A"},
@@ -2229,7 +2229,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "Amy opens the basement door.",
             {
                 "status": "ok",
-                "timed_scene": "At 00:00.000, Amy opens the basement door.",
+                "timestamps": ["00:00.000"],
             },
             "At 00:00.000, Amy opens the basement door.",
             {"overall_soundscape": "Door opening."},

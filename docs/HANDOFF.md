@@ -1,5 +1,24 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — timestamp-only timing refiner output
+
+- Changed `add_scene_timing_refiner` to receive numbered, nonempty RAW action
+  lines and return only `{status, timestamps}`. The timing model no longer
+  reproduces or rewrites scene text.
+- Python preserves each nonblank source line verbatim, checks timestamp count,
+  `MM:SS.mmm` format, strict chronological order, first timestamp at
+  `00:00.000`, and segment duration, then assembles the timed scene. Malformed
+  timestamp batches use the existing bounded refiner retries. An explicit
+  `not_enough_time` with an empty timestamp list still feeds the existing
+  bounded creative regeneration path. Camera refinement and downstream RAW
+  contracts are unchanged.
+- Added regressions for blank-line normalization, verbatim action assembly,
+  malformed and out-of-order timestamps, incorrect counts, duration limits,
+  and `not_enough_time`. Updated timing schema assertions and prompt inventory.
+- Verification: focused split RAW, Director retry, prompt pipeline, and
+  pre-Director replay tests passed: 251 passed, 7 subtests. `py_compile` and
+  `git diff --check` passed.
+
 ## 2026-10-12 — split RAW timing and camera refiners
 
 - Replaced the monolithic `director_raw_scene` formatter stage with a separate

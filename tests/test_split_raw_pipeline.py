@@ -48,6 +48,15 @@ def _accepted_raw(timed_scene):
     return minimax._normalize_director_end_continuity_marker(timed_scene)
 
 
+def _timing_response_from_scene(timed_scene):
+    timestamps = []
+    for line in str(timed_scene or "").splitlines():
+        match = minimax._DIRECTOR_TIMESTAMP_RE.match(line)
+        if match:
+            timestamps.append(match.group(0).removeprefix("At ").removesuffix(","))
+    return {"status": "ok", "timestamps": timestamps}
+
+
 class SplitRawDirectorPipelineTests(unittest.TestCase):
     def _run_pipeline(
         self,
@@ -66,7 +75,7 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
         bundle = _bundle(beat)
         creative_iter = iter(creative_scenes or [creative_scene])
         timing_iter = iter(timing_responses or [
-            {"status": "ok", "timed_scene": timed_scene}
+            _timing_response_from_scene(timed_scene)
         ])
         camera_iter = iter(camera_responses or [
             timed_scene if camera_scene is None else camera_scene
@@ -183,7 +192,8 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
             timing_call[2]["response_format"],
             minimax.ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT,
         )
-        self.assertIn(creative, timing_call[1][1]["content"])
+        self.assertIn("1. Amy walks from the east counter", timing_call[1][1]["content"])
+        self.assertIn("2. Amy pours ale", timing_call[1][1]["content"])
         self.assertEqual(
             timing_call[1][0]["content"],
             minimax.ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE.format(
@@ -207,22 +217,53 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
             _accepted_raw(timed),
         )
 
-    def test_timing_verifier_requires_identical_ordered_action_text(self):
+    def test_timestamp_validator_and_python_assembly_preserve_action_text(self):
         source = "Amy opens the door.\nAmy steps through it."
-        valid = _timed_scene(source.splitlines(), timestamps=[0, 2])
+        actions = minimax._normalize_timing_refiner_action_lines(source)
+        timestamps = ["00:00.000", "00:02.000"]
         self.assertEqual(
-            minimax._timing_refiner_content_error(source, valid, 8),
+            minimax._timing_refiner_timestamp_error(actions, timestamps, 8),
             "",
         )
-        changed = _timed_scene(
-            ["Amy opens the door wider.", "Amy steps through it."],
-            timestamps=[0, 2],
+        self.assertEqual(
+            minimax._assemble_timed_scene(actions, timestamps),
+            "At 00:00.000, Amy opens the door.\nAt 00:02.000, Amy steps through it.",
         )
-        self.assertIn("changed action text", minimax._timing_refiner_content_error(source, changed, 8))
-        reordered = _timed_scene(list(reversed(source.splitlines())), timestamps=[0, 2])
-        self.assertIn("changed action text", minimax._timing_refiner_content_error(source, reordered, 8))
         with self.assertRaises(ValueError):
-            minimax._parse_add_scene_timing_refiner_result({"raw_scene": valid})
+            minimax._parse_add_scene_timing_refiner_result({"raw_scene": source})
+
+    def test_timing_numbering_omits_blank_lines_and_assembly_preserves_source(self):
+        source = "  Amy opens the door.  \n\n \t\nAmy steps through it."
+        actions = minimax._normalize_timing_refiner_action_lines(source)
+        self.assertEqual(actions, ["  Amy opens the door.  ", "Amy steps through it."])
+        messages = minimax.build_add_scene_timing_refiner_messages(source, 8)
+        self.assertIn("1.   Amy opens the door.  ", messages[1]["content"])
+        self.assertIn("2. Amy steps through it.", messages[1]["content"])
+        self.assertNotIn("3.", messages[1]["content"])
+        self.assertEqual(
+            minimax._assemble_timed_scene(actions, ["00:00.000", "00:01.000"]),
+            "At 00:00.000,   Amy opens the door.  \nAt 00:01.000, Amy steps through it.",
+        )
+
+    def test_timestamp_validation_rejects_malformed_count_order_and_duration(self):
+        actions = ["Amy opens the door.", "Amy steps through it."]
+        self.assertIn("malformed", minimax._timing_refiner_timestamp_error(
+            actions, ["0:00.000", "00:02.000"], 8
+        ))
+        self.assertIn("wrong number", minimax._timing_refiner_timestamp_error(
+            actions, ["00:00.000"], 8
+        ))
+        self.assertIn("increase strictly", minimax._timing_refiner_timestamp_error(
+            actions, ["00:00.000", "00:00.000"], 8
+        ))
+        self.assertIn("increase strictly", minimax._timing_refiner_timestamp_error(
+            [*actions, "Amy closes the door."],
+            ["00:00.000", "00:02.000", "00:01.000"],
+            8,
+        ))
+        self.assertIn("outside", minimax._timing_refiner_timestamp_error(
+            actions, ["00:00.000", "00:08.000"], 8
+        ))
 
     def test_not_enough_time_regenerates_creative_without_raw_repair(self):
         first = "Amy crosses the room and pours the drink."
@@ -234,8 +275,8 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
             timed,
             creative_scenes=[first, second],
             timing_responses=[
-                {"status": "not_enough_time", "timed_scene": ""},
-                {"status": "ok", "timed_scene": timed},
+                {"status": "not_enough_time", "timestamps": []},
+                _timing_response_from_scene(timed),
             ],
         )
         creative_calls = [call for call in calls if call[0] == "director_raw_scene_creative"]
@@ -248,7 +289,7 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
 
     def test_timing_malformed_output_retries_only_timing_then_fails_closed(self):
         creative = "Amy walks to the door."
-        altered = {"status": "ok", "timed_scene": "Amy runs to the door."}
+        altered = {"status": "ok", "timestamps": ["not-a-time"]}
         bundle = _bundle(creative)
         calls = []
 
@@ -297,7 +338,7 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
             if purpose == "director_raw_scene_creative":
                 return creative
             if purpose == "add_scene_timing_refiner":
-                return {"status": "not_enough_time", "timed_scene": ""}
+                return {"status": "not_enough_time", "timestamps": []}
             raise AssertionError(f"Unexpected call: {purpose}")
 
         bundle = _bundle(creative)
@@ -388,7 +429,12 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
     def test_single_action_timing_remains_valid_and_final_raw_is_downstream_ready(self):
         creative = "Amy sets the mug on the counter."
         timed = _timed_scene([creative], timestamps=[0])
-        self.assertEqual(minimax._timing_refiner_content_error(creative, timed, 8), "")
+        self.assertEqual(
+            minimax._timing_refiner_timestamp_error(
+                [creative], ["00:00.000"], 8
+            ),
+            "",
+        )
         payload, _calls, _candidates, _contexts = self._run_pipeline(
             "Amy sets the mug on the counter.", creative, timed
         )

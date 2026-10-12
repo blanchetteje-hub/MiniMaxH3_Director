@@ -810,11 +810,12 @@ ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT = {
                     "type": "string",
                     "enum": ["ok", "not_enough_time"],
                 },
-                "timed_scene": {
-                    "type": "string",
+                "timestamps": {
+                    "type": "array",
+                    "items": {"type": "string"},
                 },
             },
-            "required": ["status", "timed_scene"],
+            "required": ["status", "timestamps"],
             "additionalProperties": False,
         },
     },
@@ -1228,15 +1229,13 @@ RETURN
 Sentences of actions that occur in the scene separated by new lines.
 """
 
-ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE = """Add timestamps to RAW SCENE for a {segment_length}-second video.
+ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE = """Assign a start timestamp to each numbered action in RAW SCENE for a {segment_length}-second video.
 
-Preserve every action, word, participant, prop, location, and their order exactly. Only add timestamps.
+Use realistic timing based on the actions. Preserve action order. Do not assign physically impossible durations.
 
-Assign realistic times based on the duration of the actions. Do not compress physically impossible sequences to fit.
+If all actions cannot reasonably fit, return not_enough_time.
 
-If the entire scene cannot reasonably fit, return not_enough_time.
-
-Return only JSON with status and timed_scene.
+Return only JSON with status and timestamps.
 """
 
 ADD_CAMERA_REFINER_SYSTEM = """Add camera movements to TIMED SCENE.
@@ -22186,80 +22185,90 @@ def _normalize_raw_scene_result(raw_result):
 
 
 def _parse_add_scene_timing_refiner_result(raw_result):
-    """Parse the strict status/timed-scene response from the timing refiner."""
+    """Parse the strict status/timestamp-list response from the timing refiner."""
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
-    if not isinstance(candidate, dict) or set(candidate) != {"status", "timed_scene"}:
+    if not isinstance(candidate, dict) or set(candidate) != {"status", "timestamps"}:
         raise ValueError(
-            "Timing refiner response must contain exactly status and timed_scene."
+            "Timing refiner response must contain exactly status and timestamps."
         )
     status = candidate.get("status")
-    timed_scene = candidate.get("timed_scene")
+    timestamps = candidate.get("timestamps")
     if status not in {"ok", "not_enough_time"}:
         raise ValueError("Timing refiner returned an unknown status.")
-    if not isinstance(timed_scene, str):
-        raise ValueError("Timing refiner timed_scene must be a string.")
-    if status == "not_enough_time":
-        if timed_scene:
-            raise ValueError(
-                "not_enough_time requires an empty timed_scene."
-            )
-        return {"status": status, "timed_scene": ""}
-    if not timed_scene.strip():
-        raise ValueError("Timing refiner returned an empty timed_scene.")
-    return {"status": status, "timed_scene": timed_scene}
-
-
-def _timing_refiner_content_error(raw_scene, timed_scene, segment_seconds):
-    """Require timestamps to be the only changes to original action lines."""
-    source_lines = str(raw_scene or "").splitlines()
-    timed_lines = str(timed_scene or "").splitlines()
-    if len(source_lines) != len(timed_lines):
-        return (
-            "Timed output changed the number of RAW SCENE lines; only timestamp "
-            "prefixes may be added."
-        )
-    times = []
-    for line_number, (source_line, timed_line) in enumerate(
-        zip(source_lines, timed_lines),
-        start=1,
+    if not isinstance(timestamps, list) or any(
+        not isinstance(timestamp, str) for timestamp in timestamps
     ):
-        if not source_line.strip():
-            if timed_line != source_line:
-                return f"Timed output changed blank line {line_number}."
-            continue
-        match = re.match(
-            r"^At (?P<minutes>\d{2}):(?P<seconds>\d{2})\."
-            r"(?P<milliseconds>\d{3}), (?P<action>.*)$",
-            timed_line,
+        raise ValueError("Timing refiner timestamps must be an array of strings.")
+    if status == "not_enough_time":
+        if timestamps:
+            raise ValueError("not_enough_time requires an empty timestamps array.")
+        return {"status": status, "timestamps": []}
+    if not timestamps:
+        raise ValueError("Timing refiner returned an empty timestamps array.")
+    return {"status": status, "timestamps": timestamps}
+
+
+def _normalize_timing_refiner_action_lines(raw_scene):
+    """Drop blank lines while preserving every nonblank action line verbatim."""
+    return [
+        line
+        for line in str(raw_scene or "").splitlines()
+        if line.strip()
+    ]
+
+
+def _timing_refiner_timestamp_error(action_lines, timestamps, segment_seconds):
+    """Validate timestamp-only output against the fixed source action list."""
+    if len(timestamps) != len(action_lines):
+        return (
+            "Timing refiner returned the wrong number of timestamps: expected "
+            f"{len(action_lines)}, received {len(timestamps)}."
+        )
+    if not action_lines:
+        return "RAW SCENE contains no nonempty action lines to timestamp."
+    try:
+        duration_ms = int(round(float(segment_seconds) * 1000))
+    except (TypeError, ValueError):
+        return "Segment duration is invalid for timestamp validation."
+    times = []
+    for line_number, timestamp in enumerate(timestamps, start=1):
+        match = re.fullmatch(
+            r"(?P<minutes>\d{2}):(?P<seconds>\d{2})\."
+            r"(?P<milliseconds>\d{3})",
+            timestamp,
         )
         if match is None:
-            return f"Timed output line {line_number} has no canonical timestamp prefix."
-        if match.group("action") != source_line:
-            return (
-                f"Timed output changed action text on line {line_number}; only a "
-                "timestamp prefix may be added."
-            )
+            return f"Timestamp {line_number} is malformed; expected MM:SS.mmm."
         minutes = int(match.group("minutes"))
         seconds = int(match.group("seconds"))
         milliseconds = int(match.group("milliseconds"))
         if seconds >= 60:
-            return f"Timed output has invalid seconds on line {line_number}."
-        absolute_ms = (minutes * 60 + seconds) * 1000 + milliseconds
-        if absolute_ms >= float(segment_seconds) * 1000:
             return (
-                f"Timed output timestamp on line {line_number} is outside the "
+                f"Timestamp {line_number} has invalid seconds; seconds must be "
+                "below 60."
+            )
+        absolute_ms = (minutes * 60 + seconds) * 1000 + milliseconds
+        if absolute_ms >= duration_ms:
+            return (
+                f"Timestamp {line_number} is outside the "
                 "segment duration."
             )
         times.append(absolute_ms)
-    if not times:
-        return "Timed output contains no timestamped actions."
     if times[0] != 0:
-        return "Timed output must begin at 00:00.000."
+        return "The first action timestamp must be 00:00.000."
     if any(current <= previous for previous, current in zip(times, times[1:])):
-        return "Timed output timestamps must increase with the original action order."
+        return "Timestamps must increase strictly in the original action order."
     return ""
+
+
+def _assemble_timed_scene(action_lines, timestamps):
+    """Apply validated timestamps to the original, unchanged action lines."""
+    return "\n".join(
+        f"At {timestamp}, {action}"
+        for timestamp, action in zip(timestamps, action_lines)
+    )
 
 
 _DIRECTOR_CAMERA_PREFIX_RE = re.compile(
@@ -38284,11 +38293,16 @@ def build_director_raw_scene_creative_messages(base_messages, segment_length):
 
 
 def build_add_scene_timing_refiner_messages(raw_scene, segment_seconds, issue=""):
-    """Build the dedicated timing-only request for the original RAW actions."""
+    """Build a numbered action list for timestamp-only assignment."""
     try:
         duration = float(segment_seconds)
     except (TypeError, ValueError):
         duration = 0.0
+    action_lines = _normalize_timing_refiner_action_lines(raw_scene)
+    numbered_actions = "\n".join(
+        f"{index}. {action}"
+        for index, action in enumerate(action_lines, start=1)
+    )
     messages = [
         {
             "role": "system",
@@ -38300,7 +38314,7 @@ def build_add_scene_timing_refiner_messages(raw_scene, segment_seconds, issue=""
             "role": "user",
             "content": (
                 "RAW SCENE\n"
-                f"{str(raw_scene or '')}"
+                f"{numbered_actions}"
                 + (
                     "\n\nTIMING REFINER ISSUE\n"
                     + str(issue).strip()
@@ -38678,6 +38692,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         timed_scene = ""
         timing_failure = ""
         timing_infeasible = False
+        action_lines = _normalize_timing_refiner_action_lines(creative_scene)
         for timing_attempt in range(1, DIRECTOR_RAW_REFINER_ATTEMPTS + 1):
             timing_output = None
             try:
@@ -38720,13 +38735,16 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         flush=True,
                     )
                     break
-                timing_failure = _timing_refiner_content_error(
-                    creative_scene,
-                    timing_result["timed_scene"],
+                timing_failure = _timing_refiner_timestamp_error(
+                    action_lines,
+                    timing_result["timestamps"],
                     duration,
                 )
                 if not timing_failure:
-                    timed_scene = timing_result["timed_scene"]
+                    timed_scene = _assemble_timed_scene(
+                        action_lines,
+                        timing_result["timestamps"],
+                    )
                     console_log(
                         "DIRECTOR TIMING REFINER RESPONSE " + json.dumps(
                             {
