@@ -352,3 +352,15 @@ Future experiment: include persistent background NPCs/patrons in the 360-degree 
 - Explore whether a stable baseline crowd can coexist with scene-specific NPC additions/removals without regenerating the orbit for every segment.
 
 Status: future/back-pocket experiment only; no current pipeline change.
+
+## Spatial WorldState extraction from reconstructed location geometry
+
+Future research experiment: derive **semantic spatial data** from our existing AI-generated 360-degree location-orbit video, rather than producing another image/video reference.
+
+- Evaluate multi-view 3D reconstruction (including Gaussian splatting) from the orbit; test whether frame-to-frame scene drift makes the geometry unreliable.
+- Evaluate small local specialized spatial/vision models (e.g., SpatialLM 0.5B/1B or SpatioLM 8B, subject to real hardware/model compatibility) to identify fixed elements such as counters, barrels, tables and doors, with approximate positions, supports, obstacles, and spatial relationships.
+- Convert only verified, useful observations into proposed structured Python location/WorldState data; never silently override authored location definitions or canonical WorldState.
+- First benchmark: can the local process accurately reconstruct and position the tavern counter, barrel, tables, and doorways? Compare against existing authored spatial facts, human inspection, cost, VRAM, and runtime.
+- Reject the approach if its output amounts only to extra visual references or speculative object coordinates rather than more accurate deterministic spatial validation.
+
+Status: back-pocket research only; do not integrate into the current Director pipeline without measured improvement.
