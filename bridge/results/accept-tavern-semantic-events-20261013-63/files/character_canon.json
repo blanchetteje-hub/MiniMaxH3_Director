@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "source_sha256": "c2a77b6bf46527b029d0a26037a37bf126e196550af72215b70c6d4a5f5e3ea8",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman",
+    "tavern_keeper_owner"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "Amy wears an earthy brown rough‑spun tunic with frayed hems, over which she dons a scarred leather apron; both are scuffed from her medieval trade, and she pairs them with sturdy dark-brown leather boots that show signs of frequent use",
+      "gender": "female",
+      "confident_woman": "yes",
+      "tavern_keeper_owner": "yes"
+    }
+  ]
+}

@@ -1,0 +1,600 @@
+{
+  "version": 1,
+  "config": {
+    "segment_length": 8.0,
+    "total_length": 48.0,
+    "megapixels": 0.5,
+    "total_segments": 6,
+    "refresh_interval": 999999,
+    "vision_continuity": 0,
+    "trim_frames": 2,
+    "retention": false,
+    "test_prompt_generation": true,
+    "no_music": false,
+    "disable_subject_removal": false,
+    "visual_style": "Live-action cinematic",
+    "source_sha256": "8529407b0d655e62361af08bc50929570ecb54310e3f7997474b138586592994",
+    "world_state_seed": {
+      "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-zegs8kw7\\repo\\subjects.txt",
+      "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+      "subjects": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null,
+          "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+          "physical_form": "unknown"
+        }
+      }
+    }
+  },
+  "segments": [],
+  "recent_dialogues": [],
+  "recent_dialogue_exclusions": [],
+  "continuity_prompt_state": {},
+  "continuity_state": {},
+  "continuity_summary": "",
+  "visual_raw_end_state": {},
+  "visual_end_state": {},
+  "visual_end_frame_paths": [],
+  "prop_ledger": {},
+  "location_state": {
+    "location": {
+      "name": "Medieval Tavern",
+      "description": "A rectangular tavern with creaking wooden floor and polished tables, featuring a counter along the east wall, a hearth in the center, shelves of crystal cups on north and south walls, lanterns hanging from each table, and a back door with latch."
+    },
+    "anchors": [
+      {
+        "name": "back_door",
+        "type": "door",
+        "wall": "north",
+        "world_state_role": "fixture",
+        "mobility": "movable"
+      },
+      {
+        "name": "counter_east_wall",
+        "type": "support",
+        "location": "east",
+        "world_state_role": "support",
+        "mobility": "fixed"
+      }
+    ],
+    "objects": [
+      {
+        "name": "back_table_oak",
+        "type": "table",
+        "size": {
+          "length_ft": 3,
+          "width_ft": 1.5
+        },
+        "height_ft": 1,
+        "location": {
+          "wall": "north",
+          "position": "near_back_door"
+        },
+        "world_state_role": "untracked",
+        "mobility": "fixed"
+      },
+      {
+        "name": "barrel_wooden",
+        "type": "barrel",
+        "diameter_ft": 4,
+        "height_ft": 5,
+        "position": "beside_hearth_on_counter",
+        "world_state_role": "untracked",
+        "mobility": "fixed"
+      },
+      {
+        "name": "hearth_stone_fireplace",
+        "type": "fireplace",
+        "size": {
+          "width_ft": 10,
+          "depth_ft": 8
+        },
+        "location": "center_of_room",
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "table_south_1",
+        "type": "polished_table",
+        "length_ft": 2,
+        "width_ft": 3,
+        "position": {
+          "wall": "south",
+          "offset_from_corner_ft": 1
+        },
+        "world_state_role": "untracked",
+        "mobility": "fixed"
+      },
+      {
+        "name": "table_south_2",
+        "type": "polished_table",
+        "length_ft": 2,
+        "width_ft": 3,
+        "position": {
+          "wall": "south",
+          "offset_from_corner_ft": 4
+        },
+        "world_state_role": "untracked",
+        "mobility": "fixed"
+      },
+      {
+        "name": "table_south_3",
+        "type": "polished_table",
+        "length_ft": 2,
+        "width_ft": 3,
+        "position": {
+          "wall": "south",
+          "offset_from_corner_ft": 7
+        },
+        "world_state_role": "untracked",
+        "mobility": "fixed"
+      },
+      {
+        "name": "table_south_4",
+        "type": "polished_table",
+        "length_ft": 2,
+        "width_ft": 3,
+        "position": {
+          "wall": "south",
+          "offset_from_corner_ft": 10
+        },
+        "world_state_role": "untracked",
+        "mobility": "fixed"
+      },
+      {
+        "name": "table_south_5",
+        "type": "polished_table",
+        "length_ft": 2,
+        "width_ft": 3,
+        "position": {
+          "wall": "south",
+          "offset_from_corner_ft": 13
+        },
+        "world_state_role": "untracked",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern_south_1",
+        "type": "lantern",
+        "height_above_table_ft": 3,
+        "attached_to": "table_south_1",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern_south_2",
+        "type": "lantern",
+        "height_above_table_ft": 3,
+        "attached_to": "table_south_2",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern_south_3",
+        "type": "lantern",
+        "height_above_table_ft": 3,
+        "attached_to": "table_south_3",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern_south_4",
+        "type": "lantern",
+        "height_above_table_ft": 3,
+        "attached_to": "table_south_4",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "lantern_south_5",
+        "type": "lantern",
+        "height_above_table_ft": 3,
+        "attached_to": "table_south_5",
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "shelf_north_wall",
+        "type": "crystal_cup_shelf",
+        "length_ft": 12,
+        "height_from_floor_ft": 6,
+        "position": "north_wall_above_back_door",
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "shelf_north_crystal_cups_1_to_6",
+        "type": "crystal_cup",
+        "diameter_ft": 0.5,
+        "position": "on_shelf_north_wall",
+        "world_state_role": "untracked",
+        "mobility": "fixed"
+      },
+      {
+        "name": "shelf_south_wall",
+        "type": "crystal_cup_shelf",
+        "length_ft": 12,
+        "height_from_floor_ft": 6,
+        "position": "south_wall_above_tables",
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "shelf_south_crystal_cups_1_to_6",
+        "type": "crystal_cup",
+        "diameter_ft": 0.5,
+        "position": "on_shelf_south_wall",
+        "world_state_role": "untracked",
+        "mobility": "fixed"
+      },
+      {
+        "name": "bar_stool_high",
+        "type": "bar_stool",
+        "height_from_floor_to_seat_ft": 4,
+        "seat_height_ft": 2,
+        "position": "near_counter_west_end",
+        "world_state_role": "untracked",
+        "mobility": "movable"
+      }
+    ]
+  },
+  "subject_state_ledger": {},
+  "character_reference_images": {},
+  "base_reference_image_count": 1,
+  "reference_binding_state": {
+    "version": 1,
+    "disable_subject_removal": false,
+    "subject_removal_window_segments": 3,
+    "current_segment_number": null,
+    "current_bindings": [],
+    "current_active_subject_ids": [],
+    "current_explicit_subject_ids": [],
+    "current_removed_subject_ids": [],
+    "current_excluded_configured_picture_ids": [],
+    "subjects": {}
+  },
+  "subject_registry_state": {
+    "version": 5,
+    "environment": {
+      "location": "N/A",
+      "persistent_state": "N/A"
+    },
+    "camera": "N/A",
+    "ongoing_action": "N/A",
+    "ongoing_audio": "N/A",
+    "subjects": {
+      "Amy": {
+        "name": "Amy",
+        "id": "Subject 1",
+        "speaker_id": "(S1)",
+        "subject_id": 1,
+        "gender": "female",
+        "picture_ids": [
+          1
+        ],
+        "picture_id": 1,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "canonical_description": "",
+        "position": "N/A",
+        "pose_action": "N/A",
+        "wardrobe": {
+          "upper": "N/A",
+          "lower": "N/A",
+          "footwear": "N/A",
+          "other": "N/A"
+        },
+        "topology": "N/A",
+        "body_state": "N/A",
+        "physical_condition": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "spatial_relationships": [],
+        "persistent_effects": [],
+        "held_props": []
+      }
+    }
+  },
+  "world_state": {
+    "schema_version": 1,
+    "revision": 5,
+    "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+    "seed_status": "authoritative_source_seeded",
+    "subjects": {
+      "subject_1": {
+        "id": "subject_1",
+        "subject_id": 1,
+        "name": "Amy",
+        "identity": {
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "canonical_description": "unknown",
+          "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "present",
+        "location_id": "location_the_tavern_2e7ff416daba",
+        "support_id": null,
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "Amy wears an earthy brown rough‑spun tunic with hems",
+              "condition": "frayed"
+            }
+          ],
+          "lower": [],
+          "footwear": [
+            {
+              "garment": "and she pairs them with sturdy dark-brown leather boots that show signs of frequent use",
+              "condition": "unknown"
+            }
+          ],
+          "other": [
+            {
+              "garment": "over which she dons a scarred leather apron",
+              "condition": "unknown"
+            }
+          ]
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "user_authored_subject_definitions",
+            "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-zegs8kw7\\repo\\subjects.txt",
+            "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "presence": {
+            "authority": "registered_subject_story_start_classifier",
+            "initial_state": "The wooden floor creaks as Amy wipes the polished table with an ale‑scented cloth while wearing her scuffed rough‑spun tunic and leather apron"
+          }
+        }
+      },
+      "subject_goblin_1_d854cbae1c19": {
+        "id": "subject_goblin_1_d854cbae1c19",
+        "subject_id": "subject_goblin_1_d854cbae1c19",
+        "name": "Goblin_1",
+        "identity": {
+          "gender": "unknown",
+          "picture_ids": [],
+          "canonical_description": "unknown",
+          "source_description": "green‑skinned goblin leaning over the counter clutching a chipped mug and refills it from the barrel beside the hearth",
+          "physical_form": "humanoid",
+          "clothing_applicability": "required"
+        },
+        "presence": "unknown",
+        "location_id": "unknown",
+        "support_id": "unknown",
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "brown tunic with cuffs",
+              "condition": "patched, frayed"
+            }
+          ],
+          "lower": [],
+          "footwear": [],
+          "other": []
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "current_segment_subject_extractor"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          }
+        }
+      }
+    },
+    "props": {
+      "prop_location_the_tavern_2e7ff416daba_653284aaccd2": {
+        "id": "prop_location_the_tavern_2e7ff416daba_653284aaccd2",
+        "name": "back_door",
+        "kind": "fixture",
+        "mobility": "movable",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "anchors",
+            "source_type": "door"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_307db60229eb": {
+        "id": "prop_location_the_tavern_2e7ff416daba_307db60229eb",
+        "name": "counter_east_wall",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "anchors",
+            "source_type": "support"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_6030523f5d15": {
+        "id": "prop_location_the_tavern_2e7ff416daba_6030523f5d15",
+        "name": "hearth_stone_fireplace",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "fireplace"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_923882f3e167": {
+        "id": "prop_location_the_tavern_2e7ff416daba_923882f3e167",
+        "name": "shelf_north_wall",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "crystal_cup_shelf"
+          }
+        }
+      },
+      "prop_location_the_tavern_2e7ff416daba_1ee481ce52bf": {
+        "id": "prop_location_the_tavern_2e7ff416daba_1ee481ce52bf",
+        "name": "shelf_south_wall",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_the_tavern_2e7ff416daba"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown",
+          "consumable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "crystal_cup_shelf"
+          }
+        }
+      }
+    },
+    "locations": {
+      "location_the_tavern_2e7ff416daba": {
+        "id": "location_the_tavern_2e7ff416daba",
+        "name": "the tavern"
+      }
+    }
+  },
+  "subject_identity_lock": {
+    "subjects": {
+      "1": {
+        "name": "Amy",
+        "id": "Subject 1",
+        "speaker_id": "(S1)",
+        "subject_id": 1,
+        "gender": "female",
+        "picture_ids": [
+          1
+        ],
+        "picture_id": 1,
+        "origin_segment": null
+      }
+    }
+  },
+  "continuity_summary_pending": false,
+  "beat_progress": {
+    "completed_beat_ids": [],
+    "last_segment_number": null,
+    "newly_completed_beat_ids": []
+  },
+  "metadata": {
+    "overall_location": "tavern",
+    "starting_location": "the tavern",
+    "setting_description": "The tavern is a rectangle 30 ft wide from east to west and 20 ft deep from north to south. The back door with latch sits on the north wall, centered near its corner; it can open toward the front of its latch. A single oak back table rests on the floor just beside this door. Along the east wall runs a polished wooden counter that extends 15 ft into the room and is 3 ft deep. Beside the hearth—a stone fireplace occupying the central spot—rests a wooden barrel, positioned against the counter’s edge.\n\nOn the south wall, five polished tables each measure 2 ft by 3 ft; they are spaced evenly starting one foot from the southern corner to one foot before the eastern end. Each table has a lantern hanging on a rope about three feet above its surface, providing persistent light. A high bar stool stands near the counter’s western end, facing east toward the counter.\n\nShelves of crystal cups run along both the north and south walls above the polished tables. Each shelf is 12 ft long, sits six feet from the floor, and holds six crystal cups (each cup diameter 0.5 ft). The shelves are fixed supports on their respective walls. All objects occupy distinct spaces with ample room for patrons; no two overlap. The tavern’s medieval fantasy atmosphere is conveyed by its creaking wooden floors, polished tables, lantern light, and central hearth.",
+    "spatial_location_description": "The tavern is a rectangle 30 ft wide from east to west and 20 ft deep from north to south.\n\n**North side (back)**  \n- A wooden back door with a latch sits at the center of the north wall, just 2 ft from the northern corner.  \n- Near the door, on the floor, is a single back table made of oak: 3 ft long, 1.5 ft wide, and 1 ft high.\n\n**East side (counter)**  \n- A polished wooden counter runs along the east wall, starting at the eastern corner and extending 15 ft toward the center of the room. The counter is 3 ft deep and 4 inches thick.  \n- On the counter, a barrel sits beside the hearth: the barrel has a diameter of 4 ft and stands 5 ft tall (wooden staves). It rests on its side against the counter’s edge.\n\n**South side**  \n- A row of polished tables runs along the south wall, each table being 2 ft long by 3 ft wide. The tables are spaced evenly: the first table is 1 ft from the southern corner and the last table is 1 ft before the eastern end.  \n- Each table has a lantern hanging on a rope about 3 ft above its surface, providing persistent light.\n\n**West side**  \n- A high bar stool sits near the counter’s western end: it stands 4 ft tall from floor to seat and the seat is at 2 ft height. The stool faces east toward the counter.\n\n**Shelves**  \n- Shelves of crystal cups are mounted on both the north and south walls above the polished tables. Each shelf runs 12 ft long, sits 6 ft high from the floor, and holds six crystal cups (each cup diameter 0.5 ft).\n\n**Central hearth**  \n- A stone fireplace occupies a central spot in the room: it is 10 ft wide by 8 ft deep, centered on both east‑west and north‑south axes. The hearth provides heat to all sides of the tavern.\n\nAll objects are placed so that no two overlap; each table has ample space for patrons, the back door remains openable from the front side of its latch, and the bar stool is accessible from the counter area. The layout preserves a medieval fantasy atmosphere with wooden floors creaking underfoot and polished tables illuminated by hanging lanterns."
+  },
+  "initial_location_subjects": []
+}

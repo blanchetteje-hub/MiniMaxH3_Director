@@ -1,0 +1,67 @@
+{
+  "phases": [
+    {
+      "phase_number": 1,
+      "beat_start": 1,
+      "beat_end": 6,
+      "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+      "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+      "characters_introduced": [],
+      "location": "As established by the expanded story.",
+      "required_events": [
+        {
+          "id": "E1",
+          "event": "The wooden floor creaks as Amy wipes the polished table with an ale‑scented cloth while wearing her scuffed rough‑spun tunic and leather apron, then she sees a green‑skinned goblin leaning over the counter clutching a chipped mug and refills it from the barrel beside the hearth.",
+          "beat_number": 1,
+          "state_effects": []
+        },
+        {
+          "id": "E2",
+          "event": "A beautiful female elf steps in, her silver hair streaming down her shoulders as she takes a seat at the back table, and Amy pours a steaming cup into a crystal chalice for her, setting it gently on the wood while nodding with thanks.",
+          "beat_number": 2,
+          "state_effects": [],
+          "depends_on": [
+            "E1"
+          ]
+        },
+        {
+          "id": "E3",
+          "event": "From the doorway, a dragon‑shaped creature slides onto a high bar stool, its scales glittering like polished obsidian as its wings unfurl to reveal amber eyes that scan the room, and Amy greets it with a warm smile before lifting a crystal cup from her shelf, pouring a special brew into it, and handing it over.",
+          "beat_number": 3,
+          "state_effects": [],
+          "depends_on": [
+            "E2"
+          ]
+        },
+        {
+          "id": "E4",
+          "event": "The dragon licks its lips before taking a slow sip, letting the liquid swirl across its tongue as Amy watches it exhale contentedly and then wipes the bar with a fresh cloth to smooth out any drips of ale that have fallen onto the wood.",
+          "beat_number": 4,
+          "state_effects": [],
+          "depends_on": [
+            "E3"
+          ]
+        },
+        {
+          "id": "E5",
+          "event": "Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door before stepping outside to close it, locking the tavern for the night as the moon rises over the medieval town.",
+          "beat_number": 5,
+          "state_effects": [],
+          "depends_on": [
+            "E4"
+          ]
+        },
+        {
+          "id": "E6",
+          "event": "The quiet of the evening settles in as the last light fades, leaving Amy alone with the creaking floor beneath her feet and the distant glow of lanterns reflected on polished wood.",
+          "beat_number": 6,
+          "state_effects": [],
+          "depends_on": [
+            "E5"
+          ]
+        }
+      ],
+      "required_end_state": "End at the expanded story's stated conclusion."
+    }
+  ]
+}
