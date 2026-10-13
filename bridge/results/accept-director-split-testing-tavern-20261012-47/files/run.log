@@ -1,0 +1,80 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Pre-Director replay enabled: captured upstream outputs and the pre-Director WorldState are loaded; first Request 1 must match the fixture's captured dynamic messages.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 1226/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+PRE-DIRECTOR REPLAY MATCH {"segment": 1, "opening_world_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "message_count": 2}
+LLM request started: director_raw_scene_creative (attempt 1/10, ~1511 input tokens, max 6553 output tokens).
+LLM request finished: director_raw_scene_creative (16.0s, finish_reason=stop).
+DIRECTOR CREATIVE RAW RESPONSE {"segment": 1, "attempt": 1, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "response": "Amy steps onto the polished table and the wooden floor groans and creaks beneath her boots.  \nShe lifts a cloth soaked in ale‑scented oil from her apron and begins to wipe across the tabletop with deliberate strokes.  \nWith each stroke she smoothes the surface until it gleams brightly under the lantern light above."}
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1340 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_physical (13.4s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "physical/spatial creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~1322 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_prop_state (13.2s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "prop/state creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~208 input tokens, max 7856 output tokens).
+LLM request finished: add_scene_timing_refiner (13.0s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 1, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "creative_scene": "Amy steps onto the polished table and the wooden floor groans and creaks beneath her boots.  \nShe lifts a cloth soaked in ale‑scented oil from her apron and begins to wipe across the tabletop with deliberate strokes.  \nWith each stroke she smoothes the surface until it gleams brightly under the lantern light above.", "response": {"status": "ok", "timestamps": ["0", "1", "4"]}, "issue": "Timestamp 1 is malformed; expected MM:SS.mmm."}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~228 input tokens, max 7836 output tokens).
+LLM request finished: add_scene_timing_refiner (13.0s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 2, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "creative_scene": "Amy steps onto the polished table and the wooden floor groans and creaks beneath her boots.  \nShe lifts a cloth soaked in ale‑scented oil from her apron and begins to wipe across the tabletop with deliberate strokes.  \nWith each stroke she smoothes the surface until it gleams brightly under the lantern light above.", "response": {"status": "ok", "timestamps": ["1"]}, "issue": "Timing refiner returned the wrong number of timestamps: expected 3, received 1."}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~237 input tokens, max 7827 output tokens).
+LLM request finished: add_scene_timing_refiner (12.2s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 3, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "creative_scene": "Amy steps onto the polished table and the wooden floor groans and creaks beneath her boots.  \nShe lifts a cloth soaked in ale‑scented oil from her apron and begins to wipe across the tabletop with deliberate strokes.  \nWith each stroke she smoothes the surface until it gleams brightly under the lantern light above.", "response": {"status": "ok", "timestamps": []}, "issue": "Malformed timing-refiner response: Timing refiner returned an empty timestamps array."}
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Timing refiner failed to preserve the accepted RAW scene for Segment 1 after 3 attempts: Malformed timing-refiner response: Timing refiner returned an empty timestamps array.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8qgt9g37\repo\minimax.py", line 42515, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8qgt9g37\repo\minimax.py", line 41373, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8qgt9g37\repo\minimax.py", line 38882, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Timing refiner failed to preserve the accepted RAW scene for Segment 1 after 3 attempts: Malformed timing-refiner response: Timing refiner returned an empty timestamps array.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8qgt9g37\repo\minimax.py", line 42581, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8qgt9g37\repo\minimax.py", line 42515, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8qgt9g37\repo\minimax.py", line 41373, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-8qgt9g37\repo\minimax.py", line 38882, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Timing refiner failed to preserve the accepted RAW scene for Segment 1 after 3 attempts: Malformed timing-refiner response: Timing refiner returned an empty timestamps array.
