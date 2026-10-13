@@ -79,6 +79,15 @@ def prop_id(state, name):
     return next(key for key, value in state["props"].items() if value["name"] == name)
 
 
+def test_event_extractor_prompt_requires_explicit_persistent_physical_changes():
+    messages = minimax.build_world_state_event_messages("Amy wipes the counter.")
+    assert (
+        "- Extract only events that explicitly change persistent physical state. "
+        "Ignore ordinary activity and descriptions that do not establish a state change."
+    ) in messages[0]["content"]
+    assert messages[1]["content"] == "RAW SCENE\nAmy wipes the counter."
+
+
 def test_support_standing_maps_to_subject_specific_set_support():
     state, _ = state_with_entities(mug=False)
     raw = "At 00:01.000, Amy steps onto polished table 3."

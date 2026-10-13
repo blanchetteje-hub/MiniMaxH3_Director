@@ -24,7 +24,9 @@
   held by its Subject is not duplicated and a pocket is not treated as a
   support.
 - Runtime system prompt added for the event extractor:
-  “You extract physical events from a film scene. Identify events that change a
+  “You extract physical events from a film scene. Extract only events that
+  explicitly change persistent physical state; ignore ordinary activity and
+  descriptions that do not establish a state change. Identify events that change a
   Subject's location, physical support, possession, clothing, or the state of
   an object. Ignore gestures, appearances, dialogue, and other actions that do
   not cause these changes. Report events in chronological order using only

@@ -37377,6 +37377,8 @@ WORLD_STATE_EVENT_FIELDS = ("action", "actor", "object", "source", "destination"
 WORLD_STATE_EVENT_REPAIR_ATTEMPTS = 5
 WORLD_STATE_EVENT_SYSTEM_PROMPT = """You extract physical events from a film scene.
 
+- Extract only events that explicitly change persistent physical state. Ignore ordinary activity and descriptions that do not establish a state change.
+
 Identify events that change a Subject's location, physical support, possession, clothing, or the state of an object. Ignore gestures, appearances, dialogue, and other actions that do not cause these changes.
 
 Report events in chronological order using only what is explicitly described in RAW SCENE.
