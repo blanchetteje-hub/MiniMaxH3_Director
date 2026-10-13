@@ -489,8 +489,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         for system_prompt in (initial_system, repair_system):
             self.assertIn('"state_actions": []', system_prompt)
-            self.assertIn("If an action is transient or has no representable persistent state change, omit it.", system_prompt)
-            self.assertIn("Do not invent transfers, pouring, consumption, contents", system_prompt)
+            self.assertIn("Omit transient actions and changes that WorldState cannot represent.", system_prompt)
+            self.assertIn("Do not infer or invent a transfer, pour, consumption", system_prompt)
+            self.assertIn("Treat the opening WorldState as the baseline.", system_prompt)
+            self.assertIn("A clothing or accessory description alone does not establish a clothing change", system_prompt)
+            self.assertIn("Review the entire RAW from beginning to end", system_prompt)
+            self.assertIn("include every explicit persistent change", system_prompt)
             self.assertIn("PERMITTED STATEACTION OBJECT STRUCTURES", system_prompt)
             self.assertIn(operation_shapes, system_prompt)
             self.assertIn('"op": "pickup"', system_prompt)
@@ -531,7 +535,88 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(world_state, opening)
         self.assertEqual(request.call_count, 1)
         system_prompt = request.call_args.args[0][0]["content"]
-        self.assertIn("If an action is transient", system_prompt)
+        self.assertIn("Omit transient actions and changes that WorldState cannot represent.", system_prompt)
+
+    def test_existing_clothing_description_does_not_create_state_action(self):
+        world_state, _location_id, _mug_id = goblin_mug_world_state()
+        raw_scene = (
+            "At 00:00.000, Amy stands in her established tunic and belt."
+        )
+        request = mock.Mock(return_value={"state_actions": []})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state,
+                raw_scene,
+                segment_number=1,
+            )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["state_actions"], [])
+        prompt = request.call_args.args[0][0]["content"]
+        self.assertIn("opening wardrobe is unknown", prompt)
+        self.assertIn("explicit event that changes clothing", prompt)
+
+    def test_registered_prop_pickup_and_pour_are_preserved_as_state_actions(self):
+        world_state, location_id, mug_id = goblin_mug_world_state()
+        world_state["props"][mug_id]["kind"] = "container"
+        world_state["props"][mug_id]["capabilities"]["container"] = True
+        world_state = register_explicit_persistent_props(world_state, [{
+            "name": "source vessel",
+            "kind": "container",
+            "mobility": "movable",
+            "needed_for_state": True,
+            "reason": "Its contents can be transferred to a registered container.",
+            "location_id": location_id,
+            "contents": [{
+                "substance": "ale",
+                "amount": "some",
+                "consumable": "unknown",
+            }],
+            "capabilities": {"container": True},
+        }])
+        source_id = next(
+            prop_id for prop_id, prop in world_state["props"].items()
+            if prop["name"] == "source vessel"
+        )
+        raw_scene = (
+            "At 00:00.000, Amy picks up the source vessel.\n"
+            "At 00:03.000, Amy pours ale from the source vessel into the mug."
+        )
+        request = mock.Mock(return_value={"state_actions": [
+            {
+                "action_id": "pickup-vessel",
+                "op": "pickup",
+                "actor_subject_id": "Amy",
+                "prop_id": "source vessel",
+            },
+            {
+                "action_id": "pour-ale",
+                "op": "pour",
+                "actor_subject_id": "Amy",
+                "source_prop_id": "source vessel",
+                "target_prop_id": "mug",
+                "substance": "ale",
+                "amount": "all",
+            },
+        ]})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state,
+                raw_scene,
+                segment_number=1,
+            )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(
+            [action["op"] for action in result["state_actions"]],
+            ["pickup", "pour"],
+        )
+        self.assertTrue(all(outcome.accepted for outcome in result["outcomes"]))
+        self.assertEqual(result["state_actions"][1]["source_prop_id"], source_id)
 
     def test_action_only_extractor_fails_closed_after_five_repairs(self):
         world_state, _location_id, _mug_id = goblin_mug_world_state()
@@ -1379,11 +1464,14 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "positions after each sentence internally and determine if the "
             "following sentence's actions, whether movement or not, can occur "
             "spatially.\n"
-            "Reject unnecessary changes of support or elevation, including climbing, "
-            "stepping, or standing on furniture, unless CURRENT BEAT requires it or "
-            "the previous state establishes it. Ordinary interactions with furniture "
-            "do not imply climbing onto it. When rejecting such a change, identify the "
-            "unsupported movement itself as the error, not merely a later contradiction.\n\n"
+            "Reject only actual changes of support or elevation that are not required "
+            "by CURRENT BEAT or established by the previous state. Do not treat ordinary "
+            "movement across an already-occupied surface, or wording such as stepping "
+            "onto a floor the subject already occupies, as a support change. Continue "
+            "to reject unsupported climbing or stepping onto furniture; ordinary "
+            "interaction with furniture does not imply climbing onto it. When rejecting "
+            "an actual unsupported change, identify the movement itself as the error, "
+            "not merely a later contradiction.\n\n"
             "Return only one JSON object with boolean valid and "
             "string issue. Report only the first concrete problem.",
         )
@@ -1406,8 +1494,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertFalse(result["valid"])
         prompt = request.call_args.args[0][0]["content"]
-        self.assertIn("unless CURRENT BEAT requires it", prompt)
-        self.assertIn("identify the unsupported movement itself", prompt)
+        self.assertIn("not required by CURRENT BEAT", prompt)
+        self.assertIn("identify the movement itself", prompt)
         self.assertIn("unnecessarily climbs onto the table", result["issue"])
 
     def test_physical_validator_allows_ordinary_leaning_and_reaching(self):
@@ -1419,7 +1507,22 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             llm_request=request,
         )
         self.assertTrue(result["valid"])
-        self.assertIn("ordinary interactions with furniture", request.call_args.args[0][0]["content"].casefold())
+        self.assertIn("ordinary interaction with furniture", request.call_args.args[0][0]["content"].casefold())
+
+    def test_physical_validator_distinguishes_floor_movement_from_support_change(self):
+        raw = "Subject A steps onto the floor and continues walking."
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+        result = minimax.validate_director_raw_scene_physical(
+            "Subject A is already standing on the floor.",
+            raw,
+            known_subject_state="Subject A is already standing on the floor.",
+            llm_request=request,
+        )
+        self.assertTrue(result["valid"])
+        system_prompt = request.call_args.args[0][0]["content"].casefold()
+        self.assertIn("actual changes of support or elevation", system_prompt)
+        self.assertIn("already-occupied surface", system_prompt)
+        self.assertIn("unsupported climbing or stepping onto furniture", system_prompt)
 
     def test_physical_validator_allows_climbing_when_current_beat_requires_it(self):
         raw = "The subject climbs onto the table to reach the high window."
@@ -1430,7 +1533,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             llm_request=request,
         )
         self.assertTrue(result["valid"])
-        self.assertIn("unless CURRENT BEAT requires it", request.call_args.args[0][0]["content"])
+        self.assertIn("not required by CURRENT BEAT", request.call_args.args[0][0]["content"])
 
 
     def test_request_one_repairs_physically_incoherent_raw_scene(self):

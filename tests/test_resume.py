@@ -276,6 +276,64 @@ class ResumeTests(unittest.TestCase):
                 subject_registry_state=registry,
             )
 
+    def test_prompt_only_segment_identity_survives_later_subject_registration(self):
+        definitions = "<Subject 1> is Amy, a woman referenced in <Picture 1>."
+        state = minimax.new_generation_state({"subject_definitions": definitions})
+
+        # Prompt-only completion keeps legacy continuity empty while recording
+        # the canonical identity registry for the finished Segment.
+        segment_one_registry = minimax.continuity_state_for_registry(
+            definitions,
+            minimax.new_continuity_state(),
+        )
+        minimax.record_completed_segment(
+            state,
+            1,
+            None,
+            formatted_result(1),
+            [],
+            subject_registry_state=segment_one_registry,
+        )
+        self.assertEqual(
+            set(state["segments"][0]["subject_identity_snapshot"]),
+            {"1"},
+        )
+
+        later_definitions = minimax.combine_subject_definitions(
+            definitions,
+            ["<Subject 2> is Visitor (S2), continued from <Video 1>."],
+        )
+        segment_two_registry = minimax.continuity_state_for_registry(
+            later_definitions,
+            minimax.new_continuity_state(),
+        )
+        minimax.record_completed_segment(
+            state,
+            2,
+            None,
+            formatted_result(2),
+            [],
+            subject_registry_state=segment_two_registry,
+        )
+
+        minimax.validate_subject_identity_state(state, definitions)
+        self.assertEqual(
+            set(state["segments"][1]["subject_identity_snapshot"]),
+            {"1", "2"},
+        )
+
+        changed_registry = minimax.continuity_state_for_registry(
+            later_definitions,
+            minimax.new_continuity_state(),
+        )
+        changed_registry["subjects"]["Amy"]["name"] = "Different Person"
+        with self.assertRaisesRegex(RuntimeError, "Subject ID 1 field 'name'"):
+            minimax.validate_subject_identity_state(
+                state,
+                definitions,
+                candidate_registry_state=changed_registry,
+            )
+
     def test_na_gender_keeps_locked_value_and_only_warns(self):
         subjects = "<Subject 2> is Zombie, unknown, referenced in <Picture 2>."
         state = minimax.new_generation_state({"subject_definitions": subjects})

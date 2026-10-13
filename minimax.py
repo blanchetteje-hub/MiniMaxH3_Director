@@ -22207,7 +22207,35 @@ def _parse_add_scene_timing_refiner_result(raw_result):
         return {"status": status, "timestamps": []}
     if not timestamps:
         raise ValueError("Timing refiner returned an empty timestamps array.")
-    return {"status": status, "timestamps": timestamps}
+    return {
+        "status": status,
+        "timestamps": [
+            _normalize_timing_refiner_timestamp(value, index)
+            for index, value in enumerate(timestamps, start=1)
+        ],
+    }
+
+
+def _normalize_timing_refiner_timestamp(value, line_number):
+    """Canonicalize an unambiguous local-time spelling from the timing model."""
+    text = str(value or "").strip()
+    if len(text) >= 2 and (text[0], text[-1]) in {("(", ")"), ("[", "]")}:
+        text = text[1:-1].strip()
+    match = re.fullmatch(
+        r"(?i)(?:at\s+)?(?P<minutes>\d{1,2}):(?P<seconds>\d{1,2})"
+        r"(?:[.:](?P<fraction>\d{1,3}))?"
+        r"(?:\s+seconds?)?\s*[,;:\-]?\s*",
+        text,
+    )
+    if match is None:
+        raise ValueError(
+            f"Timestamp {line_number} is malformed or ambiguous; expected a "
+            "local MM:SS timestamp with up to three fractional digits."
+        )
+    minutes = int(match.group("minutes"))
+    seconds = int(match.group("seconds"))
+    fraction = (match.group("fraction") or "0").ljust(3, "0")
+    return f"{minutes:02d}:{seconds:02d}.{fraction}"
 
 
 def _normalize_timing_refiner_action_lines(raw_scene):
@@ -37211,11 +37239,19 @@ def _director_state_action_prompt_contract(operation_shapes):
     """Format the shared JSON envelope and request-specific action shapes."""
     prompt = (
         'Return exactly this JSON structure:\n{\n  "state_actions": []\n}\n'
-        "The array may be empty. Include an action only when RAW explicitly changes "
-        "a persistent fact representable by an allowed WorldState operation. If an "
-        "action is transient or has no representable persistent state change, omit it. "
-        "Do not invent transfers, pouring, consumption, contents, or substitute an "
-        "unrelated operation to encode an action. Otherwise, each item must be one StateAction "
+        "Treat the opening WorldState as the baseline. A fact merely described as "
+        "already true is not a change. A clothing or accessory description alone "
+        "does not establish a clothing change, even when the opening wardrobe is "
+        "unknown; emit change_clothing only for an explicit event that changes "
+        "clothing or a garment's condition. Review the entire RAW from beginning "
+        "to end and include every explicit persistent change to a registered entity "
+        "that is representable by a permitted operation, including prop pickup, "
+        "placement, handoff, and content transfer when the registered entities and "
+        "opening-state prerequisites support it. The array may be empty only when "
+        "no such change occurs. Omit transient actions and changes that WorldState "
+        "cannot represent. Do not infer or invent a transfer, pour, consumption, "
+        "or other change, and do not substitute an unrelated operation. Each item "
+        "must be one StateAction "
         "object matching exactly one permitted operation structure below. "
         "Include every shown field and no others. Use exact registered entity "
         "names from the vocabulary, never Python-assigned IDs. Replace angle-"
@@ -37481,11 +37517,14 @@ def build_director_raw_scene_physical_messages(
                 "Validate only subject movement in the RAW SCENE.  Update subject positions "
                 "after each sentence internally and determine if the following sentence's "
                 "actions, whether movement or not, can occur spatially.\n"
-                "Reject unnecessary changes of support or elevation, including climbing, "
-                "stepping, or standing on furniture, unless CURRENT BEAT requires it or "
-                "the previous state establishes it. Ordinary interactions with furniture "
-                "do not imply climbing onto it. When rejecting such a change, identify the "
-                "unsupported movement itself as the error, not merely a later contradiction.\n\n"
+                "Reject only actual changes of support or elevation that are not required "
+                "by CURRENT BEAT or established by the previous state. Do not treat ordinary "
+                "movement across an already-occupied surface, or wording such as stepping "
+                "onto a floor the subject already occupies, as a support change. Continue "
+                "to reject unsupported climbing or stepping onto furniture; ordinary "
+                "interaction with furniture does not imply climbing onto it. When rejecting "
+                "an actual unsupported change, identify the movement itself as the error, "
+                "not merely a later contradiction.\n\n"
                 "Return only one JSON object with boolean valid and string issue. Report "
                 "only the first concrete problem."
             ),
@@ -42033,6 +42072,7 @@ def _run_main(
             subject_definitions,
             new_continuity_state(),
         )
+        completed_subject_identity_registry = copy.deepcopy(continuity_state)
         if appended_subject_lines:
             console_log("Registered video-created subject definition(s) internally:")
             for definition in appended_subject_lines:
@@ -42116,7 +42156,7 @@ def _run_main(
                     continuity_state=reduced_continuity_state,
                     prop_ledger={},
                     continuity_summary_pending=False,
-                    subject_registry_state=continuity_state,
+                    subject_registry_state=completed_subject_identity_registry,
                 )
                 completed_record["continuity_prompt_state"] = copy.deepcopy(
                     {}
@@ -42259,7 +42299,7 @@ def _run_main(
                 continuity_state=reduced_continuity_state,
                 prop_ledger=prop_ledger,
                 continuity_summary_pending=False,
-                subject_registry_state=continuity_state,
+                subject_registry_state=completed_subject_identity_registry,
             )
             completed_record["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state

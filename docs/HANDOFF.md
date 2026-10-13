@@ -1,5 +1,42 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — Job #48 identity, StateAction, physical wording, and timestamps
+
+- Subject ID 1 was not being reassigned. Prompt-only completion recorded the
+  legacy continuity state after it had been reset to an empty state, and that
+  empty value was also used as the completed Segment's identity snapshot. When
+  later Subjects were registered, identity validation compared the old empty
+  snapshot against the authored registry and reported Subject ID 1 missing.
+  Completion now snapshots the canonical Subject registry separately from the
+  reset continuity state and records that identity snapshot for both prompt-only
+  and rendered completion. Identity validation and authored Subject IDs remain
+  unchanged.
+- The StateAction extractor had no explicit baseline/completeness distinction:
+  it could treat existing wardrobe descriptions as changes, while an empty
+  batch could pass despite omitted persistent changes. Its existing prompt
+  contract now says opening WorldState is the baseline, clothing descriptions
+  alone are not changes, and the full RAW must be reviewed for every explicit
+  representable persistent change. Empty batches remain permitted only when no
+  such change occurs. The reducer, action schema, and repair path are unchanged;
+  this remains semantic extraction guidance rather than a new completeness
+  validator.
+- The physical prompt now distinguishes movement across an already-occupied
+  surface from an actual support/elevation change while retaining rejection of
+  unsupported climbing or stepping onto furniture.
+- Timing output is now normalized by Python for unambiguous local timestamp
+  spellings accepted by the downstream formatter (including omitted leading
+  zeroes, `.` or `:` fractional separators, and one-to-three fractional digits).
+  Canonical `MM:SS.mmm` values then pass through the existing chronology and
+  duration checks. Ambiguous/malformed values and seconds outside 00–59 still
+  fail through the existing bounded refiner retry.
+- Focused regressions cover Subject identity across later registration,
+  description-only clothing and actual prop pickup/pour extraction, ordinary
+  floor movement versus support changes, timestamp normalization/rejection,
+  and normalized timing through the pipeline. Verification: `pytest -q
+  tests/test_resume.py tests/test_director_retry.py
+  tests/test_split_raw_pipeline.py` — 190 passed, 19 subtests; `py_compile`
+  and `git diff --check` passed.
+
 ## 2026-10-12 — StateAction RAW integrity representation match
 
 - Job #46 reached StateAction extraction with a camera-refined accepted RAW.

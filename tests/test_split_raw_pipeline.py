@@ -295,6 +295,73 @@ class SplitRawDirectorPipelineTests(unittest.TestCase):
             actions, ["00:00.000", "00:08.000"], 8
         ))
 
+    def test_timing_refiner_normalizes_unambiguous_timestamp_spellings(self):
+        actions = ["Subject A opens the panel.", "Subject A closes it."]
+        parsed = minimax._parse_add_scene_timing_refiner_result({
+            "status": "ok",
+            "timestamps": ["At 0:0.0,", "00:02:817"],
+        })
+        self.assertEqual(
+            parsed["timestamps"],
+            ["00:00.000", "00:02.817"],
+        )
+        self.assertEqual(
+            minimax._timing_refiner_timestamp_error(
+                actions,
+                parsed["timestamps"],
+                8,
+            ),
+            "",
+        )
+        self.assertEqual(
+            minimax._assemble_timed_scene(actions, parsed["timestamps"]),
+            "At 00:00.000, Subject A opens the panel.\n"
+            "At 00:02.817, Subject A closes it.",
+        )
+
+    def test_timing_refiner_rejects_ambiguous_or_invalid_timestamp_values(self):
+        for timestamp in ("00:08.1234", "00:08..8", "eight seconds"):
+            with self.subTest(timestamp=timestamp):
+                with self.assertRaisesRegex(ValueError, "malformed or ambiguous"):
+                    minimax._parse_add_scene_timing_refiner_result({
+                        "status": "ok",
+                        "timestamps": [timestamp],
+                    })
+        actions = ["Subject A starts."]
+        normalized_invalid = minimax._parse_add_scene_timing_refiner_result({
+            "status": "ok",
+            "timestamps": ["00:60.0"],
+        })["timestamps"]
+        self.assertIn(
+            "seconds must be below 60",
+            minimax._timing_refiner_timestamp_error(
+                actions,
+                normalized_invalid,
+                70,
+            ),
+        )
+
+    def test_pipeline_uses_normalized_timing_without_an_extra_llm_attempt(self):
+        creative = "Subject A opens the panel.\nSubject A closes it."
+        canonical_timed = (
+            "At 00:00.000, Subject A opens the panel.\n"
+            "At 00:02.817, Subject A closes it."
+        )
+        payload, calls, *_ = self._run_pipeline(
+            creative,
+            creative,
+            canonical_timed,
+            timing_responses=[{
+                "status": "ok",
+                "timestamps": ["0:0.0", "00:02:817"],
+            }],
+        )
+        timing_calls = [
+            call for call in calls if call[0] == "add_scene_timing_refiner"
+        ]
+        self.assertEqual(len(timing_calls), 1)
+        self.assertIn(canonical_timed, payload["raw_scene"])
+
     def test_not_enough_time_regenerates_creative_without_raw_repair(self):
         first = "Amy crosses the room and pours the drink."
         second = "Amy walks to the barrel."
