@@ -1,0 +1,53 @@
+{
+  "version": 3,
+  "source_sha256": "9de6f33cc3e345fc059aac9ebeff9d1e205eec3b88e308a6d672685729194582",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman",
+    "wipes_a_polished_table_with_cloth_soaked_in_ale_scented_oil",
+    "pours_steaming_cup_into_crystal_chalice_for_elf",
+    "green_skin",
+    "tiny_hands_clutching_chipped_mug",
+    "silver_hair_streaming_down_shoulders",
+    "beautiful_female_elf",
+    "scales_glittering_like_polished_obsidian",
+    "amber_eyes_scanning_the_room"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "30",
+      "clothing": "A rough‑spun earth-tone tunic with a loose, slightly fitted cut over her waist, paired with a scuffed dark brown leather apron that drapes across her chest and hips; she wears sturdy worn‑brown leather boots to the ankle and a matching belt at her waist",
+      "gender": "female",
+      "confident_woman": "true",
+      "wipes_a_polished_table_with_cloth_soaked_in_ale_scented_oil": "yes",
+      "pours_steaming_cup_into_crystal_chalice_for_elf": "yes"
+    },
+    {
+      "name": "Goblin",
+      "age": "15",
+      "clothing": "A faded green tunic made of rough cloth, patched at seams and belted at the waist by a worn leather strap; brown leggings frayed slightly at the cuffs tucked into simple leather boots laced loosely over his small feet; a thin pouch hangs from his belt for coins or mugs",
+      "gender": "male",
+      "green_skin": "true",
+      "tiny_hands_clutching_chipped_mug": "yes"
+    },
+    {
+      "name": "Elf",
+      "age": "200",
+      "clothing": "A silver‑haired elf woman steps into the tavern wearing an elegant, floor‑length tunic of soft emerald green silk whose hem and cuffs are embroidered with delicate silver thread that catches the lantern light. The tunic falls to mid‑thigh over fitted leather breeches tucked neatly into polished calf‑high boots. A wide silver belt cinched at her waist holds a small pouch of herbs, while a lightweight forest‑green cloak drapes over her shoulders, its inner lining trimmed with embroidered leaf motifs in matching silver thread",
+      "gender": "female",
+      "silver_hair_streaming_down_shoulders": "true",
+      "beautiful_female_elf": "yes"
+    },
+    {
+      "name": "Dragon",
+      "age": "500",
+      "clothing": "A 500‑year‑old male dragon sits on the bar stool wearing a fitted dark wool tunic belted at the waist with a braided leather strap; silver thread embroidered in swirling patterns along the cuffs and collar echoes the glittering obsidian sheen of his scales. His forearms are wrapped in soft linen bands matching the tunic, and he wears a lightweight midnight‑blue velvet cloak draped over one shoulder that catches the lantern glow. A small obsidian pendant hangs from a leather cord around his neck",
+      "gender": "male",
+      "scales_glittering_like_polished_obsidian": "true",
+      "amber_eyes_scanning_the_room": "yes"
+    }
+  ]
+}
