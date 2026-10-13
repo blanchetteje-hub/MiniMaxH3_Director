@@ -1,0 +1,38 @@
+{
+  "job_id": "accept-director-split-testing-tavern-20261013-54",
+  "kind": "run_acceptance",
+  "started_at": 1791869781.72997,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--benchmark",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\gold\\amy_medieval_tavern_six.json",
+      "--extra-minimax-arg=--pre-director-replay-fixture",
+      "--extra-minimax-arg=tests\\acceptance\\fixtures\\tavern_job33_pre_director\\replay.json"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": true,
+    "timeout_seconds": null,
+    "started_at": 1791869782.869209,
+    "finished_at": 1791869783.1100092,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "run.log": "files\\run.log",
+      "source_result_dir": "tests\\acceptance\\results\\amy_medieval_tavern_six-20261013-013622"
+    }
+  },
+  "local_process_failed": true,
+  "interrupted": true,
+  "bridge_stop_requested": true,
+  "finished_at": 1791869783.1477811,
+  "status": "interrupted"
+}
