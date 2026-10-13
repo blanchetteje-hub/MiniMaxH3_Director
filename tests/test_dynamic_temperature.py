@@ -200,7 +200,7 @@ def test_request_context_and_output_budgets_are_independent_of_profiles():
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_h3_music"] == 512
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["source_unit_state_effects"] == 2048
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_raw_scene_physical"] == 3072
-    assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["validate_timing_valid"] == 2048
+    assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["validate_timing_valid"] == 4096
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS[
         "director_raw_scene_visible_subject_resolution"
     ] == 3172
@@ -223,6 +223,26 @@ def test_timing_validator_uses_renamed_purpose():
 
     assert result == {"valid": True, "issue": ""}
     assert captured["kwargs"]["history_metadata"]["purpose"] == "validate_timing_valid"
+
+
+def test_timing_validator_uses_4096_max_output_tokens():
+    response = mock.Mock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = {
+        "choices": [{"message": {"content": '{"valid":true,"issue":""}'}, "finish_reason": "stop"}]
+    }
+    with (
+        mock.patch.object(minimax.requests, "post", return_value=response) as post,
+        mock.patch.object(minimax, "append_prompt_history"),
+        mock.patch.object(minimax, "estimate_message_tokens", return_value=100),
+        mock.patch.object(minimax, "generate_random_llm_seed", return_value=123),
+    ):
+        minimax.ask_llm(
+            [{"role": "user", "content": "validate timing"}],
+            history_metadata={"purpose": "validate_timing_valid"},
+        )
+
+    assert post.call_args.kwargs["json"]["max_tokens"] == 4096
 
     response = mock.Mock()
     response.raise_for_status.return_value = None

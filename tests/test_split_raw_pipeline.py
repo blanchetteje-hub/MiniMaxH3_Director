@@ -317,6 +317,68 @@ Return the following JSON:
             actions, ["00:00.000", "00:08.000"], 8
         ))
 
+    def test_creative_timestamps_are_removed_before_timing_refiner(self):
+        creative = (
+            "At 00:01.700, Elf steps through the doorway.\n"
+            "She reaches the table by 00:03.000."
+        )
+        untimed = "Elf steps through the doorway.\nShe reaches the table."
+        timed = _timed_scene(untimed.splitlines(), timestamps=[0, 4])
+        payload, calls, physical_candidates, _contexts = self._run_pipeline(
+            "Elf enters and reaches the table.",
+            creative,
+            timed,
+        )
+
+        self.assertEqual(physical_candidates, [untimed])
+        timing_call = next(call for call in calls if call[0] == "add_scene_timing_refiner")
+        self.assertIn("1. Elf steps through the doorway.", timing_call[1][1]["content"])
+        self.assertIn("2. She reaches the table.", timing_call[1][1]["content"])
+        self.assertNotIn("00:01.700", timing_call[1][1]["content"])
+        self.assertNotIn("00:03.000", timing_call[1][1]["content"])
+        self.assertNotIn("00:01.700", payload["raw_scene"])
+        self.assertNotIn("00:03.000", payload["raw_scene"])
+        self.assertIn("At 00:00.000, Elf steps", payload["raw_scene"])
+
+    def test_creative_timestamp_cleanup_handles_inline_and_unicode_spacing(self):
+        raw = (
+            "The elf enters at\u202f00\u202f:\u202f01.700, then pauses.\n"
+            "By 00:03.000 she reaches the table.\n"
+            "00:04.500 — She sits.\n"
+            "She pauses at the aisle midpoint 00:05.250, then turns."
+        )
+        self.assertEqual(
+            minimax._strip_creative_raw_timestamps(raw),
+            "The elf enters, then pauses.\nshe reaches the table.\n"
+            "She sits.\nShe pauses at the aisle midpoint, then turns.",
+        )
+
+    def test_repaired_creative_timestamps_are_removed_before_revalidation(self):
+        first = "Amy crosses the room."
+        repaired = (
+            "At 00:01.000, Amy crosses the room.\n"
+            "By 00:03.000 she reaches the door."
+        )
+        untimed_repair = "Amy crosses the room.\nshe reaches the door."
+        timed = _timed_scene(untimed_repair.splitlines(), timestamps=[0, 4])
+        payload, calls, physical_candidates, _contexts = self._run_pipeline(
+            "Amy crosses the room and reaches the door.",
+            first,
+            timed,
+            repair_scenes=[repaired],
+            physical_verdicts=[
+                {"valid": False, "issue": "The first path is blocked."},
+                {"valid": True, "issue": ""},
+            ],
+        )
+
+        self.assertEqual(physical_candidates, [first, untimed_repair])
+        timing_call = next(call for call in calls if call[0] == "add_scene_timing_refiner")
+        self.assertNotIn("00:01.000", timing_call[1][1]["content"])
+        self.assertNotIn("00:03.000", timing_call[1][1]["content"])
+        self.assertNotIn("00:01.000", payload["raw_scene"])
+        self.assertNotIn("00:03.000", payload["raw_scene"])
+
     def test_timing_refiner_normalizes_unambiguous_timestamp_spellings(self):
         actions = ["Subject A opens the panel.", "Subject A closes it."]
         parsed = minimax._parse_add_scene_timing_refiner_result({

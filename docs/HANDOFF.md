@@ -1,5 +1,45 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Job 53 timing budget, untimed RAW, and transfer staging
+
+- Job 53 (`gpt-runtime` revision `a60f19990357488738658a7fe6588518e4b4e03c`)
+  shows `validate_timing_valid` exhausted ten attempts at
+  `max_tokens=2048`; all ten ended with `finish_reason=length` and no usable
+  JSON. Raised only this purpose's output limit to 4096. Profile, prompt,
+  reasoning, temperature, and retry handling are unchanged.
+- `director_raw_scene_creative` did not prohibit time annotations. Segment 3
+  creative attempts included forms such as `At 00:01.700` and `By 00:03.000`,
+  while the timing refiner independently assigned its timestamp array. Python
+  now removes explicit timestamp annotations from both creative and repaired
+  RAW before content validation and timing refinement. The raw LLM responses
+  remain logged unchanged; Python-assembled timing remains authoritative.
+- Segment 2's physical validator only checks Subject movement and support
+  continuity. The prop-state validator checked for a real source and
+  destination, which the barrel and mug satisfied; neither check rejected
+  `Amy lifts a handful of liquid from the barrel`. Added a deterministic guard
+  inside the existing prop-state validation entry point for explicit bare-hand
+  transfer of a fluid. Explicit carrier/tool or outlet wording is allowed, as
+  are physically plausible handful transfers of granular material. No extra
+  LLM call or validation stage was added.
+- The bare-hand rule is deliberately narrow; it does not prove that every
+  transfer from a fixed vessel has a physically plausible outlet. A general
+  semantic boundary is best stated in the existing prop-state prompt. Suggested
+  prompt wording for separate approval:
+  - `director_raw_scene_creative`: “Do not include timestamps; timestamps are
+    assigned by the timing refiner.”
+  - `director_raw_scene_prop_state`: “For each substance transfer, verify that
+    RAW shows a physically plausible way for the substance to move from source
+    to destination. Bare hands cannot carry liquids. A fixed container may
+    dispense only through a visible or established outlet or operating
+    mechanism, or through an explicitly shown suitable carrier or implement.
+    Do not invent a prop or mechanism to make a transfer possible. Allow direct
+    hand transfer of powders and granular materials only when physically
+    plausible.”
+- No runtime prompt was changed. Verification: `tests/test_split_raw_pipeline.py`
+  — 19 passed; `DirectorMicroPromptPipelineTests` — 132 passed; direct
+  output-budget checks for the timing purpose passed; `py_compile` and
+  `git diff --check` passed.
+
 ## 2026-10-12 — Job 52 opening actions and RAW staging gaps
 
 - Reviewed Job 52 artifacts from `gpt-runtime` commit

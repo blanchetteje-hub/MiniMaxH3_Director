@@ -1633,6 +1633,37 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertTrue(result["valid"])
         request.assert_called_once()
 
+    def test_prop_state_rejects_bare_hand_fluid_transfer_before_llm(self):
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+
+        result = minimax.validate_director_raw_scene_prop_state(
+            "Amy refills the goblin's mug from the fixed vessel.",
+            "Amy lifts a handful of liquid from the barrel and tilts it toward the mug.",
+            llm_request=request,
+        )
+
+        self.assertFalse(result["valid"])
+        self.assertIn("bare hand", result["issue"])
+        request.assert_not_called()
+
+    def test_prop_state_allows_explicit_transfer_tools_and_handled_granular_material(self):
+        valid_scenes = (
+            "Amy carries a handful of liquid using a ladle and pours it into the mug.",
+            "Amy turns the tap and water flows into the mug.",
+            "Amy scoops a handful of grain from the bin and tips it into the bowl.",
+        )
+        for raw_scene in valid_scenes:
+            with self.subTest(raw_scene=raw_scene):
+                request = mock.Mock(return_value={"valid": True, "issue": ""})
+                result = minimax.validate_director_raw_scene_prop_state(
+                    "Amy transfers material into a container.",
+                    raw_scene,
+                    llm_request=request,
+                )
+
+                self.assertTrue(result["valid"])
+                request.assert_called_once()
+
     def test_physical_validator_distinguishes_floor_movement_from_support_change(self):
         raw = "Subject A steps onto the floor and continues walking."
         request = mock.Mock(return_value={"valid": True, "issue": ""})

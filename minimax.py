@@ -611,7 +611,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "director_raw_scene_coherence": 2048,
     "director_raw_scene_physical": 3072,
     "director_raw_scene_prop_state": 2048,
-    "validate_timing_valid": 2048,
+    "validate_timing_valid": 4096,
     "director_raw_scene_pronoun_resolution": 2048,
     "director_raw_scene_visible_subject_resolution": 3172,
     "final_h3_action_preservation": 2048,
@@ -22196,6 +22196,31 @@ def _normalize_raw_scene_result(raw_result):
     return text
 
 
+_RAW_INLINE_TIMESTAMP_RE = re.compile(
+    r"(?i)(?<!\w)(?:at|by)\s+\d{1,2}\s*[:：]\s*\d{1,2}"
+    r"(?:[.,]\s*\d{1,3})?"
+)
+_RAW_BARE_INLINE_TIMESTAMP_RE = re.compile(
+    r"(?<!\w)\d{1,2}\s*[:：]\s*\d{1,2}[.,]\s*\d{3}(?!\d)"
+)
+_RAW_TIMESTAMP_LINE_PREFIX_RE = re.compile(
+    r"(?i)^\s*(?:[-*]\s*)?(?:(?:at|by)\s+)?\d{1,2}\s*[:：]\s*\d{1,2}"
+    r"(?:[.,]\s*\d{1,3})?\s*[,;:\-–—]?\s*"
+)
+
+
+def _strip_creative_raw_timestamps(raw_scene):
+    """Remove timestamp annotations from creative RAW; timing Python owns them."""
+    untimed_lines = []
+    for line in str(raw_scene or "").splitlines():
+        line = _RAW_TIMESTAMP_LINE_PREFIX_RE.sub("", line, count=1)
+        line = _RAW_INLINE_TIMESTAMP_RE.sub("", line)
+        line = _RAW_BARE_INLINE_TIMESTAMP_RE.sub("", line)
+        line = re.sub(r"[ \t]+([,;:.!?])", r"\1", line)
+        untimed_lines.append(line)
+    return "\n".join(untimed_lines).strip()
+
+
 def _parse_add_scene_timing_refiner_result(raw_result):
     """Parse the strict status/timestamp-list response from the timing refiner."""
     candidate = raw_result
@@ -38342,6 +38367,9 @@ def validate_director_raw_scene_prop_state(
     """Return a narrow prop/transfer/final-state verdict for one RAW scene."""
     if not str(current_beat or "").strip():
         return {"valid": True, "issue": ""}
+    transfer_issue = _unsupported_bare_hand_fluid_transfer_issue(raw_scene)
+    if transfer_issue:
+        return {"valid": False, "issue": transfer_issue}
     result = llm_request(
         build_director_raw_scene_prop_state_messages(
             current_beat,
@@ -38361,6 +38389,42 @@ def validate_director_raw_scene_prop_state(
         },
     )
     return parse_beat_validation_result(result)
+
+
+def _unsupported_bare_hand_fluid_transfer_issue(raw_scene):
+    """Reject explicit bare-hand carrying of fluids without a carrier/mechanism."""
+    fluid = (
+        r"liquid|fluid|water|oil|ale|beer|wine|milk|juice|broth|soup|tea|coffee|"
+        r"brew|nectar|elixir|molten\s+(?:metal|rock|lava|wax|glass)"
+    )
+    handled_fluid = re.compile(
+        rf"(?i)\b(?:handful|palmful)\s+of\s+(?:the\s+)?(?:{fluid})\b"
+        rf"|\b(?:{fluid})\b[^.!?;]{{0,40}}\b(?:in|between)\s+"
+        r"(?:(?:the|her|his|their|its)\s+)?(?:bare\s+)?(?:hand|hands|palm|palms|fingers)\b"
+    )
+    transfer = re.compile(
+        r"(?i)\b(?:pour(?:s|ed|ing)?|fill(?:s|ed|ing)?|refill(?:s|ed|ing)?|"
+        r"scoop(?:s|ed|ing)?|lift(?:s|ed|ing)?|carry|carries|carried|carrying|"
+        r"tip(?:s|ped|ping)?|tilt(?:s|ed|ing)?|transfer(?:s|red|ring)?|"
+        r"decant(?:s|ed|ing)?|drain(?:s|ed|ing)?|dispense(?:s|d|ing)?|"
+        r"flow(?:s|ed|ing)?)\b"
+    )
+    carrier = re.compile(
+        r"(?i)\b(?:with|using|through|via|by\s+operating)\s+"
+        r"(?:(?:a|an|the|her|his|their)\s+)?"
+        r"(?:ladle|scoop|spoon|pitcher|bottle|jug|cup|mug|glass|bowl|vessel|"
+        r"container|bucket|hose|pipe|tube|funnel|tap|spigot|faucet|valve|"
+        r"pump|dispenser|channel|trough|gutter|siphon|spout)\b"
+    )
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", str(raw_scene or "")):
+        if handled_fluid.search(sentence) and transfer.search(sentence):
+            if carrier.search(sentence):
+                continue
+            return (
+                "RAW transfers a fluid by bare hand without showing a carrier or "
+                "dispensing mechanism."
+            )
+    return ""
 
 
 def validate_director_raw_scene_coherence(
@@ -38686,8 +38750,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             parse_json_response=False,
             history_metadata=creative_metadata,
         )
-        creative_scene = _normalize_raw_scene_result(
-            creative_scene_result
+        creative_scene = _strip_creative_raw_timestamps(
+            _normalize_raw_scene_result(creative_scene_result)
         ).split("End continuity state:", 1)[0].strip()
         console_log(
             "DIRECTOR CREATIVE RAW RESPONSE " + json.dumps(
@@ -38872,8 +38936,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 flush=True,
             )
             if isinstance(repaired_creative, str) and repaired_creative.strip():
-                creative_scene = _normalize_raw_scene_result(
-                    repaired_creative
+                creative_scene = _strip_creative_raw_timestamps(
+                    _normalize_raw_scene_result(repaired_creative)
                 ).split("End continuity state:", 1)[0].strip()
 
         if regenerate_raw:
