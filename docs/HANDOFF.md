@@ -1,5 +1,37 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Job 56 identity-only visible-Subject resolution
+
+- Replaced the visible-Subject resolver's scene-rewrite/bootstrap response with
+  an identity map containing `raw_name`, a registered `<Subject N>` reference
+  or null, and `is_new`. The user message now contains only the accepted RAW
+  and registered name/reference vocabulary; the JSON contract remains in the
+  system prompt. The system prompt now limits this call to identity matching.
+- Python validates each returned name against the unchanged RAW and resolves
+  existing references through the exact vocabulary supplied to that request.
+  A descriptive alias that uniquely identifies a registered Subject maps to
+  its canonical WorldState ID; mismatched, unknown, or ambiguous references
+  fail closed. New Subjects are returned to the existing named-Subject
+  registration path to receive stable Subject IDs for downstream H3 reference
+  handling. Duplicate rows for an existing identity are collapsed.
+- This resolver applies exact Subject-name substitutions deterministically in
+  Python; it does not alter actions, timestamps, camera text, end-continuity
+  content, or other RAW text. The no-discovery bypass returns the original RAW
+  string byte-for-byte.
+- Removed the old resolver's description/wardrobe bootstrap helper and all
+  production consumers of those response fields. Canonical identity, Picture
+  references, and wardrobe remain owned by their existing sources and seed
+  paths; incomplete metadata no longer triggers this identity-only resolver.
+- Added regressions for prompt/user-data boundaries, known alias-to-ID mapping,
+  new Subjects, repeated identities, unknown references, duplicate registered
+  aliases, and timestamp/action preservation.
+- Verification: all 13 focused identity-resolver tests passed, including the
+  relevant postmortem regressions. `tests.test_director_retry` passed all 136
+  tests. `py_compile` and `git diff --check` passed. A broader combined run
+  also exercised unrelated prompt-pipeline assertions that currently disagree
+  with existing physical-validator/H3 expectations; those were not changed in
+  this identity-only task.
+
 ## 2026-10-13 — Job 56 unnecessary visible-Subject resolution
 
 - The post-RAW visible-Subject resolver always called the LLM, even when the

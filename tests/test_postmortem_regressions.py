@@ -19,45 +19,42 @@ class PostmortemRegressionTests(unittest.TestCase):
         prompt = "\n".join(message["content"] for message in messages)
         self.assertIn("End continuity moves a subject after the final timed action", prompt)
 
-    def test_subject_resolver_prefers_explicit_species_over_generic_creature(self):
+    def test_subject_resolver_contract_contains_identity_mapping_only(self):
         messages = minimax.build_director_raw_subject_resolution_messages(
-            "At 00:01.000, a pilot shifts outside while a mechanic watches Amy."
+            "At 00:01.000, Amy enters.",
+            [{"subject_id": "<Subject 1>", "name": "Amy"}],
         )
-        prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("most specific explicit role/species plus an integer", prompt)
-        self.assertIn("neutral generic type label", prompt)
-        self.assertNotIn("dragon", prompt.casefold())
-        self.assertNotIn("griffin", prompt.casefold())
-
-    def test_subject_resolver_reuses_single_known_functional_species(self):
+        system, user = messages[0]["content"], messages[1]["content"]
+        for field in ('"subjects"', '"raw_name"', '"subject_id"', '"is_new"'):
+            self.assertIn(field, system)
+        self.assertNotIn("subject_wardrobes", user)
+        self.assertNotIn("Return raw_scene", user)
+        self.assertIn('"subject_id":"<Subject 1>"', user)
+    def test_subject_resolver_matches_registered_functional_subject_by_id(self):
+        world_state = minimax.new_world_state({
+            "source_sha256": "functional-subject-match",
+            "subjects": {
+                "4": {"subject_id": 4, "name": "Griffin1"},
+            },
+        })
         raw = (
-            "At 00:00.000, Griffin waits beside the counter.\n\n"
-            "At 00:02.000, Griffin lifts its mug.\n\n"
-            "At 00:04.000, Griffin settles beside Amy.\n\n"
+            "At 00:00.000, Griffin waits beside the counter.\n"
+            "At 00:04.000, Griffin settles beside Amy.\n"
             "End continuity state: Griffin remains beside Amy."
         )
-
-        def fake_llm(_messages, **_kwargs):
-            return {
-                "raw_scene": (
-                    "At 00:00.000, Griffin waits beside the counter.\n\n"
-                    "At 00:02.000, Griffin lifts its mug.\n\n"
-                    "At 00:04.000, Griffin settles beside Amy."
-                ),
-                "subject_names": ["Griffin"],
-            }
-
-        resolved, names = minimax.resolve_director_raw_scene_subjects(
+        response = {"subjects": [{
+            "raw_name": "Griffin",
+            "subject_id": "<Subject 4>",
+            "is_new": False,
+        }]}
+        resolved, subjects = minimax.resolve_director_raw_scene_subjects(
             raw,
-            subject_definitions=(
-                "<Subject 4> is Griffin1 (S4), continued from <Video 1>."
-            ),
-            llm_request=fake_llm,
+            world_state=world_state,
+            llm_request=lambda *_args, **_kwargs: response,
             segment_seconds=5,
         )
-        self.assertIn("Griffin1 waits beside the counter", resolved)
-        self.assertIn("Griffin1 settles beside Amy", resolved)
-        self.assertEqual(names, [])
+        self.assertEqual(resolved, raw.replace("Griffin", "Griffin1"))
+        self.assertEqual(subjects[0]["subject_id"], "subject_4")
 
     def test_new_functional_subject_definition_keeps_semantic_role(self):
         state, added = minimax.register_named_subject_hints(
@@ -616,34 +613,13 @@ class PostmortemRegressionTests(unittest.TestCase):
         )
 
     def test_subject_resolver_canonicalizes_functional_end_state(self):
-        raw = (
-            "At 00:00.000, Amy stands at the counter.\n\n"
-            "At 00:01.000, a centaur enters from the left.\n\n"
-            "At 00:06.200, the centaur sits on a low stool.\n\n"
-            "End continuity state: The tall centaur sits across from Amy."
+        end_state = "The centaur sits across from Amy."
+        resolved = minimax._canonicalize_end_continuity_functional_subjects(
+            end_state,
+            "<Subject 2> is Centaur1.",
+            [],
         )
-
-        def fake_llm(_messages, **_kwargs):
-            return {
-                "raw_scene": (
-                    "At 00:00.000, Amy stands at the counter.\n\n"
-                    "At 00:01.000, Centaur1 enters from the left.\n\n"
-                    "At 00:06.200, Centaur1 sits on a low stool."
-                ),
-                "subject_names": ["Centaur1"],
-            }
-
-        resolved, names = minimax.resolve_director_raw_scene_subjects(
-            raw,
-            llm_request=fake_llm,
-            segment_seconds=8,
-        )
-        self.assertEqual(names, ["Centaur1"])
-        self.assertIn(
-            "End continuity state: The tall Centaur1 sits across from Amy.",
-            resolved,
-        )
-
+        self.assertEqual(resolved, "The Centaur1 sits across from Amy.")
     def test_final_timed_subject_is_carried_into_incomplete_end_state(self):
         raw = (
             "At 00:00.000, Amy stands behind the bar.\n\n"
@@ -1654,51 +1630,42 @@ class PostmortemRegressionTests(unittest.TestCase):
         self.assertIn("<Subject 2> is Elf1", filtered)
 
 
-    def test_subject_resolver_promotes_metadata_name_even_if_model_leaves_generic_noun(self):
+    def test_subject_resolver_canonicalizes_alias_without_rewriting_other_raw(self):
+        state = minimax.new_world_state({
+            "source_sha256": "resolver-alias",
+            "subjects": {
+                "2": {
+                    "subject_id": 2,
+                    "name": "Beautiful Female Elf",
+                    "picture_ids": [2],
+                },
+            },
+        })
         raw = (
-            "At 00:00.000, Amy stands at the counter.\n"
-            "At 00:02.000, a beautiful female elf steps in.\n"
-            "At 00:04.000, the elf sits at the back table.\n"
-            "End continuity state: the elf remains seated at the back table."
+            "At 00:00.000, the elf steps in.\n"
+            "At 00:04.000, the elf sits.\n"
+            "End continuity state: the elf remains seated."
         )
-
-        def fake_llm(_messages, **_kwargs):
-            return {
-                "raw_scene": (
-                    "At 00:00.000, Amy stands at the counter.\n"
-                    "At 00:02.000, a beautiful female elf steps in.\n"
-                    "At 00:04.000, the elf sits at the back table."
-                ),
-                "subject_names": ["Elf1"],
-                "subject_descriptions": {
-                    "Elf1": "silver-haired female elf"
-                },
-                "subject_wardrobes": {
-                    "Elf1": {
-                        "upper": "forest-green tunic",
-                        "lower": "brown trousers",
-                        "footwear": "leather boots",
-                        "other": "N/A",
-                    }
-                },
-            }
-
-        resolved, names, descriptions, wardrobes = (
-            minimax.resolve_director_raw_scene_subjects(
-                raw,
-                "<Subject 1> is Amy.",
-                llm_request=fake_llm,
-                segment_seconds=5,
-                return_subject_bootstrap=True,
-            )
+        response = {"subjects": [{
+            "raw_name": "elf",
+            "subject_id": "<Subject 2>",
+            "is_new": False,
+        }]}
+        resolved, subjects = minimax.resolve_director_raw_scene_subjects(
+            raw,
+            world_state=state,
+            llm_request=lambda *_args, **_kwargs: response,
+            segment_seconds=5,
         )
-        self.assertIn("Elf1 steps in", resolved)
-        self.assertIn("Elf1 sits at the back table", resolved)
-        self.assertIn("Elf1 remains seated", resolved)
-        self.assertEqual(names, ["Elf1"])
-        self.assertEqual(descriptions["Elf1"], "silver-haired female elf")
-        self.assertEqual(wardrobes["Elf1"]["upper"], "forest-green tunic")
-
+        self.assertEqual(
+            resolved,
+            raw.replace("the elf", "the Beautiful Female Elf"),
+        )
+        self.assertEqual(subjects[0]["subject_id"], "subject_2")
+        self.assertEqual(
+            minimax._director_timestamp_lexemes(resolved),
+            minimax._director_timestamp_lexemes(raw),
+        )
     def test_physical_prompt_rejects_unsupported_support_changes_and_stale_end_position(self):
         messages = minimax.build_director_raw_scene_physical_messages(
             "Amy wipes the table.",
@@ -1762,15 +1729,16 @@ class PostmortemRegressionTests(unittest.TestCase):
             prompt,
         )
 
-    def test_subject_resolver_receives_current_beat_appearance_facts(self):
+    def test_subject_resolver_prompt_user_message_contains_only_vocabulary_and_raw(self):
+        raw = "At 00:01.000, an elf enters."
         messages = minimax.build_director_raw_subject_resolution_messages(
-            "At 00:01.000, an elf enters.",
-            current_beat="A beautiful female elf enters with silver hair.",
+            raw,
+            [{"subject_id": "<Subject 1>", "name": "Amy"}],
         )
-        prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("CURRENT BEAT\nA beautiful female elf", prompt)
-        self.assertIn("in RAW or CURRENT BEAT", prompt)
-
+        self.assertEqual(messages[1]["content"],
+            'KNOWN SUBJECTS\n[{"subject_id":"<Subject 1>","name":"Amy"}]\n\n'
+            'RAW SCENE\n' + raw)
+        self.assertNotIn("CURRENT BEAT", messages[1]["content"])
     def test_combined_continuity_sanitizes_held_prop_id_objects(self):
         candidate = {
             "version": 5,

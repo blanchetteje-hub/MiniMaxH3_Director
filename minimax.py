@@ -867,36 +867,21 @@ DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
         "schema": {
             "type": "object",
             "properties": {
-                "raw_scene": {"type": "string"},
-                "subject_names": {
+                "subjects": {
                     "type": "array",
-                    "items": {"type": "string", "minLength": 1},
-                },
-                "subject_descriptions": {
-                    "type": "object",
-                    "additionalProperties": {"type": "string"},
-                },
-                "subject_wardrobes": {
-                    "type": "object",
-                    "additionalProperties": {
+                    "items": {
                         "type": "object",
                         "properties": {
-                            "upper": {"type": "string"},
-                            "lower": {"type": "string"},
-                            "footwear": {"type": "string"},
-                            "other": {"type": "string"},
+                            "raw_name": {"type": "string", "minLength": 1},
+                            "subject_id": {"type": ["string", "null"]},
+                            "is_new": {"type": "boolean"},
                         },
-                        "required": ["upper", "lower", "footwear", "other"],
+                        "required": ["raw_name", "subject_id", "is_new"],
                         "additionalProperties": False,
                     },
                 },
             },
-            "required": [
-                "raw_scene",
-                "subject_names",
-                "subject_descriptions",
-                "subject_wardrobes",
-            ],
+            "required": ["subjects"],
             "additionalProperties": False,
         },
     },
@@ -36838,73 +36823,48 @@ def _director_timestamp_lexemes(value):
 
 def build_director_raw_subject_resolution_messages(
     raw_scene,
-    subject_definitions="",
-    story_context="",
-    current_beat="",
+    known_subjects,
 ):
-    """Build the narrow post-RAW dynamic Subject identity pass."""
+    """Build the identity-only post-RAW Subject matching request."""
     return [
         {
             "role": "system",
             "content": (
-                "Resolve only unnamed foreground animate identities in one finalized "
-                "timed RAW scene. Keep every timestamp, action, action order, object, "
-                "location, sound, camera instruction, dialogue, and punctuation meaning "
-                "unchanged. Keep already-named Subjects unchanged. For each distinct "
-                "unnamed foreground animate participant who acts or is acted on, replace "
-                "EVERY reference to that participant in returned raw_scene with one stable "
-                "functional name; every name listed in subject_names must literally appear "
-                "in returned raw_scene. Make the functional name from its most specific "
-                "explicit role/species plus an integer. Use a neutral generic type label "
-                "only when the specific type is truly unknown. Capitalization alone does "
-                "not make a role/species noun an "
-                "established name. Reuse a KNOWN SUBJECT when RAW continues that same "
-                "individual; when exactly one KNOWN SUBJECT has the same role/species stem, "
-                "reuse it unless RAW explicitly says another/new/second individual appears. "
-                "Use the next unused suffix only for a genuinely new identity. Do not label "
-                "interchangeable background crowds/groups. For each newly named Subject, "
-                "also return subject_descriptions with one short stable visual identity "
-                "sentence using only explicit non-clothing appearance facts already present "
-                "in RAW or CURRENT BEAT (species/type, sex/gender wording, age, hair, skin/scales/fur, build, "
-                "body/anatomy, and distinguishing features). If an already-named KNOWN SUBJECT "
-                "is visible in RAW but its definition lacks stable appearance or wardrobe "
-                "details, include that Subject in subject_names too and return only its missing "
-                "subject_descriptions and/or subject_wardrobes metadata; keep its established "
-                "name unchanged. Never put clothing in subject_descriptions. Also return "
-                "subject_wardrobes using exactly upper, lower, footwear, and other. Preserve clothing "
-                "explicitly stated in RAW. If RAW does not state clothing and the Subject is "
-                "a human or has a humanoid physical form, choose one simple "
-                "setting-appropriate outfit now; this becomes canonical and must not be "
-                "re-invented later. "
-                "Use STORY CONTEXT only when RAW does not specify clothing, so the chosen "
-                "outfit matches the established setting, period, culture, and visual world. "
-                "Do not use STORY CONTEXT to change RAW actions or explicit appearance facts. "
-                "For a non-humanoid form that normally does not wear clothing, use N/A "
-                "for all four wardrobe fields unless RAW explicitly gives clothing. "
-                "Use absent only for a specifically removed garment when the subject "
-                "remains clothed in other attire. Humanoid subjects must never be "
-                "rendered nude or assigned N/A clothing, even when RAW omits their outfit; "
-                "fill missing coverage with simple setting-appropriate clothing. "
-                "Barefoot may be used when RAW explicitly says so. Exclude action, pose, "
-                "location, held props, camera, and mood. Return JSON only."
+                "Match Subjects appearing in RAW SCENE to KNOWN SUBJECTS.\n\n"
+                "Rules:\n"
+                "- Identify each distinct foreground Subject appearing in RAW SCENE.\n"
+                "- Match each Subject to an existing KNOWN SUBJECT whenever possible.\n"
+                "- Reuse the existing Subject ID for matches.\n"
+                "- If no match exists, mark the Subject as new.\n"
+                "- Do not create duplicate Subjects.\n"
+                "- Do not include background crowds or unnamed extras.\n"
+                "- Use only RAW SCENE and KNOWN SUBJECTS to determine identity.\n\n"
+                "Return as a JSON object:\n\n"
+                "{\n"
+                '  "subjects": [\n'
+                "    {\n"
+                '      "raw_name": "name or description used in RAW",\n'
+                '      "subject_id": null,\n'
+                '      "is_new": true\n'
+                "    }\n"
+                "  ]\n"
+                "}\n\n"
+                "For a match, use its exact Subject ID from KNOWN SUBJECTS and set "
+                "is_new to false. For a new Subject, use null and true."
             ),
         },
         {
             "role": "user",
             "content": (
-                "CURRENT BEAT\n"
-                f"{str(current_beat or '').strip() or 'N/A'}\n\n"
-                "STORY CONTEXT\n"
-                f"{str(story_context or '').strip() or 'N/A'}\n\n"
                 "KNOWN SUBJECTS\n"
-                f"{str(subject_definitions or '').strip() or 'N/A'}\n\n"
+                + json.dumps(
+                    known_subjects if isinstance(known_subjects, list) else [],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                )
+                + "\n\n"
                 "RAW SCENE\n"
-                f"{str(raw_scene or '').strip()}\n\n"
-                "Return raw_scene plus subject_names containing only the functional "
-                "Subject names used in the returned RAW scene, subject_descriptions mapping "
-                "each newly named Subject to its concise non-clothing visual identity "
-                "sentence, and subject_wardrobes mapping each newly named Subject to its "
-                "canonical upper/lower/footwear/other wardrobe."
+                f"{str(raw_scene or '')}"
             ),
         },
     ]
@@ -37060,7 +37020,7 @@ def _director_carry_forward_final_subjects(
 
 
 def _director_raw_subject_resolution_can_be_skipped(raw_scene, world_state):
-    """Return whether RAW needs no identity or appearance bootstrap."""
+    """Return whether every visible Subject is already explicitly identified."""
     if not isinstance(world_state, dict) or not isinstance(
         world_state.get("subjects"), dict
     ):
@@ -37076,13 +37036,11 @@ def _director_raw_subject_resolution_can_be_skipped(raw_scene, world_state):
         if name:
             registered.append((name, subject))
 
-    referenced = []
     remaining = visual_text
-    for name, subject in sorted(registered, key=lambda item: len(item[0]), reverse=True):
+    for name, _subject in sorted(registered, key=lambda item: len(item[0]), reverse=True):
         pattern = re.compile(rf"(?i)(?<![\w]){re.escape(name)}(?![\w])")
         if pattern.search(remaining) is None:
             continue
-        referenced.append((name, subject))
         remaining = pattern.sub(" ", remaining)
 
     registered_names = [name for name, _subject in registered]
@@ -37128,82 +37086,99 @@ def _director_raw_subject_resolution_can_be_skipped(raw_scene, world_state):
     if re.search(r"(?i)\b(?:as|while|when|after|before|and|but)\s+(?:a|an|the)\b", residual):
         return False
 
-    for _name, subject in referenced:
-        identity = subject.get("identity")
-        if not isinstance(identity, dict):
-            return False
-        has_identity = any(
-            _world_state_known(identity.get(field))
-            for field in ("canonical_description", "source_description")
-        ) or bool(identity.get("picture_ids"))
-        wardrobe = subject.get("wardrobe")
-        if not has_identity or not isinstance(wardrobe, dict):
-            return False
-        if any(
-            wardrobe.get(slot) in (None, "", "unknown")
-            for slot in _WARDROBE_FIELDS
-        ):
-            return False
     return True
+
+
+def _director_raw_subject_vocabulary(world_state):
+    """Build model-visible Subject references and their canonical IDs."""
+    rows = []
+    by_reference = {}
+    subjects = world_state.get("subjects", {}) if isinstance(world_state, dict) else {}
+    if not isinstance(subjects, dict):
+        subjects = {}
+    for world_state_id, subject in subjects.items():
+        if not isinstance(subject, dict):
+            continue
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        if not name:
+            continue
+        reference = f"<Subject {_world_state_prompt_subject_number(subject, world_state_id)}>"
+        if reference in by_reference:
+            raise ValueError(f"Duplicate visible Subject reference {reference!r}.")
+        by_reference[reference] = {
+            "id": str(world_state_id),
+            "name": name,
+        }
+        rows.append({"subject_id": reference, "name": name})
+    rows.sort(key=lambda row: row["subject_id"])
+    return rows, by_reference
+
+
+def _director_subject_raw_name_matches(raw_scene, raw_name):
+    name = " ".join(str(raw_name or "").split()).strip()
+    if not name:
+        return []
+    return list(re.finditer(
+        rf"(?i)(?<![\w]){re.escape(name)}(?![\w])",
+        str(raw_scene or ""),
+    ))
+
+
+def _director_subject_alias_candidates(raw_name, known_subjects):
+    """Return canonical entries with a unique, descriptive-name alias match."""
+    alias = _subject_identity_key(raw_name)
+    if not alias:
+        return []
+    alias_words = alias.split()
+    matches = []
+    for row in known_subjects or []:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name") or "").strip()
+        name_key = _subject_identity_key(name)
+        name_words = name_key.split()
+        functional_key, _numbered = _functional_subject_type_key(name)
+        if (
+            name_key == alias
+            or (len(alias_words) <= len(name_words) and name_words[-len(alias_words):] == alias_words)
+            or functional_key == alias
+        ):
+            matches.append(row)
+    unique = {}
+    for row in matches:
+        unique[str(row.get("subject_id") or "")] = row
+    return list(unique.values())
 
 
 def resolve_director_raw_scene_subjects(
     raw_scene,
-    subject_definitions="",
+    world_state,
     *,
-    world_state=None,
     llm_request=ask_llm,
     history_metadata=None,
     segment_seconds=None,
-    return_subject_descriptions=False,
-    return_subject_bootstrap=False,
-    story_context="",
-    current_beat="",
 ):
-    """Name distinct unnamed foreground animate actors after RAW is finalized."""
+    """Match RAW Subject mentions to WorldState identities without LLM rewriting."""
     raw_input = raw_scene if isinstance(raw_scene, str) else str(raw_scene or "")
-    original = _canonicalize_director_timestamps(raw_input).strip()
-    if not original:
-        if return_subject_bootstrap:
-            return original, [], {}, {}
-        if return_subject_descriptions:
-            return original, [], {}
-        return original, []
-
+    if not raw_input.strip():
+        return raw_input, []
     if _director_raw_subject_resolution_can_be_skipped(raw_input, world_state):
-        structure_errors = _director_raw_scene_structure_errors(
-            original,
-            segment_seconds,
-        )
-        if structure_errors:
+        errors = _director_raw_scene_structure_errors(raw_input, segment_seconds)
+        if errors:
             raise ValueError(
                 "RAW Subject resolver bypass found invalid shot-script structure: "
-                + "; ".join(structure_errors)
+                + "; ".join(errors)
             )
         console_log(
-            "Skipping RAW Subject resolution: all referenced Subjects are "
-            "registered with complete identity and wardrobe metadata.",
+            "Skipping RAW Subject resolution: all action-line Subjects are "
+            "already registered and named.",
             flush=True,
         )
-        if return_subject_bootstrap:
-            return raw_input, [], {}, {}
-        if return_subject_descriptions:
-            return raw_input, [], {}
         return raw_input, []
 
-    end_match = _DIRECTOR_END_CONTINUITY_RE.search(original)
-    if not end_match:
-        raise ValueError("RAW Subject resolver requires End continuity state.")
-    timed_original = original[:end_match.start()].rstrip()
-    end_state_original = original[end_match.start():].strip()
-
+    known_subjects, subject_by_reference = _director_raw_subject_vocabulary(world_state)
     result = llm_request(
-        build_director_raw_subject_resolution_messages(
-            timed_original,
-            subject_definitions=subject_definitions,
-            story_context=story_context,
-            current_beat=current_beat,
-        ),
+        build_director_raw_subject_resolution_messages(raw_input, known_subjects),
         response_format=DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT,
         history_metadata={
             **dict(history_metadata or {}),
@@ -37212,286 +37187,130 @@ def resolve_director_raw_scene_subjects(
     )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
-    allowed_result_keys = (
-        {"raw_scene", "subject_names"},
-        {"raw_scene", "subject_names", "subject_descriptions"},
-        {
-            "raw_scene",
-            "subject_names",
-            "subject_descriptions",
-            "subject_wardrobes",
-        },
-    )
-    if not isinstance(result, dict) or set(result) not in allowed_result_keys:
-        raise ValueError(
-            "RAW Subject resolver must return raw_scene and subject_names, with "
-            "optional subject_descriptions and subject_wardrobes."
-        )
-    raw_subject_descriptions = result.get("subject_descriptions", {})
-    if not isinstance(raw_subject_descriptions, dict):
-        raise ValueError("RAW Subject resolver subject_descriptions must be an object.")
-    raw_subject_wardrobes = result.get("subject_wardrobes", {})
-    if not isinstance(raw_subject_wardrobes, dict):
-        raise ValueError("RAW Subject resolver subject_wardrobes must be an object.")
+    if not isinstance(result, dict) or set(result) != {"subjects"}:
+        raise ValueError("RAW Subject resolver must return only a subjects array.")
+    raw_subjects = result.get("subjects")
+    if not isinstance(raw_subjects, list):
+        raise ValueError("RAW Subject resolver subjects must be an array.")
 
-    resolved_timed = _canonicalize_director_timestamps(
-        result.get("raw_scene", "")
-    ).strip()
-    if not resolved_timed:
-        raise ValueError("RAW Subject resolver returned empty raw_scene.")
-    if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
-        raise ValueError("RAW Subject resolver changed timestamps.")
+    normalized = []
+    row_by_raw_name = {}
+    seen_subjects = set()
+    for item in raw_subjects:
+        if not isinstance(item, dict) or set(item) != {"raw_name", "subject_id", "is_new"}:
+            raise ValueError("RAW Subject entries require raw_name, subject_id, and is_new.")
+        raw_name = " ".join(str(item.get("raw_name") or "").split()).strip()
+        if not raw_name or not _director_subject_raw_name_matches(raw_input, raw_name):
+            raise ValueError(f"RAW Subject name {raw_name!r} is not present in RAW SCENE.")
+        is_new = item.get("is_new")
+        subject_reference = item.get("subject_id")
+        if not isinstance(is_new, bool):
+            raise ValueError("RAW Subject is_new must be a boolean.")
+        if is_new:
+            if subject_reference is not None:
+                raise ValueError("A new RAW Subject must have subject_id null.")
+            alias_matches = _director_subject_alias_candidates(raw_name, known_subjects)
+            if len(alias_matches) == 1:
+                raise ValueError(
+                    f"RAW Subject {raw_name!r} aliases registered Subject "
+                    f"{alias_matches[0]['name']!r} but was marked new."
+                )
+            if len(alias_matches) > 1:
+                raise ValueError(
+                    f"RAW Subject {raw_name!r} ambiguously aliases multiple registered Subjects."
+                )
+            identity_key = ("new", _subject_identity_key(raw_name))
+            name = raw_name.strip(" ,.;:()[]{}\"'“”‘’")
+            canonical_id = None
+        else:
+            if not isinstance(subject_reference, str) or subject_reference not in subject_by_reference:
+                raise ValueError(
+                    f"RAW Subject ID {subject_reference!r} is not in the supplied vocabulary."
+                )
+            registered = subject_by_reference[subject_reference]
+            alias_matches = _director_subject_alias_candidates(raw_name, known_subjects)
+            if len(alias_matches) == 1 and alias_matches[0]["subject_id"] != subject_reference:
+                raise ValueError(
+                    f"RAW Subject alias {raw_name!r} conflicts with returned Subject ID "
+                    f"{subject_reference!r}."
+                )
+            if len(alias_matches) > 1:
+                raise ValueError(
+                    f"RAW Subject alias {raw_name!r} ambiguously matches multiple "
+                    "registered Subjects."
+                )
+            canonical_id = registered["id"]
+            name = registered["name"]
+            identity_key = ("registered", canonical_id)
 
-    # The Subject pass may label previously unnamed actors, but identifiers that
-    # already existed in accepted RAW are immutable. Restore deterministic
-    # suffixed aliases such as Will1 -> Will or Zombie2_1 -> Zombie2.
-    protected_names = {
-        name
-        for _subject_number, name in parse_defined_subjects(subject_definitions)
-    }
-    protected_names.update(
-        re.findall(r"(?<![\w])([A-Z][A-Za-z'\u2019-]*\d+)(?![\w])", timed_original)
-    )
-    for protected_name in sorted(protected_names, key=len, reverse=True):
-        alias_pattern = re.compile(
-            rf"(?<![\w]){re.escape(protected_name)}(?:_\d+|\d+)(?![\w])",
-            re.I,
-        )
-        resolved_timed = alias_pattern.sub(protected_name, resolved_timed)
-
-    # If the model invents a new label for a role/species with exactly one
-    # established functional Subject, reuse that identity unless RAW explicitly
-    # introduces another individual of the same type.
-    resolved_subject_names = list(result.get("subject_names", []))
-    known_functional_names = [
-        name
-        for _subject_number, name in parse_defined_subjects(subject_definitions)
-        if _functional_subject_type_key(name)[1]
-    ]
-    for index, raw_name in enumerate(resolved_subject_names):
-        proposed_name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
-        type_key, _numbered = _functional_subject_type_key(proposed_name)
-        if not proposed_name or not type_key:
+        previous = row_by_raw_name.get(_subject_identity_key(raw_name))
+        if previous is not None:
+            if previous["identity_key"] != identity_key:
+                raise ValueError(
+                    f"RAW Subject name {raw_name!r} maps to conflicting identities."
+                )
             continue
-        matching_known = [
-            known_name
-            for known_name in known_functional_names
-            if _functional_subject_type_key(known_name)[0] == type_key
+        row_by_raw_name[_subject_identity_key(raw_name)] = {
+            "identity_key": identity_key,
+            "name": name,
+            "subject_id": canonical_id,
+            "is_new": is_new,
+        }
+        if identity_key not in seen_subjects:
+            normalized.append({
+                "raw_name": raw_name,
+                "name": name,
+                "subject_id": canonical_id,
+                "is_new": is_new,
+            })
+            seen_subjects.add(identity_key)
+
+    # Apply only exact identity-label substitutions. The LLM never returns RAW.
+    substitutions = []
+    for raw_name_key, row in row_by_raw_name.items():
+        if row["is_new"] or row["name"].casefold() == raw_name_key:
+            continue
+        for match in _director_subject_raw_name_matches(raw_input, row["name"]):
+            substitutions.append((match.start(), match.end(), row["name"], row["subject_id"]))
+        # Match the original surface form too; canonical-name matches above
+        # are harmless and preserve already-canonical references.
+        raw_names = [
+            str(item.get("raw_name") or "").strip()
+            for item in raw_subjects
+            if _subject_identity_key(item.get("raw_name")) == raw_name_key
         ]
-        if len(matching_known) != 1:
-            continue
-        canonical_name = matching_known[0]
-        if _subject_identity_key(proposed_name) == _subject_identity_key(canonical_name):
-            continue
-        if _raw_explicitly_introduces_distinct_functional_subject(
-            timed_original,
-            type_key,
-        ):
-            continue
-        resolved_timed = re.sub(
-            rf"(?<![\w]){re.escape(proposed_name)}(?![\w])",
-            canonical_name,
-            resolved_timed,
-            flags=re.I,
-        )
-        resolved_subject_names[index] = canonical_name
-        if proposed_name in raw_subject_descriptions:
-            description = raw_subject_descriptions.pop(proposed_name)
-            raw_subject_descriptions.setdefault(canonical_name, description)
-        if proposed_name in raw_subject_wardrobes:
-            wardrobe = raw_subject_wardrobes.pop(proposed_name)
-            raw_subject_wardrobes.setdefault(canonical_name, wardrobe)
+        for surface_name in raw_names:
+            if _subject_identity_key(surface_name) == _subject_identity_key(row["name"]):
+                continue
+            for match in _director_subject_raw_name_matches(raw_input, surface_name):
+                substitutions.append((match.start(), match.end(), row["name"], row["subject_id"]))
 
-    # The resolver can return correct Subject metadata while leaving generic
-    # role/species nouns in RAW. Canonicalize unambiguous references here so
-    # resolved Subjects cannot disappear before reference generation.
-    resolved_timed = _canonicalize_end_continuity_functional_subjects(
-        resolved_timed,
-        subject_definitions,
-        resolved_subject_names,
-    )
-    # If the resolver returned useful Subject metadata but failed to rewrite
-    # the participant label in its raw_scene, recover from the already-accepted
-    # Director RAW instead of making the whole segment retry. This keeps the
-    # semantic scene untouched and applies only deterministic functional-name
-    # canonicalization.
-    fallback_timed = _canonicalize_end_continuity_functional_subjects(
-        timed_original,
-        subject_definitions,
-        resolved_subject_names,
-    )
-    missing_resolved_names = [
-        " ".join(str(name or "").split()).strip(" ,.;:-")
-        for name in resolved_subject_names
-        if str(name or "").strip()
-        and re.search(
-            rf"(?<![\w]){re.escape(' '.join(str(name or '').split()).strip(' ,.;:-'))}(?![\w])",
-            _h3_visual_identity_text(resolved_timed),
-            re.I,
-        ) is None
-    ]
-    if missing_resolved_names and all(
-        re.search(
-            rf"(?<![\w]){re.escape(name)}(?![\w])",
-            _h3_visual_identity_text(fallback_timed),
-            re.I,
-        ) is not None
-        for name in missing_resolved_names
-    ):
-        resolved_timed = fallback_timed
+    selected = []
+    for candidate in sorted(substitutions, key=lambda item: (item[0], -(item[1] - item[0]))):
+        overlaps = [
+            prior for prior in selected
+            if candidate[0] < prior[1] and prior[0] < candidate[1]
+        ]
+        if overlaps and any(prior[3] != candidate[3] for prior in overlaps):
+            raise ValueError("Overlapping RAW Subject aliases map to different identities.")
+        if not overlaps:
+            selected.append(candidate)
+    resolved = raw_input
+    for start, end, canonical_name, _canonical_id in sorted(selected, reverse=True):
+        resolved = resolved[:start] + canonical_name + resolved[end:]
 
-    resolved_end_state = _canonicalize_end_continuity_functional_subjects(
-        end_state_original,
-        subject_definitions,
-        resolved_subject_names,
-    )
-    resolved = (resolved_timed + "\n" + resolved_end_state).strip()
-    structure_errors = _director_raw_scene_structure_errors(
-        resolved,
-        segment_seconds,
-    )
-    if structure_errors:
-        raise ValueError(
-            "RAW Subject resolver changed shot-script structure: "
-            + "; ".join(structure_errors)
-        )
-
-    names = []
-    descriptions = {}
-    wardrobes = {}
-    seen = set()
-    known_keys = {name.casefold() for name in protected_names}
-    defined_name_keys = {
-        existing.casefold()
-        for _number, existing in parse_defined_subjects(subject_definitions)
-    }
-    for raw_name in resolved_subject_names:
-        name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
-        for protected_name in sorted(protected_names, key=len, reverse=True):
-            if re.fullmatch(
-                rf"{re.escape(protected_name)}(?:_\\d+|\\d+)",
-                name,
-                re.I,
-            ):
-                name = protected_name
-                break
-        key = name.casefold()
-        if not name or key in seen or not _subject_name_is_promotable(name):
-            continue
-        if re.search(
-            rf"(?<![\\w]){re.escape(name)}(?![\\w])",
-            _h3_visual_identity_text(resolved_timed),
-            re.I,
-        ) is None:
-            console_log(
-                f"WARNING: RAW Subject resolver returned {name!r} in subject_names "
-                "but no safe deterministic mapping exists in accepted RAW; ignoring "
-                "that resolver entry instead of restarting the segment.",
-                flush=True,
-            )
-            continue
-        seen.add(key)
-        description = " ".join(
-            str(raw_subject_descriptions.get(raw_name)
-                or raw_subject_descriptions.get(name)
-                or "").split()
-        ).strip()
-        if description:
-            descriptions[name] = _strip_character_description_clothing(description)
-        raw_wardrobe = (
-            raw_subject_wardrobes.get(raw_name)
-            or raw_subject_wardrobes.get(name)
-            or {}
-        )
-        if isinstance(raw_wardrobe, dict):
-            wardrobes[name] = {
-                field: str(raw_wardrobe.get(field) or "N/A").strip() or "N/A"
-                for field in _WARDROBE_FIELDS
-            }
-        if key in known_keys and key in defined_name_keys:
-            continue
-        names.append(name)
+    if _director_timestamp_lexemes(resolved) != _director_timestamp_lexemes(raw_input):
+        raise ValueError("Python Subject canonicalization changed RAW timestamps.")
+    errors = _director_raw_scene_structure_errors(resolved, segment_seconds)
+    if errors:
+        raise ValueError("Subject identity mapping produced invalid RAW structure: " + "; ".join(errors))
 
     console_log(
-        "Checking RAW Subjects segment: "
-        + (", ".join(names) if names else "no dynamic Subjects"),
+        "RAW Subject identity matches: "
+        + (", ".join(f"{row['raw_name']} -> {row['name']}" for row in normalized) or "none"),
         flush=True,
     )
-    if return_subject_bootstrap:
-        return resolved, names, descriptions, wardrobes
-    if return_subject_descriptions:
-        return resolved, names, descriptions
-    return resolved, names
-
-
-def apply_visible_subject_bootstrap_metadata(
-    continuity_state,
-    subject_descriptions=None,
-    subject_wardrobes=None,
-):
-    """Fill only missing canonical metadata for already-registered visible Subjects."""
-    state = copy.deepcopy(continuity_state) if isinstance(continuity_state, dict) else {}
-    subjects = state.get("subjects")
-    if not isinstance(subjects, dict):
-        return state, []
-
-    descriptions = subject_descriptions if isinstance(subject_descriptions, dict) else {}
-    wardrobes = subject_wardrobes if isinstance(subject_wardrobes, dict) else {}
-    changed = []
-
-    for raw_name in set(descriptions) | set(wardrobes):
-        existing_name = _find_existing_subject_name(subjects, raw_name)
-        if existing_name is None:
-            continue
-        record = subjects.get(existing_name)
-        if not isinstance(record, dict):
-            continue
-        record_changed = False
-
-        description = " ".join(str(descriptions.get(raw_name) or "").split()).strip()
-        current_description = " ".join(
-            str(record.get("canonical_description") or "").split()
-        ).strip()
-        fallback_description = _functional_subject_role_description(existing_name)
-        if (
-            description
-            and (
-                not current_description
-                or current_description.casefold() == fallback_description.casefold()
-            )
-        ):
-            record["canonical_description"] = _strip_character_description_clothing(
-                description
-            )
-            gender = normalize_subject_gender(record.get("gender"))
-            if gender == "unknown":
-                if re.search(r"(?i)\\b(?:female|woman|girl)\\b", description):
-                    record["gender"] = "female"
-                elif re.search(r"(?i)\\b(?:male|man|boy)\\b", description):
-                    record["gender"] = "male"
-            record_changed = True
-
-        incoming_wardrobe = wardrobes.get(raw_name)
-        if isinstance(incoming_wardrobe, dict):
-            current_wardrobe = record.get("wardrobe")
-            if not isinstance(current_wardrobe, dict):
-                current_wardrobe = {}
-            for field in _WARDROBE_FIELDS:
-                current_value = str(current_wardrobe.get(field) or "").strip()
-                incoming_value = str(incoming_wardrobe.get(field) or "").strip()
-                if (
-                    incoming_value
-                    and incoming_value.casefold() not in {"n/a", "na", "unknown"}
-                    and current_value.casefold() in {"", "n/a", "na", "unknown"}
-                ):
-                    current_wardrobe[field] = incoming_value
-                    record_changed = True
-            record["wardrobe"] = current_wardrobe
-
-        if record_changed:
-            changed.append(existing_name)
-
-    return state, list(dict.fromkeys(changed))
+    return resolved, normalized
 
 
 def format_known_subject_state_for_validator(continuity_state):
@@ -41851,8 +41670,7 @@ def _run_main(
         request2_result_for_fixture = copy.deepcopy(payload["llm_result"])
         llm_result = dict(payload["llm_result"])
         raw_subject_names = []
-        raw_subject_descriptions = {}
-        raw_subject_wardrobes = {}
+        resolved_subject_names = []
         accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
         resolved_raw_scene = accepted_raw_scene
         subject_resolution_error = None
@@ -41877,18 +41695,9 @@ def _run_main(
         )
         for subject_attempt in range(1, 3):
             try:
-                (
-                    resolved_raw_scene,
-                    raw_subject_names,
-                    raw_subject_descriptions,
-                    raw_subject_wardrobes,
-                ) = resolve_director_raw_scene_subjects(
+                resolved_raw_scene, resolved_subjects = resolve_director_raw_scene_subjects(
                     accepted_raw_scene,
-                    subject_definitions=subject_definitions,
                     world_state=segment_bundle.get("world_state_opening"),
-                    return_subject_bootstrap=True,
-                    story_context=expanded_story_context,
-                    current_beat=segment_bundle.get("current_beat_text", ""),
                     history_metadata={
                         "run_id": run_id,
                         "source_sha256": run_config["source_sha256"],
@@ -41897,6 +41706,20 @@ def _run_main(
                     },
                     segment_seconds=raw_scene_timeline_duration,
                 )
+                resolved_subject_names = list(dict.fromkeys(
+                    str(item.get("name") or "").strip()
+                    for item in resolved_subjects
+                    if isinstance(item, dict) and str(item.get("name") or "").strip()
+                ))
+                raw_subject_names = list(dict.fromkeys(
+                    str(item.get("name") or "").strip()
+                    for item in resolved_subjects
+                    if (
+                        isinstance(item, dict)
+                        and item.get("is_new") is True
+                        and str(item.get("name") or "").strip()
+                    )
+                ))
                 subject_resolution_succeeded = True
                 break
             except (
@@ -41928,7 +41751,7 @@ def _run_main(
                 _director_carry_forward_final_subjects(
                     resolved_raw_scene,
                     subject_definitions=subject_definitions,
-                    resolved_subject_names=raw_subject_names,
+                    resolved_subject_names=resolved_subject_names,
                 )
             )
         if carried_final_subjects:
@@ -42024,14 +41847,6 @@ def _run_main(
 
         registration_subject_genders = dict(formatter_subject_genders)
         registration_subject_genders.update(canonical_subject_genders)
-        for subject_name, description in raw_subject_descriptions.items():
-            description_text = str(description or "")
-            if re.search(r"(?i)\b(?:female|woman|girl)\b", description_text):
-                registration_subject_genders[subject_name] = "female"
-            elif re.search(r"(?i)\b(?:male|man|boy)\b", description_text):
-                registration_subject_genders[subject_name] = "male"
-        registration_subject_descriptions = dict(raw_subject_descriptions)
-        registration_subject_descriptions.update(canonical_subject_descriptions)
         continuity_state, hinted_subject_names = register_named_subject_hints(
             continuity_state,
             subject_definitions,
@@ -42043,7 +41858,7 @@ def _run_main(
             )),
             origin_segment=segment,
             subject_genders=registration_subject_genders,
-            subject_descriptions=registration_subject_descriptions,
+            subject_descriptions=canonical_subject_descriptions,
         )
         newly_registered_names = list(dict.fromkeys(
             dialogue_subject_names + hinted_subject_names

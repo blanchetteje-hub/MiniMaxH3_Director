@@ -539,39 +539,6 @@ A rectangular tavern interior.
         self.assertIn("Goblin1: already established", user)
         self.assertIn("leaning over the counter", user)
 
-    def test_existing_visible_subject_bootstrap_fills_only_missing_metadata(self):
-        state = minimax.new_continuity_state()
-        state["subjects"] = {
-            "Goblin1": minimax.new_subject_continuity_record({
-                "subject_id": 2,
-                "name": "Goblin1",
-                "canonical_description": "Goblin1 is a goblin.",
-                "wardrobe": {
-                    "upper": "N/A",
-                    "lower": "N/A",
-                    "footwear": "N/A",
-                    "other": "N/A",
-                },
-            }),
-        }
-        updated, changed = minimax.apply_visible_subject_bootstrap_metadata(
-            state,
-            {"Goblin1": "Goblin1 is a green-skinned humanoid goblin."},
-            {
-                "Goblin1": {
-                    "upper": "rough-spun shirt",
-                    "lower": "brown trousers",
-                    "footwear": "worn leather shoes",
-                    "other": "N/A",
-                },
-            },
-        )
-        self.assertEqual(changed, ["Goblin1"])
-        self.assertIn("green-skinned", updated["subjects"]["Goblin1"]["canonical_description"])
-        self.assertEqual(
-            updated["subjects"]["Goblin1"]["wardrobe"]["upper"],
-            "rough-spun shirt",
-        )
 
     def test_new_generation_state_has_location_state(self):
         state = minimax.new_generation_state({})
