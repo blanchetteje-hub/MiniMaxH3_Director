@@ -601,7 +601,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "beat_destination_presence_extract": 2048,
     "beat_finite_endpoint_extract": 2048,
     "beat_instruction_review": 2048,
-    "beat_story_validation": 2048,
+    "beat_story_validation": 4096,
     "beat_state_validation": 2048,
     "combined_continuity": 2048,
     "continuity_attachment_extract": 2048,

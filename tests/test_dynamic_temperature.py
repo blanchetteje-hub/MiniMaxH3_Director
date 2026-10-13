@@ -200,6 +200,7 @@ def test_request_context_and_output_budgets_are_independent_of_profiles():
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_h3_music"] == 512
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["source_unit_state_effects"] == 2048
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_raw_scene_physical"] == 3072
+    assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["beat_story_validation"] == 4096
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["validate_timing_valid"] == 4096
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS[
         "director_raw_scene_visible_subject_resolution"

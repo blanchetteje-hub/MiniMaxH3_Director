@@ -1,5 +1,13 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Beat story validator output budget
+
+- Increased `beat_story_validation`'s per-purpose maximum output tokens from
+  2,048 to 4,096. Its profile, prompt, and retry behavior are unchanged.
+- Added a focused settings assertion; `tests/test_dynamic_temperature.py`
+  passed. `py_compile` and `git diff --check` passed. The updated `minimax.py`
+  was copied to the automation checkout and verified byte-for-byte.
+
 ## 2026-10-13 — Missing StateAction prop origin routes to RAW repair
 
 - Job 58's reported failure matched the current code boundary: a
