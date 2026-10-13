@@ -75,29 +75,6 @@ def goblin_mug_bundle():
     return bundle
 
 
-def origin_repair_world_state():
-    state, location_id, _mug_id = goblin_mug_world_state()
-    state = register_explicit_persistent_props(state, [
-        {
-            "name": "shelf",
-            "kind": "support",
-            "mobility": "fixed",
-            "needed_for_state": True,
-            "reason": "A new movable prop can be retrieved from this support.",
-            "location_id": location_id,
-        },
-        {
-            "name": "back table",
-            "kind": "fixture_support",
-            "mobility": "fixed",
-            "needed_for_state": True,
-            "reason": "A new prop can be placed here after retrieval.",
-            "location_id": location_id,
-        },
-    ])
-    return state, location_id
-
-
 TAVERN_BENCHMARK = json.loads(
     (Path(__file__).parent / "acceptance" / "gold" / "amy_medieval_tavern_six.json")
     .read_text(encoding="utf-8")
@@ -431,651 +408,66 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             ) == []
         )
 
-    def test_action_only_extractor_repairs_actions_without_changing_raw(self):
-        world_state, _location_id, mug_id = goblin_mug_world_state()
-        opening = copy.deepcopy(world_state)
-        raw_scene = (
-            "At 00:01.000, Goblin1 picks up the mug.\n"
-            "At 00:04.500, Goblin1 hands the same mug to Elf1."
-        )
-        rejected = {"state_actions": [{
-            "action_id": "bad-pickup",
-            "op": "pickup",
-            "actor_subject_id": "Unknown Subject",
-            "prop_id": "mug",
-        }]}
-        repaired = {"state_actions": [
-            {
-                "action_id": "pickup-mug",
-                "op": "pickup",
-                "actor_subject_id": "Goblin1",
-                "prop_id": "mug",
-            },
-            {
-                "action_id": "handoff-mug",
-                "op": "handoff",
-                "from_subject_id": "Goblin1",
-                "to_subject_id": "Elf1",
-                "prop_id": "mug",
-            },
-        ]}
-        request = mock.Mock(side_effect=[rejected, repaired])
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.console_log"),
-        ):
-            result = minimax.extract_and_dry_run_director_state_actions(
-                world_state,
-                raw_scene,
-                segment_number=1,
-                run_id="run-id",
-                run_config={"source_sha256": "source-hash"},
-            )
-
-        self.assertTrue(result["accepted"])
-        self.assertEqual(result["raw_scene"], raw_scene)
-        self.assertEqual(result["state_actions"][-1]["prop_id"], mug_id)
-        self.assertEqual(
-            result["state_actions"][-1]["to_subject_id"], "subject_2"
-        )
-        self.assertEqual(world_state, opening)
-        self.assertEqual(request.call_count, 2)
-        self.assertIs(
-            minimax.LLM_PURPOSE_PROFILES["director_state_actions"],
-            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
-        )
-        self.assertIs(
-            minimax.LLM_PURPOSE_PROFILES["director_state_actions_repair"],
-            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
-        )
-        initial_user = request.call_args_list[0].args[0][-1]["content"]
-        repair_user = request.call_args_list[1].args[0][-1]["content"]
-        self.assertIn(raw_scene, initial_user)
-        self.assertIn(raw_scene, repair_user)
-        self.assertIn("FIRST REDUCER FAILURE", repair_user)
-        self.assertIn("Unknown Subject", repair_user)
-        initial_system = request.call_args_list[0].args[0][0]["content"]
-        repair_system = request.call_args_list[1].args[0][0]["content"]
-        action_contract = build_state_action_only_contract(
-            world_state,
-            current_segment_text=raw_scene,
-            current_segment_subject_names=["Goblin1", "Elf1"],
-        )
-        operation_shapes = json.dumps(
-            action_contract["prompt_operation_shapes"],
-            ensure_ascii=False,
-            indent=2,
-        )
-        for system_prompt in (initial_system, repair_system):
-            self.assertIn('"state_actions": []', system_prompt)
-            self.assertIn("Omit transient actions and changes that WorldState cannot represent.", system_prompt)
-            self.assertIn("Do not infer or invent a transfer, pour, consumption", system_prompt)
-            self.assertIn("Treat the opening WorldState as the baseline.", system_prompt)
-            self.assertIn("A clothing or accessory description alone does not establish a clothing change", system_prompt)
-            self.assertIn(
-                "Record explicit persistent changes that affect visual continuity or later actions, "
-                "including handoffs, entrances, exits, and mechanism changes.",
-                system_prompt,
-            )
-            self.assertIn(
-                "Use the actual source and destination of transfers and retrievals shown in RAW.",
-                system_prompt,
-            )
-            self.assertIn("Return an empty array when no persistent changes are established.", system_prompt)
-            self.assertNotIn("include every explicit persistent change", system_prompt)
-            self.assertIn("PERMITTED STATEACTION OBJECT STRUCTURES", system_prompt)
-            self.assertIn(operation_shapes, system_prompt)
-            self.assertIn('"op": "pickup"', system_prompt)
-            self.assertIn('"actor_subject_id": "<registered Subject name>"', system_prompt)
-            self.assertNotIn('"subject_1"', system_prompt)
-        self.assertIn("entire corrected state_actions batch", repair_system)
-        self.assertIn("do not return only the failing action", repair_system)
-        self.assertEqual(
-            request.call_args_list[0].kwargs["response_format"]["json_schema"]["schema"]["required"],
-            ["state_actions"],
-        )
-        self.assertEqual(
-            request.call_args_list[1].kwargs["history_metadata"]["purpose"],
-            "director_state_actions_repair",
-        )
-
-    def test_transient_surface_wiping_accepts_empty_state_action_batch(self):
+    def test_event_extractor_accepts_empty_batch_without_mutating_opening_state(self):
         world_state, _location_id, _mug_id = goblin_mug_world_state()
         opening = copy.deepcopy(world_state)
-        accepted_raw = (
-            "At 00:00.000, [CAMERA: slow pan] Amy wipes the counter with a cloth."
-        )
-        raw_scene = minimax._director_strip_camera_instructions(accepted_raw)
-        request = mock.Mock(return_value={"state_actions": []})
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.console_log"),
-        ):
-            result = minimax.extract_and_dry_run_director_state_actions(
-                world_state,
-                raw_scene,
-                segment_number=1,
-            )
-        self.assertTrue(result["accepted"])
-        self.assertEqual(result["state_actions"], [])
-        self.assertEqual(result["raw_scene"], raw_scene)
-        minimax._assert_state_action_raw_unchanged(raw_scene, result, 1)
-        self.assertEqual(world_state, opening)
-        self.assertEqual(request.call_count, 1)
-        system_prompt = request.call_args.args[0][0]["content"]
-        self.assertIn("Omit transient actions and changes that WorldState cannot represent.", system_prompt)
-
-    def test_existing_clothing_description_does_not_create_state_action(self):
-        world_state, _location_id, _mug_id = goblin_mug_world_state()
-        raw_scene = (
-            "At 00:00.000, Amy stands in her established tunic and belt."
-        )
-        request = mock.Mock(return_value={"state_actions": []})
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.console_log"),
-        ):
-            result = minimax.extract_and_dry_run_director_state_actions(
-                world_state,
-                raw_scene,
-                segment_number=1,
-            )
-        self.assertTrue(result["accepted"])
-        self.assertEqual(result["state_actions"], [])
-        prompt = request.call_args.args[0][0]["content"]
-        self.assertIn("opening wardrobe is unknown", prompt)
-        self.assertIn("explicit event that changes clothing", prompt)
-
-    def test_registered_prop_pickup_and_pour_are_preserved_as_state_actions(self):
-        world_state, location_id, mug_id = goblin_mug_world_state()
-        world_state["props"][mug_id]["kind"] = "container"
-        world_state["props"][mug_id]["capabilities"]["container"] = True
-        world_state = register_explicit_persistent_props(world_state, [{
-            "name": "source vessel",
-            "kind": "container",
-            "mobility": "movable",
-            "needed_for_state": True,
-            "reason": "Its contents can be transferred to a registered container.",
-            "location_id": location_id,
-            "contents": [{
-                "substance": "ale",
-                "amount": "some",
-                "consumable": "unknown",
-            }],
-            "capabilities": {"container": True},
-        }])
-        source_id = next(
-            prop_id for prop_id, prop in world_state["props"].items()
-            if prop["name"] == "source vessel"
-        )
-        raw_scene = (
-            "At 00:00.000, Amy picks up the source vessel.\n"
-            "At 00:03.000, Amy pours ale from the source vessel into the mug."
-        )
-        request = mock.Mock(return_value={"state_actions": [
-            {
-                "action_id": "pickup-vessel",
-                "op": "pickup",
-                "actor_subject_id": "Amy",
-                "prop_id": "source vessel",
-            },
-            {
-                "action_id": "pour-ale",
-                "op": "pour",
-                "actor_subject_id": "Amy",
-                "source_prop_id": "source vessel",
-                "target_prop_id": "mug",
-                "substance": "ale",
-                "amount": "all",
-            },
-        ]})
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.console_log"),
-        ):
-            result = minimax.extract_and_dry_run_director_state_actions(
-                world_state,
-                raw_scene,
-                segment_number=1,
-            )
-        self.assertTrue(result["accepted"])
-        self.assertEqual(
-            [action["op"] for action in result["state_actions"]],
-            ["pickup", "pour"],
-        )
-        self.assertTrue(all(outcome.accepted for outcome in result["outcomes"]))
-        self.assertEqual(result["state_actions"][1]["source_prop_id"], source_id)
-
-    def test_state_action_extractor_registers_retrieved_prop_for_later_use(self):
-        world_state, location_id, mug_id = goblin_mug_world_state()
-        world_state["props"][mug_id]["kind"] = "container"
-        world_state["props"][mug_id]["capabilities"]["container"] = True
-        world_state = register_explicit_persistent_props(world_state, [
-            {
-                "name": "shelf",
-                "kind": "support",
-                "mobility": "fixed",
-                "needed_for_state": True,
-                "reason": "A movable vessel is retrieved from this support.",
-                "location_id": location_id,
-            },
-            {
-                "name": "barrel",
-                "kind": "container",
-                "mobility": "fixed",
-                "needed_for_state": True,
-                "reason": "Its contents are poured into a retrieved vessel.",
-                "location_id": location_id,
-                "contents": [{
-                    "substance": "ale",
-                    "amount": "some",
-                    "consumable": "unknown",
-                }],
-                "capabilities": {"container": True},
-            },
-        ])
-        opening = copy.deepcopy(world_state)
-        pitcher_id = stable_world_state_id(
-            "prop", "container|serving pitcher", scope=location_id
-        )
-        raw_scene = (
-            "At 00:00.000, Amy retrieves the serving pitcher from the shelf.\n"
-            "At 00:03.000, Amy pours ale from the barrel into the serving pitcher."
-        )
-        request = mock.Mock(return_value={"state_actions": [
-            {
-                "action_id": "retrieve-pitcher",
-                "op": "retrieve_prop",
-                "actor_subject_id": "Amy",
-                "prop_name": "serving pitcher",
-                "kind": "container",
-                "support_id": "shelf",
-            },
-            {
-                "action_id": "pour-ale",
-                "op": "pour",
-                "actor_subject_id": "Amy",
-                "source_prop_id": "barrel",
-                "target_prop_id": "serving pitcher",
-                "substance": "ale",
-                "amount": "partial",
-            },
-        ]})
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.console_log"),
-        ):
-            result = minimax.extract_and_dry_run_director_state_actions(
+        raw_scene = "At 00:00.000, Amy wipes the counter with a cloth."
+        request = mock.Mock(return_value={"events": []})
+        with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log"):
+            result = minimax.extract_and_dry_run_world_state_events(
                 world_state, raw_scene, segment_number=1,
             )
-
         self.assertTrue(result["accepted"])
-        self.assertEqual(
-            [action["op"] for action in result["state_actions"]],
-            ["retrieve_prop", "pour"],
-        )
-        self.assertEqual(
-            result["state_actions"][1]["target_prop_id"], pitcher_id,
-        )
+        self.assertEqual(result["events"], [])
+        self.assertEqual(result["state_actions"], [])
         self.assertEqual(result["raw_scene"], raw_scene)
         self.assertEqual(world_state, opening)
         self.assertEqual(request.call_count, 1)
-        system_prompt = request.call_args.args[0][0]["content"]
-        self.assertIn(
-            "A `retrieve_prop` action may introduce a prop only when validated RAW explicitly shows a Subject retrieving it from a registered support accessible to that Subject. Do not introduce a prop without that origin and retrieval action. Later actions in the same batch may refer to the exact name introduced earlier. Reuse existing registered props whenever available.",
-            system_prompt,
+        self.assertEqual(request.call_args.kwargs["history_metadata"]["purpose"], "director_world_state_events")
+        self.assertIs(minimax.LLM_PURPOSE_PROFILES["director_world_state_events"], minimax.SMART_EXTRACTOR_LLM_SETTINGS)
+        self.assertEqual(request.call_args.args[0][-1]["content"], "RAW SCENE\n" + raw_scene)
+        self.assertEqual(
+            request.call_args.kwargs["response_format"]["json_schema"]["schema"]["required"],
+            ["events"],
         )
-        self.assertIn('"op": "retrieve_prop"', system_prompt)
 
-    def test_retrieve_prop_action_repair_uses_origin_not_destination_support(self):
-        world_state, location_id, _mug_id = goblin_mug_world_state()
-        world_state = register_explicit_persistent_props(world_state, [
-            {
-                "name": "shelf",
-                "kind": "support",
-                "mobility": "fixed",
-                "needed_for_state": True,
-                "reason": "Opening prop origin.",
-                "location_id": location_id,
-            },
-            {
-                "name": "back table",
-                "kind": "fixture_support",
-                "mobility": "fixed",
-                "needed_for_state": True,
-                "reason": "Final placement surface.",
-                "location_id": location_id,
-            },
-        ])
-        raw_scene = (
-            "Amy retrieves the crystal chalice from her shelf and places it on the back table."
-        )
-        rejected = {"state_actions": [{
-            "action_id": "retrieve-chalice",
-            "op": "retrieve_prop",
-            "actor_subject_id": "Amy",
-            "prop_name": "crystal chalice",
-            "kind": "container",
-            "support_id": "back table",
-        }]}
-        corrected = {"state_actions": [{
-            "action_id": "retrieve-chalice",
-            "op": "retrieve_prop",
-            "actor_subject_id": "Amy",
-            "prop_name": "crystal chalice",
-            "kind": "container",
-            "support_id": "shelf",
-        }]}
-        request = mock.Mock(side_effect=[rejected, corrected])
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.console_log"),
-        ):
-            result = minimax.extract_and_dry_run_director_state_actions(
-                world_state,
-                raw_scene,
-                segment_number=3,
+    def test_malformed_event_list_repairs_against_immutable_raw(self):
+        world_state, _location_id, _mug_id = goblin_mug_world_state()
+        raw_scene = "At 00:00.000, Amy wipes the counter with a cloth."
+        malformed = {"events": [{"action": "teleport"}]}
+        request = mock.Mock(side_effect=[malformed, {"events": []}])
+        with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log"):
+            result = minimax.extract_and_dry_run_world_state_events(
+                world_state, raw_scene, segment_number=1,
             )
-
         self.assertTrue(result["accepted"])
-        self.assertEqual(result["state_actions"][0]["support_id"], next(
-            prop_id for prop_id, prop in world_state["props"].items()
-            if prop["name"] == "shelf"
-        ))
         self.assertEqual(request.call_count, 2)
         self.assertEqual(
             [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
-            ["director_state_actions", "director_state_actions_repair"],
-        )
-        repair_prompt = request.call_args_list[1].args[0][-1]["content"]
-        self.assertIn("FIRST REDUCER FAILURE", repair_prompt)
-        self.assertIn("retrieve_prop_origin_not_in_raw", repair_prompt)
-
-    def test_missing_prop_origin_routes_to_current_segment_raw_repair(self):
-        world_state, _location_id = origin_repair_world_state()
-        opening = copy.deepcopy(world_state)
-        initial_raw = (
-            "At 00:00.000, Amy places the crystal chalice on the back table.\n"
-            "End continuity state: The chalice rests on the back table."
-        )
-        invalid_actions = {"state_actions": [{
-            "action_id": "retrieve-chalice",
-            "op": "retrieve_prop",
-            "actor_subject_id": "Amy",
-            "prop_name": "crystal chalice",
-            "kind": "container",
-            "support_id": "back table",
-        }]}
-        repaired_raw = (
-            "At 00:00.000, Amy retrieves the crystal chalice from the shelf.\n"
-            "At 00:03.000, Amy places it on the back table.\n"
-            "End continuity state: The chalice rests on the back table."
-        )
-        location_name = world_state["locations"][_location_id]["name"]
-        valid_actions = {"state_actions": [
-            {
-                "action_id": "retrieve-chalice",
-                "op": "retrieve_prop",
-                "actor_subject_id": "Amy",
-                "prop_name": "crystal chalice",
-                "kind": "container",
-                "support_id": "shelf",
-            },
-            {
-                "action_id": "place-chalice",
-                "op": "place",
-                "actor_subject_id": "Amy",
-                "prop_id": "crystal chalice",
-                "location_id": location_name,
-                "support_id": "back table",
-            },
-        ]}
-        request = mock.Mock(side_effect=[invalid_actions, repaired_raw, valid_actions])
-        bundle = {
-            "current_duration": 6.0,
-            "conditioning_mode": "initial",
-            "current_beat_text": "Amy serves the crystal chalice at the table.",
-            "world_state_opening": copy.deepcopy(world_state),
-        }
-        validators = (
-            mock.patch(
-                "minimax.validate_director_raw_scene_physical",
-                return_value={"valid": True, "issue": ""},
-            ),
-            mock.patch(
-                "minimax.validate_director_raw_scene_prop_state",
-                return_value={"valid": True, "issue": ""},
-            ),
-            mock.patch(
-                "minimax.validate_director_raw_scene_timing",
-                return_value={"valid": True, "issue": ""},
-            ),
-        )
-        with (
-            mock.patch("minimax.ask_llm", request),
-            validators[0],
-            validators[1],
-            validators[2],
-            mock.patch("minimax.console_log"),
-        ):
-            accepted_raw, result = minimax.extract_state_actions_with_origin_repair(
-                world_state,
-                initial_raw,
-                bundle=bundle,
-                segment_number=3,
-                run_id="run-id",
-                run_config={"source_sha256": "source-hash"},
-            )
-
-        self.assertEqual(accepted_raw, repaired_raw)
-        self.assertTrue(result["accepted"])
-        self.assertEqual(
-            [action["op"] for action in result["state_actions"]],
-            ["retrieve_prop", "place"],
-        )
-        reduced = minimax.reduce_world_state(
-            world_state,
-            result["state_actions"],
-            segment_number=3,
-        )
-        self.assertTrue(reduced.committed)
-        chalice = next(
-            prop for prop in reduced.world_state["props"].values()
-            if prop["name"] == "crystal chalice"
-        )
-        self.assertEqual(chalice["placement"]["support_id"], next(
-            prop_id for prop_id, prop in world_state["props"].items()
-            if prop["name"] == "back table"
-        ))
-        self.assertEqual(world_state, opening)
-        purposes = [
-            call.kwargs["history_metadata"]["purpose"]
-            for call in request.call_args_list
-        ]
-        self.assertEqual(
-            purposes,
-            ["director_state_actions", "director_raw_scene_repair", "director_state_actions"],
+            ["director_world_state_events", "director_world_state_events_repair"],
         )
         repair_messages = request.call_args_list[1].args[0]
-        repair_issue = repair_messages[1]["content"]
-        self.assertIn("crystal chalice", repair_issue)
-        self.assertIn("current segment", repair_issue)
-        self.assertIn("before its first use", repair_issue)
-        self.assertIn("Registered supports: shelf, back table", repair_issue)
-        self.assertIn("final destination as its origin", repair_issue)
-
-    def test_missing_prop_origin_raw_repairs_are_bounded_and_rollback(self):
-        world_state, _location_id = origin_repair_world_state()
-        opening = copy.deepcopy(world_state)
-        raw_scene = (
-            "At 00:00.000, Amy sets the crystal chalice on the back table.\n"
-            "End continuity state: The chalice rests on the back table."
-        )
-        invalid_actions = {"state_actions": [{
-            "action_id": "retrieve-chalice",
-            "op": "retrieve_prop",
-            "actor_subject_id": "Amy",
-            "prop_name": "crystal chalice",
-            "kind": "container",
-            "support_id": "back table",
-        }]}
-        responses = [invalid_actions]
-        for index in range(minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS):
-            responses.extend([
-                raw_scene,
-                copy.deepcopy(invalid_actions),
-            ])
-        request = mock.Mock(side_effect=responses)
-        bundle = {
-            "current_duration": 6.0,
-            "conditioning_mode": "initial",
-            "current_beat_text": "Amy serves the crystal chalice at the table.",
-            "world_state_opening": copy.deepcopy(world_state),
-        }
-        validators = (
-            mock.patch(
-                "minimax.validate_director_raw_scene_physical",
-                return_value={"valid": True, "issue": ""},
-            ),
-            mock.patch(
-                "minimax.validate_director_raw_scene_prop_state",
-                return_value={"valid": True, "issue": ""},
-            ),
-            mock.patch(
-                "minimax.validate_director_raw_scene_timing",
-                return_value={"valid": True, "issue": ""},
-            ),
-        )
-        with (
-            mock.patch("minimax.ask_llm", request),
-            validators[0],
-            validators[1],
-            validators[2],
-            mock.patch("minimax.console_log"),
-        ):
-            with self.assertRaisesRegex(
-                minimax.StateActionExtractionError,
-                "missing_prop_origin_after_raw_repairs.*crystal chalice",
-            ):
-                minimax.extract_state_actions_with_origin_repair(
-                    world_state,
-                    raw_scene,
-                    bundle=bundle,
-                    segment_number=3,
-                )
-
-        self.assertEqual(request.call_count, 1 + 2 * minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS)
-        repair_calls = [
-            call for call in request.call_args_list
-            if call.kwargs["history_metadata"]["purpose"] == "director_raw_scene_repair"
-        ]
-        self.assertEqual(len(repair_calls), minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS)
-        self.assertEqual(world_state, opening)
-        self.assertFalse(any(
-            prop["name"] == "crystal chalice"
-            for prop in world_state["props"].values()
-        ))
-
-    def test_unknown_contents_and_existing_holder_do_not_block_valid_pour(self):
-        world_state, location_id, mug_id = goblin_mug_world_state()
-        mug = world_state["props"][mug_id]
-        mug["placement"] = {"kind": "held", "subject_id": "subject_1"}
-        mug["kind"] = "container"
-        mug["contents"] = [{
-            "substance": "ale", "amount": "unknown", "consumable": "unknown",
-        }]
-        mug["capabilities"]["container"] = "unknown"
-        world_state = register_explicit_persistent_props(world_state, [{
-            "name": "barrel",
-            "kind": "container",
-            "mobility": "fixed",
-            "needed_for_state": True,
-            "reason": "Its contents are poured into a registered container.",
-            "location_id": location_id,
-            "contents": [],
-        }])
-        barrel_id = next(
-            prop_id for prop_id, prop in world_state["props"].items()
-            if prop["name"] == "barrel"
-        )
-        mug["placement"] = {"kind": "held", "subject_id": "subject_1"}
-        raw_scene = "Amy pours liquid from the barrel into Goblin1's mug."
-        request = mock.Mock(return_value={"state_actions": [{
-            "action_id": "pour-liquid",
-            "op": "pour",
-            "actor_subject_id": "Amy",
-            "source_prop_id": "barrel",
-            "target_prop_id": "mug",
-            "substance": "liquid",
-            "amount": "all",
-        }]})
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.console_log"),
-        ):
-            result = minimax.extract_and_dry_run_director_state_actions(
-                world_state, raw_scene, segment_number=1,
-            )
-
-        self.assertTrue(result["accepted"])
-        self.assertEqual(request.call_count, 1)
+        self.assertIn(raw_scene, repair_messages[1]["content"])
+        self.assertIn("RAW SCENE (IMMUTABLE)", repair_messages[1]["content"])
         self.assertEqual(
-            result["state_actions"][0]["source_prop_id"], barrel_id,
-        )
-        reduced = minimax.reduce_world_state(
-            world_state, result["state_actions"], segment_number=1,
-        )
-        self.assertTrue(reduced.committed)
-        self.assertEqual(
-            reduced.world_state["props"][barrel_id]["contents"],
-            [{"substance": "liquid", "amount": "none", "consumable": "unknown"}],
-        )
-        mug_end = reduced.world_state["props"][mug_id]
-        self.assertEqual(mug_end["placement"], {
-            "kind": "held", "subject_id": "subject_1",
-        })
-        self.assertTrue(mug_end["capabilities"]["container"])
-        self.assertEqual(
-            mug_end["contents"],
-            [
-                {"substance": "ale", "amount": "unknown", "consumable": "unknown"},
-                {"substance": "liquid", "amount": "some", "consumable": "unknown"},
-            ],
+            request.call_args_list[1].kwargs["response_format"],
+            request.call_args_list[0].kwargs["response_format"],
         )
 
-    def test_action_only_extractor_fails_closed_after_five_repairs(self):
+    def test_unresolved_new_prop_origin_fails_without_rewriting_raw(self):
         world_state, _location_id, _mug_id = goblin_mug_world_state()
         opening = copy.deepcopy(world_state)
-        raw_scene = "At 00:01.000, Goblin1 moves within the tavern."
-        invalid = {"state_actions": [{
-            "action_id": "invalid-move",
-            "op": "move",
-            "subject_id": "Goblin1",
-            "destination_location_id": "Tavern",
+        raw_scene = "At 00:00.000, Amy pulls the cloth from her apron pocket."
+        events = {"events": [{
+            "action": "take", "actor": "Amy", "object": "new cloth",
+            "source": "apron pocket", "destination": None,
+            "relation": "from", "result": None,
         }]}
-        request = mock.Mock(return_value=invalid)
-        with (
-            mock.patch("minimax.ask_llm", request),
-            mock.patch("minimax.console_log"),
-        ):
-            with self.assertRaisesRegex(
-                minimax.StateActionExtractionError,
-                "after 5 action-only repairs",
-            ):
-                minimax.extract_and_dry_run_director_state_actions(
-                    world_state,
-                    raw_scene,
-                    segment_number=1,
-                )
-        self.assertEqual(request.call_count, 6)
-        self.assertEqual(
-            [
-                call.kwargs["history_metadata"]["purpose"]
-                for call in request.call_args_list
-            ],
-            ["director_state_actions"]
-            + ["director_state_actions_repair"] * 5,
-        )
+        request = mock.Mock(return_value=events)
+        with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log"):
+            with self.assertRaisesRegex(minimax.WorldStateEventExtractionError, "registered support origin"):
+                minimax.extract_and_dry_run_world_state_events(world_state, raw_scene, segment_number=1)
+        self.assertEqual(request.call_count, 1)
         self.assertEqual(world_state, opening)
 
     def test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths(self):

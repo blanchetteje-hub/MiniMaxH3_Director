@@ -2,7 +2,7 @@
 
 This module intentionally contains no continuity, prompt, beat, or visual-state
 migration. Opening WorldState facts use explicit authority-specific seed
-functions. Ordered Director actions may transactionally register a prop
+functions. Ordered StateActions may transactionally register a prop
 retrieved from a registered support through the shared reducer; callers decide
 whether the successful candidate reaches the accepted-segment commit boundary.
 """
@@ -1303,7 +1303,7 @@ def _set_provenance(
 ) -> None:
     provenance = record.setdefault("provenance", {})
     provenance[field] = {
-        "authority": "director_state_actions",
+        "authority": "director_world_state_events",
         "segment_number": segment_number,
         "action_index": action_index,
         "action_id": action_id,
@@ -1387,7 +1387,7 @@ def _apply_state_action(
             "movable",
             initial_placement,
             provenance={"registration": {
-                "authority": "director_state_actions",
+                "authority": "director_world_state_events",
                 "segment_number": segment_number,
                 "action_index": action_index,
                 "action_id": action_id,

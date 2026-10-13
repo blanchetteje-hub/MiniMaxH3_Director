@@ -206,23 +206,23 @@ def test_director_raw_scene_retry_budget_is_five():
     assert minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS == 5
 
 
-def test_state_action_integrity_accepts_unchanged_camera_stripped_raw_and_empty_batch():
+def test_event_integrity_accepts_unchanged_camera_stripped_raw_and_empty_batch():
     accepted_raw = (
         "At 00:00.000, [CAMERA: slow pan] Amy moves toward the counter.\n"
         "End continuity state: Amy stands by the counter."
     )
-    state_action_input = minimax._director_strip_camera_instructions(accepted_raw)
+    event_input = minimax._director_strip_camera_instructions(accepted_raw)
     result = {
         "accepted": True,
-        "raw_scene": state_action_input,
+        "raw_scene": event_input,
         "state_actions": [],
     }
 
-    assert state_action_input == (
+    assert event_input == (
         "At 00:00.000, Amy moves toward the counter.\n"
         "End continuity state: Amy stands by the counter."
     )
-    minimax._assert_state_action_raw_unchanged(state_action_input, result, 1)
+    minimax._assert_event_raw_unchanged(event_input, result, 1)
 
 
 @pytest.mark.parametrize(
@@ -233,7 +233,7 @@ def test_state_action_integrity_accepts_unchanged_camera_stripped_raw_and_empty_
     ],
     ids=["changed-timestamp", "changed-action"],
 )
-def test_state_action_integrity_rejects_actual_raw_mutations(changed_raw):
+def test_event_integrity_rejects_actual_raw_mutations(changed_raw):
     expected_raw = (
         "At 00:00.000, Amy moves toward the counter.\n"
         "End continuity state: Amy stands by the counter."
@@ -241,10 +241,10 @@ def test_state_action_integrity_rejects_actual_raw_mutations(changed_raw):
     result = {"accepted": True, "raw_scene": changed_raw, "state_actions": []}
 
     with pytest.raises(
-        minimax.StateActionExtractionError,
-        match="StateAction extraction changed the accepted RAW",
+        minimax.WorldStateEventExtractionError,
+        match="event extraction changed the accepted RAW",
     ):
-        minimax._assert_state_action_raw_unchanged(expected_raw, result, 1)
+        minimax._assert_event_raw_unchanged(expected_raw, result, 1)
 
 
 @pytest.mark.parametrize("count, render_enabled", [(1, False), (5, False), (1, True)])
@@ -335,7 +335,7 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         mock.patch("minimax.save_generated_prompts_file", side_effect=lambda payload: saved_packages.append(copy.deepcopy(payload))),
         mock.patch("minimax.request_segment_llm", side_effect=request_segment),
         mock.patch(
-            "minimax.extract_and_dry_run_director_state_actions",
+            "minimax.extract_and_dry_run_world_state_events",
             side_effect=extract_actions,
         ),
         mock.patch(
@@ -390,7 +390,7 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         for _opening, raw, _kwargs in extracted_action_inputs
     )
     assert all(
-        kwargs["current_segment_subject_names"] == []
+        "current_segment_subject_names" not in kwargs
         for _opening, _raw, kwargs in extracted_action_inputs
     )
     assert len(saved_packages[-1]["prompts"]) == count

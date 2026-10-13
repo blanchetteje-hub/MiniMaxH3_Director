@@ -55,11 +55,10 @@ from world_state import (
     MOBILITY_VALUES,
     PROP_CAPABILITIES_SCHEMA,
     PROP_CONTENT_SCHEMA,
+    WARDROBE_SLOTS,
     empty_world_state,
     new_world_state,
-    build_state_action_only_contract,
     parse_and_dry_run_state_actions,
-    _retrieve_prop_origin_is_staged,
     register_explicit_persistent_props,
     reduce_world_state,
     seed_canonical_static_location_state,
@@ -418,7 +417,6 @@ BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 DIRECTOR_RAW_SCENE_ATTEMPTS = 5
 DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS = 5
 DIRECTOR_RAW_REFINER_ATTEMPTS = 3
-DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS = 5
 
 BEAT_VALIDATION_STATE_VERSION = 3
 
@@ -539,8 +537,8 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "add_scene_timing_refiner": SMART_EXTRACTOR_LLM_SETTINGS,
     "add_camera_refiner": SMART_CREATIVE_LLM_SETTINGS,
     "director_raw_scene_repair": SMART_EXTRACTOR_LLM_SETTINGS,
-    "director_state_actions": SMART_EXTRACTOR_LLM_SETTINGS,
-    "director_state_actions_repair": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_world_state_events": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_world_state_events_repair": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_physical": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_prop_state": SMART_EXTRACTOR_LLM_SETTINGS,
     "validate_timing_valid": SMART_EXTRACTOR_LLM_SETTINGS,
@@ -587,8 +585,8 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "add_scene_timing_refiner": 8192,
     "add_camera_refiner": 8192,
     "director_raw_scene_repair": 8192,
-    "director_state_actions": 4096,
-    "director_state_actions_repair": 4096,
+    "director_world_state_events": 4096,
+    "director_world_state_events_repair": 4096,
     "director_h3_music": 512,
     "story_setting_spatial_refine": 3072,
     "story_setting_extract": 4096,
@@ -10338,21 +10336,8 @@ class BeatGenerationError(RuntimeError):
     """Legacy beat-generation exception retained for import compatibility."""
 
 
-class StateActionExtractionError(BeatGenerationError):
-    """Accepted RAW could not be paired with a reducer-valid action batch."""
-
-
-class StateActionRawRepairRequired(StateActionExtractionError):
-    """StateAction extraction found a new prop with no staged RAW origin."""
-
-    def __init__(self, prop_name, failure):
-        self.prop_name = str(prop_name or "unknown prop").strip()
-        self.reducer_failure = str(failure or "").strip()
-        super().__init__(
-            f"missing_prop_origin: {self.prop_name!r} has no explicit, registered "
-            "support origin in the current RAW scene. "
-            f"Reducer detail: {self.reducer_failure}"
-        )
+class WorldStateEventExtractionError(BeatGenerationError):
+    """Validated RAW events could not be safely translated into WorldState."""
 
 
 # Repair a narrow local-model error such as ``"growl" snarls``.
@@ -10973,6 +10958,8 @@ def ask_llm(
         "validate_timing_valid",
         "director_h3_formatter",
         "director_raw_scene_subject_resolution",
+        "director_world_state_events",
+        "director_world_state_events_repair",
         "continuity_combined_reduced_state",
         "continuity_phase_2_h3_opening",
     }
@@ -22562,18 +22549,18 @@ def _director_strip_camera_instructions(raw_scene):
     return "\n".join(result)
 
 
-def _assert_state_action_raw_unchanged(
+def _assert_event_raw_unchanged(
     expected_raw_scene,
     state_action_result,
     segment,
 ):
-    """Require StateAction extraction to echo its exact immutable RAW input."""
+    """Require event extraction to echo its exact immutable RAW input."""
     if (
         not isinstance(state_action_result, dict)
         or state_action_result.get("raw_scene") != expected_raw_scene
     ):
-        raise StateActionExtractionError(
-            f"Segment {segment} StateAction extraction changed the accepted RAW."
+        raise WorldStateEventExtractionError(
+            f"Segment {segment} event extraction changed the accepted RAW."
         )
 
 
@@ -37385,592 +37372,502 @@ def build_director_raw_scene_repair_messages(raw_prompt, validation_errors):
     ]
 
 
-def _director_state_action_prompt_contract(operation_shapes):
-    """Format the shared JSON envelope and request-specific action shapes."""
-    prompt = (
-        'Return exactly this JSON structure:\n{\n  "state_actions": []\n}\n'
-        "Treat the opening WorldState as the baseline. A fact merely described as "
-        "already true is not a change. A clothing or accessory description alone "
-        "does not establish a clothing change, even when the opening wardrobe is "
-        "unknown; emit change_clothing only for an explicit event that changes "
-        "clothing or a garment's condition. Record explicit persistent changes "
-        "that affect visual continuity or later actions, including handoffs, "
-        "entrances, exits, and mechanism changes. Use the actual source and "
-        "destination of transfers and retrievals shown in RAW. Do not invent "
-        "changes. Return an empty array when no persistent changes are established. "
-        "Omit transient actions and changes that WorldState "
-        "cannot represent. Do not infer or invent a transfer, pour, consumption, "
-        "or other change, and do not substitute an unrelated operation. Each item "
-        "must be one StateAction "
-        "object matching exactly one permitted operation structure below. "
-        "Include every shown field and no others. Use exact registered entity "
-        "names from the vocabulary, never Python-assigned IDs. Replace angle-"
-        "bracketed placeholders with values of the shown type; use null only "
-        "where shown. A `retrieve_prop` action may introduce a prop only when "
-        "validated RAW explicitly shows a Subject retrieving it from a registered "
-        "support accessible to that Subject. Do not introduce a prop without that "
-        "origin and retrieval action. Later actions in the same batch may refer to "
-        "the exact name introduced earlier. Reuse existing registered props "
-        "whenever available.\n"
-    )
-    if operation_shapes:
-        prompt += "PERMITTED STATEACTION OBJECT STRUCTURES\n" + json.dumps(
-            operation_shapes,
-            ensure_ascii=False,
-            indent=2,
-        )
-    else:
-        prompt += "No StateAction object is permitted for this request."
-    return prompt
+WORLD_STATE_EVENT_TYPES = ("move", "enter", "exit", "take", "put", "transfer", "consume", "modify", "release")
+WORLD_STATE_EVENT_FIELDS = ("action", "actor", "object", "source", "destination", "relation", "result")
+WORLD_STATE_EVENT_REPAIR_ATTEMPTS = 5
+WORLD_STATE_EVENT_SYSTEM_PROMPT = """You extract physical events from a film scene.
+
+Identify events that change a Subject's location, physical support, possession, clothing, or the state of an object. Ignore gestures, appearances, dialogue, and other actions that do not cause these changes.
+
+Report events in chronological order using only what is explicitly described in RAW SCENE.
+
+Use these event types:
+- move: Subject changes location or physical support.
+- enter: Subject enters a location.
+- exit: Subject leaves a location.
+- take: Subject acquires an object.
+- put: Subject places an object somewhere.
+- transfer: Substance moves between containers.
+- consume: Subject consumes something.
+- modify: Object, clothing, or mechanism changes state.
+- release: Subject drops or relinquishes an object.
+
+Describe actors, objects, sources, and destinations using their names as written in RAW SCENE. Preserve distinctions such as standing on a table versus standing beside it.
+
+Do not determine whether an event is valid, already recorded, or representable in WorldState. Do not invent missing actions, sources, or destinations. Use null for information not stated.
+
+Return exactly this JSON structure:
+{
+  "events": [
+    {
+      "action": "move|enter|exit|take|put|transfer|consume|modify|release",
+      "actor": "string",
+      "object": "string|null",
+      "source": "string|null",
+      "destination": "string|null",
+      "relation": "string|null",
+      "result": "string|null"
+    }
+  ]
+}
+
+Return as a JSON object."""
 
 
-def build_director_state_actions_messages(raw_scene, vocabulary, operation_shapes):
-    """Build a compact action-extraction request over immutable validated RAW."""
+def build_world_state_event_response_format():
+    event = {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": list(WORLD_STATE_EVENT_TYPES)},
+            "actor": {"type": "string", "minLength": 1},
+            "object": {"type": ["string", "null"]},
+            "source": {"type": ["string", "null"]},
+            "destination": {"type": ["string", "null"]},
+            "relation": {"type": ["string", "null"]},
+            "result": {"type": ["string", "null"]},
+        },
+        "required": list(WORLD_STATE_EVENT_FIELDS),
+        "additionalProperties": False,
+    }
+    return {"type": "json_schema", "json_schema": {
+        "name": "world_state_events", "strict": True,
+        "schema": {"type": "object", "properties": {
+            "events": {"type": "array", "items": event}},
+            "required": ["events"], "additionalProperties": False},
+    }}
+
+
+def build_world_state_event_messages(raw_scene):
     return [
-        {
-            "role": "system",
-            "content": (
-                "Extract only persistent WorldState StateActions explicitly shown "
-                "in the validated RAW SCENE. Use only registered names and the "
-                "operations allowed for this request. "
-                + _director_state_action_prompt_contract(operation_shapes)
-                + "Return JSON only."
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                "REGISTERED WORLDSTATE VOCABULARY AND OPENING STATE\n"
-                + json.dumps(vocabulary, ensure_ascii=False, separators=(",", ":"))
-                + "\n\nVALIDATED RAW SCENE\n"
-                + str(raw_scene or "")
-            ),
-        },
+        {"role": "system", "content": WORLD_STATE_EVENT_SYSTEM_PROMPT},
+        {"role": "user", "content": "RAW SCENE\n" + str(raw_scene or "")},
     ]
 
 
-def build_director_state_actions_repair_messages(
-    raw_scene,
-    vocabulary,
-    rejected_state_actions,
-    reducer_failure,
-    operation_shapes,
-):
-    """Build a repair request that cannot rewrite the accepted RAW scene."""
+def build_world_state_event_repair_messages(raw_scene, malformed_response, issue):
     return [
-        {
-            "role": "system",
-            "content": (
-                "Repair only the StateActions rejected by the WorldState reducer. "
-                "Keep the validated RAW SCENE unchanged. Use only registered names "
-                "and the operations allowed for this request. "
-                + _director_state_action_prompt_contract(operation_shapes)
-                + " "
-                "Return the entire corrected state_actions batch, including actions "
-                "that were already valid; do not return only the failing action. "
-                "Return JSON only."
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                "REGISTERED WORLDSTATE VOCABULARY AND OPENING STATE\n"
-                + json.dumps(vocabulary, ensure_ascii=False, separators=(",", ":"))
-                + "\n\nVALIDATED RAW SCENE (IMMUTABLE)\n"
-                + str(raw_scene or "")
-                + "\n\nREJECTED STATE ACTIONS\n"
-                + json.dumps(
-                    rejected_state_actions,
-                    ensure_ascii=False,
-                    separators=(",", ":"),
-                )
-                + "\n\nFIRST REDUCER FAILURE\n"
-                + str(reducer_failure or "")
-            ),
-        },
+        {"role": "system", "content": (
+            "Repair only the semantic event extraction. Keep RAW SCENE immutable. "
+            "Return the complete corrected event list using the same event schema. "
+            "Do not decide WorldState legality or invent events, entities, sources, "
+            "or destinations.\n\n" + WORLD_STATE_EVENT_SYSTEM_PROMPT)},
+        {"role": "user", "content": (
+            "RAW SCENE (IMMUTABLE)\n" + str(raw_scene or "")
+            + "\n\nMALFORMED EVENT EXTRACTION\n"
+            + json.dumps(malformed_response, ensure_ascii=False, default=str)
+            + "\n\nEXTRACTION FORMAT ISSUE\n" + str(issue or ""))},
     ]
 
 
-def _missing_registered_retrieve_origin(world_state, candidate, failure, raw_scene):
-    """Return the new prop lacking a staged registered origin, if any.
+def _parse_world_state_event_response(response):
+    parsed = parse_llm_json_content(response, repair_on_failure=False) if isinstance(response, str) else response
+    if not isinstance(parsed, dict) or set(parsed) != {"events"} or not isinstance(parsed.get("events"), list):
+        raise ValueError("response must contain exactly an events array.")
+    events = []
+    for index, event in enumerate(parsed["events"], 1):
+        if not isinstance(event, dict) or set(event) != set(WORLD_STATE_EVENT_FIELDS):
+            raise ValueError(f"event {index} has an invalid field shape.")
+        if event.get("action") not in WORLD_STATE_EVENT_TYPES:
+            raise ValueError(f"event {index} has an unsupported action type.")
+        if not isinstance(event.get("actor"), str) or not event["actor"].strip():
+            raise ValueError(f"event {index} actor must be a non-empty string.")
+        normalized = {}
+        for field in WORLD_STATE_EVENT_FIELDS:
+            value = event[field]
+            if field == "action" or field == "actor":
+                normalized[field] = " ".join(value.split()).strip()
+            elif value is None:
+                normalized[field] = None
+            elif isinstance(value, str) and value.strip():
+                normalized[field] = " ".join(value.split()).strip()
+            else:
+                raise ValueError(f"event {index} {field} must be a non-empty string or null.")
+        events.append(normalized)
+    return events
 
-    A wrong ``support_id`` is still an extraction error when RAW shows the
-    prop being retrieved from a different registered support. Only a prop
-    with no such origin in RAW needs the scene itself repaired.
-    """
-    if "retrieve_prop_origin_not_in_raw:" not in str(failure or ""):
-        return None
-    parsed = candidate
-    if isinstance(parsed, str):
-        try:
-            parsed = parse_llm_json_content(parsed, repair_on_failure=False)
-        except (TypeError, ValueError, json.JSONDecodeError):
-            return "unknown prop"
-    actions = parsed.get("state_actions") if isinstance(parsed, dict) else None
-    if not isinstance(actions, list):
-        return "unknown prop"
 
-    action_id_match = re.search(
-        r"retrieve_prop action ([^:]+): retrieve_prop_origin_not_in_raw:",
-        str(failure),
-    )
-    target_action_id = action_id_match.group(1).strip() if action_id_match else ""
-    target = next(
-        (
-            action for action in actions
-            if isinstance(action, dict)
-            and action.get("op") == "retrieve_prop"
-            and (not target_action_id or action.get("action_id") == target_action_id)
-        ),
-        None,
-    )
-    if not isinstance(target, dict):
-        return "unknown prop"
-    prop_name = " ".join(str(target.get("prop_name") or "").split()).strip()
-    if not prop_name:
-        return "unknown prop"
+def _event_name_key(value):
+    text = str(value or "").casefold().replace("_", " ")
+    text = re.sub(r"['’]s\b", "", text)
+    return " ".join(re.sub(r"[^\w]+", " ", text, flags=re.UNICODE).split()).strip()
 
-    props = world_state.get("props", {}) if isinstance(world_state, dict) else {}
-    known_names = [
-        str(prop.get("name") or "")
-        for prop in props.values()
-        if isinstance(prop, dict) and str(prop.get("name") or "").strip()
-    ]
-    known_names.extend(
-        str(action.get("prop_name") or "")
-        for action in actions
-        if isinstance(action, dict)
-        and action.get("op") == "retrieve_prop"
-        and str(action.get("prop_name") or "").strip()
+
+def _event_name_matches(canonical, mentioned):
+    canonical_tokens = _event_name_key(canonical).split()
+    mention_tokens = _event_name_key(mentioned).split()
+    return bool(canonical_tokens) and any(
+        mention_tokens[index:index + len(canonical_tokens)] == canonical_tokens
+        for index in range(len(mention_tokens) - len(canonical_tokens) + 1)
     )
-    registered_supports = [
-        prop for prop in props.values()
-        if isinstance(prop, dict)
-        and prop.get("kind") in {"support", "fixture_support"}
-    ]
-    for support in registered_supports:
-        support_name = str(support.get("name") or "").strip()
-        if support_name and _retrieve_prop_origin_is_staged(
-            str(raw_scene or ""), prop_name, support_name, known_names
-        ):
-            # The origin exists in the accepted scene; a StateAction repair
-            # can correct a mistaken choice of destination support.
+
+
+def _event_substance(value, prop):
+    contents = [item for item in prop.get("contents", []) if item.get("substance")]
+    if value:
+        matches = [item["substance"] for item in contents
+                   if _event_name_matches(item["substance"], value)]
+        if len(set(matches)) == 1:
+            return matches[0]
+        if len(set(matches)) > 1:
             return None
-    return prop_name
+        if _event_name_key(value) not in {"all", "some", "partial", "empty", "unknown"}:
+            return value
+    known = [item["substance"] for item in contents
+             if item["substance"] != "unknown"]
+    return known[0] if len(known) == 1 else None
 
 
-def extract_and_dry_run_director_state_actions(
-    world_state,
-    raw_scene,
-    *,
-    segment_number,
-    run_id=None,
-    run_config=None,
-    current_segment_subject_names=None,
-):
-    """Extract and dry-run StateActions without changing RAW or WorldState.
+def _event_resolve_entity(world_state, category, value, event_index, *, optional=False):
+    if value is None and optional:
+        return None
+    key = _event_name_key(value)
+    if not key:
+        raise WorldStateEventExtractionError(f"event {event_index}: missing {category} name.")
+    records = (world_state.get("subjects", {}) if category == "subject" else
+               world_state.get("locations", {}) if category == "location" else
+               world_state.get("props", {}))
+    tokens = key.split()
+    matches = {}
+    for entity_id, record in records.items():
+        if not isinstance(record, dict):
+            continue
+        if category == "support" and record.get("kind") not in {"support", "fixture_support"}:
+            continue
+        if category == "prop" and record.get("status") != "present":
+            continue
+        name = _event_name_key(record.get("name"))
+        aliases = {name, re.sub(r"\s*\d+$", "", name).strip()}
+        for alias in aliases - {""}:
+            alias_tokens = alias.split()
+            if alias == key or any(tokens[i:i + len(alias_tokens)] == alias_tokens
+                                   for i in range(len(tokens) - len(alias_tokens) + 1)):
+                matches[entity_id] = record
+                break
+    if len(matches) == 1:
+        return next(iter(matches.items()))
+    if len(matches) > 1:
+        names = sorted(str(item.get("name") or item_id) for item_id, item in matches.items())
+        raise WorldStateEventExtractionError(f"event {event_index}: ambiguous {category} name {value!r}; matches {names}.")
+    if optional:
+        return None
+    raise WorldStateEventExtractionError(f"event {event_index}: unknown registered {category} name {value!r}.")
 
-    The validated RAW and opening WorldState remain immutable throughout
-    extraction and the action-only repair loop.
-    """
-    immutable_raw_scene = str(raw_scene or "")
-    contract = build_state_action_only_contract(
-        world_state,
-        current_segment_text=immutable_raw_scene,
-        current_segment_subject_names=current_segment_subject_names,
-    )
-    metadata_base = {
-        "run_id": run_id,
-        "source_sha256": (run_config or {}).get("source_sha256"),
-        "segment": int(segment_number),
-        "opening_state_sha256": hashlib.sha256(
-            json.dumps(
-                world_state,
-                sort_keys=True,
-                ensure_ascii=False,
-                separators=(",", ":"),
-            ).encode("utf-8")
-        ).hexdigest(),
+
+def _event_amount(event, raw_scene):
+    signals = (str(event.get("relation") or "") + " " + str(event.get("result") or "")).casefold()
+    raw_signals = str(raw_scene or "").casefold()
+    action_verbs = {
+        "consume": r"(?:consumes?|eats?|drinks?|finishes?)",
+        "transfer": r"(?:pours?|transfers?|empties?)",
     }
-    response = ask_llm(
-        build_director_state_actions_messages(
-            immutable_raw_scene,
-            contract["vocabulary"],
-            contract["prompt_operation_shapes"],
-        ),
-        response_format=contract["response_format"],
-        history_metadata={**metadata_base, "purpose": "director_state_actions", "attempt": 1},
-    )
-    console_log(
-        "DIRECTOR STATE ACTION EXTRACTION RESPONSE " + json.dumps(
-            {"segment": segment_number, "attempt": 1, "response": response},
-            ensure_ascii=False,
-            default=str,
-        ),
-        flush=True,
-    )
+    verb_pattern = action_verbs.get(event.get("action"), r"(?:consumes?|eats?|drinks?|pours?|transfers?)")
+    if re.search(rf"\b{verb_pattern}\s+(?:all|the entire|the whole)\b", raw_signals):
+        signals += " all"
+    return "all" if re.search(r"\b(all|entire|whole|empties|emptied|finishes|finished)\b", signals) else "partial"
 
-    def validate_response(candidate):
+
+def _event_action_id(segment, index):
+    return f"event_{int(segment):04d}_{int(index):03d}"
+
+
+def _translate_world_state_event(state, event, raw_scene, segment_number, event_index):
+    action_id = _event_action_id(segment_number, event_index)
+    op = event["action"]
+    actor_id, actor = _event_resolve_entity(state, "subject", event["actor"], event_index)
+    obj, source, destination = event.get("object"), event.get("source"), event.get("destination")
+    relation = str(event.get("relation") or "").casefold()
+    result = str(event.get("result") or "").strip()
+    if op == "enter":
+        loc_id, _ = _event_resolve_entity(state, "location", destination or obj, event_index)
+        return [{"action_id": action_id, "op": "enter", "subject_id": actor_id, "location_id": loc_id}]
+    if op == "exit":
+        loc = _event_resolve_entity(state, "location", destination, event_index, optional=True)
+        action = {"action_id": action_id, "op": "exit", "subject_id": actor_id}
+        if loc:
+            action["destination_location_id"] = loc[0]
+        return [action]
+    if op == "move":
+        support = _event_resolve_entity(state, "support", obj or destination, event_index, optional=True)
+        loc = _event_resolve_entity(state, "location", destination, event_index, optional=True)
+        if support and re.search(r"\b(on|onto|atop|in)\b", relation):
+            sid, record = support
+            lid = record.get("placement", {}).get("location_id")
+            if not lid or (loc and loc[0] != lid):
+                raise WorldStateEventExtractionError(f"event {event_index}: support and destination location are missing or conflict.")
+            if actor.get("location_id") == lid:
+                return [{"action_id": action_id, "op": "set_support", "subject_id": actor_id,
+                         "support_id": sid, "resulting_posture": result or None}]
+            return [{"action_id": action_id, "op": "move", "subject_id": actor_id,
+                     "destination_location_id": lid, "support_id": sid}]
+        if not loc:
+            raise WorldStateEventExtractionError(f"event {event_index}: move destination is not a registered location or explicit support.")
+        return [{"action_id": action_id, "op": "move", "subject_id": actor_id, "destination_location_id": loc[0]}]
+    if op in {"take", "put", "release"}:
+        if not obj:
+            raise WorldStateEventExtractionError(f"event {event_index}: {op} requires an object name.")
+        found = _event_resolve_entity(state, "prop", obj, event_index, optional=True)
+        if op == "take" and found is None:
+            support = _event_resolve_entity(state, "support", source, event_index, optional=True)
+            if support is None:
+                raise WorldStateEventExtractionError(f"event {event_index}: new prop {obj!r} has no registered support origin; pockets and body parts are not supports.")
+            return [{"action_id": action_id, "op": "retrieve_prop", "actor_subject_id": actor_id,
+                     "prop_name": obj, "kind": "object", "support_id": support[0]}]
+        if found is None:
+            raise WorldStateEventExtractionError(f"event {event_index}: {op} refers to unregistered prop {obj!r}.")
+        prop_id, prop = found
+        placement = prop.get("placement", {})
+        if op == "take":
+            if placement.get("kind") == "held" and placement.get("subject_id") == actor_id:
+                return []
+            holder = _event_resolve_entity(state, "subject", source, event_index, optional=True)
+            if placement.get("kind") == "held":
+                from_id = holder[0] if holder else placement.get("subject_id")
+                if from_id != placement.get("subject_id"):
+                    raise WorldStateEventExtractionError(f"event {event_index}: named source does not match registered prop holder.")
+                return [{"action_id": action_id, "op": "handoff", "from_subject_id": from_id,
+                         "to_subject_id": actor_id, "prop_id": prop_id}]
+            if placement.get("kind") == "located":
+                support = _event_resolve_entity(state, "support", source, event_index, optional=True)
+                source_subject = _event_resolve_entity(state, "subject", source, event_index, optional=True)
+                if source and support is None and source_subject is None:
+                    raise WorldStateEventExtractionError(
+                        f"event {event_index}: source {source!r} is not a registered support or Subject; "
+                        "it cannot be treated as the prop's origin."
+                    )
+                if support and support[0] != placement.get("support_id"):
+                    raise WorldStateEventExtractionError(f"event {event_index}: source support conflicts with registered prop placement.")
+                return [{"action_id": action_id, "op": "pickup", "actor_subject_id": actor_id, "prop_id": prop_id}]
+            raise WorldStateEventExtractionError(f"event {event_index}: existing prop has unknown placement; cannot safely take it.")
+        if op == "release" and not destination:
+            loc_id = actor.get("location_id")
+            if loc_id not in state.get("locations", {}):
+                raise WorldStateEventExtractionError(f"event {event_index}: release has no known destination or actor location.")
+            return [{"action_id": action_id, "op": "place", "actor_subject_id": actor_id,
+                     "prop_id": prop_id, "location_id": loc_id}]
+        to_subject = _event_resolve_entity(state, "subject", destination, event_index, optional=True)
+        if to_subject:
+            return [{"action_id": action_id, "op": "handoff", "from_subject_id": actor_id,
+                     "to_subject_id": to_subject[0], "prop_id": prop_id}]
+        support = _event_resolve_entity(state, "support", destination, event_index, optional=True)
+        if support:
+            loc_id = support[1].get("placement", {}).get("location_id")
+            if not loc_id:
+                raise WorldStateEventExtractionError(f"event {event_index}: destination support has no registered location.")
+            return [{"action_id": action_id, "op": "place", "actor_subject_id": actor_id,
+                     "prop_id": prop_id, "location_id": loc_id, "support_id": support[0]}]
+        loc = _event_resolve_entity(state, "location", destination, event_index, optional=True)
+        loc_id = loc[0] if loc else actor.get("location_id")
+        if loc_id not in state.get("locations", {}):
+            raise WorldStateEventExtractionError(f"event {event_index}: {op} destination cannot be resolved.")
+        return [{"action_id": action_id, "op": "place", "actor_subject_id": actor_id,
+                 "prop_id": prop_id, "location_id": loc_id}]
+    if op == "transfer":
+        if not source or not destination:
+            raise WorldStateEventExtractionError(f"event {event_index}: transfer requires explicit source and destination.")
+        src, _ = _event_resolve_entity(state, "prop", source, event_index)
+        dst, _ = _event_resolve_entity(state, "prop", destination, event_index)
+        substance = _event_substance(obj or result, state["props"][src])
+        if not substance:
+            raise WorldStateEventExtractionError(f"event {event_index}: transfer substance is not established.")
+        return [{"action_id": action_id, "op": "pour", "actor_subject_id": actor_id,
+                 "source_prop_id": src, "target_prop_id": dst, "substance": substance,
+                 "amount": _event_amount(event, raw_scene)}]
+    if op == "consume":
+        prop_id, prop = _event_resolve_entity(state, "prop", obj, event_index)
+        substance = _event_substance(result or obj, prop)
+        if substance and not any(
+            _event_name_key(item.get("substance")) == _event_name_key(substance)
+            and item.get("consumable") is True
+            for item in prop.get("contents", [])
+        ):
+            # The reducer can consume only contents already marked consumable;
+            # a whole consumable object is represented with substance=null.
+            substance = None
+        if substance is None and prop.get("kind") != "consumable":
+            raise WorldStateEventExtractionError(f"event {event_index}: consumed substance is not established.")
+        return [{"action_id": action_id, "op": "consume", "actor_subject_id": actor_id,
+                 "prop_id": prop_id, "amount": _event_amount(event, raw_scene), "substance": substance}]
+    if op == "modify":
+        prop_match = _event_resolve_entity(state, "prop", obj, event_index, optional=True)
+        signal = (relation + " " + result).casefold()
+        mechanism = next((name for pattern, name in (
+            (r"\b(unlock|unlocked|unlocking)\b", "unlock"),
+            (r"\b(lock|locked|locking)\b", "lock"),
+            (r"\b(close|closed|closing|shut)\b", "close"),
+            (r"\b(open|opened|opening)\b", "open"),
+        ) if re.search(pattern, signal)), None)
+        if prop_match and mechanism:
+            return [{"action_id": action_id, "op": mechanism, "actor_subject_id": actor_id, "prop_id": prop_match[0]}]
+        subject = actor
+        wardrobe = subject.get("wardrobe", {})
+        garment = obj or ""
+        garment_matches = [
+            (slot, layer.get("garment"))
+            for slot in WARDROBE_SLOTS
+            for layer in (wardrobe.get(slot) or [])
+            if isinstance(layer, dict) and _event_name_matches(layer.get("garment"), garment)
+        ]
+        slots = list(dict.fromkeys(slot for slot, _ in garment_matches))
+        slot_terms = [slot for slot in WARDROBE_SLOTS if re.search(rf"\b{slot}\b", signal)]
+        slot = slots[0] if len(slots) == 1 else (slot_terms[0] if len(slot_terms) == 1 else None)
+        if len(garment_matches) == 1:
+            garment = garment_matches[0][1]
+        if not slot:
+            raise WorldStateEventExtractionError(f"event {event_index}: clothing modification does not identify one wardrobe slot.")
+        condition_match = re.search(r"\b(torn|damaged|dirty|soiled|wet|dry|clean|stained|worn)\b", signal)
+        if condition_match:
+            change, condition = "set_condition", condition_match.group(1)
+            old = next((layer.get("garment") for layer in wardrobe.get(slot, [])
+                        if isinstance(layer, dict) and _event_name_key(layer.get("garment")) == _event_name_key(garment)), None)
+            garment = old or garment
+        elif re.search(r"\b(remove|removes|removed|removing|take off|takes off|took off)\b", signal):
+            change, condition = "remove", None
+        elif re.search(r"\b(replace|replaces|replaced|change into|changes into|switch into)\b", signal):
+            change, condition = "replace", None
+        elif re.search(r"\b(put on|puts on|putting on|wears|wearing|dons)\b", signal):
+            change, condition = "put_on", None
+        else:
+            raise WorldStateEventExtractionError(f"event {event_index}: clothing change type is not explicit in relation/result.")
+        action = {"action_id": action_id, "op": "change_clothing", "subject_id": actor_id,
+                  "change": change, "slot": slot, "garment": garment}
+        if change == "replace":
+            if not source:
+                raise WorldStateEventExtractionError(f"event {event_index}: replacement does not identify the old garment.")
+            action["replaces"] = source
+        if condition is not None:
+            action["condition"] = condition
+        return [action]
+    raise WorldStateEventExtractionError(f"event {event_index}: no safe mapping for action {op!r}.")
+
+
+def _state_action_ids_to_names(actions, state):
+    """Convert deterministic Python IDs into reducer contract names."""
+    subject_fields = {"actor_subject_id", "from_subject_id", "to_subject_id", "subject_id"}
+    prop_fields = {"prop_id", "source_prop_id", "target_prop_id", "support_id"}
+    location_fields = {"location_id", "destination_location_id"}
+    named = copy.deepcopy(actions)
+    for action in named:
+        for field in subject_fields & set(action):
+            entity = state.get("subjects", {}).get(action[field])
+            if entity is None:
+                raise WorldStateEventExtractionError(f"unknown Subject ID in translated {field}.")
+            action[field] = entity["name"]
+        for field in prop_fields & set(action):
+            if action[field] is None:
+                continue
+            entity = state.get("props", {}).get(action[field])
+            if entity is None:
+                raise WorldStateEventExtractionError(f"unknown prop ID in translated {field}.")
+            action[field] = entity["name"]
+        for field in location_fields & set(action):
+            if action[field] is None:
+                continue
+            entity = state.get("locations", {}).get(action[field])
+            if entity is None:
+                raise WorldStateEventExtractionError(f"unknown location ID in translated {field}.")
+            action[field] = entity["name"]
+    return named
+
+
+def _world_state_event_name_resolution(world_state):
+    """Build the exact Python-owned names used by reducer action parsing."""
+    def grouped(records):
+        result = {}
+        for entity_id, record in records.items():
+            name = str(record.get("name") or "").strip()
+            if name:
+                result.setdefault(name, []).append(entity_id)
+        return {name: sorted(ids) for name, ids in result.items()}
+
+    props = {
+        prop_id: prop for prop_id, prop in world_state.get("props", {}).items()
+        if isinstance(prop, dict) and prop.get("status") == "present"
+    }
+    supports = {
+        prop_id: prop for prop_id, prop in props.items()
+        if prop.get("kind") in {"support", "fixture_support"}
+    }
+    return {
+        "subject": grouped(world_state.get("subjects", {})),
+        "location": grouped(world_state.get("locations", {})),
+        "prop": grouped(props),
+        "support": grouped(supports),
+    }
+
+
+def translate_world_state_events(world_state, events, raw_scene, *, segment_number):
+    opening = copy.deepcopy(world_state)
+    name_resolution = _world_state_event_name_resolution(opening)
+    actions, action_names, current = [], [], copy.deepcopy(opening)
+    for event_index, event in enumerate(events, 1):
+        for action in _translate_world_state_event(current, event, raw_scene, segment_number, event_index):
+            trial = actions + [action]
+            trial_names = action_names + _state_action_ids_to_names([action], current)
+            try:
+                parsed = parse_and_dry_run_state_actions(
+                    opening, {"state_actions": trial_names}, segment_number=int(segment_number),
+                    name_resolution=name_resolution, raw_scene=raw_scene)
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                raise WorldStateEventExtractionError(f"event {event_index}: translation failed: {error}") from error
+            failure = next((item for item in parsed["outcomes"] if not item.accepted), None)
+            if failure:
+                raise WorldStateEventExtractionError(
+                    f"event {event_index} ({event['action']}): reducer rejected translation: {failure.code}: {failure.message}")
+            if parsed.get("omitted_support_actions"):
+                console_log(f"WORLDSTATE EVENT {event_index} support change omitted without RAW evidence.", flush=True)
+                continue
+            if parsed["outcomes"] and parsed["outcomes"][-1].code == "no_change":
+                console_log(f"WORLDSTATE EVENT {event_index} omitted as a no-op.", flush=True)
+                continue
+            actions.append(action)
+            action_names.append(trial_names[-1])
+            current = reduce_world_state(opening, parsed["state_actions"], segment_number=int(segment_number)).world_state
+    final = parse_and_dry_run_state_actions(
+        opening, {"state_actions": action_names}, segment_number=int(segment_number),
+        name_resolution=name_resolution, raw_scene=raw_scene)
+    failure = next((item for item in final["outcomes"] if not item.accepted), None)
+    if failure:
+        raise WorldStateEventExtractionError(f"reducer rejected event batch: {failure.code}: {failure.message}")
+    return final
+
+
+def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_number, run_id=None, run_config=None):
+    immutable_raw = _director_strip_camera_instructions(str(raw_scene or ""))
+    opening_hash = hashlib.sha256(json.dumps(world_state, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
+    metadata = {"run_id": run_id, "source_sha256": (run_config or {}).get("source_sha256"),
+                "segment": int(segment_number), "opening_state_sha256": opening_hash}
+    schema = build_world_state_event_response_format()
+    def call(messages, purpose, attempt):
+        return ask_llm(messages, response_format=schema, parse_json_response=False,
+                       history_metadata={**metadata, "purpose": purpose, "attempt": attempt})
+    response = call(build_world_state_event_messages(immutable_raw), "director_world_state_events", 1)
+    malformed = response
+    events = None
+    for repair_attempt in range(WORLD_STATE_EVENT_REPAIR_ATTEMPTS + 1):
         try:
-            result = parse_and_dry_run_state_actions(
-                world_state,
-                candidate,
-                segment_number=int(segment_number),
-                name_resolution=contract["name_resolution"],
-                raw_scene=immutable_raw_scene,
-            )
+            events = _parse_world_state_event_response(malformed)
+            break
         except (TypeError, ValueError, json.JSONDecodeError) as error:
-            failure = "invalid_state_action_response: " + " ".join(str(error).split())
-            missing_origin_prop = _missing_registered_retrieve_origin(
-                world_state, candidate, failure, immutable_raw_scene
-            )
-            if missing_origin_prop:
-                raise StateActionRawRepairRequired(missing_origin_prop, failure)
-            return None, failure
-        if result["accepted"]:
-            return result, ""
-        first_failure = next(
-            (item for item in result["outcomes"] if not item.accepted),
-            None,
-        )
-        if first_failure is None:
-            return None, "invalid_state_action_batch: reducer rejected the batch."
-        failure = (
-            f"{first_failure.op} action {first_failure.action_id}: "
-            f"{first_failure.code}: {first_failure.message}"
-        )
-        missing_origin_prop = _missing_registered_retrieve_origin(
-            world_state, candidate, failure, immutable_raw_scene
-        )
-        if missing_origin_prop:
-            raise StateActionRawRepairRequired(missing_origin_prop, failure)
-        return None, failure
-
-    accepted, failure = validate_response(response)
-    for repair_attempt in range(1, DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS + 1):
-        if accepted is not None:
-            if accepted.get("omitted_support_actions"):
-                console_log(
-                    "DIRECTOR STATE ACTIONS OMITTED WITHOUT RAW SUPPORT EVIDENCE "
-                    + json.dumps(
-                        {
-                            "segment": segment_number,
-                            "omitted": accepted["omitted_support_actions"],
-                        },
-                        ensure_ascii=False,
-                        default=str,
-                    ),
-                    flush=True,
-                )
-            return {
-                **accepted,
-                "raw_scene": immutable_raw_scene,
-                "opening_state_sha256": metadata_base["opening_state_sha256"],
-            }
-        console_log(
-            f"Director StateAction extraction failed for Segment {segment_number} "
-            f"(repair {repair_attempt}/{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS}); "
-            f"retrying actions only: {failure}",
-            flush=True,
-        )
-        repaired_response = ask_llm(
-            build_director_state_actions_repair_messages(
-                immutable_raw_scene,
-                contract["vocabulary"],
-                response.get("state_actions") if isinstance(response, dict) else response,
-                failure,
-                contract["prompt_operation_shapes"],
-            ),
-            response_format=contract["response_format"],
-            history_metadata={
-                **metadata_base,
-                "purpose": "director_state_actions_repair",
-                "attempt": repair_attempt,
-            },
-        )
-        console_log(
-            "DIRECTOR STATE ACTION REPAIR RESPONSE " + json.dumps(
-                {
-                    "segment": segment_number,
-                    "attempt": repair_attempt,
-                    "first_failure": failure,
-                    "response": repaired_response,
-                },
-                ensure_ascii=False,
-                default=str,
-            ),
-            flush=True,
-        )
-        response = repaired_response
-        accepted, failure = validate_response(response)
-
-    raise StateActionExtractionError(
-        f"Director StateActions failed for Segment {segment_number} after "
-        f"{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS} action-only repairs: {failure}"
-    )
-
-
-def _validate_state_action_origin_raw_repair(
-    raw_scene,
-    bundle,
-    *,
-    segment_number,
-    run_id=None,
-    run_config=None,
-    repair_attempt,
-):
-    """Recheck a repaired scene with the RAW validators already in the pipeline."""
-    candidate = _normalize_director_end_continuity_marker(
-        _normalize_raw_scene_result(raw_scene)
-    ).strip()
-    duration = float(bundle.get("current_duration") or 0)
-    timeline_duration = _director_raw_scene_timeline_duration(
-        duration,
-        bundle.get("conditioning_mode"),
-    )
-    issue = _director_raw_scene_structure_errors(
-        candidate,
-        segment_seconds=timeline_duration,
-    )
-    if issue:
-        return candidate, "SHOT SCRIPT: " + "; ".join(issue)
-
-    current_beat = str(bundle.get("current_beat_text") or "").strip()
-    opening_state = bundle.get("world_state_opening")
-    static_setting = bundle.get("static_setting_description", "")
-    subject_definitions = bundle.get("subject_definitions", "")
-    canonical_location_state = bundle.get("canonical_location_state")
-    character_references = bundle.get("character_references")
-    previous_shot_end = (
-        bundle.get("previous_final_frame", "")
-        if int(segment_number) > 1 else ""
-    )
-    metadata = {
-        "run_id": run_id,
-        "source_sha256": (run_config or {}).get("source_sha256"),
-        "segment": int(segment_number),
-        "stage": "state_action_missing_origin",
-        "repair_attempt": int(repair_attempt),
-        "opening_state_sha256": bundle.get("opening_state_sha256"),
-    }
-    semantic_scene = _director_strip_camera_instructions(candidate)
-
+            issue = " ".join(str(error).split())
+            console_log("WORLDSTATE EVENT RESPONSE REJECTED " + json.dumps(
+                {"segment": segment_number, "attempt": repair_attempt + 1,
+                 "response": malformed, "issue": issue}, ensure_ascii=False, default=str), flush=True)
+            if repair_attempt == WORLD_STATE_EVENT_REPAIR_ATTEMPTS:
+                raise WorldStateEventExtractionError(
+                    f"Malformed event extraction for Segment {segment_number} after {repair_attempt} repairs: {issue}") from error
+            malformed = call(
+                build_world_state_event_repair_messages(immutable_raw, malformed, issue),
+                "director_world_state_events_repair", repair_attempt + 1)
+    if events is None:
+        raise WorldStateEventExtractionError(f"No event list returned for Segment {segment_number}.")
+    console_log("WORLDSTATE EVENTS " + json.dumps({"segment": segment_number, "events": events}, ensure_ascii=False), flush=True)
     try:
-        coherence = validate_director_raw_scene_coherence(
-            current_beat,
-            semantic_scene,
-            previous_shot_end=previous_shot_end,
-            prop_ledger=opening_state,
-            static_setting_description=static_setting,
-            known_subject_state=opening_state,
-            subject_definitions=subject_definitions,
-            canonical_location_state=canonical_location_state,
-            character_references=character_references,
-            history_metadata=metadata,
-        )
-    except (
-        LLMConnectionError,
-        requests.RequestException,
-        OSError,
-        ValueError,
-        TypeError,
-    ) as error:
-        coherence = {"valid": False, "issue": f"RAW physical/prop validator failed: {error}"}
-    log_director_raw_validator_result(
-        "physical/prop after StateAction origin repair",
-        coherence,
-        segment_number=segment_number,
-        director_attempt=None,
-        repair_attempt=repair_attempt,
-    )
-    if not coherence.get("valid"):
-        return candidate, "PHYSICAL/PROP: " + str(
-            coherence.get("issue") or "RAW movement or prop state is inconsistent."
-        )
-
-    timestamp_errors = _director_timestamp_range_errors(
-        candidate,
-        segment_seconds=timeline_duration,
-    )
-    if timestamp_errors:
-        return candidate, "SHOT SCRIPT: " + "; ".join(timestamp_errors)
-    try:
-        timing = validate_director_raw_scene_timing(
-            semantic_scene,
-            history_metadata={**metadata, "validator": "timing"},
-        )
-    except (
-        LLMConnectionError,
-        requests.RequestException,
-        OSError,
-        ValueError,
-        TypeError,
-    ) as error:
-        timing = {"valid": False, "issue": f"RAW timing validator failed: {error}"}
-    log_director_raw_validator_result(
-        "timing after StateAction origin repair",
-        timing,
-        segment_number=segment_number,
-        director_attempt=None,
-        repair_attempt=repair_attempt,
-    )
-    if not timing.get("valid"):
-        return candidate, "TIMING: " + str(
-            timing.get("issue") or "RAW timestamps do not fit the actions."
-        )
-
-    dialogue_issue = director_required_dialogue_issue(current_beat, semantic_scene)
-    if dialogue_issue:
-        return candidate, "DIALOGUE: " + dialogue_issue
-    return candidate, ""
-
-
-def extract_state_actions_with_origin_repair(
-    world_state,
-    raw_scene,
-    *,
-    bundle,
-    segment_number,
-    run_id=None,
-    run_config=None,
-    current_segment_subject_names=None,
-):
-    """Repair accepted RAW only when a new prop has no staged registered origin.
-
-    Ordinary reducer/extraction errors retain their existing StateAction-only
-    repair path. Origin failures get one bounded RAW-repair budget, followed by
-    the same RAW validations and a fresh StateAction extraction each time.
-    """
-    current_scene = str(raw_scene or "")
-
-    def extract(scene):
-        return extract_and_dry_run_director_state_actions(
-            world_state,
-            _director_strip_camera_instructions(scene),
-            segment_number=segment_number,
-            run_id=run_id,
-            run_config=run_config,
-            current_segment_subject_names=current_segment_subject_names,
-        )
-
-    try:
-        return current_scene, extract(current_scene)
-    except StateActionRawRepairRequired as error:
-        pending_error = error
-
-    registered_supports = [
-        str(prop.get("name") or "").strip()
-        for prop in (world_state.get("props", {}) if isinstance(world_state, dict) else {}).values()
-        if isinstance(prop, dict)
-        and prop.get("kind") in {"support", "fixture_support"}
-        and str(prop.get("name") or "").strip()
-    ]
-    if not registered_supports:
-        raise StateActionExtractionError(
-            f"missing_prop_origin_no_registered_support: Segment {segment_number} "
-            f"cannot introduce {pending_error.prop_name!r}; no registered support "
-            "is available as a retrieval origin in this segment."
-        ) from pending_error
-
-    last_issue = ""
-    for repair_attempt in range(1, DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS + 1):
-        origin_issue = (
-            f"The materially relevant new prop {pending_error.prop_name!r} has no "
-            "explicit origin in the current segment. Repair RAW to show a "
-            "physically plausible introduction: a Subject retrieving it from a "
-            "registered support before its first use. The "
-            "retrieval must occur in this segment; do not imply an earlier "
-            "acquisition, use its final destination as its origin, or invent a "
-            "support. Prefer an existing registered support when physically "
-            "appropriate. Registered supports: "
-            + ", ".join(registered_supports)
-            + ". Keep the action order physically plausible and feasible "
-            f"within {float(bundle.get('current_duration') or 0):g} seconds."
-        )
-        if last_issue:
-            origin_issue += " The prior repaired RAW also failed: " + last_issue
-        console_log(
-            "DIRECTOR RAW REPAIR DISPATCH " + json.dumps(
-                {
-                    "purpose": "director_raw_scene_repair",
-                    "stage": "state_action_missing_origin",
-                    "segment": segment_number,
-                    "repair_attempt": repair_attempt,
-                    "prop": pending_error.prop_name,
-                    "issue": origin_issue,
-                },
-                ensure_ascii=False,
-            ),
-            flush=True,
-        )
-        response = ask_llm(
-            build_director_raw_scene_repair_messages(current_scene, [origin_issue]),
-            response_format=None,
-            parse_json_response=False,
-            history_metadata={
-                "run_id": run_id,
-                "source_sha256": (run_config or {}).get("source_sha256"),
-                "segment": int(segment_number),
-                "purpose": "director_raw_scene_repair",
-                "attempt": repair_attempt,
-                "stage": "state_action_missing_origin",
-                "prop": pending_error.prop_name,
-                "opening_state_sha256": hashlib.sha256(
-                    json.dumps(
-                        world_state,
-                        sort_keys=True,
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                    ).encode("utf-8")
-                ).hexdigest(),
-            },
-        )
-        candidate = _normalize_raw_scene_result(response)
-        console_log(
-            "DIRECTOR RAW SCENE REPAIR RESPONSE " + json.dumps(
-                {
-                    "segment": segment_number,
-                    "repair_attempt": repair_attempt,
-                    "stage": "state_action_missing_origin",
-                    "prop": pending_error.prop_name,
-                    "issue": origin_issue,
-                    "response": response,
-                },
-                ensure_ascii=False,
-                default=str,
-            ),
-            flush=True,
-        )
-        if not candidate.strip() or candidate.strip() == "N/A":
-            last_issue = "RAW repair returned no scene text."
-            continue
-        repaired_scene, validation_issue = _validate_state_action_origin_raw_repair(
-            candidate,
-            bundle,
-            segment_number=segment_number,
-            run_id=run_id,
-            run_config=run_config,
-            repair_attempt=repair_attempt,
-        )
-        if validation_issue:
-            current_scene = repaired_scene
-            last_issue = validation_issue
-            continue
-        current_scene = repaired_scene
-        try:
-            return current_scene, extract(current_scene)
-        except StateActionRawRepairRequired as error:
-            pending_error = error
-            last_issue = str(error)
-
-    raise StateActionExtractionError(
-        f"missing_prop_origin_after_raw_repairs: Segment {segment_number} could "
-        f"not establish a valid current-segment origin for "
-        f"{pending_error.prop_name!r} after "
-        f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS} RAW repairs. Last issue: "
-        f"{last_issue or pending_error}"
-    ) from pending_error
-
+        result = translate_world_state_events(world_state, events, immutable_raw, segment_number=int(segment_number))
+    except WorldStateEventExtractionError:
+        raise
+    except Exception as error:
+        raise WorldStateEventExtractionError(f"Event translation failed for Segment {segment_number}: {error}") from error
+    return {**result, "events": events, "raw_scene": immutable_raw, "opening_state_sha256": opening_hash}
 
 def _format_director_validator_worldstate_context(
     world_state,
@@ -42148,31 +42045,25 @@ def _run_main(
             )
         opening_world_state = segment_bundle.get("world_state_opening")
         if not isinstance(opening_world_state, dict):
-            raise StateActionExtractionError(
+            raise WorldStateEventExtractionError(
                 f"Segment {segment} has no immutable opening WorldState for "
-                "StateAction extraction."
+                "event extraction."
             )
         try:
-            resolved_raw_scene, state_action_result = (
-                extract_state_actions_with_origin_repair(
-                    opening_world_state,
-                    resolved_raw_scene,
-                    bundle=segment_bundle,
-                    segment_number=segment,
-                    run_id=run_id,
-                    run_config=run_config,
-                    current_segment_subject_names=segment_bundle.get(
-                        "world_state_current_segment_subject_names", []
-                    ),
-                )
+            state_action_result = extract_and_dry_run_world_state_events(
+                opening_world_state,
+                resolved_raw_scene,
+                segment_number=segment,
+                run_id=run_id,
+                run_config=run_config,
             )
         except LLMConnectionError:
             raise
         except Exception as error:
-            if isinstance(error, StateActionExtractionError):
+            if isinstance(error, WorldStateEventExtractionError):
                 raise
-            raise StateActionExtractionError(
-                f"Director StateAction extraction failed for Segment {segment}: "
+            raise WorldStateEventExtractionError(
+                f"WorldState event extraction failed for Segment {segment}: "
                 f"{error}"
             ) from error
         state_action_raw_scene = _director_strip_camera_instructions(
@@ -42184,7 +42075,7 @@ def _run_main(
             _raw_scene_timed_description(resolved_raw_scene),
         )
         payload["llm_result"] = llm_result
-        _assert_state_action_raw_unchanged(
+        _assert_event_raw_unchanged(
             state_action_raw_scene,
             state_action_result,
             segment,
@@ -43203,7 +43094,7 @@ def main():
             raise
         except (
             re.error,
-            StateActionExtractionError,
+            WorldStateEventExtractionError,
             RequiredEventStateApplicationError,
             WorkflowConfigurationError,
         ):

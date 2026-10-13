@@ -124,8 +124,10 @@ Return the following JSON:
                 return {"overall_soundscape": "Quiet tavern ambience."}
             if purpose == "director_h3_music":
                 return {"non_diegetic_music": "N/A"}
-            if purpose == "director_state_actions":
-                return {"state_actions": []}
+            if purpose == "director_world_state_events":
+                return {"events": []}
+            if purpose == "director_world_state_events_repair":
+                return {"events": []}
             raise AssertionError(f"Unexpected LLM purpose: {purpose!r}")
 
         physical_iter = iter(physical_verdicts)

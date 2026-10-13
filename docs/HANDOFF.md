@@ -1,5 +1,64 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Python translation of extracted WorldState events
+
+- Replaced the `director_state_actions` call with a Smart Extractor event-list
+  call. It receives the validated, camera-stripped RAW only and returns ordered
+  `events`; it does not receive or emit StateActions. The event response schema
+  is strict and mirrors the exact JSON contract shown in its system prompt.
+- Python resolves event entity names against the immutable opening WorldState,
+  including unique descriptive aliases, rejects unknown/ambiguous references,
+  assigns deterministic action IDs by segment/event order, translates safely
+  representable events into the existing StateAction operations, omits reducer
+  no-ops, and dry-runs the translated batch through the existing atomic
+  reducer. The accepted `state_actions` result remains the established
+  completed-Segment commit input; transaction, checkpoint, and resume code is
+  unchanged. Reducer provenance now identifies the event-extraction path.
+- Malformed event JSON/shape uses up to five event-list-only repairs against
+  the same immutable RAW. Name-resolution and reducer failures now report a
+  concrete event diagnostic and fail closed; neither invokes RAW repair. The
+  special `retrieve_prop_origin_not_in_raw` RAW-repair loop and old
+  StateAction extraction/repair call purposes were removed. A new prop can be
+  introduced only through a `take` event whose source resolves to a registered
+  support; a known prop is resolved before any introduction, so a cloth already
+  held by its Subject is not duplicated and a pocket is not treated as a
+  support.
+- Runtime system prompt added for the event extractor:
+  “You extract physical events from a film scene. Identify events that change a
+  Subject's location, physical support, possession, clothing, or the state of
+  an object. Ignore gestures, appearances, dialogue, and other actions that do
+  not cause these changes. Report events in chronological order using only
+  what is explicitly described in RAW SCENE. Use these event types: move, enter,
+  exit, take, put, transfer, consume, modify, release. Describe actors, objects,
+  sources, and destinations using their names as written in RAW SCENE. Preserve
+  distinctions such as standing on a table versus standing beside it. Do not
+  determine whether an event is valid, already recorded, or representable in
+  WorldState. Do not invent missing actions, sources, or destinations. Use null
+  for information not stated. Return exactly the JSON structure with `events`
+  and the seven fields action, actor, object, source, destination, relation,
+  result.” The repair prompt is limited to correcting that same event list and
+  cannot rewrite RAW.
+- Event schema lacks dedicated amount, wardrobe-slot, clothing-change, and
+  mechanism-operation fields. Python uses explicit relation/result wording and
+  registered wardrobe facts for deterministic mapping; if it cannot make one
+  unambiguous mapping, it fails with an event-specific diagnostic. Transfer
+  amount defaults to `partial` unless the event/result or RAW explicitly
+  establishes a complete transfer. This is a remaining contract limitation
+  for future acceptance review.
+- No Job 61 artifacts were found in this checkout, so regressions use generic
+  constructed event records rather than captured Job 61 RAW. Tests cover
+  support versus adjacency, existing cloth retrieval without duplication,
+  new-prop retrieval and reuse, transfer/consumption, clothing/mechanism
+  changes, enter/exit, release/place, ambiguity, unknown support, no-ops,
+  malformed-response repair and its five-repair bound, reducer rejection,
+  immutable opening state, and failed-extraction rollback. Verification:
+  event/Director/split-pipeline/settings/prompt-generation targeted suites —
+  237 passed, 16 subtests passed; WorldState foundation — 95 passed, 2 known
+  stale story-start tests deselected. Those two still expect the retired
+  `classification`/`evidence` response and previous prompt wording. Syntax and
+  whitespace checks passed, as did byte-for-byte copies of `minimax.py` and
+  `world_state.py` to the automation checkout. No bridge job was queued.
+
 ## 2026-10-13 — Beat story validator output budget
 
 - Increased `beat_story_validation`'s per-purpose maximum output tokens from

@@ -2622,14 +2622,14 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
             patch.object(minimax.sys, "argv", ["minimax.py", "8", "64", "0.5"]),
             patch(
                 "minimax._run_main",
-                side_effect=minimax.StateActionExtractionError(
+                side_effect=minimax.WorldStateEventExtractionError(
                     "all action-only repairs failed"
                 ),
             ) as run_main,
             patch("minimax.time.sleep") as sleep,
         ):
             with self.assertRaisesRegex(
-                minimax.StateActionExtractionError,
+                minimax.WorldStateEventExtractionError,
                 "all action-only repairs failed",
             ):
                 minimax.main()

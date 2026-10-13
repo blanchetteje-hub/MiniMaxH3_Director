@@ -69,8 +69,8 @@ EXPECTED_PROFILE_PURPOSES = {
         "combined_continuity",
         "subject_continuity",
         "final_h3_action_preservation",
-        "director_state_actions",
-        "director_state_actions_repair",
+        "director_world_state_events",
+        "director_world_state_events_repair",
     },
 }
 
