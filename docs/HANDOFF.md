@@ -1,5 +1,20 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — clarify current-Segment prop capability extraction
+
+- Updated only the `world_state_current_segment_props` system prompt. It now
+  permits contents and capabilities that are explicit or strongly implied by
+  the setting/actions, while requiring inferred initial contents to describe
+  the state before CURRENT BEAT rather than its outcome. It also clarifies that
+  `true` and `false` are JSON booleans. The response schema already supports
+  booleans and `unknown`; no schema or extraction code changed.
+- Added a focused assertion for the new guidance and retained the existing
+  registered-name/ID privacy and evidence checks. Verification:
+  `pytest -q tests/test_world_state_foundation.py -k
+  'current_segment_prop_extractor_uses_names_and_cloth_id_persists or
+  current_segment_prop_evidence'` — 8 passed, 7 subtests passed;
+  `py_compile` and `git diff --check` passed.
+
 ## 2026-10-12 — Job #49 StateAction reducer failures
 
 - Job #49's Segment 2 opening WorldState and prompt history show the failure was

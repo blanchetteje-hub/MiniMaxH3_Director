@@ -872,6 +872,29 @@ class WorldStateSeedTests(unittest.TestCase):
             beat, beat, state, llm_request=fake_llm
         )
         self.assertEqual(extracted[0]["initial_holder"], "Subject One")
+        system_prompt = captured["messages"][0]["content"]
+        self.assertIn(
+            "Record contents/capabilities when explicit or strongly implied by "
+            "the setting and actions.",
+            system_prompt,
+        )
+        self.assertIn(
+            "Infer opening contents only when supported by the opening state; "
+            "do not treat the result of CURRENT BEAT as already true.",
+            system_prompt,
+        )
+        self.assertIn(
+            "Infer capabilities from common-sense object properties and intended "
+            "actions.",
+            system_prompt,
+        )
+        self.assertIn(
+            "true/false are to be JSON booleans, not strings",
+            system_prompt,
+        )
+        self.assertNotIn(
+            "Record contents/capabilities only when explicit", system_prompt
+        )
         prompt_text = "\n".join(message["content"] for message in captured["messages"])
         self.assertIn('"name":"Subject One"', prompt_text)
         self.assertIn('"name":"Subject Two"', prompt_text)
