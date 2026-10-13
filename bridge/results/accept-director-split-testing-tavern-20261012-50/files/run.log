@@ -1,0 +1,291 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+Pre-Director replay enabled: captured upstream outputs and the pre-Director WorldState are loaded; first Request 1 must match the fixture's captured dynamic messages.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 1226/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+PRE-DIRECTOR REPLAY MATCH {"segment": 1, "opening_world_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "message_count": 2}
+LLM request started: director_raw_scene_creative (attempt 1/10, ~1511 input tokens, max 6553 output tokens).
+LLM request finished: director_raw_scene_creative (13.2s, finish_reason=stop).
+DIRECTOR CREATIVE RAW RESPONSE {"segment": 1, "attempt": 1, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "response": "Amy steps onto the wooden floor and it creaks beneath her weight.  \nShe holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.  \nThe table's surface glistens as she finishes, gleaming with a bright sheen."}
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1371 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_physical (7.9s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "physical/spatial creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~1301 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_prop_state (13.3s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "prop/state creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~188 input tokens, max 7876 output tokens).
+LLM request finished: add_scene_timing_refiner (13.3s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 1, "opening_state_sha256": "d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0", "creative_scene": "Amy steps onto the wooden floor and it creaks beneath her weight.  \nShe holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.  \nThe table's surface glistens as she finishes, gleaming with a bright sheen.", "response": {"status": "ok", "timestamps": ["0.00", "1.20", "5.00"]}, "issue": "Malformed timing-refiner response: Timestamp 1 is malformed or ambiguous; expected a local MM:SS timestamp with up to three fractional digits."}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~235 input tokens, max 7829 output tokens).
+LLM request finished: add_scene_timing_refiner (13.2s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 2, "creative_scene": "Amy steps onto the wooden floor and it creaks beneath her weight.  \nShe holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.  \nThe table's surface glistens as she finishes, gleaming with a bright sheen.", "response": {"status": "ok", "timestamps": ["00:00.000", "00:01.200", "00:03.600"]}, "accepted": true}
+LLM request started: director_raw_scene_timing (attempt 1/10, ~578 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_timing (12.9s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "timing", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_camera_refiner (attempt 1/10, ~337 input tokens, max 7727 output tokens).
+LLM request finished: add_camera_refiner (16.3s, finish_reason=stop).
+DIRECTOR CAMERA REFINER RESPONSE {"segment": 1, "director_attempt": 1, "camera_attempt": 1, "timed_scene": "At 00:00.000, Amy steps onto the wooden floor and it creaks beneath her weight.  \nAt 00:01.200, She holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.  \nAt 00:03.600, The table's surface glistens as she finishes, gleaming with a bright sheen.", "response": "At 00:00.000, [CAMERA: low‑angle close‑up on Amy’s feet stepping onto the wooden floor] Amy steps onto the wooden floor and it creaks beneath her weight.\nAt 00:01.200, [CAMERA: pan up to medium shot of table as she wipes with cloth soaked in ale‑scented oil] She holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.\nAt 00:03.600, [CAMERA: close‑up on gleaming surface, slight zoom for sheen effect] The table's surface glistens as she finishes, gleaming with a bright sheen.", "issue": "Camera output changed action text on line 1; only a [CAMERA: ...] annotation may be added."}
+LLM request started: add_camera_refiner (attempt 1/10, ~337 input tokens, max 7727 output tokens).
+LLM request finished: add_camera_refiner (16.3s, finish_reason=stop).
+DIRECTOR CAMERA REFINER RESPONSE {"segment": 1, "director_attempt": 1, "camera_attempt": 2, "timed_scene": "At 00:00.000, Amy steps onto the wooden floor and it creaks beneath her weight.  \nAt 00:01.200, She holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.  \nAt 00:03.600, The table's surface glistens as she finishes, gleaming with a bright sheen.", "response": "At 00:00.000 [CAMERA: continuous low-angle tracking from floor to Amy’s feet, following her step onto the wood], Amy steps onto the wooden floor and it creaks beneath her weight.\n\nAt 00:01.200 [CAMERA: smooth dolly in on Amy as she holds a cloth soaked in ale‑scented oil, wiping across the polished table along the counter], She holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.\n\nAt 00:03.600 [CAMERA: close-up of the table’s surface glistening as she finishes, frame widening to include Amy’s satisfied face], The table's surface glistens as she finishes, gleaming with a bright sheen.", "issue": "Camera output changed the number of scene lines."}
+LLM request started: add_camera_refiner (attempt 1/10, ~337 input tokens, max 7727 output tokens).
+LLM request finished: add_camera_refiner (16.0s, finish_reason=stop).
+DIRECTOR CAMERA REFINER RESPONSE {"segment": 1, "director_attempt": 1, "camera_attempt": 3, "timed_scene": "At 00:00.000, Amy steps onto the wooden floor and it creaks beneath her weight.  \nAt 00:01.200, She holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.  \nAt 00:03.600, The table's surface glistens as she finishes, gleaming with a bright sheen.", "response": "At 00:00.000, [CAMERA: tracking from left across floor toward table] Amy steps onto the wooden floor and it creaks beneath her weight.\nAt 00:01.200, [CAMERA: dolly in to medium close‑up, slight pan to keep cloth centered] She holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.\nAt 00:03.600, [CAMERA: zoom on gleaming surface then pull back to show Amy's finished action] The table's surface glistens as she finishes, gleaming with a bright sheen.", "issue": "Camera output changed action text on line 1; only a [CAMERA: ...] annotation may be added."}
+DIRECTOR CAMERA REFINER FALLBACK {"segment": 1, "director_attempt": 1, "attempts": 3, "issue": "Camera output changed action text on line 1; only a [CAMERA: ...] annotation may be added.", "fallback": "accepted timed scene unchanged"}
+DIRECTOR RAW VALIDATOR RESULT {"validator": "shot-script structure", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+DIRECTOR RAW VALIDATOR RESULT {"validator": "dialogue", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+Checking pronouns segment:
+LLM request started: director_raw_scene_pronoun_resolution (attempt 1/10, ~505 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_pronoun_resolution (4.5s, finish_reason=stop).
+Checking pronouns segment: LLM result=At 00:00.000, Amy steps onto the wooden floor and it creaks beneath her weight.
+At 00:01.200, Amy holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.
+At 00:03.600, The table's surface glistens as Amy finishes, gleaming with a bright sheen.
+Checking pronouns segment: replaced At 00:00.000, Amy steps onto the wooden floor and it creaks beneath her weight. -> At 00:00.000, Amy steps onto the wooden floor and it creaks beneath her weight.
+Checking pronouns segment: replaced At 00:01.200, She holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter. -> At 00:01.200, Amy holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.
+Checking pronouns segment: replaced At 00:03.600, The table's surface glistens as she finishes, gleaming with a bright sheen. -> At 00:03.600, The table's surface glistens as Amy finishes, gleaming with a bright sheen.
+Segment 1 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.000, Amy steps onto the wooden floor and it creaks beneath her weight.
+At 00:01.200, Amy holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.
+At 00:03.600, The table's surface glistens as Amy finishes, gleaming with a bright sheen.
+End continuity state: The table's surface glistens as she finishes, gleaming with a bright sheen.
+================================================================
+
+================================================================
+H3 SOUNDSCAPE REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_soundscape (attempt 1/10, ~517 input tokens, max 2048 output tokens).
+LLM request finished: director_h3_soundscape (4.0s, finish_reason=stop).
+H3 soundscape segment 1: 'wooden floor creak'
+H3 MUSIC REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_music (attempt 1/10, ~390 input tokens, max 512 output tokens).
+LLM request finished: director_h3_music (4.3s, finish_reason=stop).
+H3 music segment 1: 'A soft, mellow acoustic guitar arpeggio drifts over the creaking floor, swelling into a bright, shimmering piano melody as the table gleams.'
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1537 input tokens, max 3172 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (17.6s, finish_reason=stop).
+WARNING: RAW Subject resolver returned 'Goblin_1' in subject_names but no safe deterministic mapping exists in accepted RAW; ignoring that resolver entry instead of restarting the segment.
+WARNING: RAW Subject resolver returned 'Elf_1' in subject_names but no safe deterministic mapping exists in accepted RAW; ignoring that resolver entry instead of restarting the segment.
+WARNING: RAW Subject resolver returned 'Dragon_1' in subject_names but no safe deterministic mapping exists in accepted RAW; ignoring that resolver entry instead of restarting the segment.
+Checking RAW Subjects segment: no dynamic Subjects
+Segment 1 deterministic final-participant carry-forward: Amy
+LLM request started: director_state_actions (attempt 1/10, ~1833 input tokens, max 4096 output tokens).
+LLM request finished: director_state_actions (10.8s, finish_reason=stop).
+DIRECTOR STATE ACTION EXTRACTION RESPONSE {"segment": 1, "attempt": 1, "response": {"state_actions": []}}
+Director StateActions accepted for Segment 1: 0 action(s), opening WorldState d9ba6db94ff5d5a9b4bd62a2742d41bd00013f43cad0c20242be92ced7449de0.
+Planned character reference(s): Amy
+Segment 1 Subject/Picture reference bindings before final H3 assembly: {"bindings": [{"authority": "identity", "binding_reason": "explicit_current_segment", "canonical_picture_number": 1, "image_name": "", "image_path": "", "picture_number": 1, "reference_version": null, "source_kind": "configured_picture", "subject_id": 1, "subject_name": "Amy"}, {"authority": "clothing_only", "binding_reason": "explicit_current_segment", "canonical_picture_number": 2, "first_segment_seen": 1, "image_name": "minimax_character_ref_009d15fabb62_002_Amy_v001.png", "image_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-3367tl4p\\repo\\output\\video\\state\\minimax_character_ref_009d15fabb62_002_Amy_v001.png", "last_explicit_segment": 1, "picture_number": 2, "reference_version": 1, "removal_threshold_segment": 4, "segments_since_explicit": 0, "source_kind": "generated_reference", "subject_id": 1, "subject_name": "Amy"}], "subject_definitions": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.\n<Picture 2> references only the clothing that Amy is currently wearing."}
+Saved finalized H3 prompt 1/6 to generated_prompts.txt.
+Segment 1 continuity context is sourced from WorldState; legacy continuity extraction is disabled.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 1: The floor creaks under Amy's feet as she wipes the polished table with a cloth soaked in ale-scented oil until its surface gleams.
+Next required after this prompt:
+  Beat 2: A green-skinned goblin leans over the counter clutching a chipped mug while Amy refills it by pouring liquid from a barrel beside the hearth.
+================================================================
+
+# ================================================================ FINAL H3 PROMPT - SEGMENT 1
+subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.
+<Picture 2> references only the clothing that Amy is currently wearing.
+
+Subject Amy: present; at the tavern's wooden floor; wearing Amy wears a rough‑spun linen tunic in muted brown and thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips.
+Subject Elf: wearing flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap and she wears soft brown leather boots that reach just below the knee and.
+Subject Goblin: present; at the tavern's wooden floor; wearing 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips and brown belt around his waist holding a tiny pouch (frayed).
+Prop back table: at the tavern's wooden floor.
+Prop barrel: at the tavern's wooden floor.
+Prop cloth soaked in ale-scented oil: held by Amy.
+Prop counter: at the tavern's wooden floor.
+Prop entrance: at the tavern's wooden floor.
+Prop hearth: at the tavern's wooden floor.
+Prop high bar stool: at the tavern's wooden floor.
+Prop lantern (back table): at the tavern's wooden floor.
+Prop lantern (counter tables): at the tavern's wooden floor.
+Prop polished table: at the tavern's wooden floor.
+Prop shelf of crystal cups: at the tavern's wooden floor.
+Prop wooden latch: at the tavern's wooden floor.
+Amy is a 32-year-old female. Over the tunic she drapes a sturdy leather apron, darkened by oil and ale stains that mark the scuffs of daily service. Tucked into her waist are simple woolen hose in deep tan, tucked neatly under the tunic’s hem. Her feet are shod with worn brown leather boots, thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips, holding a small pouch of tools and a cloth for wiping tables.
+Goblin is a 20-year-old male.
+Elf is a 240-year-old female. Her silver hair streams down her shoulders.
+Dragon-shaped creature is a 500-year-old male.
+
+detailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, The scene starts in the tavern's wooden floor. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.
+
+At 00:00.000, Amy steps onto the wooden floor and it creaks beneath her weight.
+
+At 00:01.200, Amy holds a cloth soaked in ale‑scented oil and wipes across the polished table along the counter.
+
+At 00:03.600, The table's surface glistens as Amy finishes, gleaming with a bright sheen.
+
+overall_soundscape: wooden floor creak
+
+non_diegetic_music: A soft, mellow acoustic guitar arpeggio drifts over the creaking floor, swelling into a bright, shimmering piano melody as the table gleams.
+
+No intelligible spoken dialogue is heard in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 1
+
+ComfyUI render skipped for segment 1; continuing with prompt-derived continuity only.
+Segment 1 ending state will come from the accepted WorldState reducer actions.
+Segment 1 completed Beat 1.
+WorldState and render metadata checkpointed before the ComfyUI response for segment 1.
+Committed Director WorldState for Segment 1: 0 accepted action(s), revision 6.
+Completed prompt generation for segment 1; no ComfyUI request was sent.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~384 input tokens, max 4096 output tokens).
+LLM request finished: world_state_current_segment_subjects (12.9s, finish_reason=stop).
+WORLDSTATE PROP EXTRACTION REQUEST {"purpose": "world_state_current_segment_props", "attempt": 1, "messages": [{"role": "system", "content": "Identify only new physical props whose distinct identity and placement are needed to represent an explicit persistent state-changing action in CURRENT BEAT. Existing props are listed and must be reused by identity; never duplicate or rename them.\n\n- Each new prop must be directly involved in a transfer, placement, pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.\n- Return exactly one explicit initial_location or initial_holder, using only the registered names below.\n- A support_name may name only a registered support/fixture.\n- Do not guess a placement: omit any prop whose initial placement is not supported by the current sources.\n- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE.\n- Record contents/capabilities when explicit or strongly implied by the setting and actions. Infer opening contents only when supported by the opening state; do not treat the result of CURRENT BEAT as already true. Otherwise use unknown or an empty contents list.\n-Infer capabilities from common-sense object properties and intended actions. Infer initial contents only from evidence of the state before CURRENT BEAT, never from the outcome of CURRENT BEAT.\n- Return JSON in this format (true/false are to be JSON booleans, not strings):\n{\n  \"props\": [\n    {\n      \"name\": \"object_name\",\n      \"kind\": \"object\",\n      \"mobility\": \"movable\",\n      \"initial_location\": null,\n      \"initial_holder\": \"registered_subject_name\",\n      \"support_name\": null,\n      \"contents\": [\n        {\n          \"substance\": \"substance_name\",\n          \"amount\": \"unknown\",\n          \"consumable\": \"unknown\"\n        }\n      ],\n      \"capabilities\": {\n        \"container\": \"unknown\",\n        \"consumable\": \"unknown\",\n        \"openable\": \"unknown\",\n        \"lockable\": \"unknown\"\n      },\n      \"reason\": \"Why this object needs persistent tracking.\",\n      \"evidence\": \"Exact quotation from CURRENT BEAT or ASSIGNED SOURCE\"\n    }\n  ]\n}\n\n- Notes: All fields are required. Use null for either initial_location or initial_holder—exactly one must have a registered name. The props array can be empty ([]), and contents can also be empty. Capability values can be true, false, or \"unknown\"."}, {"role": "user", "content": "CURRENT BEAT\nA green-skinned goblin leans over the counter clutching a chipped mug while Amy refills it by pouring liquid from a barrel beside the hearth.\n\nASSIGNED SOURCE\nN/A\n\nREGISTERED SUBJECTS\n[{\"name\":\"Amy\",\"presence\":\"present\"},{\"name\":\"Dragon-shaped creature\",\"presence\":\"unknown\"},{\"name\":\"Elf\",\"presence\":\"unknown\"},{\"name\":\"Goblin\",\"presence\":\"present\"}]\n\nCURRENT WORLDSTATE PROPS\n[{\"name\":\"back table\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"barrel\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"cloth soaked in ale-scented oil\",\"kind\":\"object\",\"placement\":{\"kind\":\"held\",\"holder\":\"Amy\"}},{\"name\":\"counter\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"entrance\",\"kind\":\"fixture\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"hearth\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"high bar stool\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"lantern (back table)\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"lantern (counter tables)\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"polished table\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"shelf of crystal cups\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}},{\"name\":\"wooden latch\",\"kind\":\"fixture\",\"placement\":{\"kind\":\"located\",\"location\":\"the tavern's wooden floor\"}}]\n\nCANONICAL LOCATIONS\n[{\"name\":\"the tavern's wooden floor\"}]\n\nCANONICAL SUPPORTS / FIXTURES\n[{\"name\":\"back table\",\"location\":\"the tavern's wooden floor\"},{\"name\":\"barrel\",\"location\":\"the tavern's wooden floor\"},{\"name\":\"counter\",\"location\":\"the tavern's wooden floor\"},{\"name\":\"hearth\",\"location\":\"the tavern's wooden floor\"},{\"name\":\"high bar stool\",\"location\":\"the tavern's wooden floor\"},{\"name\":\"lantern (back table)\",\"location\":\"the tavern's wooden floor\"},{\"name\":\"lantern (counter tables)\",\"location\":\"the tavern's wooden floor\"},{\"name\":\"polished table\",\"location\":\"the tavern's wooden floor\"},{\"name\":\"shelf of crystal cups\",\"location\":\"the tavern's wooden floor\"}]\n\nReturn only props needed for a persistent state action in this Segment."}], "registered_subjects": [{"id": "subject_1", "name": "Amy", "presence": "present"}, {"id": "subject_goblin_a0f199af52d0", "name": "Goblin", "presence": "present"}, {"id": "subject_elf_a7b4191901e4", "name": "Elf", "presence": "unknown"}, {"id": "subject_dragon_shaped_creature_91990debafe1", "name": "Dragon-shaped creature", "presence": "unknown"}], "registered_locations": [{"id": "location_the_tavern_s_wooden_floor_d84d1c86ceba", "name": "the tavern's wooden floor"}], "registered_props": [{"id": "prop_location_the_tavern_s_wooden_flo_8ba02fd9d341", "name": "entrance", "kind": "fixture"}, {"id": "prop_location_the_tavern_s_wooden_flo_ec2a85f1ac04", "name": "counter", "kind": "support"}, {"id": "prop_location_the_tavern_s_wooden_flo_ffdddda959ec", "name": "hearth", "kind": "support"}, {"id": "prop_location_the_tavern_s_wooden_flo_ff3c16cc736f", "name": "wooden latch", "kind": "fixture"}, {"id": "prop_location_the_tavern_s_wooden_flo_4b7557a8406b", "name": "polished table", "kind": "support"}, {"id": "prop_location_the_tavern_s_wooden_flo_9075c71fae6f", "name": "high bar stool", "kind": "support"}, {"id": "prop_location_the_tavern_s_wooden_flo_883f0909631e", "name": "shelf of crystal cups", "kind": "support"}, {"id": "prop_location_the_tavern_s_wooden_flo_37f8e4433eaf", "name": "barrel", "kind": "support"}, {"id": "prop_location_the_tavern_s_wooden_flo_9fe0160056f3", "name": "back table", "kind": "support"}, {"id": "prop_location_the_tavern_s_wooden_flo_6650c4fb986e", "name": "lantern (counter tables)", "kind": "support"}, {"id": "prop_location_the_tavern_s_wooden_flo_e3be62c5f68a", "name": "lantern (back table)", "kind": "support"}, {"id": "prop_object_cloth_soaked_in_ale_scent_826cf590d4f3", "name": "cloth soaked in ale-scented oil", "kind": "object"}]}
+LLM request started: world_state_current_segment_props (attempt 1/10, ~1359 input tokens, max 4096 output tokens).
+LLM request finished: world_state_current_segment_props (26.0s, finish_reason=stop).
+WORLDSTATE PROP EXTRACTION RESPONSE {"attempt": 1, "raw": {"props": [{"name": "chipped mug", "kind": "object", "mobility": "movable", "initial_location": null, "initial_holder": "Goblin", "support_name": null, "contents": [{"substance": "ale", "amount": "unknown", "consumable": "unknown"}], "capabilities": {"consumable": false, "container": true, "lockable": "unknown", "openable": "unknown"}, "reason": "The goblin is holding a chipped mug that Amy refills with liquid from the barrel.", "evidence": "\"A green-skinned goblin leans over the counter clutching a chipped mug while Amy refills it by pouring liquid from a barrel beside the hearth.\""}]}}
+WORLDSTATE PROP EXTRACTION ACCEPTED {"attempt": 1, "props": [{"name": "chipped mug", "kind": "object", "mobility": "movable", "initial_location": null, "initial_holder": "Goblin", "support_name": null, "contents": [{"substance": "ale", "amount": "unknown", "consumable": "unknown"}], "capabilities": {"consumable": false, "container": true, "lockable": "unknown", "openable": "unknown"}, "reason": "The goblin is holding a chipped mug that Amy refills with liquid from the barrel.", "evidence": "\"A green-skinned goblin leans over the counter clutching a chipped mug while Amy refills it by pouring liquid from a barrel beside the hearth.\""}]}
+
+================================================================
+SEGMENT 2/6 (8 seconds)
+================================================================
+Estimated LLM input context: 1363/4500 tokens (recent exact segments: 0)
+Segment 2 Director continuity source: world_state
+LLM request started: director_raw_scene_creative (attempt 1/10, ~1649 input tokens, max 6415 output tokens).
+LLM request finished: director_raw_scene_creative (18.8s, finish_reason=stop).
+DIRECTOR CREATIVE RAW RESPONSE {"segment": 2, "attempt": 1, "opening_state_sha256": "c802dbfbe3844d37a57025b28c971cfad398679830ceec60cf6607bfe7c6c232", "response": "The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.  \nA green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; he holds a chipped mug in both hands, the mug resting against the polished table near his elbow.  \n\nAmy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.  \nShe reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.  \n\nWith a steady hand, Amy tilts the barrel to pour liquid into the goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.  \nThe sound of pouring echoes softly across the hall as the goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup."}
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1648 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_physical (25.8s, finish_reason=length).
+LLM response/content was unusable (attempt 1/10); retrying: LLM host truncated the response at the configured max_tokens=2048 before completion.
+LLM request started: director_raw_scene_physical (attempt 2/10, ~1648 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_physical (13.2s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "physical/spatial creative", "segment": 2, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~1578 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_prop_state (13.4s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "prop/state creative", "segment": 2, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~392 input tokens, max 7672 output tokens).
+LLM request finished: add_scene_timing_refiner (14.0s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 2, "director_attempt": 1, "timing_attempt": 1, "opening_state_sha256": "c802dbfbe3844d37a57025b28c971cfad398679830ceec60cf6607bfe7c6c232", "creative_scene": "The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.  \nA green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; he holds a chipped mug in both hands, the mug resting against the polished table near his elbow.  \n\nAmy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.  \nShe reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.  \n\nWith a steady hand, Amy tilts the barrel to pour liquid into the goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.  \nThe sound of pouring echoes softly across the hall as the goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.", "response": {"status": "ok", "timestamps": ["1: 0.00s", "2: 1.00s", "3: 2.00s", "4: 3.00s", "5: 4.00s", "6: 6.00s"]}, "issue": "Malformed timing-refiner response: Timestamp 1 is malformed or ambiguous; expected a local MM:SS timestamp with up to three fractional digits."}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~439 input tokens, max 7625 output tokens).
+LLM request finished: add_scene_timing_refiner (13.7s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 2, "director_attempt": 1, "timing_attempt": 2, "creative_scene": "The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.  \nA green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; he holds a chipped mug in both hands, the mug resting against the polished table near his elbow.  \n\nAmy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.  \nShe reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.  \n\nWith a steady hand, Amy tilts the barrel to pour liquid into the goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.  \nThe sound of pouring echoes softly across the hall as the goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.", "response": {"status": "ok", "timestamps": ["00:00.000", "00:00.700", "00:01.500", "00:02.900", "00:03.800", "00:05.800"]}, "accepted": true}
+LLM request started: director_raw_scene_timing (attempt 1/10, ~792 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_timing (12.9s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "timing", "segment": 2, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_camera_refiner (attempt 1/10, ~554 input tokens, max 7510 output tokens).
+LLM request finished: add_camera_refiner (19.6s, finish_reason=stop).
+DIRECTOR CAMERA REFINER RESPONSE {"segment": 2, "director_attempt": 1, "camera_attempt": 1, "timed_scene": "At 00:00.000, The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.  \nAt 00:00.700, A green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; he holds a chipped mug in both hands, the mug resting against the polished table near his elbow.  \nAt 00:01.500, Amy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.  \nAt 00:02.900, She reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.  \nAt 00:03.800, With a steady hand, Amy tilts the barrel to pour liquid into the goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.  \nAt 00:05.800, The sound of pouring echoes softly across the hall as the goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.", "response": "At 00:00.000, [CAMERA: dolly‑in to a close‑up of the polished table] The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.\n\nAt 00:00.700, [CAMERA: pan right to reveal the green‑skinned goblin leaning over the east‑side counter] A green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; he holds a chipped mug in both hands, the mug resting against the polished table near his elbow.\n\nAt 00:01.500, [CAMERA: tracking shot from left to right as Amy walks toward the counter] Amy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.\n\nAt 00:02.900, [CAMERA: pan to the west wall focusing on the barrel beside the hearth] She reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.\n\nAt 00:03.800, [CAMERA: close‑up of Amy’s hand tilting the barrel to pour liquid into the goblin’s chipped mug] With a steady hand, Amy tilts the barrel to pour liquid into the goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.\n\nAt 00:05.800, [CAMERA: wide shot capturing both Amy pouring and the goblin watching] The sound of pouring echoes softly across the hall as the goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.", "issue": "Camera output changed the number of scene lines."}
+LLM request started: add_camera_refiner (attempt 1/10, ~554 input tokens, max 7510 output tokens).
+LLM request finished: add_camera_refiner (19.0s, finish_reason=stop).
+DIRECTOR CAMERA REFINER RESPONSE {"segment": 2, "director_attempt": 1, "camera_attempt": 2, "timed_scene": "At 00:00.000, The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.  \nAt 00:00.700, A green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; he holds a chipped mug in both hands, the mug resting against the polished table near his elbow.  \nAt 00:01.500, Amy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.  \nAt 00:02.900, She reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.  \nAt 00:03.800, With a steady hand, Amy tilts the barrel to pour liquid into the goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.  \nAt 00:05.800, The sound of pouring echoes softly across the hall as the goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.", "response": "At 00:00.000, [CAMERA: Establishing wide shot of the polished table] The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.  \nAt 00:00.700, [CAMERA: Medium close‑up on goblin and mug, focus on his elbow] A green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; he holds a chipped mug in both hands, the mug resting against the polished table near his elbow.  \nAt 00:01.500, [CAMERA: Pan left-to-right following Amy] Amy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.  \nAt 00:02.900, [CAMERA: Close‑up of Amy’s hand lifting the barrel spout] She reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.  \nAt 00:03.800, [CAMERA: Close‑up on pouring action] With a steady hand, Amy tilts the barrel to pour liquid into the goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.  \nAt 00:05.800, [CAMERA: Wide shot revealing both characters] The sound of pouring echoes softly across the hall as the goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.", "accepted": true}
+DIRECTOR RAW VALIDATOR RESULT {"validator": "shot-script structure", "segment": 2, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+DIRECTOR RAW VALIDATOR RESULT {"validator": "dialogue", "segment": 2, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+Checking pronouns segment:
+LLM request started: director_raw_scene_pronoun_resolution (attempt 1/10, ~805 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_pronoun_resolution (7.9s, finish_reason=stop).
+Checking pronouns segment: LLM result=At 00:00.000, [CAMERA: Establishing wide shot of the polished table] The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.
+At 00:01.617, [CAMERA: Medium close‑up on goblin and mug, focus on his elbow] A green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; Goblin holds a chipped mug in both hands, the mug resting against the polished table near his elbow.
+At 00:02.417, [CAMERA: Pan left-to-right following Amy] Amy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.
+At 00:03.817, [CAMERA: Close‑up of Amy’s hand lifting the barrel spout] Amy reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.
+At 00:04.717, [CAMERA: Close‑up on pouring action] With a steady hand, Amy tilts the barrel to pour liquid into Goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.
+At 00:06.717, [CAMERA: Wide shot revealing both characters] The sound of pouring echoes softly across the hall as Goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.
+Checking pronouns segment: replaced At 00:00.000, [CAMERA: Establishing wide shot of the polished table] The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it. -> At 00:00.000, [CAMERA: Establishing wide shot of the polished table] The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.
+Checking pronouns segment: replaced At 00:01.617, [CAMERA: Medium close‑up on goblin and mug, focus on his elbow] A green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; he holds a chipped mug in both hands, the mug resting against the polished table near his elbow. -> At 00:01.617, [CAMERA: Medium close‑up on goblin and mug, focus on his elbow] A green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; Goblin holds a chipped mug in both hands, the mug resting against the polished table near his elbow.
+Checking pronouns segment: replaced At 00:02.417, [CAMERA: Pan left-to-right following Amy] Amy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it. -> At 00:02.417, [CAMERA: Pan left-to-right following Amy] Amy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.
+Checking pronouns segment: replaced At 00:03.817, [CAMERA: Close‑up of Amy’s hand lifting the barrel spout] She reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip. -> At 00:03.817, [CAMERA: Close‑up of Amy’s hand lifting the barrel spout] Amy reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.
+Checking pronouns segment: replaced At 00:04.717, [CAMERA: Close‑up on pouring action] With a steady hand, Amy tilts the barrel to pour liquid into the goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath. -> At 00:04.717, [CAMERA: Close‑up on pouring action] With a steady hand, Amy tilts the barrel to pour liquid into Goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.
+Checking pronouns segment: replaced At 00:06.717, [CAMERA: Wide shot revealing both characters] The sound of pouring echoes softly across the hall as the goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup. -> At 00:06.717, [CAMERA: Wide shot revealing both characters] The sound of pouring echoes softly across the hall as Goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.
+Segment 2 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 2
+================================================================
+At 00:00.000, [CAMERA: Establishing wide shot of the polished table] The polished table’s gleaming surface glistens under a soft lantern light as the frame settles on it.
+At 00:01.617, [CAMERA: Medium close‑up on goblin and mug, focus on his elbow] A green‑skinned goblin leans over the east‑side counter, his rough‑spun patchy tunic hanging to his hips; Goblin holds a chipped mug in both hands, the mug resting against the polished table near his elbow.
+At 00:02.417, [CAMERA: Pan left-to-right following Amy] Amy steps from her spot on the creaking floor toward the counter, walking past the gleaming surface without touching it.
+At 00:03.817, [CAMERA: Close‑up of Amy’s hand lifting the barrel spout] Amy reaches the barrel beside the hearth—its eight‑foot height and four‑foot diameter positioned at the west wall—and lifts its spout with a firm grip.
+At 00:04.717, [CAMERA: Close‑up on pouring action] With a steady hand, Amy tilts the barrel to pour liquid into Goblin’s chipped mug. Liquid splashes onto the mug’s rim and drips down, forming a small sheen on the polished table beneath.
+At 00:06.717, [CAMERA: Wide shot revealing both characters] The sound of pouring echoes softly across the hall as Goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.
+End continuity state: The sound of pouring echoes softly across the hall as the goblin leans back slightly, his green skin glinting in the lantern light while he watches the liquid fill his cup.
+================================================================
+
+================================================================
+H3 SOUNDSCAPE REQUEST - SEGMENT 2
+================================================================
+LLM request started: director_h3_soundscape (attempt 1/10, ~842 input tokens, max 2048 output tokens).
+LLM request finished: director_h3_soundscape (4.4s, finish_reason=stop).
+H3 soundscape segment 2: 'creaking floor footsteps; liquid splash on mug rim; liquid drip down into mug; pouring sound echoing softly across hall'
+H3 MUSIC REQUEST - SEGMENT 2
+================================================================
+LLM request started: director_h3_music (attempt 1/10, ~891 input tokens, max 512 output tokens).
+LLM request finished: director_h3_music (4.5s, finish_reason=stop).
+H3 music segment 2: 'Continue the established score seamlessly with soft plucked strings fading into luminous piano chords, adding gentle rhythmic pulses mirroring the pouring liquid.'
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~1838 input tokens, max 3172 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (19.1s, finish_reason=stop).
+Checking RAW Subjects segment: <Subject 267280715056018>
+Segment 2 deterministic final-participant carry-forward: <Subject 267280715056018>
+LLM request started: director_state_actions (attempt 1/10, ~2436 input tokens, max 4096 output tokens).
+LLM request finished: director_state_actions (15.0s, finish_reason=stop).
+DIRECTOR STATE ACTION EXTRACTION RESPONSE {"segment": 2, "attempt": 1, "response": {"state_actions": [{"action_id": "a1", "op": "pickup", "actor_subject_id": "Amy", "prop_id": "chipped mug"}, {"action_id": "a2", "op": "pour", "actor_subject_id": "Amy", "source_prop_id": "barrel", "target_prop_id": "chipped mug", "substance": "ale", "amount": "partial"}]}}
+Director StateAction extraction failed for Segment 2 (repair 1/5); retrying actions only: pickup action a1: prop_not_located: Pickup requires a registered prop location.
+LLM request started: director_state_actions_repair (attempt 1/10, ~2583 input tokens, max 4096 output tokens).
+LLM request finished: director_state_actions_repair (14.7s, finish_reason=stop).
+DIRECTOR STATE ACTION REPAIR RESPONSE {"segment": 2, "attempt": 1, "first_failure": "pickup action a1: prop_not_located: Pickup requires a registered prop location.", "response": {"state_actions": [{"action_id": "a1", "op": "handoff", "from_subject_id": "Goblin", "to_subject_id": "Amy", "prop_id": "chipped mug"}, {"action_id": "a2", "op": "pour", "actor_subject_id": "Amy", "source_prop_id": "barrel", "target_prop_id": "chipped mug", "substance": "ale", "amount": "partial"}]}}
+Director StateAction extraction failed for Segment 2 (repair 2/5); retrying actions only: pour action a2: substance_not_in_source: The source has no recorded entry for that substance.
+LLM request started: director_state_actions_repair (attempt 1/10, ~2594 input tokens, max 4096 output tokens).
+LLM request finished: director_state_actions_repair (14.0s, finish_reason=stop).
+DIRECTOR STATE ACTION REPAIR RESPONSE {"segment": 2, "attempt": 2, "first_failure": "pour action a2: substance_not_in_source: The source has no recorded entry for that substance.", "response": {"state_actions": [{"action_id": "a2", "op": "pour", "actor_subject_id": "Amy", "source_prop_id": "barrel", "target_prop_id": "chipped mug", "substance": "ale", "amount": "partial"}]}}
+Director StateAction extraction failed for Segment 2 (repair 3/5); retrying actions only: pour action a2: substance_not_in_source: The source has no recorded entry for that substance.
+LLM request started: director_state_actions_repair (attempt 1/10, ~2564 input tokens, max 4096 output tokens).
+LLM request finished: director_state_actions_repair (27.8s, finish_reason=stop).
+DIRECTOR STATE ACTION REPAIR RESPONSE {"segment": 2, "attempt": 3, "first_failure": "pour action a2: substance_not_in_source: The source has no recorded entry for that substance.", "response": {"state_actions": [{"action_id": "a2", "op": "pour", "actor_subject_id": "Amy", "source_prop_id": "barrel", "target_prop_id": "chipped mug", "substance": "ale", "amount": "partial"}, {"action_id": "a3", "op": "pour", "actor_subject_id": "Amy", "source_prop_id": "barrel", "target_prop_id": "polished table", "substance": "ale", "amount": "partial"}]}}
+Director StateAction extraction failed for Segment 2 (repair 4/5); retrying actions only: pour action a2: substance_not_in_source: The source has no recorded entry for that substance.
+LLM request started: director_state_actions_repair (attempt 1/10, ~2607 input tokens, max 4096 output tokens).
+LLM request finished: director_state_actions_repair (14.7s, finish_reason=stop).
+DIRECTOR STATE ACTION REPAIR RESPONSE {"segment": 2, "attempt": 4, "first_failure": "pour action a2: substance_not_in_source: The source has no recorded entry for that substance.", "response": {"state_actions": [{"action_id": "a2", "op": "pour", "actor_subject_id": "Amy", "source_prop_id": "barrel", "target_prop_id": "chipped mug", "substance": "ale", "amount": "partial"}, {"action_id": "a3", "op": "pour", "actor_subject_id": "Amy", "source_prop_id": "barrel", "target_prop_id": "polished table", "substance": "ale", "amount": "partial"}]}}
+Director StateAction extraction failed for Segment 2 (repair 5/5); retrying actions only: pour action a2: substance_not_in_source: The source has no recorded entry for that substance.
+LLM request started: director_state_actions_repair (attempt 1/10, ~2607 input tokens, max 4096 output tokens).
+LLM request finished: director_state_actions_repair (15.0s, finish_reason=stop).
+DIRECTOR STATE ACTION REPAIR RESPONSE {"segment": 2, "attempt": 5, "first_failure": "pour action a2: substance_not_in_source: The source has no recorded entry for that substance.", "response": {"state_actions": [{"action_id": "a1", "op": "pickup", "actor_subject_id": "Amy", "prop_id": "chipped mug"}, {"action_id": "a2", "op": "pour", "actor_subject_id": "Amy", "source_prop_id": "barrel", "target_prop_id": "chipped mug", "substance": "ale", "amount": "partial"}, {"action_id": "a3", "op": "pour", "actor_subject_id": "Amy", "source_prop_id": "barrel", "target_prop_id": "polished table", "substance": "ale", "amount": "partial"}]}}
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-3367tl4p\repo\minimax.py", line 42627, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-3367tl4p\repo\minimax.py", line 42561, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-3367tl4p\repo\minimax.py", line 41529, in _run_main
+    state_action_result = extract_and_dry_run_director_state_actions(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-3367tl4p\repo\minimax.py", line 37464, in extract_and_dry_run_director_state_actions
+    raise StateActionExtractionError(
+StateActionExtractionError: Director StateActions failed for Segment 2 after 5 action-only repairs: pickup action a1: prop_not_located: Pickup requires a registered prop location.
