@@ -695,6 +695,66 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertIn('"op": "retrieve_prop"', system_prompt)
 
+    def test_retrieve_prop_action_repair_uses_origin_not_destination_support(self):
+        world_state, location_id, _mug_id = goblin_mug_world_state()
+        world_state = register_explicit_persistent_props(world_state, [
+            {
+                "name": "shelf",
+                "kind": "support",
+                "mobility": "fixed",
+                "needed_for_state": True,
+                "reason": "Opening prop origin.",
+                "location_id": location_id,
+            },
+            {
+                "name": "back table",
+                "kind": "fixture_support",
+                "mobility": "fixed",
+                "needed_for_state": True,
+                "reason": "Final placement surface.",
+                "location_id": location_id,
+            },
+        ])
+        raw_scene = (
+            "Amy retrieves the crystal chalice from her shelf and places it on the back table."
+        )
+        rejected = {"state_actions": [{
+            "action_id": "retrieve-chalice",
+            "op": "retrieve_prop",
+            "actor_subject_id": "Amy",
+            "prop_name": "crystal chalice",
+            "kind": "container",
+            "support_id": "back table",
+        }]}
+        corrected = {"state_actions": [{
+            "action_id": "retrieve-chalice",
+            "op": "retrieve_prop",
+            "actor_subject_id": "Amy",
+            "prop_name": "crystal chalice",
+            "kind": "container",
+            "support_id": "shelf",
+        }]}
+        request = mock.Mock(side_effect=[rejected, corrected])
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state,
+                raw_scene,
+                segment_number=3,
+            )
+
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["state_actions"][0]["support_id"], next(
+            prop_id for prop_id, prop in world_state["props"].items()
+            if prop["name"] == "shelf"
+        ))
+        self.assertEqual(request.call_count, 2)
+        repair_prompt = request.call_args_list[1].args[0][-1]["content"]
+        self.assertIn("FIRST REDUCER FAILURE", repair_prompt)
+        self.assertIn("retrieve_prop_origin_not_in_raw", repair_prompt)
+
     def test_unknown_contents_and_existing_holder_do_not_block_valid_pour(self):
         world_state, location_id, mug_id = goblin_mug_world_state()
         mug = world_state["props"][mug_id]
@@ -1692,6 +1752,92 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("not required by CURRENT BEAT", prompt)
         self.assertIn("identify the movement itself", prompt)
         self.assertIn("unnecessarily climbs onto the table", result["issue"])
+
+    def test_physical_validator_deterministically_rejects_unsupported_table_support(self):
+        state, location_id, _mug_id = goblin_mug_world_state()
+        state = register_explicit_persistent_props(state, [{
+            "name": "polished table",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "A fixed surface in the scene.",
+            "location_id": location_id,
+        }])
+        llm = mock.Mock(return_value={"valid": True, "issue": ""})
+        result = minimax.validate_director_raw_scene_physical(
+            "Amy wipes the polished table.",
+            "Amy climbs onto the polished table to wipe it.",
+            known_subject_state=state,
+            llm_request=llm,
+        )
+        self.assertFalse(result["valid"])
+        self.assertIn("newly places Amy on polished table", result["issue"])
+        llm.assert_not_called()
+
+    def test_physical_validator_rejects_sitting_on_table_when_beat_says_seat_at_it(self):
+        state, location_id, _mug_id = goblin_mug_world_state()
+        state["subjects"]["subject_2"]["name"] = "Elf"
+        state = register_explicit_persistent_props(state, [{
+            "name": "back table",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "A fixed surface in the scene.",
+            "location_id": location_id,
+        }])
+        llm = mock.Mock(return_value={"valid": True, "issue": ""})
+        result = minimax.validate_director_raw_scene_physical(
+            "Elf takes a seat at the back table.",
+            "Elf sits on top of the back table.",
+            known_subject_state=state,
+            llm_request=llm,
+        )
+        self.assertFalse(result["valid"])
+        self.assertIn("newly places Elf on back table", result["issue"])
+        llm.assert_not_called()
+
+    def test_physical_validator_leaves_furniture_interaction_and_required_support_alone(self):
+        state, location_id, _mug_id = goblin_mug_world_state()
+        state = register_explicit_persistent_props(state, [{
+            "name": "polished table",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "A fixed surface in the scene.",
+            "location_id": location_id,
+        }])
+        for beat, raw in (
+            (
+                "Amy wipes the polished table.",
+                "Amy stands beside the polished table, reaches over it, and wipes it.",
+            ),
+            (
+                "Amy climbs onto the polished table to clean it.",
+                "Amy climbs onto the polished table and cleans it.",
+            ),
+        ):
+            with self.subTest(raw=raw):
+                llm = mock.Mock(return_value={"valid": True, "issue": ""})
+                result = minimax.validate_director_raw_scene_physical(
+                    beat, raw, known_subject_state=state, llm_request=llm,
+                )
+                self.assertTrue(result["valid"])
+                llm.assert_called_once()
+
+        table_id = next(
+            prop_id for prop_id, prop in state["props"].items()
+            if prop["name"] == "polished table"
+        )
+        state["subjects"]["subject_3"]["support_id"] = table_id
+        llm = mock.Mock(return_value={"valid": True, "issue": ""})
+        result = minimax.validate_director_raw_scene_physical(
+            "Amy wipes the polished table.",
+            "Amy sits on the polished table and wipes it.",
+            known_subject_state=state,
+            llm_request=llm,
+        )
+        self.assertTrue(result["valid"])
+        llm.assert_called_once()
 
     def test_physical_validator_allows_ordinary_leaning_and_reaching(self):
         raw = "The subject leans against the counter and reaches for a cup."

@@ -1761,21 +1761,27 @@ def _apply_state_action(
             _require_actor_and_prop_colocated(state, actor_id, prop_id)
         prop = state["props"][prop_id]
         if op in {"open", "close"} and prop["capabilities"]["openable"] is not True:
-            if op == "open" and prop["capabilities"]["openable"] == UNKNOWN:
-                # The explicit accepted opening establishes an unknown
+            if prop["capabilities"]["openable"] == UNKNOWN:
+                # An explicit accepted mechanism action establishes an unknown
                 # capability. An established non-openable fact still rejects.
                 prop["capabilities"]["openable"] = True
                 changed.append((prop, "capabilities"))
             else:
                 _reject("not_known_openable", "The target is not explicitly recorded as openable.")
         if op in {"lock", "unlock"} and prop["capabilities"]["lockable"] is not True:
-            _reject("not_known_lockable", "The target is not explicitly recorded as lockable.")
+            if prop["capabilities"]["lockable"] == UNKNOWN:
+                # The explicit accepted action is evidence that this object is
+                # lockable; an established false capability remains a conflict.
+                prop["capabilities"]["lockable"] = True
+                changed.append((prop, "capabilities"))
+            else:
+                _reject("not_known_lockable", "The target is explicitly recorded as not lockable.")
         previous = prop["mechanism_state"]
         transitions = {
             "open": ({"closed", "unlocked", UNKNOWN}, "open"),
-            "close": ({"open"}, "closed"),
-            "lock": ({"closed"}, "locked"),
-            "unlock": ({"locked"}, "unlocked"),
+            "close": ({"open", UNKNOWN}, "closed"),
+            "lock": ({"closed", UNKNOWN}, "locked"),
+            "unlock": ({"locked", UNKNOWN}, "unlocked"),
         }
         allowed_previous, next_state = transitions[op]
         if previous not in allowed_previous:
@@ -1989,6 +1995,64 @@ def _registered_name_is_referenced(name: str, segment_text: str) -> bool:
     for alias in aliases:
         if alias and re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", text):
             return True
+    return False
+
+
+def _retrieve_prop_origin_is_staged(
+    raw_scene: str,
+    prop_name: str,
+    support_name: str,
+    known_prop_names: list[str],
+) -> bool:
+    """Confirm a retrieved prop and its registered support are staged as origin.
+
+    This checks the existing retrieve_prop contract only: a support appearing
+    as a destination (for example, after "places ... on") is not evidence that
+    the prop was retrieved from it.
+    """
+    def aliases(name: str, all_names: list[str]) -> list[str]:
+        normalized = " ".join(str(name or "").split()).strip()
+        if not normalized:
+            return []
+        values = [normalized]
+        head = normalized.split()[-1]
+        same_head = [
+            item for item in all_names
+            if " ".join(str(item or "").split()).strip().casefold().split()[-1:]
+            == [head.casefold()]
+        ]
+        if len(same_head) == 1 and head.casefold() != normalized.casefold():
+            values.append(head)
+        return values
+
+    support_aliases = aliases(support_name, known_prop_names)
+    prop_aliases = aliases(prop_name, known_prop_names)
+    retrieval = re.compile(
+        r"(?i)\b(?:retriev\w*|tak(?:e|es|ing|en)|pick(?:s|ed|ing)?\s+up|"
+        r"lift(?:s|ed|ing)?|remov(?:e|es|ed|ing)|grab(?:s|bed|bing)?|"
+        r"collect(?:s|ed|ing)?|get(?:s|ting)?|got)\b"
+    )
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", str(raw_scene or "")):
+        if not retrieval.search(sentence):
+            continue
+        if not any(
+            re.search(
+                r"(?i)(?<!\w)" + r"\s+".join(re.escape(part) for part in alias.split()) + r"(?!\w)",
+                sentence,
+            )
+            for alias in prop_aliases
+        ):
+            continue
+        for alias in support_aliases:
+            support_pattern = r"\s+".join(re.escape(part) for part in alias.split())
+            if re.search(
+                r"(?i)\b(?:from|off|out\s+of)\s+"
+                r"(?:(?:the|a|an|my|your|his|her|its|our|their)\s+)?"
+                + support_pattern
+                + r"(?!\w)",
+                sentence,
+            ):
+                return True
     return False
 
 
@@ -2264,6 +2328,7 @@ def _resolve_and_dry_run_state_actions(
     *,
     segment_number: int,
     name_resolution: dict[str, dict[str, list[str]]],
+    raw_scene: str | None = None,
 ) -> dict[str, Any]:
     if not isinstance(name_resolution, dict):
         raise ValueError("StateAction response has no request vocabulary for name resolution.")
@@ -2334,6 +2399,27 @@ def _resolve_and_dry_run_state_actions(
                 raise ValueError(
                     "retrieve_prop origin support must have a registered location."
                 )
+            if raw_scene is not None:
+                prop_names = [
+                    str(item.get("name") or "")
+                    for item in world_state["props"].values()
+                    if isinstance(item, dict)
+                ]
+                prop_names.extend(
+                    str(name) for name in available_names.get("prop", {})
+                )
+                prop_names.append(prop_name)
+                if not _retrieve_prop_origin_is_staged(
+                    str(raw_scene),
+                    prop_name,
+                    str(support.get("name") or ""),
+                    prop_names,
+                ):
+                    raise ValueError(
+                        "retrieve_prop_origin_not_in_raw: validated RAW does not show "
+                        f"{prop_name!r} being retrieved from {support.get('name')!r}; "
+                        "a support used only for final placement is not an origin."
+                    )
             prop_id = _retrieved_prop_id(prop_name, kind, location_id)
             if prop_id in world_state["props"]:
                 raise ValueError("retrieve_prop would collide with a registered prop ID.")
@@ -2362,6 +2448,7 @@ def parse_and_dry_run_state_actions(
     *,
     segment_number: int,
     name_resolution: dict[str, dict[str, list[str]]],
+    raw_scene: str | None = None,
 ) -> dict[str, Any]:
     """Parse an action-only response and dry-run it with the shared reducer."""
     if isinstance(raw_result, str):
@@ -2378,4 +2465,5 @@ def parse_and_dry_run_state_actions(
         response,
         segment_number=segment_number,
         name_resolution=name_resolution,
+        raw_scene=raw_scene,
     )

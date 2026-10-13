@@ -1,5 +1,63 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Job 57 support staging and StateAction grounding
+
+- No Job 57 result bundle was available in this checkout, so the specific RAW
+  and extractor responses could not be traced verbatim. The reported outcomes
+  were compared against the current validator, StateAction contract, and reducer.
+- The physical validator prompt already distinguishes ordinary furniture
+  interaction from actual support/elevation changes, but its semantic decision
+  was LLM-only. Added a deterministic guard inside the existing physical
+  validator for explicit body-on-support actions against registered supports.
+  It rejects a new support relation absent from both CURRENT BEAT and opening
+  WorldState, while leaving adjacency/reaching/wiping and required support
+  changes to the existing validator. This prevents an unsupported Segment-1
+  support action from becoming canonical and persisting into Segment 6. The
+  reducer itself was already Subject-specific; support is never copied between
+  Subjects.
+- `retrieve_prop` previously validated that the selected support was registered
+  and co-located, but did not verify that RAW used it as the prop's origin. The
+  existing StateAction response validation now checks the immutable accepted
+  RAW for a retrieval from the selected support. A support named only as the
+  destination produces a concrete reducer-path diagnostic and uses the existing
+  action-only repair loop; an empty corrected batch remains valid.
+- WorldState already has `pour`, `handoff`, `exit`, and mechanism operations.
+  The direct barrel-to-mug pour records source/destination contents, while the
+  retrieved ladle remains held or can be placed if RAW stages that change.
+  WorldState has no persistent “used as an intermediate implement” relation,
+  so the liquid path through a ladle is not separately encoded. Empty batches
+  remain valid; omissions of handoff/exit/locking cannot be detected without
+  adding completeness validation or changing the extractor prompt.
+- Explicit `close`, `lock`, and `unlock` actions now establish previously
+  unknown mechanism capability/state. Explicitly non-openable/non-lockable
+  facts and known incompatible mechanism states still reject atomically.
+- No runtime prompt was changed. Proposed wording for approval:
+  - `director_raw_scene_physical`: “When RAW places a Subject on a furnishing,
+    require explicit body-on-surface language and support from CURRENT BEAT or
+    opening WorldState. Wiping, reaching across, leaning toward, or taking a
+    seat at a table does not place the Subject on the tabletop; a seat at a
+    table is adjacent unless RAW identifies the actual seat.”
+  - Replace the `director_state_actions` instruction to “include every explicit
+    persistent change” with: “Record persistent changes that materially affect
+    later visual continuity or a later action. Include clearly staged handoffs,
+    entrances/exits, and mechanism changes when they alter the ending state.
+    Do not infer uncertain changes; an empty array is valid when no material
+    persistent change is clearly established. For transfers, use the actual
+    source and destination shown in RAW; treat an implement as a transfer
+    source only when RAW shows the substance in it. For `retrieve_prop`, use
+    only the support explicitly shown as the prop's origin; a destination
+    support is not its origin.”
+- Regressions cover unsupported climbing and sitting-on-table, ordinary
+  interaction and beat-required support, retrieval-origin repair, unknown
+  close/lock plus exit, and preservation of known contradictions. Verification
+  results: reducer tests — 27 passed; split RAW pipeline — 19 passed; focused
+  support/retrieval/mechanism regressions passed. The combined
+  `test_director_retry` + `test_world_state_foundation` run executed 230 tests:
+  228 passed, with two existing story-start tests still failing because they
+  expect the retired `classification`/`evidence` response and older prompt
+  wording. `py_compile` and `git diff --check` passed. No six-Segment
+  acceptance job was queued.
+
 ## 2026-10-13 — Job 56 identity-only visible-Subject resolution
 
 - Replaced the visible-Subject resolver's scene-rewrite/bootstrap response with

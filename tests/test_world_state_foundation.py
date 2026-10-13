@@ -1437,6 +1437,10 @@ class WorldStateSeedTests(unittest.TestCase):
             response,
             segment_number=1,
             name_resolution=contract["name_resolution"],
+            raw_scene=(
+                "Subject One retrieves a serving pitcher from Support A and pours "
+                "from Source vessel into the serving pitcher."
+            ),
         )
 
         self.assertTrue(resolved["accepted"])
@@ -1471,6 +1475,58 @@ class WorldStateSeedTests(unittest.TestCase):
             pour_shape["target_prop_id"],
             "<exact registered prop name or earlier retrieved prop name>",
         )
+
+    def test_retrieve_prop_requires_origin_support_not_final_destination(self):
+        state = make_reducer_state()
+        state = register_explicit_persistent_props(state, [{
+            "name": "Back Table",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "A fixed destination surface.",
+            "location_id": "location_a",
+        }])
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text=(
+                "Subject One takes a crystal chalice from Support A and places it "
+                "on the Back Table."
+            ),
+        )
+        response = {"state_actions": [{
+            "action_id": "retrieve-chalice",
+            "op": "retrieve_prop",
+            "actor_subject_id": "Subject One",
+            "prop_name": "Crystal Chalice",
+            "kind": "container",
+            "support_id": "Back Table",
+        }]}
+        with self.assertRaisesRegex(
+            ValueError, "retrieve_prop_origin_not_in_raw"
+        ):
+            parse_and_dry_run_state_actions(
+                state,
+                response,
+                segment_number=1,
+                name_resolution=contract["name_resolution"],
+                raw_scene=(
+                    "Subject One takes a crystal chalice from Support A and places "
+                    "it on the Back Table."
+                ),
+            )
+
+        response["state_actions"][0]["support_id"] = "Support A"
+        accepted = parse_and_dry_run_state_actions(
+            state,
+            response,
+            segment_number=1,
+            name_resolution=contract["name_resolution"],
+            raw_scene=(
+                "Subject One takes a crystal chalice from Support A and places "
+                "it on the Back Table."
+            ),
+        )
+        self.assertTrue(accepted["accepted"])
 
     def test_retrieve_prop_rejects_unintroduced_names_and_invalid_origins(self):
         state = make_reducer_state()
@@ -2644,6 +2700,43 @@ class WorldStateReducerTests(unittest.TestCase):
         )
         self.assertTrue(all(outcome.accepted for outcome in result.outcomes))
         self.assertEqual(result.world_state["props"]["prop_door"]["mechanism_state"], "closed")
+
+    def test_explicit_close_lock_and_exit_establish_unknown_mechanism_facts(self):
+        state = make_reducer_state()
+        door = state["props"]["prop_door"]
+        door["capabilities"]["openable"] = UNKNOWN
+        door["capabilities"]["lockable"] = UNKNOWN
+        door["mechanism_state"] = UNKNOWN
+        validate_world_state(state)
+
+        result = reduce_world_state(
+            state,
+            [
+                self.action("close-door", "close", actor_subject_id="subject_1", prop_id="prop_door"),
+                self.action("lock-door", "lock", actor_subject_id="subject_1", prop_id="prop_door"),
+                self.action("leave", "exit", subject_id="subject_1"),
+            ],
+            segment_number=6,
+        )
+
+        self.assertTrue(result.committed)
+        final_door = result.world_state["props"]["prop_door"]
+        self.assertTrue(final_door["capabilities"]["openable"])
+        self.assertTrue(final_door["capabilities"]["lockable"])
+        self.assertEqual(final_door["mechanism_state"], "locked")
+        self.assertEqual(result.world_state["subjects"]["subject_1"]["presence"], "absent")
+
+        contradictory = copy.deepcopy(state)
+        contradictory["props"]["prop_door"]["capabilities"]["lockable"] = False
+        validate_world_state(contradictory)
+        rejected = reduce_world_state(
+            contradictory,
+            [self.action("lock-door", "lock", actor_subject_id="subject_1", prop_id="prop_door")],
+            segment_number=6,
+        )
+        self.assertFalse(rejected.committed)
+        self.assertEqual(rejected.outcomes[0].code, "not_known_lockable")
+        self.assertEqual(rejected.world_state, contradictory)
 
     def test_unknown_entrance_can_be_opened_before_subject_enters(self):
         state = make_reducer_state()
