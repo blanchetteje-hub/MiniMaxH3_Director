@@ -1,5 +1,30 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Job 55 unsupported pre-Director prop placement
+
+- Fixed `parse_current_segment_persistent_prop_result()` so a registered
+  support/fixture name returned as `initial_location` resolves to its canonical
+  WorldState location while preserving `support_name`, when the current-source
+  evidence supports an opening/static placement or retrieval-from-support
+  origin.
+- Well-formed candidates with unknown placement or evidence only for a later
+  placement are skipped before registration. They do not consume another
+  extraction attempt, leaving the existing Director `retrieve_prop` path
+  available. Malformed shapes and invalid source evidence still use the
+  existing retry loop. No prompt, LLM call, or WorldState authority changed.
+- Added the Job 55 chalice regression, supported support-alias normalization,
+  and coverage proving unsupported placement skips without retry while
+  malformed evidence retries.
+- The placement check is intentionally conservative: source relations such as
+  a prop resting on a support or being retrieved from it can establish an
+  opening position. Unclear wording remains unregistered for Director staging.
+- Verification: focused WorldState seed and Director pipeline suites passed
+  (176 tests). The combined `test_world_state_foundation` and
+  `test_director_retry` run executed 221 tests; its only two failures are the
+  existing story-start expectations for the retired `classification`/`evidence`
+  response shape and retired prompt wording. `py_compile` and `git diff --check`
+  passed.
+
 ## 2026-10-13 — Transactional Director-introduced props
 
 - Added `retrieve_prop` to the existing ordered StateAction contract. It may

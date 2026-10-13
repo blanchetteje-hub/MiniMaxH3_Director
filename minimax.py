@@ -4395,11 +4395,25 @@ def parse_current_segment_persistent_prop_result(
     parsed = []
     names = set()
     source_text = "\n".join((str(current_beat or ""), str(assigned_source or "")))
-    locations = {item["name"].casefold() for item in world_state["locations"].values()}
-    subjects = {item["name"].casefold() for item in world_state["subjects"].values()}
+    locations = {
+        " ".join(item["name"].split()).casefold(): (location_id, item["name"])
+        for location_id, item in world_state["locations"].items()
+    }
+    locations_by_id = {
+        location_id: item["name"]
+        for location_id, item in world_state["locations"].items()
+    }
+    subjects = {
+        " ".join(item["name"].split()).casefold(): item["name"]
+        for item in world_state["subjects"].values()
+    }
     supports = {
-        item["name"].casefold()
-        for item in world_state["props"].values()
+        " ".join(item["name"].split()).casefold(): {
+            "id": prop_id,
+            "name": item["name"],
+            "location_id": item["placement"].get("location_id"),
+        }
+        for prop_id, item in world_state["props"].items()
         if item["kind"] in {"support", "fixture_support"}
     }
     existing = {item["name"].casefold() for item in world_state["props"].values()}
@@ -4432,6 +4446,91 @@ def parse_current_segment_persistent_prop_result(
     def normalize_evidence_for_match(value):
         return " ".join(value.translate(dash_translation).split()).casefold()
 
+    def term_pattern(value):
+        words = re.escape(" ".join(str(value or "").split()))
+        return r"(?<!\w)" + words.replace(r"\ ", r"\s+") + r"(?!\w)"
+
+    def prop_patterns(value):
+        words = " ".join(str(value or "").split())
+        patterns = [term_pattern(words)] if words else []
+        head = words.split()[-1] if words else ""
+        if head and head != words:
+            patterns.append(term_pattern(head))
+        return patterns
+
+    def opening_location_supported(text, prop_name, location_name, support_name=None):
+        # A source/origin phrase or a static location relation supports opening
+        # placement. Active placement verbs describe an ending position only.
+        support_pattern = term_pattern(support_name) if support_name else None
+        registered_places = [
+            term_pattern(prop["name"])
+            for prop in world_state["props"].values()
+        ]
+        places = ([support_pattern] if support_pattern else []) + registered_places
+        if location_name:
+            places.append(term_pattern(location_name))
+        static_verbs = (
+            r"(?:is|was|rests?|sits?|lies?|stands?|remains?|stays?|located)"
+        )
+        locatives = r"(?:on|at|in|inside|beside|near|under|upon)"
+        for prop_pattern in prop_patterns(prop_name):
+            if support_pattern and re.search(
+                rf"\b(?:retrieve|retrieves|retrieved|retrieving|pick(?:s|ed)? up|"
+                rf"lift(?:s|ed|ing)?|take(?:s|n|ing)?|remove(?:s|d|ing)?|"
+                rf"grab(?:s|bed|bing)?|draw(?:s|n|ing)?)\b.{{0,50}}{prop_pattern}"
+                rf".{{0,25}}\bfrom\b.{{0,20}}{support_pattern}",
+                text,
+                flags=re.IGNORECASE | re.DOTALL,
+            ):
+                return True
+            for place_pattern in places:
+                relation = re.search(
+                    rf"{prop_pattern}\s+(?:{static_verbs}\s+)?{locatives}\s+"
+                    rf"(?:the\s+)?{place_pattern}",
+                    text,
+                    flags=re.IGNORECASE,
+                )
+                if not relation:
+                    continue
+                prefix = text[max(0, relation.start() - 45):relation.start()]
+                if not re.search(r"\b(?:set|place|put|lay|lower)(?:s|ting|ed)?\b", prefix, re.I):
+                    return True
+        if not support_pattern:
+            for prop_pattern in prop_patterns(prop_name):
+                relation = re.search(
+                    rf"{prop_pattern}\s+(?:{static_verbs}\s+)?{locatives}\s+"
+                    rf"(?:the\s+)?[\w-]+\b",
+                    text,
+                    flags=re.IGNORECASE,
+                )
+                if relation:
+                    prefix = text[max(0, relation.start() - 45):relation.start()]
+                    if not re.search(
+                        r"\b(?:set|place|put|lay|lower)(?:s|ting|ed)?\b",
+                        prefix,
+                        re.I,
+                    ):
+                        return True
+        return False
+
+    def opening_holder_supported(text, prop_name, _holder_name):
+        # The exact evidence and registered holder name come from the existing
+        # extractor. This check only filters a prop mentioned solely as the
+        # recipient of a later handoff rather than as already held or used.
+        for pattern in prop_patterns(prop_name):
+            if re.search(
+                rf"\b(?:hold(?:s|ing)?|carry(?:s|ing)?|clutch(?:es|ing)?|"
+                rf"grip(?:s|ping)?|use(?:s|d|ing)?|wipe(?:s|d|ing)?|"
+                rf"clean(?:s|ed|ing)?|polish(?:es|ed|ing)?)\b"
+                rf".{{0,70}}{pattern}|"
+                rf"\b(?:wipe|clean|polish|work|stir|cut|write|paint)(?:s|ed|ing)?\b"
+                rf".{{0,60}}\bwith\b.{{0,35}}{pattern}",
+                text,
+                flags=re.IGNORECASE | re.DOTALL,
+            ):
+                return True
+        return False
+
     expected_keys = {
         "name", "kind", "mobility",
         "initial_location", "initial_holder", "support_name", "contents",
@@ -4445,12 +4544,10 @@ def parse_current_segment_persistent_prop_result(
         if not name or key in names or key in existing:
             raise ValueError("Current-Segment props must be new, non-empty, and unique.")
         names.add(key)
-        if (entry["initial_location"] is None) == (entry["initial_holder"] is None):
+        if entry["initial_location"] is not None and entry["initial_holder"] is not None:
             raise ValueError(
-                f"Persistent prop {name!r} requires exactly one explicit initial location or holder."
+                f"Persistent prop {name!r} cannot have both an initial location and holder."
             )
-        if entry["initial_location"] is not None and str(entry["initial_location"]).casefold() not in locations:
-            raise ValueError(f"Persistent prop {name!r} names an unregistered location.")
         if entry["initial_holder"] is not None and str(entry["initial_holder"]).casefold() not in subjects:
             raise ValueError(f"Persistent prop {name!r} names an unregistered holder.")
         if entry["support_name"] is not None and str(entry["support_name"]).casefold() not in supports:
@@ -4467,7 +4564,78 @@ def parse_current_segment_persistent_prop_result(
             not in normalize_evidence_for_match(source_text)
         ):
             raise ValueError(f"Persistent prop {name!r} requires exact current-source evidence.")
-        parsed.append({**entry, "name": name, "reason": reason, "evidence": evidence})
+
+        # A well-formed candidate can still lack any source-supported opening
+        # placement. That is not an extraction/schema error: leave it for the
+        # Director's transactional retrieve_prop action instead of retrying.
+        if entry["initial_location"] is None and entry["initial_holder"] is None:
+            console_log(
+                f"Skipping pre-Director prop {name!r}: opening placement is unknown.",
+                flush=True,
+            )
+            continue
+
+        location_id = None
+        location_name = None
+        support_name = None
+        if entry["initial_location"] is not None:
+            requested_place = " ".join(str(entry["initial_location"]).split()).casefold()
+            requested_support = supports.get(requested_place)
+            if requested_support:
+                location_id = requested_support["location_id"]
+                support_name = requested_support["name"]
+                if entry["support_name"] is not None and (
+                    str(entry["support_name"]).casefold() != requested_place
+                ):
+                    raise ValueError(
+                        f"Persistent prop {name!r} has conflicting initial supports."
+                    )
+                location_name = locations_by_id.get(location_id)
+            else:
+                location_record = locations.get(requested_place)
+                if location_record is None:
+                    console_log(
+                        f"Skipping pre-Director prop {name!r}: initial placement "
+                        f"{entry['initial_location']!r} is not registered or supported.",
+                        flush=True,
+                    )
+                    continue
+                location_id, location_name = location_record
+                support_name = entry["support_name"]
+        else:
+            support_name = entry["support_name"]
+
+        if support_name is not None:
+            support_record = supports.get(str(support_name).casefold())
+            if support_record is None:
+                raise ValueError(f"Persistent prop {name!r} names an unregistered support.")
+            if location_id is not None and support_record["location_id"] != location_id:
+                raise ValueError(
+                    f"Persistent prop {name!r} support conflicts with its initial location."
+                )
+
+        normalized_entry = {
+            **entry,
+            "initial_location": location_name if location_id is not None else None,
+            "initial_holder": entry["initial_holder"],
+            "support_name": support_name,
+        }
+        if location_id is not None:
+            opening_supported = opening_location_supported(
+                evidence, name, location_name, support_name
+            )
+        else:
+            opening_supported = opening_holder_supported(
+                evidence, name, normalized_entry["initial_holder"]
+            )
+        if not opening_supported:
+            console_log(
+                f"Skipping pre-Director prop {name!r}: source evidence supports "
+                "only a later/final placement or no opening placement.",
+                flush=True,
+            )
+            continue
+        parsed.append({**normalized_entry, "name": name, "reason": reason, "evidence": evidence})
     return parsed
 
 

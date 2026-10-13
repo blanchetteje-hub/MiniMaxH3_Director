@@ -970,7 +970,7 @@ class WorldStateSeedTests(unittest.TestCase):
             )
 
     def _parse_prop_candidate_with_evidence(
-        self, evidence, source="A traveler places a brass key on the shelf."
+        self, evidence, source="A brass key rests on the shelf."
     ):
         state, _ = seed_canonical_static_location_state(
             empty_world_state(),
@@ -1000,7 +1000,7 @@ class WorldStateSeedTests(unittest.TestCase):
         )
 
     def test_current_segment_prop_evidence_accepts_enclosing_quote_pairs(self):
-        exact_source = "A traveler places a brass key on the shelf."
+        exact_source = "A brass key rests on the shelf."
         quoted_evidence_values = (
             f'"{exact_source}"',
             f"'{exact_source}'",
@@ -1016,38 +1016,207 @@ class WorldStateSeedTests(unittest.TestCase):
                 self.assertEqual(parsed[0]["evidence"], evidence)
 
     def test_current_segment_prop_evidence_preserves_internal_quotation_marks(self):
-        source = 'A traveler says "ready" and places a brass key on the shelf.'
-        evidence = '‘A traveler says "ready" and places a brass key on the shelf.’'
+        source = 'A brass key rests on the shelf; a traveler says "ready".'
+        evidence = '‘A brass key rests on the shelf; a traveler says "ready".’'
         parsed = self._parse_prop_candidate_with_evidence(evidence, source=source)
         self.assertEqual(parsed[0]["evidence"], evidence)
 
     def test_current_segment_prop_evidence_accepts_unquoted_exact_substring(self):
-        evidence = "places a brass key on the shelf"
+        evidence = "A brass key rests on the shelf"
         parsed = self._parse_prop_candidate_with_evidence(evidence)
         self.assertEqual(parsed[0]["evidence"], evidence)
 
     def test_current_segment_prop_evidence_normalizes_unicode_hyphens_for_match(self):
-        source = "A traveler leaves a brass-key on the shelf."
-        evidence = "leaves a brass\u2011key on the shelf"
+        source = "A brass-key rests on the shelf."
+        evidence = "A brass\u2011key rests on the shelf"
         parsed = self._parse_prop_candidate_with_evidence(evidence, source=source)
         self.assertEqual(parsed[0]["evidence"], evidence)
 
     def test_current_segment_prop_evidence_normalizes_whitespace_for_match(self):
-        source = "A traveler places a brass key on the shelf."
-        evidence = "A traveler  places\n a brass key\ton the shelf."
+        source = "A brass key rests on the shelf."
+        evidence = "A brass  key\n rests\ton the shelf."
         parsed = self._parse_prop_candidate_with_evidence(evidence, source=source)
         self.assertEqual(parsed[0]["evidence"], evidence)
 
     def test_current_segment_prop_evidence_accepts_exact_match_unchanged(self):
-        evidence = "A traveler places a brass key on the shelf."
+        evidence = "A brass key rests on the shelf."
         parsed = self._parse_prop_candidate_with_evidence(evidence)
         self.assertEqual(parsed[0]["evidence"], evidence)
 
     def test_current_segment_prop_evidence_rejects_incorrect_quoted_substring(self):
         with self.assertRaisesRegex(ValueError, "exact current-source evidence"):
             self._parse_prop_candidate_with_evidence(
-                '“A traveler places a silver key on the shelf.”'
+                '“A silver key rests on the shelf.”'
             )
+
+    def test_final_prop_placement_is_not_treated_as_opening_placement(self):
+        state, _location_id = seed_canonical_static_location_state(
+            empty_world_state(),
+            {
+                "location": {"name": "Tavern"},
+                "anchors": [],
+                "objects": [{
+                    "name": "back table",
+                    "type": "wooden table",
+                    "world_state_role": "fixture_support",
+                    "mobility": "fixed",
+                }],
+            },
+        )
+        source = (
+            "An elf takes a seat at the back table. Amy pours steaming ale into a "
+            "crystal chalice for the elf, setting it gently on the wood."
+        )
+        candidate = {
+            "props": [{
+                "name": "crystal chalice",
+                "kind": "container",
+                "mobility": "movable",
+                "initial_location": "back table",
+                "initial_holder": None,
+                "support_name": None,
+                "contents": [],
+                "capabilities": {
+                    "container": True,
+                    "consumable": "unknown",
+                    "openable": "unknown",
+                    "lockable": "unknown",
+                },
+                "reason": "The chalice is placed after it is filled.",
+                "evidence": source,
+            }],
+        }
+        calls = []
+
+        def one_response(messages, **_kwargs):
+            calls.append(messages)
+            return candidate
+
+        extracted = minimax.extract_current_segment_persistent_props(
+            source, source, state, llm_request=one_response,
+        )
+        self.assertEqual(extracted, [])
+        self.assertEqual(len(calls), 1)
+        registered = minimax.register_extracted_persistent_props(state, extracted)
+        self.assertFalse(any(
+            prop["name"] == "crystal chalice"
+            for prop in registered["props"].values()
+        ))
+
+    def test_support_name_returned_as_location_normalizes_only_for_supported_origin(self):
+        state, location_id = seed_canonical_static_location_state(
+            empty_world_state(),
+            {
+                "location": {"name": "Tavern"},
+                "anchors": [],
+                "objects": [{
+                    "name": "shelf",
+                    "type": "wooden shelf",
+                    "world_state_role": "fixture_support",
+                    "mobility": "fixed",
+                }],
+            },
+        )
+        source = "Amy lifts a crystal cup from the shelf."
+        candidate = {
+            "props": [{
+                "name": "crystal cup",
+                "kind": "container",
+                "mobility": "movable",
+                "initial_location": "shelf",
+                "initial_holder": None,
+                "support_name": None,
+                "contents": [],
+                "capabilities": {
+                    "container": True,
+                    "consumable": "unknown",
+                    "openable": "unknown",
+                    "lockable": "unknown",
+                },
+                "reason": "The cup is explicitly retrieved from the shelf.",
+                "evidence": source,
+            }],
+        }
+        parsed = minimax.parse_current_segment_persistent_prop_result(
+            candidate, source, source, state,
+        )
+        self.assertEqual(parsed[0]["initial_location"], "Tavern")
+        self.assertEqual(parsed[0]["support_name"], "shelf")
+        registered = minimax.register_extracted_persistent_props(state, parsed)
+        cup = next(
+            prop for prop in registered["props"].values()
+            if prop["name"] == "crystal cup"
+        )
+        self.assertEqual(cup["placement"], {
+            "kind": "located",
+            "location_id": location_id,
+            "support_id": next(
+                prop_id for prop_id, prop in registered["props"].items()
+                if prop["name"] == "shelf"
+            ),
+        })
+
+    def test_unknown_opening_placement_skips_without_retry_but_malformed_retries(self):
+        state, _location_id = seed_canonical_static_location_state(
+            empty_world_state(),
+            {"location": {"name": "Tavern"}, "anchors": [], "objects": []},
+        )
+        source = "A traveler handles a brass key, then leaves it on a shelf."
+        unsupported = {
+            "props": [{
+                "name": "brass key",
+                "kind": "object",
+                "mobility": "movable",
+                "initial_location": None,
+                "initial_holder": None,
+                "support_name": None,
+                "contents": [],
+                "capabilities": {
+                    "container": "unknown",
+                    "consumable": "unknown",
+                    "openable": "unknown",
+                    "lockable": "unknown",
+                },
+                "reason": "Its opening placement is not established.",
+                "evidence": source,
+            }],
+        }
+        calls = []
+
+        def unsupported_once(messages, **_kwargs):
+            calls.append(messages)
+            return unsupported
+
+        self.assertEqual(
+            minimax.extract_current_segment_persistent_props(
+                source, source, state, llm_request=unsupported_once,
+            ),
+            [],
+        )
+        self.assertEqual(len(calls), 1)
+
+        malformed = copy.deepcopy(unsupported)
+        malformed["props"][0]["evidence"] = "invented evidence"
+        valid = copy.deepcopy(unsupported)
+        valid["props"][0].update({
+            "initial_location": "Tavern",
+            "evidence": "The brass key rests on the floor.",
+        })
+        valid_source = "The brass key rests on the floor."
+        attempts = []
+
+        def malformed_then_valid(_messages, **_kwargs):
+            attempts.append(True)
+            return malformed if len(attempts) == 1 else valid
+
+        self.assertEqual(
+            len(minimax.extract_current_segment_persistent_props(
+                valid_source, valid_source, state,
+                llm_request=malformed_then_valid,
+            )),
+            1,
+        )
+        self.assertEqual(len(attempts), 2)
 
     def test_legacy_visual_raw_and_accepted_state_do_not_seed_world_state(self):
         state = minimax.new_generation_state({
