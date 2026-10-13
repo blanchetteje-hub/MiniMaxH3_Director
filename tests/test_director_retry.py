@@ -1576,6 +1576,63 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertTrue(result["valid"])
         self.assertIn("ordinary interaction with furniture", request.call_args.args[0][0]["content"].casefold())
 
+    def test_physical_validator_rejects_tilting_registered_fixed_prop_deterministically(self):
+        raw = "Amy tilts the eight-foot barrel to pour liquid into a mug."
+        world_state, location_id, _ = goblin_mug_world_state()
+        world_state = register_explicit_persistent_props(world_state, [{
+            "name": "barrel",
+            "kind": "support",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "The barrel is a fixed fixture.",
+            "location_id": location_id,
+        }])
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+
+        result = minimax.validate_director_raw_scene_physical(
+            "Amy refills the mug from the barrel.",
+            raw,
+            known_subject_state=world_state,
+            llm_request=request,
+        )
+
+        self.assertFalse(result["valid"])
+        self.assertIn("registered fixed prop 'barrel'", result["issue"])
+        request.assert_not_called()
+
+    def test_physical_validator_does_not_reject_fixed_prop_mention_or_movable_prop(self):
+        raw = "Amy tilts her head beside the barrel. Amy lifts cloth near barrel."
+        world_state, location_id, _ = goblin_mug_world_state()
+        world_state = register_explicit_persistent_props(world_state, [
+            {
+                "name": "barrel",
+                "kind": "support",
+                "mobility": "fixed",
+                "needed_for_state": True,
+                "reason": "The barrel is a fixed fixture.",
+                "location_id": location_id,
+            },
+            {
+                "name": "cloth",
+                "kind": "object",
+                "mobility": "movable",
+                "needed_for_state": True,
+                "reason": "The cloth is movable.",
+                "location_id": location_id,
+            },
+        ])
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+
+        result = minimax.validate_director_raw_scene_physical(
+            "Amy wipes the table near the barrel.",
+            raw,
+            known_subject_state=world_state,
+            llm_request=request,
+        )
+
+        self.assertTrue(result["valid"])
+        request.assert_called_once()
+
     def test_physical_validator_distinguishes_floor_movement_from_support_change(self):
         raw = "Subject A steps onto the floor and continues walking."
         request = mock.Mock(return_value={"valid": True, "issue": ""})

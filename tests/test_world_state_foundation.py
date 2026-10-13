@@ -2144,6 +2144,60 @@ class WorldStateReducerTests(unittest.TestCase):
         self.assertTrue(all(outcome.accepted for outcome in result.outcomes))
         self.assertEqual(result.world_state["props"]["prop_door"]["mechanism_state"], "closed")
 
+    def test_unknown_entrance_can_be_opened_before_subject_enters(self):
+        state = make_reducer_state()
+        entrant = state["subjects"]["subject_2"]
+        entrant.update({"presence": "unknown", "location_id": UNKNOWN})
+        door = state["props"]["prop_door"]
+        door["capabilities"]["openable"] = UNKNOWN
+        door["mechanism_state"] = UNKNOWN
+        validate_world_state(state)
+
+        result = reduce_world_state(
+            state,
+            [
+                self.action("open-entrance", "open", actor_subject_id="subject_2", prop_id="prop_door"),
+                self.action("enter", "enter", subject_id="subject_2", location_id="location_a"),
+            ],
+            segment_number=3,
+        )
+
+        self.assertTrue(result.committed)
+        self.assertEqual(result.world_state["props"]["prop_door"]["capabilities"]["openable"], True)
+        self.assertEqual(result.world_state["props"]["prop_door"]["mechanism_state"], "open")
+        self.assertEqual(result.world_state["subjects"]["subject_2"]["presence"], "present")
+        self.assertEqual(result.world_state["subjects"]["subject_2"]["location_id"], "location_a")
+
+    def test_opening_before_entry_preserves_known_capability_and_location_conflicts(self):
+        state = make_reducer_state()
+        entrant = state["subjects"]["subject_2"]
+        entrant.update({"presence": "absent", "location_id": UNKNOWN})
+        door = state["props"]["prop_door"]
+        door["capabilities"]["openable"] = False
+        door["mechanism_state"] = UNKNOWN
+        validate_world_state(state)
+
+        non_openable = reduce_world_state(
+            state,
+            [self.action("open-entrance", "open", actor_subject_id="subject_2", prop_id="prop_door")],
+            segment_number=3,
+        )
+        self.assertFalse(non_openable.committed)
+        self.assertEqual(non_openable.outcomes[0].code, "not_known_openable")
+        self.assertEqual(non_openable.world_state, state)
+
+        state["props"]["prop_door"]["capabilities"]["openable"] = True
+        entrant["location_id"] = "location_b"
+        validate_world_state(state)
+        mismatched_location = reduce_world_state(
+            state,
+            [self.action("open-entrance", "open", actor_subject_id="subject_2", prop_id="prop_door")],
+            segment_number=3,
+        )
+        self.assertFalse(mismatched_location.committed)
+        self.assertEqual(mismatched_location.outcomes[0].code, "prop_location_mismatch")
+        self.assertEqual(mismatched_location.world_state, state)
+
     def test_unknown_ids_and_generic_patch_operations_are_rejected(self):
         state = make_reducer_state()
         outcomes = validate_state_actions(

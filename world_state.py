@@ -1668,15 +1668,52 @@ def _apply_state_action(
 
     elif op in {"open", "close", "lock", "unlock"}:
         actor_id, prop_id = action["actor_subject_id"], action["prop_id"]
-        _require_actor_and_prop_colocated(state, actor_id, prop_id)
+        if op == "open":
+            actor = _require_record(state["subjects"], actor_id, "subject")
+            prop = _require_prop(state, prop_id)
+            if actor.get("presence") == "present":
+                _require_actor_and_prop_colocated(state, actor_id, prop_id)
+            else:
+                # An explicitly staged opening may be the action that lets an
+                # absent/unknown subject enter. Exterior position is not
+                # modeled, so permit this only for a located fixture and only
+                # when no established actor location contradicts it.
+                if prop.get("kind") != "fixture":
+                    _reject(
+                        "subject_not_known_present",
+                        "An absent or unknown subject may open only a registered fixture before entering.",
+                    )
+                actor_location = actor.get("location_id", UNKNOWN)
+                prop_location = _prop_location(state, prop)
+                if prop_location is None:
+                    _reject(
+                        "prop_placement_unknown",
+                        "Opening a fixture before entry requires its registered location.",
+                    )
+                if (
+                    actor_location in state["locations"]
+                    and actor_location != prop_location
+                ):
+                    _reject(
+                        "prop_location_mismatch",
+                        "The subject and fixture have different registered locations.",
+                    )
+        else:
+            _require_actor_and_prop_colocated(state, actor_id, prop_id)
         prop = state["props"][prop_id]
         if op in {"open", "close"} and prop["capabilities"]["openable"] is not True:
-            _reject("not_known_openable", "The target is not explicitly recorded as openable.")
+            if op == "open" and prop["capabilities"]["openable"] == UNKNOWN:
+                # The explicit accepted opening establishes an unknown
+                # capability. An established non-openable fact still rejects.
+                prop["capabilities"]["openable"] = True
+                changed.append((prop, "capabilities"))
+            else:
+                _reject("not_known_openable", "The target is not explicitly recorded as openable.")
         if op in {"lock", "unlock"} and prop["capabilities"]["lockable"] is not True:
             _reject("not_known_lockable", "The target is not explicitly recorded as lockable.")
         previous = prop["mechanism_state"]
         transitions = {
-            "open": ({"closed", "unlocked"}, "open"),
+            "open": ({"closed", "unlocked", UNKNOWN}, "open"),
             "close": ({"open"}, "closed"),
             "lock": ({"closed"}, "locked"),
             "unlock": ({"locked"}, "unlocked"),

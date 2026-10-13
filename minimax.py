@@ -38229,6 +38229,13 @@ def validate_director_raw_scene_physical(
     """Return a narrow subject-movement/spatial verdict for one RAW scene."""
     if not str(current_beat or "").strip():
         return {"valid": True, "issue": ""}
+    if isinstance(known_subject_state, dict) and "schema_version" in known_subject_state:
+        fixed_prop_issue = _fixed_prop_motion_issue(
+            raw_scene,
+            known_subject_state.get("props", {}),
+        )
+        if fixed_prop_issue:
+            return {"valid": False, "issue": fixed_prop_issue}
     if re.search(r"(?i)\b(?:suddenly\s+appears?|appears?|pops?\s+into\s+view)\b", str(raw_scene or "")):
         return {
             "valid": False,
@@ -38253,6 +38260,70 @@ def validate_director_raw_scene_physical(
         },
     )
     return parse_beat_validation_result(result)
+
+
+def _fixed_prop_motion_issue(raw_scene, props):
+    """Reject explicit lifting/tilting/transport of a registered fixed prop."""
+    if not isinstance(props, dict):
+        return ""
+    movement = re.compile(
+        r"\b(?:pick(?:s|ed)?\s+up|lift(?:s|ed|ing)?|tilt(?:s|ed|ing)?|"
+        r"tip(?:s|ped|ping)?|carr(?:y|ies|ied|ying)|drag(?:s|ged|ging)?|"
+        r"roll(?:s|ed|ing)?|hoist(?:s|ed|ing)?|haul(?:s|ed|ing)?|"
+        r"relocat(?:e|es|ed|ing)|reposition(?:s|ed|ing)|"
+        r"rais(?:e|es|ed|ing)|lower(?:s|ed|ing)?|"
+        r"shift(?:s|ed|ing)?|rotat(?:e|es|ed|ing))\b",
+        re.IGNORECASE,
+    )
+    raw = str(raw_scene or "")
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", raw):
+        movement_matches = list(movement.finditer(sentence))
+        if not movement_matches:
+            continue
+        for prop in props.values():
+            if not isinstance(prop, dict) or prop.get("mobility") != "fixed":
+                continue
+            name = str(prop.get("name") or "").strip()
+            if not name:
+                continue
+            name_pattern = re.compile(
+                r"(?<!\w)" + r"\s+".join(re.escape(part) for part in name.split()) + r"(?!\w)",
+                re.IGNORECASE,
+            )
+            for entity_match in name_pattern.finditer(sentence):
+                for action_match in movement_matches:
+                    if action_match.end() <= entity_match.start():
+                        gap = sentence[action_match.end():entity_match.start()]
+                        associated = (
+                            len(re.findall(r"[\w’'-]+", gap)) <= 3
+                            and not re.search(
+                                r"\b(?:at|beside|by|from|into|near|onto|over|through|to|under|with)\b",
+                                gap,
+                                re.IGNORECASE,
+                            )
+                        )
+                    else:
+                        gap = sentence[entity_match.end():action_match.start()]
+                        associated = bool(
+                            re.fullmatch(
+                                r"\s+(?:(?:is|was|were|being|been|has|had)\s+){0,2}",
+                                gap,
+                                re.IGNORECASE,
+                            )
+                        )
+                    if not associated:
+                        continue
+                    if re.search(
+                        r"\b(?:not|never|cannot|can't|unable\s+to)\s+(?:\w+\s+){0,2}$",
+                        sentence[max(0, action_match.start() - 32):action_match.start()],
+                        re.IGNORECASE,
+                    ):
+                        continue
+                    return (
+                        f"RAW moves registered fixed prop {name!r}; a fixed prop "
+                        "cannot be lifted, tilted, or relocated."
+                    )
+    return ""
 
 
 def validate_director_raw_scene_prop_state(

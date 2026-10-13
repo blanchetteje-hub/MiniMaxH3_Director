@@ -1,5 +1,50 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — Job 52 opening actions and RAW staging gaps
+
+- Reviewed Job 52 artifacts from `gpt-runtime` commit
+  `28df5fa53779dd2db70b5030828ddc5730a5561d`. Segment 3 failed StateAction
+  extraction after five repairs: the Elf was registered with unknown presence,
+  while the entrance fixture's `openable` capability and mechanism state were
+  unknown. The reducer required the actor to be present before opening and
+  required `openable=true`, so the staged `open` → `enter` sequence could not
+  succeed.
+- The reducer now permits an absent/unknown Subject with no contradictory known
+  location to open a registered, located fixture before entering; an explicit
+  open establishes unknown `openable` and mechanism state. Explicitly
+  non-openable fixtures, incompatible known locations, and unlocated fixtures
+  still fail. Successful opening updates canonical capability/mechanism state.
+- Job 52 Segment 2's physical validator received the full static setting and
+  opening WorldState; those identify the eight-foot barrel as fixed, but the
+  validator's responsibility is only Subject movement/support changes. Added a
+  deterministic check in the existing physical-validation entry point that
+  rejects clearly associated lifting, tilting, carrying, or relocating of a
+  registered fixed prop. It does not reject mere mentions, unrelated nearby
+  actions, or movement of movable props.
+- Other Job 52 false positives were not safe to correct deterministically with
+  the existing inputs. The timing validator receives only RAW, so it could not
+  compare the Elf's reported two-second walk with the room layout; the final
+  repaired RAW repeated the prior Beat's goblin refill and redundantly placed
+  the same chalice twice, which current checks do not treat as contradictions.
+  No runtime prompt was changed. Suggested wording for approval:
+  - `director_raw_scene_creative`: “Do not repeat any persistent action
+    completed in an earlier Beat; stage only the actions required by CURRENT
+    BEAT.”
+  - `director_raw_scene_physical`: “Reject an action that moves or reorients a
+    prop when WorldState or STATIC SETTING AUTHORITY identifies it as fixed,
+    unless the source explicitly establishes a movable mechanism or
+    component.”
+  - `validate_timing_valid`: “Use STATIC SETTING AUTHORITY and registered
+    opening positions to judge travel distance; a stated travel duration does
+    not override a distance that cannot plausibly be covered in that time.”
+  - `director_raw_scene_prop_state`: “Reject redundant repeated placement or
+    transfer actions when the same prop has already reached the stated final
+    holder or location and no intervening action changes it.”
+- Verification: `PYTHONPATH=. python tests/test_world_state_foundation.py
+  WorldStateReducerTests` passed (26 tests); focused fixed-prop regressions
+  passed (2 tests); `DirectorMicroPromptPipelineTests` passed (130 tests).
+  `py_compile` and `git diff --check` passed.
+
 ## 2026-10-12 — specify the timing-refiner 8-second JSON contract
 
 - Updated only the `add_scene_timing_refiner` system prompt to specify an
