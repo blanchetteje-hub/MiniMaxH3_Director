@@ -37,6 +37,7 @@ import time
 import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from types import MappingProxyType
 import requests
 from PIL import Image, UnidentifiedImageError
 
@@ -49,6 +50,25 @@ from gpt_formatter import (
 from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
 from story_planner import StoryPlan, build_story_plan
+from world_state import (
+    CURRENT_SEGMENT_PROP_KINDS,
+    MOBILITY_VALUES,
+    PROP_CAPABILITIES_SCHEMA,
+    PROP_CONTENT_SCHEMA,
+    empty_world_state,
+    new_world_state,
+    build_state_action_only_contract,
+    parse_and_dry_run_state_actions,
+    register_explicit_persistent_props,
+    reduce_world_state,
+    seed_canonical_static_location_state,
+    seed_canonical_wardrobes,
+    seed_current_segment_subject_identities,
+    seed_predefined_subject_identities,
+    seed_registered_subject_story_start_presence,
+    seed_story_start_presence,
+    validate_world_state,
+)
 
 # ============================================================
 # CONSTANTS
@@ -255,8 +275,8 @@ LOCATION_REFERENCE_REFRESH_SAMPLE_FRAMES = 4
 # Character wardrobe references use the same isolated H3 render path as the
 # location reference, but produce one front-facing second and sample its
 # midpoint into an ordinary Picture reference.
-CHARACTER_REFERENCE_DURATION_SECONDS = 1.0
-CHARACTER_REFERENCE_SAMPLE_SECONDS = 0.5
+CHARACTER_REFERENCE_DURATION_SECONDS = 0.5
+CHARACTER_REFERENCE_SAMPLE_SECONDS = 0.25
 CHARACTER_REFERENCE_ASPECT_WIDTH = 13
 CHARACTER_REFERENCE_ASPECT_HEIGHT = 19
 CHARACTER_REFERENCE_RATIO_SCALE_MULTIPLE = 16
@@ -395,6 +415,9 @@ BEAT_PHASE_GENERATION_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
 DIRECTOR_RAW_SCENE_ATTEMPTS = 5
+DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS = 5
+DIRECTOR_RAW_REFINER_ATTEMPTS = 3
+DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS = 5
 
 BEAT_VALIDATION_STATE_VERSION = 3
 
@@ -402,87 +425,17 @@ BEAT_VALIDATION_STATE_VERSION = 3
 # Model/formatter choice must never change sampling, reasoning, prompt transport,
 # or validator behavior.
 BENCHMARK_SEED = 42
-DEFAULT_STORY_TEMPERATURE = 0.4
+VISION_LLM_SETTINGS = MappingProxyType({
+    "temperature": 0,
+    "seed": BENCHMARK_SEED,
+    "repeat_penalty": 1.15,
+    "max_output_tokens": VISION_REQUEST_MAX_TOKENS,
+})
 DEFAULT_VISUAL_STYLE = "Live-action cinematic"
 DEFAULT_REFRESH_INTERVAL = 999
 REASONING_BUDGET_MESSAGE = ". Enough thinking, now answer."
 
-CREATIVE_GENERATION_LLM_SETTINGS = {
-    "temperature": 0.8,
-    "top_p": 0.95,
-    "top_k": 0,
-    "min_p": 0.05,
-    "presence_penalty": 0.0,
-    "frequency_penalty": 0.0,
-    "repeat_penalty": 1.15,
-    "seed": None,
-    "reasoning_effort": "high",
-    "thinking_budget_tokens": 1024,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-}
-
-DIRECTOR_RAW_SCENE_LLM_SETTINGS = {
-    "temperature": 0.2,
-    "top_p": 0.95,
-    "top_k": 0,
-    "min_p": 0.05,
-    "presence_penalty": 0.0,
-    "frequency_penalty": 0.0,
-    "repeat_penalty": 1.15,
-    "seed": None,
-    "reasoning_effort": "high",
-    "thinking_budget_tokens": 1024,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-}
-
-BEAT_WRITING_LLM_SETTINGS = {
-    "temperature": 0,
-    "top_p": None,
-    "top_k": None,
-    "min_p": None,
-    "presence_penalty": None,
-    "frequency_penalty": None,
-    "repeat_penalty": 1.15,
-    "seed": BENCHMARK_SEED,
-    "reasoning_effort": "high",
-    "thinking_budget_tokens": 1024,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-}
-
-STORY_EXPANSION_LLM_SETTINGS = {
-    "temperature": DEFAULT_STORY_TEMPERATURE,
-    "top_p": 0.95,
-    "top_k": 0,
-    "min_p": 0.05,
-    "presence_penalty": 0.0,
-    "frequency_penalty": 0.0,
-    "repeat_penalty": 1.15,
-    "seed": None,
-    "reasoning_effort": "high",
-    "thinking_budget_tokens": 1024,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-}
-
-STORY_TO_BEATS_LLM_SETTINGS = {
-    "temperature": 0,
-    "top_p": None,
-    "top_k": None,
-    "min_p": None,
-    "presence_penalty": None,
-    "frequency_penalty": None,
-    "repeat_penalty": 1.15,
-    "seed": BENCHMARK_SEED,
-    "reasoning_effort": "medium",
-    "thinking_budget_tokens": 1024,
-    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
-    "enable_thinking": True,
-}
-
-MUSIC_GENERATION_LLM_SETTINGS = {
+CREATIVE_LLM_SETTINGS = MappingProxyType({
     "temperature": 0.6,
     "top_p": 0.95,
     "top_k": 0,
@@ -495,9 +448,24 @@ MUSIC_GENERATION_LLM_SETTINGS = {
     "thinking_budget_tokens": 256,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
+})
 
-DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
+SMART_CREATIVE_LLM_SETTINGS = MappingProxyType({
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0.05,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "repeat_penalty": 1.15,
+    "seed": None,
+    "reasoning_effort": "high",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
+})
+
+EXTRACTOR_LLM_SETTINGS = MappingProxyType({
     "temperature": 0,
     "top_p": None,
     "top_k": None,
@@ -506,61 +474,159 @@ DETERMINISTIC_ANALYSIS_LLM_SETTINGS = {
     "frequency_penalty": None,
     "repeat_penalty": 1.15,
     "seed": BENCHMARK_SEED,
-    "reasoning_effort": "low",
-    "thinking_budget_tokens": 128,
+    "reasoning_effort": "medium",
+    "thinking_budget_tokens": 256,
     "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
     "enable_thinking": True,
-}
-
-BEAT_WRITING_LLM_PURPOSES = frozenset({
-    "beat_generation",
-    "beat_repair",
 })
 
-CREATIVE_GENERATION_LLM_PURPOSES = frozenset({
-    "character_canon",
-    "macro_arc_create",
-    "macro_arc_repair",
-    "macro_arc_majority_tail_repair",
+SMART_EXTRACTOR_LLM_SETTINGS = MappingProxyType({
+    "temperature": 0,
+    "top_p": None,
+    "top_k": None,
+    "min_p": None,
+    "presence_penalty": None,
+    "frequency_penalty": None,
+    "repeat_penalty": 1.15,
+    "seed": BENCHMARK_SEED,
+    "reasoning_effort": "high",
+    "thinking_budget_tokens": 1024,
+    "reasoning_budget_message": REASONING_BUDGET_MESSAGE,
+    "enable_thinking": True,
 })
 
-DIRECTOR_RAW_SCENE_LLM_PURPOSES = frozenset({
-    "director_raw_scene",
+LLM_DEFAULT_MAX_OUTPUT_TOKENS = 2048
+LLM_DEFAULT_CONTEXT_TOKEN_BUDGET = LLM_CONTEXT_TOKEN_BUDGET
+
+# Purpose selects only one of the four sampling/reasoning profiles. Context and
+# output limits are independent request requirements below.
+LLM_PURPOSE_PROFILES = MappingProxyType({
+    "story_expansion": SMART_CREATIVE_LLM_SETTINGS,
+    "story_to_beats": SMART_EXTRACTOR_LLM_SETTINGS,
+    "story_to_beats_repair": SMART_EXTRACTOR_LLM_SETTINGS,
+    "character_canon": SMART_CREATIVE_LLM_SETTINGS,
+    "story_subject_wardrobe_extract": SMART_CREATIVE_LLM_SETTINGS,
+    "story_location_extract": EXTRACTOR_LLM_SETTINGS,
+    "static_setting_extract": EXTRACTOR_LLM_SETTINGS,
+    "story_setting_spatial_refine": SMART_CREATIVE_LLM_SETTINGS,
+    "story_setting_extract": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_terminal": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_hard_reset": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_split_gate": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_cut_choice": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_visible_responsibility": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_local_relation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_subject_resolution": SMART_EXTRACTOR_LLM_SETTINGS,
+    "registered_subject_story_start_presence": SMART_EXTRACTOR_LLM_SETTINGS,
+    "world_state_current_segment_subjects": SMART_EXTRACTOR_LLM_SETTINGS,
+    "world_state_current_segment_props": SMART_EXTRACTOR_LLM_SETTINGS,
+    "source_unit_state_effects": SMART_EXTRACTOR_LLM_SETTINGS,
+    "macro_arc_create": SMART_CREATIVE_LLM_SETTINGS,
+    "macro_arc_validate": SMART_EXTRACTOR_LLM_SETTINGS,
+    "macro_arc_majority_validate": SMART_EXTRACTOR_LLM_SETTINGS,
+    "macro_arc_majority_tail_repair": SMART_CREATIVE_LLM_SETTINGS,
+    "macro_arc_repair": SMART_CREATIVE_LLM_SETTINGS,
+    "beat_generation": SMART_CREATIVE_LLM_SETTINGS,
+    "beat_story_validation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "beat_state_validation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "beat_destination_presence_extract": EXTRACTOR_LLM_SETTINGS,
+    "beat_finite_endpoint_extract": EXTRACTOR_LLM_SETTINGS,
+    "beat_coherence_validation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "beat_repair": SMART_CREATIVE_LLM_SETTINGS,
+    "accepted_beat_state_extract": EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_creative": SMART_CREATIVE_LLM_SETTINGS,
+    "add_scene_timing_refiner": SMART_EXTRACTOR_LLM_SETTINGS,
+    "add_camera_refiner": SMART_CREATIVE_LLM_SETTINGS,
+    "director_raw_scene_repair": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_state_actions": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_state_actions_repair": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_physical": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_prop_state": SMART_EXTRACTOR_LLM_SETTINGS,
+    "validate_timing_valid": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_pronoun_resolution": EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_visible_subject_resolution": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_h3_soundscape": CREATIVE_LLM_SETTINGS,
+    "director_h3_music": CREATIVE_LLM_SETTINGS,
+    "continuity_attachment_extract": EXTRACTOR_LLM_SETTINGS,
+    "continuity_combined_reduced_state": SMART_EXTRACTOR_LLM_SETTINGS,
+    "continuity_state_validation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "continuity_phase_2_h3_opening": EXTRACTOR_LLM_SETTINGS,
+    "combined_continuity": SMART_EXTRACTOR_LLM_SETTINGS,
+    "subject_continuity": SMART_EXTRACTOR_LLM_SETTINGS,
+    "final_h3_action_preservation": SMART_EXTRACTOR_LLM_SETTINGS,
+    "json_repair": EXTRACTOR_LLM_SETTINGS,
+    "director_h3_formatter": EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_coherence": SMART_EXTRACTOR_LLM_SETTINGS,
+    "beat_instruction_review": SMART_EXTRACTOR_LLM_SETTINGS,
 })
 
-MUSIC_GENERATION_LLM_PURPOSES = frozenset({
-    "director_h3_music",
+# Long story-pipeline inputs use larger contexts without creating more profiles.
+LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS = MappingProxyType({
+    "story_expansion": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "story_to_beats": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "story_to_beats_repair": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+    "registered_subject_story_start_presence": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
 })
 
-DETERMINISTIC_ANALYSIS_LLM_PURPOSES = frozenset({
-    "accepted_beat_state_extract",
-    "beat_coherence_validation",
-    "beat_destination_presence_extract",
-    "beat_finite_endpoint_extract",
-    "beat_instruction_review",
-    "beat_validation",
-    "combined_continuity",
-    "continuity_attachment_extract",
-    "continuity_combined_reduced_state",
-    "continuity_phase_2_h3_opening",
-    "director_h3_soundscape",
-    "director_h3_formatter",
-    "director_raw_scene_coherence",
-    "director_raw_scene_physical",
-    "director_raw_scene_prop_state",
-    "director_raw_scene_timing",
-    "director_raw_scene_pronoun_resolution",
-    "director_raw_scene_subject_resolution",
-    "final_h3_action_preservation",
-    "json_repair",
-    "macro_arc_majority_validate",
-    "macro_arc_validate",
-    "source_unit_state_effects",
-    "story_location_extract",
-    "story_setting_extract",
-    "story_subject_wardrobe_extract",
-    "subject_continuity",
-    "visual_end_state",
+# Preserve task-specific response capacity independently from profile choice.
+LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
+    "story_expansion": 12000,
+    "story_to_beats": 4096,
+    "story_to_beats_repair": 4096,
+    "character_canon": 8192,
+    "story_subject_wardrobe_extract": 8192,
+    "story_location_extract": 8192,
+    "static_setting_extract": 8192,
+    "macro_arc_create": 8192,
+    "macro_arc_majority_tail_repair": 8192,
+    "macro_arc_repair": 8192,
+    "beat_generation": 8192,
+    "beat_repair": 8192,
+    "director_raw_scene_creative": 8192,
+    "add_scene_timing_refiner": 8192,
+    "add_camera_refiner": 8192,
+    "director_raw_scene_repair": 8192,
+    "director_state_actions": 4096,
+    "director_state_actions_repair": 4096,
+    "director_h3_music": 512,
+    "story_setting_spatial_refine": 3072,
+    "story_setting_extract": 4096,
+    "director_raw_scene_subject_resolution": 4096,
+    "world_state_current_segment_subjects": 4096,
+    "world_state_current_segment_props": 4096,
+    "registered_subject_story_start_presence": 2048,
+    "accepted_beat_state_extract": 2048,
+    "beat_coherence_validation": 2048,
+    "beat_destination_presence_extract": 2048,
+    "beat_finite_endpoint_extract": 2048,
+    "beat_instruction_review": 2048,
+    "beat_story_validation": 2048,
+    "beat_state_validation": 2048,
+    "combined_continuity": 2048,
+    "continuity_attachment_extract": 2048,
+    "continuity_combined_reduced_state": 2048,
+    "continuity_phase_2_h3_opening": 2048,
+    "director_h3_soundscape": 2048,
+    "director_h3_formatter": 2048,
+    "director_raw_scene_coherence": 2048,
+    "director_raw_scene_physical": 3072,
+    "director_raw_scene_prop_state": 2048,
+    "validate_timing_valid": 4096,
+    "director_raw_scene_pronoun_resolution": 2048,
+    "director_raw_scene_visible_subject_resolution": 3172,
+    "final_h3_action_preservation": 2048,
+    "json_repair": 2048,
+    "macro_arc_majority_validate": 2048,
+    "macro_arc_validate": 2048,
+    "source_unit_state_effects": 2048,
+    "source_unit_terminal": 2048,
+    "source_unit_hard_reset": 2048,
+    "source_unit_split_gate": 2048,
+    "source_unit_cut_choice": 2048,
+    "source_unit_visible_responsibility": 2048,
+    "source_unit_local_relation": 2048,
+    "subject_continuity": 2048,
+    "continuity_state_validation": 2048,
 })
 
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
@@ -732,33 +798,24 @@ H3_MUSIC_RESPONSE_FORMAT = {
     },
 }
 
-DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
+ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
-        "name": "director_raw_scene",
+        "name": "add_scene_timing_refiner",
         "strict": True,
         "schema": {
             "type": "object",
             "properties": {
-                "raw_scene": {
+                "status": {
                     "type": "string",
-                    "description": (
-                        "Concrete timed scene that stages CURRENT BEAT without "
-                        "beginning NEXT BEAT."
-                    ),
+                    "enum": ["ok", "not_enough_time"],
                 },
-                "finite_activity_complete": {"type": "boolean"},
-                "named_beneficiaries_complete": {"type": "boolean"},
-                "activity_tools_settled": {"type": "boolean"},
-                "beat_complete": {"type": "boolean"},
+                "timestamps": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
             },
-            "required": [
-                "raw_scene",
-                "finite_activity_complete",
-                "named_beneficiaries_complete",
-                "activity_tools_settled",
-                "beat_complete",
-            ],
+            "required": ["status", "timestamps"],
             "additionalProperties": False,
         },
     },
@@ -780,6 +837,28 @@ DIRECTOR_PRONOUN_RESOLUTION_RESPONSE_FORMAT = {
     },
 }
 
+INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_raw_scene_subject_resolution",
+        "strict": True,
+        "schema": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "subject": {"type": "string", "minLength": 1},
+                    "present": {"type": "boolean"},
+                    "reason": {"type": "string", "minLength": 1},
+                },
+                "required": ["subject", "present", "reason"],
+                "additionalProperties": False,
+            },
+        },
+    },
+}
+
+
 DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
@@ -788,36 +867,21 @@ DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT = {
         "schema": {
             "type": "object",
             "properties": {
-                "raw_scene": {"type": "string"},
-                "subject_names": {
+                "subjects": {
                     "type": "array",
-                    "items": {"type": "string", "minLength": 1},
-                },
-                "subject_descriptions": {
-                    "type": "object",
-                    "additionalProperties": {"type": "string"},
-                },
-                "subject_wardrobes": {
-                    "type": "object",
-                    "additionalProperties": {
+                    "items": {
                         "type": "object",
                         "properties": {
-                            "upper": {"type": "string"},
-                            "lower": {"type": "string"},
-                            "footwear": {"type": "string"},
-                            "other": {"type": "string"},
+                            "raw_name": {"type": "string", "minLength": 1},
+                            "subject_id": {"type": ["string", "null"]},
+                            "is_new": {"type": "boolean"},
                         },
-                        "required": ["upper", "lower", "footwear", "other"],
+                        "required": ["raw_name", "subject_id", "is_new"],
                         "additionalProperties": False,
                     },
                 },
             },
-            "required": [
-                "raw_scene",
-                "subject_names",
-                "subject_descriptions",
-                "subject_wardrobes",
-            ],
+            "required": ["subjects"],
             "additionalProperties": False,
         },
     },
@@ -1134,7 +1198,7 @@ _BEAT_ABBREVIATIONS = {
 # System prompts and parser patterns for Director and H3 formatting requests.
 # ------------------------------------------------------------
 
-DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the creative director for one {segment_seconds}-second video segment.
+DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE = """You are to expand on a single BEAT.  The actions must be able to fit within an {segment_length} second video clip.
 
 JOB
 - CURRENT BEAT is the story authority for what happens now and the scene to stage in this clip.
@@ -1145,29 +1209,36 @@ WRITE THE SCENE
 - Show CURRENT BEAT clearly with concrete visible/audible action.
 - Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the final continuity state.
 - Add only details needed to physically connect or clearly show CURRENT BEAT.
-- Preserve spatial continuity. If an actor must interact with something at another established position, show the actor moving there first; do not use impossible reach, teleportation, or a hidden cut.
-- Preserve body support/elevation literally. Do not put a subject onto, over, across, or down from a counter, table, bar, shelf, stool, or other support unless the prior state establishes that route/position or CURRENT BEAT requires it. Prefer ordinary floor routes over gratuitous climbing.
-- Do not use "appears", "suddenly appears", "pops into view", or equivalent wording as a substitute for entry/reveal staging.
-- Preserve prop identity.
+- do not include timestamps.
 
-CAMERA CHOREOGRAPHY
-{camera_choreography_rules}
-- CONTINUATION: the supplied opening guide is the visual authority for frame 0. PREVIOUS SHOT END is semantic state, not a camera shot list. Describe only the inherited continuation frame before CURRENT BEAT; do not reconstruct every known subject into view.
-- Keep all timed action inside the {segment_seconds}-second clip.
-- Spread CURRENT BEAT naturally across the clip with at least {segment_min_beats} timed micro-beats, with the final timed micro-beat in the final quarter.
-- Use timestamp lines in the form "At 00:ss.mmm," and begin at 00:00.000.
-- After the timed action, include exactly one short "End continuity state:" sentence describing the actual last visible frame. Explicitly locate every named subject whose final position matters to the next shot. Do not repeat an earlier state.
+RETURN
+Sentences of actions that occur in the scene separated by new lines.
+"""
 
-{story_segment_ending_rules}
+ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE = """Assign a start timestamp to each numbered action in RAW SCENE for a 8-second video.
 
-COMPLETION CHECK
-- finite_activity_complete: true only if finite action assigned by CURRENT BEAT reaches an observable endpoint in this clip.
-- named_beneficiaries_complete: true only if every named person or target explicitly required by CURRENT BEAT receives the assigned action/result.
-- activity_tools_settled: true only if tools/props used by CURRENT BEAT reach the required end condition.
-- beat_complete: true only when all three checks above are true.
+Use realistic timing based on the actions. Preserve action order. Do not assign physically impossible durations.
 
-RETURN JSON ONLY
-{{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true}}
+If all actions cannot reasonably fit, return not_enough_time.
+
+Return the following JSON:
+{{
+  "status": "ok|not_enough_time",
+  "timestamps": ["00:00.000", "00:01.000", "00:03.000"]
+}}
+- timestamps: Array of start times in MM:SS.mmm format, one per numbered action, in the same order. Include only timestamps, not action numbers or labels.
+- If status is "not_enough_time", return an empty timestamps array.
+"""
+
+ADD_CAMERA_REFINER_SYSTEM = """Add camera movements to TIMED SCENE.
+
+Preserve all existing timestamps and action text exactly. Do not add, remove, reorder, or rewrite any action.
+
+Add only camera instructions to existing timestamp lines. Use a continuous shot unless CURRENT BEAT explicitly requires a cut. Camera movement must follow, reveal, or frame the existing action.
+
+If no camera movement is needed, leave the scene unchanged.
+
+Return only the camera-refined scene.
 """
 # Request 2 is a formatter/translator. Request 1 owns creative direction.
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
@@ -1294,7 +1365,7 @@ _WARDROBE_DESCRIPTION_RE = re.compile(
 _WARDROBE_ACTION_BOUNDARY_RE = re.compile(
     r"(?i)(?:,\s*|\s+)\b(?:while|as|when|then|before|after|"
     r"stands?|sits?|walks?|runs?|moves?|turns?|looks?|holds?|carries?|"
-    r"raises?|lowers?(?!\s+garments?\b)|reaches?|speaks?|says?|"
+    r"raises?|lowers?(?!\s+garments?\b)(?!\s*:)|reaches?|speaks?|says?|"
     r"enters?|exits?|flips?|cooks?|fries?|stirs?|serves?|places?|"
     r"picks?|sets?|grabs?|pushes?|pulls?|swings?|shoots?|strikes?|"
     r"kicks?|steps?)\b.*$"
@@ -1790,14 +1861,6 @@ def get_formatter(model):
 
 
 # Select the formatter used by the existing generation pipeline.
-def configure_story_temperature(value=DEFAULT_STORY_TEMPERATURE):
-    """Set temperature only for the initial summary-to-story writing stage."""
-    value = float(value)
-    if not math.isfinite(value) or value < 0:
-        raise ValueError("Story temperature must be finite and zero or greater.")
-    STORY_EXPANSION_LLM_SETTINGS["temperature"] = value
-
-
 def configure_formatter(model):
     """Select the formatter used by the existing generation pipeline."""
 
@@ -2164,13 +2227,6 @@ def parse_args(arguments=None):
         help="resolution target (default: 0.5)",
     )
     parser.add_argument(
-        "--temp", type=float, default=DEFAULT_STORY_TEMPERATURE, metavar="N",
-        help=(
-            "temperature for the initial story-writing LLM call only "
-            f"(default: {DEFAULT_STORY_TEMPERATURE:g})"
-        ),
-    )
-    parser.add_argument(
         "--visual-style",
         default=None,
         metavar="STYLE",
@@ -2262,6 +2318,15 @@ def parse_args(arguments=None):
             "use the existing story_arc.json and beats.txt and run only the "
             "Director Request 1 -> Request 2 prompt pipeline; never regenerate "
             "the arc/beats and never submit to ComfyUI"
+        ),
+    )
+    parser.add_argument(
+        "--pre-director-replay-fixture",
+        default=None,
+        metavar="PATH",
+        help=(
+            "test-only: load a captured pre-Director baseline, skip all earlier "
+            "LLM calls, and continue normal Director/H3 processing"
         ),
     )
     parser.add_argument(
@@ -2412,8 +2477,6 @@ def parse_args(arguments=None):
 
     args = parser.parse_args(normalize_command_line(arguments))
     args.total_length = None
-    if not math.isfinite(args.temp) or args.temp < 0:
-        parser.error("--temp must be finite and zero or greater.")
     if args.segment_length is not None and (
         not math.isfinite(args.segment_length) or args.segment_length <= 0
     ):
@@ -2507,6 +2570,23 @@ def parse_args(arguments=None):
                 "or repair modes."
             )
         # Director-only is a prompt-generation test mode by definition.
+        args.test_prompt_generation = True
+
+    if args.pre_director_replay_fixture is not None:
+        if (
+            args.repair is not None
+            or args.new_run
+            or args.existing_beats
+            or args.director_only
+            or args.generate_beats is not None
+            or args.generate_prompts is not None
+            or args.generate_from_prompts
+            or args.use_prompts is not None
+        ):
+            parser.error(
+                "--pre-director-replay-fixture cannot be combined with source, "
+                "repair, or saved-prompt modes."
+            )
         args.test_prompt_generation = True
 
     if args.generate_prompts is not None:
@@ -3396,6 +3476,7 @@ def build_run_config(
     no_music=False,
     disable_subject_removal=False,
     visual_style=DEFAULT_VISUAL_STYLE,
+    world_state_seed=None,
 ):
     visual_style = normalize_visual_style(visual_style)
     # Auto-discovered video subjects are durable continuity metadata, not a
@@ -3438,6 +3519,9 @@ def build_run_config(
         "disable_subject_removal": bool(disable_subject_removal),
         "visual_style": visual_style,
         "source_sha256": hashlib.sha256(source_payload).hexdigest(),
+        # This narrow seed is constructed from the user-authored subjects file.
+        # Story-derived guesses and legacy continuity structures are excluded.
+        "world_state_seed": copy.deepcopy(world_state_seed or {}),
     }
 
 
@@ -3608,6 +3692,1088 @@ def subject_identity_snapshot_for_definitions(subject_definitions):
             record,
         )
     return snapshot
+
+
+def authoritative_world_state_seed_from_subject_definitions(
+    subject_definitions,
+    source_path=SUBJECT_DEFINITIONS_FILE,
+):
+    """Build an identity-only seed from the user-authored subjects file."""
+    definitions = str(subject_definitions or "")
+    subjects = subject_identity_snapshot_for_definitions(definitions)
+    lines = definitions.splitlines()
+    for raw_id, identity in subjects.items():
+        marker = re.compile(rf"(?i)<\s*Subject\s+{re.escape(str(raw_id))}\s*>")
+        matching = next(
+            (
+                line.strip()
+                for line in lines
+                if marker.search(line)
+                and str(identity.get("name") or "").casefold() in line.casefold()
+            ),
+            "",
+        )
+        identity["source_description"] = matching
+        if re.search(r"(?i)\bnon[- ]humanoid\b", matching):
+            identity["physical_form"] = "non_humanoid"
+        elif re.search(r"(?i)\bhumanoid\b", matching):
+            identity["physical_form"] = "humanoid"
+        elif re.search(r"(?i)\banimal\b", matching):
+            identity["physical_form"] = "non_humanoid"
+        else:
+            identity["physical_form"] = "unknown"
+    return {
+        "source_path": str(source_path or ""),
+        "source_sha256": hashlib.sha256(definitions.encode("utf-8")).hexdigest(),
+        "subjects": subjects,
+    }
+
+
+def build_registered_subject_story_start_response_format():
+    """Return the one-Subject story-start status schema."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "registered_subject_story_start_presence",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "subject": {"type": "string", "minLength": 1},
+                    "status": {
+                        "type": "string",
+                        "enum": ["present", "absent", "unknown"],
+                    },
+                    "initial_state": {"type": "string"},
+                },
+                "required": ["subject", "status", "initial_state"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def build_registered_subject_story_start_messages(subject, story, beats):
+    numbered_beats = "\n".join(
+        f"Beat {index}: {str(beat).strip()}"
+        for index, beat in enumerate(beats or [], start=1)
+    )
+    identity = subject.get("identity", {}) if isinstance(subject, dict) else {}
+    identity_text = json.dumps(
+        {
+            key: identity.get(key, "unknown")
+            for key in ("gender", "physical_form", "canonical_description", "source_description")
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Classify a single Subject's story-start status. \n"
+                "- Return present when the Subject is already in Beat 1.\n"
+                "- Return absent only when the source explicitly says the Subject enters later, "
+                "establishing it was absent at story start. \n"
+                "- Return unknown when neither is explicit; do not infer absence from omission "
+                "or from a late first mention. \n\n"
+                "For present/absent, copy a short verbatim substring from STORY SOURCE or "
+                "BEATS as evidence: do not paraphrase. \n"
+                "- For present, give a concise starting-state phrase supported by that evidence. \n"
+                "- For absent or unknown, initial_state must be empty. \n\n"
+                "Use the BEATS as the primary source, use the STORY SOURCE as secondary.\n\n"
+                "Classify only the named Subject, not the cast. \n"
+                "- Return JSON {\"subject\": \"<name>\", \"status\": "
+                "\"present|absent|unknown\", \"initial_state\": \"<state or empty>\"}"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"REGISTERED SUBJECT\n{subject.get('name', '')}\n"
+                f"IDENTITY FACTS\n{identity_text}\n\n"
+                f"BEATS\n{numbered_beats or 'N/A'}\n\n"
+                f"STORY SOURCE\n{str(story or '').strip() or 'N/A'}\n\n"
+                "Return subject, status, and initial_state for this Subject only."
+            ),
+        },
+    ]
+
+
+def parse_registered_subject_story_start_result(raw_result, subject, story, beats):
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {
+        "subject", "status", "initial_state",
+    }:
+        raise ValueError("Registered Subject story-start result has an invalid shape.")
+    returned_subject = " ".join(str(candidate["subject"] or "").split()).strip()
+    if returned_subject.casefold() != str(subject.get("name") or "").casefold():
+        raise ValueError("Registered Subject story-start result names the wrong Subject.")
+    status = candidate["status"]
+    initial_state = " ".join(str(candidate["initial_state"] or "").split()).strip()
+    if status not in {"present", "absent", "unknown"}:
+        raise ValueError("Registered Subject story-start result has an invalid status.")
+    if status == "present" and not initial_state:
+        raise ValueError("Present story-start classification requires an initial state.")
+    if status in {"absent", "unknown"} and initial_state:
+        raise ValueError(f"{status.title()} story-start status cannot include an initial state.")
+    return {
+        "name": subject["name"], "status": status,
+        "initial_state": initial_state,
+    }
+
+
+def extract_registered_subject_story_start_presence(
+    world_state,
+    story,
+    beats,
+    *,
+    location_id,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Classify each unknown authored Subject with a separate narrow call."""
+    if llm_request is None:
+        llm_request = ask_llm
+    classifications = []
+    for subject_id, subject in sorted(world_state.get("subjects", {}).items()):
+        if subject.get("presence") != "unknown":
+            continue
+        if subject.get("provenance", {}).get("identity", {}).get("authority") != "user_authored_subject_definitions":
+            continue
+        last_error = None
+        messages = build_registered_subject_story_start_messages(subject, story, beats)
+        for attempt in range(1, 4):
+            attempt_messages = copy.deepcopy(messages)
+            if attempt > 1:
+                attempt_messages[-1]["content"] += (
+                    "\n\nFIX: return only subject, status, and initial_state for this "
+                    "registered Subject. Use unknown and an empty initial_state when "
+                    "the source does not make the status explicit. "
+                    f"Prior validation error: {last_error}"
+            )
+            try:
+                raw = llm_request(
+                    attempt_messages,
+                    response_format=build_registered_subject_story_start_response_format(),
+                    history_metadata={
+                        **dict(history_metadata or {}),
+                        "purpose": "registered_subject_story_start_presence",
+                        "subject_id": subject_id,
+                        "attempt": attempt,
+                    },
+                )
+                classification = parse_registered_subject_story_start_result(
+                    raw, subject, story, beats
+                )
+                console_log(
+                    "Registered Subject story-start classification: "
+                    f"{classification['name']} status={classification['status']}; "
+                    f"initial_state={classification['initial_state'] or 'N/A'}",
+                    flush=True,
+                )
+                classifications.append(classification)
+                break
+            except LLMConnectionError:
+                raise
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                last_error = error
+        else:
+            raise ValueError(
+                f"Could not classify story-start presence for {subject['name']!r}: {last_error}"
+            )
+    return seed_registered_subject_story_start_presence(
+        world_state, classifications, location_id=location_id
+    )
+
+
+def build_current_segment_subject_response_format():
+    """Return the narrow identity-only current-beat Subject extractor schema."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "world_state_current_segment_subjects",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "subjects": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "minLength": 1},
+                                "physical_form": {
+                                    "type": "string",
+                                    "enum": ["humanoid", "non_humanoid", "unknown"],
+                                },
+                                "gender": {
+                                    "type": "string",
+                                    "enum": ["female", "male", "unknown", "N/A"],
+                                },
+                                "source_description": {
+                                    "type": "string", "minLength": 1,
+                                },
+                                "evidence": {"type": "string", "minLength": 1},
+                            },
+                            "required": [
+                                "name", "physical_form", "gender",
+                                "source_description", "evidence",
+                            ],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["subjects"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def build_current_segment_subject_messages(
+    current_beat,
+    assigned_source="",
+    registered_subject_names=(),
+):
+    """Build the identity-only semantic extraction for one Segment's beat."""
+    known = "\n".join(
+        f"- {name}" for name in registered_subject_names if str(name).strip()
+    )
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Identify only distinct person or animate-entity identities that "
+                "CURRENT BEAT requires the Director to stage and that are not in "
+                "REGISTERED SUBJECTS. Use the beat's established functional name "
+                "when available; otherwise give one stable role/species name with "
+                "the next unused integer suffix. Reuse a registered identity when "
+                "the beat clearly refers to that same individual. Return no props, "
+                "objects, groups, or background extras. Do not decide whether a "
+                "Subject is present, absent, entering, or visible; this response "
+                "registers identity only. physical_form must be humanoid or "
+                "non_humanoid only when the supplied source explicitly supports "
+                "that body form; otherwise use unknown. Never infer physical form "
+                "from the Subject's name. source_description must contain only "
+                "explicit identity/body facts from CURRENT BEAT or ASSIGNED SOURCE. "
+                "evidence must be an exact contiguous quotation from one of those "
+                "sources proving the identity participates in this beat. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "REGISTERED SUBJECTS\n"
+                + (known or "N/A")
+                + "\n\nCURRENT BEAT\n"
+                + (str(current_beat or "").strip() or "N/A")
+                + "\n\nASSIGNED SOURCE\n"
+                + (str(assigned_source or "").strip() or "N/A")
+                + "\n\nReturn only identities not already registered."
+            ),
+        },
+    ]
+
+
+def parse_current_segment_subject_result(raw_result, current_beat, assigned_source=""):
+    """Validate identity-only Subject candidates against exact beat evidence."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"subjects"}:
+        raise ValueError("Current-segment Subject extraction requires only subjects.")
+    if not isinstance(candidate["subjects"], list):
+        raise ValueError("Current-segment Subject extraction subjects must be an array.")
+    source_text = "\n".join((str(current_beat or ""), str(assigned_source or "")))
+    result = []
+    seen = set()
+    expected = {
+        "name", "physical_form", "gender", "source_description", "evidence",
+    }
+    for item in candidate["subjects"]:
+        if not isinstance(item, dict) or set(item) != expected:
+            raise ValueError("Current-segment Subject entry has an invalid shape.")
+        normalized = {
+            field: " ".join(str(item.get(field) or "").split()).strip()
+            for field in ("name", "physical_form", "gender", "source_description", "evidence")
+        }
+        if not normalized["name"] or not normalized["evidence"]:
+            raise ValueError("Current-segment Subject name and evidence are required.")
+        evidence_for_match = normalized["evidence"]
+        quote_pairs = (("\"", "\""), ("'", "'"), ("“", "”"), ("‘", "’"))
+        for opening, closing in quote_pairs:
+            if (
+                len(evidence_for_match) >= 2
+                and evidence_for_match.startswith(opening)
+                and evidence_for_match.endswith(closing)
+            ):
+                evidence_for_match = evidence_for_match[1:-1].strip()
+                break
+        if evidence_for_match.casefold() not in source_text.casefold():
+            raise ValueError(
+                f"Current-segment Subject evidence for {normalized['name']!r} "
+                "is not quoted from the current beat/source."
+            )
+        if (
+            normalized["source_description"].casefold() not in source_text.casefold()
+            and normalized["source_description"].casefold() != "unknown"
+        ):
+            raise ValueError(
+                f"Current-segment Subject facts for {normalized['name']!r} "
+                "are not quoted from the current beat/source."
+            )
+        if normalized["physical_form"] not in {"humanoid", "non_humanoid", "unknown"}:
+            raise ValueError("Current-segment Subject has invalid physical_form.")
+        if normalized["gender"] not in {"female", "male", "unknown", "N/A"}:
+            raise ValueError("Current-segment Subject has invalid gender.")
+        key = _subject_identity_key(normalized["name"])
+        if key not in seen:
+            seen.add(key)
+            result.append({key: normalized[key] for key in (
+                "name", "physical_form", "gender", "source_description",
+            )})
+    return result
+
+
+def extract_current_segment_subjects(
+    current_beat,
+    assigned_source="",
+    registered_subject_names=(),
+    *,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Use one narrow pre-Director pass to identify new beat participants."""
+    if llm_request is None:
+        llm_request = ask_llm
+    last_error = None
+    base_messages = build_current_segment_subject_messages(
+        current_beat, assigned_source, registered_subject_names
+    )
+    for attempt in range(1, 4):
+        messages = copy.deepcopy(base_messages)
+        raw = None
+        if attempt > 1:
+            messages[-1]["content"] += (
+                "\n\nFIX: Return only identity-only new Subject records. "
+                "Every evidence value must be copied exactly from the current beat/source. "
+                f"Prior validation error: {last_error}"
+            )
+        try:
+            raw = llm_request(
+                messages,
+                response_format=build_current_segment_subject_response_format(),
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "world_state_current_segment_subjects",
+                    "attempt": attempt,
+                },
+            )
+            return parse_current_segment_subject_result(
+                raw, current_beat, assigned_source
+            )
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            last_error = error
+            console_log(
+                "Rejected world_state_current_segment_subjects response: "
+                + json.dumps(
+                    {
+                        "attempt": f"{attempt}/3",
+                        "raw_response": raw,
+                        "validation_error": str(error),
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+    raise ValueError(
+        "Could not identify current-segment Subjects: " + str(last_error)
+    )
+
+
+def prepare_segment_world_state_for_director(
+    world_state,
+    segment_number,
+    current_beat,
+    assigned_source,
+    story_context,
+    *,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Seed current-beat identities/wardrobes before Request 1, never presence."""
+    if llm_request is None:
+        llm_request = ask_llm
+    state = world_state
+    registered_names = [
+        subject.get("name", "")
+        for subject in state["subjects"].values()
+        if isinstance(subject, dict)
+    ]
+    candidates = extract_current_segment_subjects(
+        current_beat,
+        assigned_source,
+        registered_names,
+        llm_request=llm_request,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "segment": int(segment_number),
+        },
+    )
+    before_names = {
+        " ".join(subject.get("name", "").split()).casefold()
+        for subject in state["subjects"].values()
+        if isinstance(subject, dict)
+    }
+    state = seed_current_segment_subject_identities(state, candidates)
+    added = [
+        item for item in candidates
+        if " ".join(item["name"].split()).casefold() not in before_names
+    ]
+    wardrobe_updates = {}
+    for subject in added:
+        name = subject["name"]
+        canonical_record = {
+            "name": name,
+            "gender": subject.get("gender", "unknown"),
+            "physical_form": subject.get("physical_form", "unknown"),
+            "source_description": subject.get("source_description", "unknown"),
+        }
+        clothing = extract_subject_canonical_wardrobe(
+            story_context,
+            name,
+            subject.get("source_description", ""),
+            canonical_record,
+            llm_request=llm_request,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "segment": int(segment_number),
+                "authority": "pre_director_current_segment_subject",
+            },
+        )
+        wardrobe_updates[name] = _world_state_wardrobe_from_canonical_text(clothing)
+    if wardrobe_updates:
+        state = seed_canonical_wardrobes(state, wardrobe_updates)
+    extracted_props = extract_current_segment_persistent_props(
+        current_beat,
+        assigned_source,
+        state,
+        llm_request=llm_request,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "segment": int(segment_number),
+        },
+    )
+    if extracted_props:
+        state = register_extracted_persistent_props(state, extracted_props)
+    return state, [item["name"] for item in added]
+
+
+def build_current_segment_persistent_prop_response_format():
+    """Return the narrow strict schema for new props needed in one Segment."""
+    nullable_string = {"type": ["string", "null"]}
+    prop_schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "kind": {"type": "string", "enum": list(CURRENT_SEGMENT_PROP_KINDS)},
+            "mobility": {"type": "string", "enum": sorted(MOBILITY_VALUES)},
+            "initial_location": nullable_string,
+            "initial_holder": nullable_string,
+            "support_name": nullable_string,
+            "contents": {"type": "array", "items": PROP_CONTENT_SCHEMA},
+            "capabilities": PROP_CAPABILITIES_SCHEMA,
+            "reason": {"type": "string", "minLength": 1},
+            "evidence": {"type": "string", "minLength": 1},
+        },
+        "required": [
+            "name", "kind", "mobility",
+            "initial_location", "initial_holder", "support_name", "contents",
+            "capabilities", "reason", "evidence",
+        ],
+        "additionalProperties": False,
+    }
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "world_state_current_segment_props",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "props": {
+                        "type": "array", "maxItems": 8,
+                        "items": prop_schema,
+                    },
+                },
+                "required": ["props"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def build_current_segment_persistent_prop_messages(
+    current_beat,
+    assigned_source,
+    world_state,
+):
+    """Build a current-only prop extractor from registered vocabulary."""
+    subject_names = {
+        subject_id: item["name"]
+        for subject_id, item in world_state["subjects"].items()
+    }
+    location_names = {
+        location_id: item["name"]
+        for location_id, item in world_state["locations"].items()
+    }
+    prop_names = {
+        prop_id: item["name"]
+        for prop_id, item in world_state["props"].items()
+    }
+    subjects = [
+        {"name": item["name"], "presence": item["presence"]}
+        for _subject_id, item in sorted(
+            world_state["subjects"].items(), key=lambda pair: pair[1]["name"].casefold()
+        )
+    ]
+    props = []
+    for prop_id, item in sorted(
+        world_state["props"].items(), key=lambda pair: pair[1]["name"].casefold()
+    ):
+        placement = item["placement"]
+        if placement["kind"] == "held":
+            name_placement = {
+                "kind": "held",
+                "holder": subject_names.get(placement["subject_id"], "unknown"),
+            }
+        elif placement["kind"] == "located":
+            name_placement = {
+                "kind": "located",
+                "location": location_names.get(placement["location_id"], "unknown"),
+            }
+            if placement.get("support_id") is not None:
+                name_placement["support"] = prop_names.get(
+                    placement["support_id"], "unknown"
+                )
+        else:
+            name_placement = {"kind": "unknown"}
+        props.append({
+            "name": item["name"],
+            "kind": item["kind"],
+            "placement": name_placement,
+        })
+    locations = [
+        {"name": item["name"]}
+        for _location_id, item in sorted(
+            world_state["locations"].items(), key=lambda pair: pair[1]["name"].casefold()
+        )
+    ]
+    supports = [
+        {
+            "name": item["name"],
+            "location": location_names.get(
+                item["placement"].get("location_id"), "unknown"
+            ),
+        }
+        for _prop_id, item in sorted(
+            world_state["props"].items(), key=lambda pair: pair[1]["name"].casefold()
+        )
+        if item["kind"] in {"support", "fixture_support"}
+    ]
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Identify only new physical props whose distinct identity and "
+                "placement are needed to represent an explicit persistent "
+                "state-changing action in CURRENT BEAT. Existing props are listed "
+                "and must be reused by identity; never duplicate or rename them.\n\n"
+                "- Each new prop must be directly involved in a transfer, placement, "
+                "pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.\n"
+                "- Return exactly one explicit initial_location or initial_holder, "
+                "using only the registered names below.\n"
+                "- A support_name may name only a registered support/fixture.\n"
+                "- Do not guess a placement: omit any prop whose initial placement "
+                "is not supported by the current sources.\n"
+                "- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED "
+                "SOURCE.\n"
+                "- Record contents/capabilities when explicit or strongly implied by "
+                "the setting and actions. Infer opening contents only when supported "
+                "by the opening state; do not treat the result of CURRENT BEAT as "
+                "already true. Otherwise use unknown or an empty contents list.\n"
+                "-Infer capabilities from common-sense object properties and intended "
+                "actions. Infer initial contents only from evidence of the state "
+                "before CURRENT BEAT, never from the outcome of CURRENT BEAT.\n"
+                "- Return JSON in this format (true/false are to be JSON booleans, "
+                "not strings):\n"
+                "{\n"
+                '  "props": [\n'
+                "    {\n"
+                '      "name": "object_name",\n'
+                '      "kind": "object",\n'
+                '      "mobility": "movable",\n'
+                '      "initial_location": null,\n'
+                '      "initial_holder": "registered_subject_name",\n'
+                '      "support_name": null,\n'
+                '      "contents": [\n'
+                "        {\n"
+                '          "substance": "substance_name",\n'
+                '          "amount": "unknown",\n'
+                '          "consumable": "unknown"\n'
+                "        }\n"
+                "      ],\n"
+                '      "capabilities": {\n'
+                '        "container": "unknown",\n'
+                '        "consumable": "unknown",\n'
+                '        "openable": "unknown",\n'
+                '        "lockable": "unknown"\n'
+                "      },\n"
+                '      "reason": "Why this object needs persistent tracking.",\n'
+                '      "evidence": "Exact quotation from CURRENT BEAT or ASSIGNED SOURCE"\n'
+                "    }\n"
+                "  ]\n"
+                "}\n\n"
+                "- Notes: All fields are required. Use null for either "
+                "initial_location or initial_holder—exactly one must have a "
+                "registered name. The props array can be empty ([]), and contents "
+                "can also be empty. Capability values can be true, false, or "
+                '"unknown".'
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "CURRENT BEAT\n" + (str(current_beat or "").strip() or "N/A")
+                + "\n\nASSIGNED SOURCE\n" + (str(assigned_source or "").strip() or "N/A")
+                + "\n\nREGISTERED SUBJECTS\n"
+                + json.dumps(subjects, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nCURRENT WORLDSTATE PROPS\n"
+                + json.dumps(props, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nCANONICAL LOCATIONS\n"
+                + json.dumps(locations, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nCANONICAL SUPPORTS / FIXTURES\n"
+                + json.dumps(supports, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nReturn only props needed for a persistent state action in this Segment."
+            ),
+        },
+    ]
+
+
+def parse_current_segment_persistent_prop_result(
+    raw_result, current_beat, assigned_source, world_state,
+):
+    """Validate only new props, grounded in this Segment and its vocabulary."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"props"}:
+        raise ValueError("Current-Segment prop extraction requires only a props array.")
+    if not isinstance(candidate["props"], list) or len(candidate["props"]) > 8:
+        raise ValueError("Current-Segment prop extraction must return at most 8 props.")
+    parsed = []
+    names = set()
+    source_text = "\n".join((str(current_beat or ""), str(assigned_source or "")))
+    locations = {
+        " ".join(item["name"].split()).casefold(): (location_id, item["name"])
+        for location_id, item in world_state["locations"].items()
+    }
+    locations_by_id = {
+        location_id: item["name"]
+        for location_id, item in world_state["locations"].items()
+    }
+    subjects = {
+        " ".join(item["name"].split()).casefold(): item["name"]
+        for item in world_state["subjects"].values()
+    }
+    supports = {
+        " ".join(item["name"].split()).casefold(): {
+            "id": prop_id,
+            "name": item["name"],
+            "location_id": item["placement"].get("location_id"),
+        }
+        for prop_id, item in world_state["props"].items()
+        if item["kind"] in {"support", "fixture_support"}
+    }
+    existing = {item["name"].casefold() for item in world_state["props"].values()}
+    quote_pairs = (("\"", "\""), ("'", "'"), ("“", "”"), ("‘", "’"))
+
+    def strip_enclosing_quotes(value):
+        unquoted = value.strip()
+        while len(unquoted) >= 2:
+            pair = next(
+                (
+                    (opening, closing)
+                    for opening, closing in quote_pairs
+                    if unquoted.startswith(opening) and unquoted.endswith(closing)
+                ),
+                None,
+            )
+            if pair is None:
+                break
+            opening, closing = pair
+            unquoted = unquoted[len(opening):-len(closing)].strip()
+        return unquoted
+
+    dash_translation = str.maketrans({
+        character: "-"
+        for character in (
+            "\u2010\u2011\u2012\u2013\u2014\u2015\u2212\ufe58\ufe63\uff0d"
+        )
+    })
+
+    def normalize_evidence_for_match(value):
+        return " ".join(value.translate(dash_translation).split()).casefold()
+
+    def term_pattern(value):
+        words = re.escape(" ".join(str(value or "").split()))
+        return r"(?<!\w)" + words.replace(r"\ ", r"\s+") + r"(?!\w)"
+
+    def prop_patterns(value):
+        words = " ".join(str(value or "").split())
+        patterns = [term_pattern(words)] if words else []
+        head = words.split()[-1] if words else ""
+        if head and head != words:
+            patterns.append(term_pattern(head))
+        return patterns
+
+    def opening_location_supported(text, prop_name, location_name, support_name=None):
+        # A source/origin phrase or a static location relation supports opening
+        # placement. Active placement verbs describe an ending position only.
+        support_pattern = term_pattern(support_name) if support_name else None
+        registered_places = [
+            term_pattern(prop["name"])
+            for prop in world_state["props"].values()
+        ]
+        places = ([support_pattern] if support_pattern else []) + registered_places
+        if location_name:
+            places.append(term_pattern(location_name))
+        static_verbs = (
+            r"(?:is|was|rests?|sits?|lies?|stands?|remains?|stays?|located)"
+        )
+        locatives = r"(?:on|at|in|inside|beside|near|under|upon)"
+        for prop_pattern in prop_patterns(prop_name):
+            if support_pattern and re.search(
+                rf"\b(?:retrieve|retrieves|retrieved|retrieving|pick(?:s|ed)? up|"
+                rf"lift(?:s|ed|ing)?|take(?:s|n|ing)?|remove(?:s|d|ing)?|"
+                rf"grab(?:s|bed|bing)?|draw(?:s|n|ing)?)\b.{{0,50}}{prop_pattern}"
+                rf".{{0,25}}\bfrom\b.{{0,20}}{support_pattern}",
+                text,
+                flags=re.IGNORECASE | re.DOTALL,
+            ):
+                return True
+            for place_pattern in places:
+                relation = re.search(
+                    rf"{prop_pattern}\s+(?:{static_verbs}\s+)?{locatives}\s+"
+                    rf"(?:the\s+)?{place_pattern}",
+                    text,
+                    flags=re.IGNORECASE,
+                )
+                if not relation:
+                    continue
+                prefix = text[max(0, relation.start() - 45):relation.start()]
+                if not re.search(r"\b(?:set|place|put|lay|lower)(?:s|ting|ed)?\b", prefix, re.I):
+                    return True
+        if not support_pattern:
+            for prop_pattern in prop_patterns(prop_name):
+                relation = re.search(
+                    rf"{prop_pattern}\s+(?:{static_verbs}\s+)?{locatives}\s+"
+                    rf"(?:the\s+)?[\w-]+\b",
+                    text,
+                    flags=re.IGNORECASE,
+                )
+                if relation:
+                    prefix = text[max(0, relation.start() - 45):relation.start()]
+                    if not re.search(
+                        r"\b(?:set|place|put|lay|lower)(?:s|ting|ed)?\b",
+                        prefix,
+                        re.I,
+                    ):
+                        return True
+        return False
+
+    def opening_holder_supported(text, prop_name, _holder_name):
+        # The exact evidence and registered holder name come from the existing
+        # extractor. This check only filters a prop mentioned solely as the
+        # recipient of a later handoff rather than as already held or used.
+        for pattern in prop_patterns(prop_name):
+            if re.search(
+                rf"\b(?:hold(?:s|ing)?|carry(?:s|ing)?|clutch(?:es|ing)?|"
+                rf"grip(?:s|ping)?|use(?:s|d|ing)?|wipe(?:s|d|ing)?|"
+                rf"clean(?:s|ed|ing)?|polish(?:es|ed|ing)?)\b"
+                rf".{{0,70}}{pattern}|"
+                rf"\b(?:wipe|clean|polish|work|stir|cut|write|paint)(?:s|ed|ing)?\b"
+                rf".{{0,60}}\bwith\b.{{0,35}}{pattern}",
+                text,
+                flags=re.IGNORECASE | re.DOTALL,
+            ):
+                return True
+        return False
+
+    expected_keys = {
+        "name", "kind", "mobility",
+        "initial_location", "initial_holder", "support_name", "contents",
+        "capabilities", "reason", "evidence",
+    }
+    for entry in candidate["props"]:
+        if not isinstance(entry, dict) or set(entry) != expected_keys:
+            raise ValueError("Persistent prop entry has an invalid shape.")
+        name = " ".join(str(entry["name"] or "").split()).strip()
+        key = name.casefold()
+        if not name or key in names or key in existing:
+            raise ValueError("Current-Segment props must be new, non-empty, and unique.")
+        names.add(key)
+        if entry["initial_location"] is not None and entry["initial_holder"] is not None:
+            raise ValueError(
+                f"Persistent prop {name!r} cannot have both an initial location and holder."
+            )
+        if entry["initial_holder"] is not None and str(entry["initial_holder"]).casefold() not in subjects:
+            raise ValueError(f"Persistent prop {name!r} names an unregistered holder.")
+        if entry["support_name"] is not None and str(entry["support_name"]).casefold() not in supports:
+            raise ValueError(f"Persistent prop {name!r} names an unregistered support.")
+        if not isinstance(entry["contents"], list) or not isinstance(entry["capabilities"], dict):
+            raise ValueError(f"Persistent prop {name!r} has invalid contents/capabilities.")
+        reason = " ".join(str(entry["reason"] or "").split()).strip()
+        evidence = str(entry["evidence"] or "")
+        evidence_for_match = strip_enclosing_quotes(evidence)
+        if (
+            not reason
+            or not normalize_evidence_for_match(evidence_for_match)
+            or normalize_evidence_for_match(evidence_for_match)
+            not in normalize_evidence_for_match(source_text)
+        ):
+            raise ValueError(f"Persistent prop {name!r} requires exact current-source evidence.")
+
+        # A well-formed candidate can still lack any source-supported opening
+        # placement. That is not an extraction/schema error: leave it for the
+        # Director's transactional retrieve_prop action instead of retrying.
+        if entry["initial_location"] is None and entry["initial_holder"] is None:
+            console_log(
+                f"Skipping pre-Director prop {name!r}: opening placement is unknown.",
+                flush=True,
+            )
+            continue
+
+        location_id = None
+        location_name = None
+        support_name = None
+        if entry["initial_location"] is not None:
+            requested_place = " ".join(str(entry["initial_location"]).split()).casefold()
+            requested_support = supports.get(requested_place)
+            if requested_support:
+                location_id = requested_support["location_id"]
+                support_name = requested_support["name"]
+                if entry["support_name"] is not None and (
+                    str(entry["support_name"]).casefold() != requested_place
+                ):
+                    raise ValueError(
+                        f"Persistent prop {name!r} has conflicting initial supports."
+                    )
+                location_name = locations_by_id.get(location_id)
+            else:
+                location_record = locations.get(requested_place)
+                if location_record is None:
+                    console_log(
+                        f"Skipping pre-Director prop {name!r}: initial placement "
+                        f"{entry['initial_location']!r} is not registered or supported.",
+                        flush=True,
+                    )
+                    continue
+                location_id, location_name = location_record
+                support_name = entry["support_name"]
+        else:
+            support_name = entry["support_name"]
+
+        if support_name is not None:
+            support_record = supports.get(str(support_name).casefold())
+            if support_record is None:
+                raise ValueError(f"Persistent prop {name!r} names an unregistered support.")
+            if location_id is not None and support_record["location_id"] != location_id:
+                raise ValueError(
+                    f"Persistent prop {name!r} support conflicts with its initial location."
+                )
+
+        normalized_entry = {
+            **entry,
+            "initial_location": location_name if location_id is not None else None,
+            "initial_holder": entry["initial_holder"],
+            "support_name": support_name,
+        }
+        if location_id is not None:
+            opening_supported = opening_location_supported(
+                evidence, name, location_name, support_name
+            )
+        else:
+            opening_supported = opening_holder_supported(
+                evidence, name, normalized_entry["initial_holder"]
+            )
+        if not opening_supported:
+            console_log(
+                f"Skipping pre-Director prop {name!r}: source evidence supports "
+                "only a later/final placement or no opening placement.",
+                flush=True,
+            )
+            continue
+        parsed.append({**normalized_entry, "name": name, "reason": reason, "evidence": evidence})
+    return parsed
+
+
+def extract_current_segment_persistent_props(
+    current_beat,
+    assigned_source,
+    world_state,
+    *,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Extract only newly needed props from this Segment's sources and state."""
+    if llm_request is None:
+        llm_request = ask_llm
+    messages = build_current_segment_persistent_prop_messages(
+        current_beat, assigned_source, world_state
+    )
+    last_error = None
+    for attempt in range(1, 4):
+        attempt_messages = copy.deepcopy(messages)
+        if attempt > 1:
+            attempt_messages[-1]["content"] += (
+                "\n\nFIX: Return only new props needed for a persistent state-changing "
+                "action in this Segment, with exact source evidence and exactly one "
+                "registered initial location or holder. Do not predict future props. "
+                f"Prior validation error: {last_error}"
+            )
+        # Capture the effective per-attempt messages, vocabulary and model output.
+        # This console trace is included in acceptance run.log even when
+        # prompt_history.txt or LM Studio's developer log is unavailable.
+        console_log(
+            "WORLDSTATE PROP EXTRACTION REQUEST "
+            + json.dumps({
+                "purpose": "world_state_current_segment_props",
+                "attempt": attempt,
+                "messages": attempt_messages,
+                "registered_subjects": [
+                    {"id": item["id"], "name": item["name"], "presence": item["presence"]}
+                    for item in world_state["subjects"].values()
+                ],
+                "registered_locations": [
+                    {"id": key, "name": item["name"]}
+                    for key, item in world_state["locations"].items()
+                ],
+                "registered_props": [
+                    {"id": key, "name": item["name"], "kind": item["kind"]}
+                    for key, item in world_state["props"].items()
+                ],
+            }, ensure_ascii=False, default=str),
+            flush=True,
+        )
+        try:
+            raw = llm_request(
+                attempt_messages,
+                response_format=build_current_segment_persistent_prop_response_format(),
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "world_state_current_segment_props",
+                    "attempt": attempt,
+                },
+            )
+            console_log(
+                "WORLDSTATE PROP EXTRACTION RESPONSE "
+                + json.dumps({"attempt": attempt, "raw": raw}, ensure_ascii=False, default=str),
+                flush=True,
+            )
+            parsed = parse_current_segment_persistent_prop_result(
+                raw, current_beat, assigned_source, world_state
+            )
+            console_log(
+                "WORLDSTATE PROP EXTRACTION ACCEPTED "
+                + json.dumps({"attempt": attempt, "props": parsed}, ensure_ascii=False, default=str),
+                flush=True,
+            )
+            return parsed
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            last_error = error
+            console_log(
+                "WORLDSTATE PROP EXTRACTION REJECTED "
+                + json.dumps({"attempt": attempt, "error": str(error)}, ensure_ascii=False),
+                flush=True,
+            )
+    raise ValueError("Could not extract current-Segment persistent props: " + str(last_error))
+
+
+def register_extracted_persistent_props(world_state, extracted_props):
+    """Resolve current-Segment prop names to Python-assigned WorldState IDs."""
+    validate_world_state(world_state)
+    locations = {
+        " ".join(record["name"].split()).casefold(): location_id
+        for location_id, record in world_state["locations"].items()
+    }
+    subjects = {
+        " ".join(record["name"].split()).casefold(): subject_id
+        for subject_id, record in world_state["subjects"].items()
+    }
+    props_by_name = {
+        " ".join(record["name"].split()).casefold(): prop_id
+        for prop_id, record in world_state["props"].items()
+    }
+    registry = []
+    for prop in extracted_props or []:
+        name = str(prop.get("name") or "").strip()
+        if name.casefold() in props_by_name:
+            continue
+        location_name = prop.get("initial_location")
+        holder_name = prop.get("initial_holder")
+        if location_name is not None:
+            location_id = locations.get(" ".join(str(location_name).split()).casefold())
+            if location_id is None:
+                raise ValueError(f"Prop {name!r} names an unregistered initial location.")
+            holder_id = None
+        else:
+            holder_id = subjects.get(" ".join(str(holder_name).split()).casefold())
+            if holder_id is None:
+                raise ValueError(f"Prop {name!r} names an unregistered initial holder.")
+            location_id = None
+        support_id = None
+        support_name = prop.get("support_name")
+        if support_name is not None:
+            support_id = props_by_name.get(" ".join(str(support_name).split()).casefold())
+            if support_id is None:
+                raise ValueError(f"Prop {name!r} names an unregistered support.")
+        capabilities = {
+            key: value if isinstance(value, bool) else "unknown"
+            for key, value in prop["capabilities"].items()
+        }
+        contents = [
+            {
+                "substance": content["substance"],
+                "amount": content["amount"],
+                "consumable": (
+                    content["consumable"]
+                    if isinstance(content["consumable"], bool) else "unknown"
+                ),
+            }
+            for content in prop["contents"]
+        ]
+        registry.append({
+            "name": name,
+            "kind": prop["kind"],
+            "mobility": prop["mobility"],
+            "needed_for_state": True,
+            "reason": prop["reason"],
+            "location_id": location_id,
+            "holder_subject_id": holder_id,
+            "support_id": support_id,
+            "contents": contents,
+            "capabilities": capabilities,
+        })
+    return register_explicit_persistent_props(world_state, registry)
 
 
 # Subject identity mismatch.
@@ -4563,10 +5729,13 @@ def continuity_state_for_registry(subject_definitions, state=None):
     def copy_continuity_fields(record, existing):
         if not isinstance(existing, dict):
             return
-        record["persistent_structural_change"] = bool(
-            existing.get("persistent_structural_change", False)
-        )
-        if isinstance(existing.get("canonical_description"), str):
+        if existing.get("persistent_structural_change") is True:
+            record["persistent_structural_change"] = True
+        if (
+            isinstance(existing.get("canonical_description"), str)
+            and existing["canonical_description"].strip()
+            and existing["canonical_description"].strip().casefold() != "n/a"
+        ):
             record["canonical_description"] = " ".join(
                 existing["canonical_description"].split()
             )
@@ -4577,8 +5746,13 @@ def continuity_state_for_registry(subject_definitions, state=None):
             "body_state",
             "physical_condition",
         ):
-            if isinstance(existing.get(field), str):
-                record[field] = existing[field]
+            value = existing.get(field)
+            if (
+                isinstance(value, str)
+                and value.strip()
+                and value.strip().casefold() not in {"n/a", "unknown"}
+            ):
+                record[field] = value
         if isinstance(existing.get("held_props"), list):
             record["held_props"] = list(existing["held_props"])
         for field in SUBJECT_LIST_FIELDS:
@@ -4586,8 +5760,13 @@ def continuity_state_for_registry(subject_definitions, state=None):
                 record[field] = list(existing[field])
         if isinstance(existing.get("wardrobe"), dict):
             for garment in record["wardrobe"]:
-                if isinstance(existing["wardrobe"].get(garment), str):
-                    record["wardrobe"][garment] = existing["wardrobe"][garment]
+                value = existing["wardrobe"].get(garment)
+                if (
+                    isinstance(value, str)
+                    and value.strip()
+                    and value.strip().casefold() not in {"n/a", "unknown"}
+                ):
+                    record["wardrobe"][garment] = value
 
     subjects = {}
     used_subject_ids = set()
@@ -5785,6 +6964,11 @@ def format_authoritative_opening_state(
     used by checkpoint/inspection paths.  The H3 Request 2 path supplies the
     current RAW SCENE, which enables the deterministic relevance projection.
     """
+    if isinstance(state, dict) and "schema_version" in state:
+        return format_world_state_prompt_context(
+            state,
+            heading="CANONICAL WORLDSTATE OPENING",
+        )
     state = continuity_state_for_registry(subject_definitions, state)
     if str(current_scene or "").strip():
         state = _h3_opening_state_for_scene(
@@ -6057,6 +7241,9 @@ def derive_additional_subject_definitions(
         canonical_description = " ".join(
             str(record.get("canonical_description") or "").split()
         ).strip()
+        canonical_description = _strip_character_description_clothing(
+            canonical_description
+        )
         gender_clause = (
             ""
             if canonical_description
@@ -6065,19 +7252,18 @@ def derive_additional_subject_definitions(
         speaker_id = _subject_speaker_token(
             record.get("speaker_id") or f"S{subject_id}"
         )
-        definition = (
-            f"<Subject {subject_id}> is {name}{gender_clause} ({speaker_id}), "
-            "continued from <Video 1>."
-        )
+        if record.get("origin_segment") == 0:
+            definition = (
+                f"<Subject {subject_id}> is {name}{gender_clause} ({speaker_id}), "
+                "present at story start."
+            )
+        else:
+            definition = (
+                f"<Subject {subject_id}> is {name}{gender_clause} ({speaker_id}), "
+                "continued from <Video 1>."
+            )
         if canonical_description:
             definition += " " + canonical_description
-        state_description = format_subject_state_for_definition(
-            subject_id,
-            name,
-            record,
-        )
-        if state_description:
-            definition += " " + state_description
         definitions.append(definition)
     return definitions
 
@@ -6429,20 +7615,24 @@ def build_story_subject_wardrobe_messages(
         {
             "role": "system",
             "content": (
-                "Determine one defined subject's canonical appropriate attire from "
-                "the expanded story. Preserve every explicit clothing detail for "
-                "this subject, including material, texture, color, wear, layers, "
-                "and role-specific garments. Then fill only missing normal outfit "
-                "pieces with simple appropriate attire for the subject's species, "
-                "body, setting, period, culture, and occupation so the visual "
-                "reference shows a complete coherent outfit. Appropriate attire "
-                "does not mean every subject wears clothes: dragons, animals, and "
-                "other beings that appropriately do not wear clothing must return "
-                "N/A unless the story explicitly gives them clothing. For normally "
-                "clothed people whose outfit is unstated, choose ordinary appropriate "
-                "attire for the setting (for example, a T-shirt and blue jeans in a "
-                "modern casual setting). Do not change identity, anatomy, story "
-                "events, or explicit clothing facts. Return JSON only."
+                "Determine one defined subject's canonical appropriate attire "
+                "from the expanded story.\n\n"
+                "- Preserve every explicit clothing detail for this subject, "
+                "including material, texture, color, wear, layers, and role-specific "
+                "garments.\n"
+                "- Fill only missing normal outfit pieces with simple appropriate "
+                "attire for the subject's species, body, setting, period, culture, "
+                "and occupation so the visual reference shows a complete coherent "
+                "outfit.\n\n"
+                "FIXED CLOTHING RULE: any subject with a humanoid physical form "
+                "must wear clothing, regardless of species; never return N/A for "
+                "a humanoid. A non-humanoid form may use N/A when clothing is not "
+                "appropriate unless the story explicitly gives that subject "
+                "clothing.\n\n"
+                "Return the following JSON structure:\n"
+                "{\n"
+                '  "clothing": "Description of the subject\'s complete outfit as a single string."\n'
+                "}"
             ),
         },
         {
@@ -6482,7 +7672,11 @@ def build_story_subject_wardrobe_response_format():
     }
 
 
-def parse_story_subject_wardrobe_result(raw_result, llm_request=None):
+def parse_story_subject_wardrobe_result(
+    raw_result,
+    llm_request=None,
+    subject_name="",
+):
     """Normalize one subject's extracted canonical attire."""
     candidate = raw_result
     if isinstance(candidate, str):
@@ -6496,14 +7690,183 @@ def parse_story_subject_wardrobe_result(raw_result, llm_request=None):
             "Subject wardrobe extraction must contain only clothing."
         )
     clothing = " ".join(str(candidate.get("clothing") or "").split()).strip(" ,.;")
-    if not clothing:
-        raise ValueError("Subject wardrobe extraction returned empty clothing.")
+    if not clothing or not re.search(r"[A-Za-z0-9]", clothing):
+        raise ValueError("Subject wardrobe extraction returned unusable clothing.")
+    if (
+        str(subject_name or "").strip()
+        and clothing.casefold() == " ".join(str(subject_name).split()).casefold()
+    ):
+        raise ValueError("Subject wardrobe extraction returned the Subject's name as clothing.")
     if clothing.casefold() in {
         "none", "no clothes", "no clothing", "unclothed",
         "naturally unclothed", "not applicable", "n/a", "na",
     }:
         return "N/A"
     return clothing
+
+
+def extract_subject_canonical_wardrobe(
+    expanded_story,
+    subject_name,
+    subject_definition="",
+    canonical_record=None,
+    *,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Run the canonical appropriate-attire extractor for exactly one Subject."""
+    if llm_request is None:
+        llm_request = ask_llm
+    expanded_story = str(expanded_story or "").strip()
+    subject_name = " ".join(str(subject_name or "").split()).strip()
+    if not expanded_story or not subject_name:
+        raise ValueError("Subject wardrobe extraction requires story text and a Subject.")
+
+    clothing = None
+    last_error = None
+    for wardrobe_attempt in range(1, 4):
+        try:
+            raw = llm_request(
+                build_story_subject_wardrobe_messages(
+                    expanded_story,
+                    subject_name,
+                    subject_definition,
+                    canonical_record,
+                ),
+                response_format=build_story_subject_wardrobe_response_format(),
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "story_subject_wardrobe_extract",
+                    "subject": subject_name,
+                    "subject_id": (
+                        int(canonical_record.get("subject_id"))
+                        if isinstance(canonical_record, dict)
+                        and str(canonical_record.get("subject_id", "")).isdigit()
+                        else None
+                    ),
+                    "attempt": wardrobe_attempt,
+                },
+            )
+            clothing = parse_story_subject_wardrobe_result(
+                raw,
+                llm_request=llm_request,
+                subject_name=subject_name,
+            )
+            break
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            if wardrobe_attempt < 3:
+                console_log(
+                    f"Subject wardrobe extractor for {subject_name} returned unusable "
+                    f"output (attempt {wardrobe_attempt}/3); retrying only this "
+                    f"extractor: {error}",
+                    flush=True,
+                )
+    if clothing is None:
+        raise ValueError(
+            f"Could not extract canonical attire for {subject_name}: "
+            f"{last_error or 'unknown wardrobe extraction error'}"
+        )
+    return clothing
+
+
+def apply_story_subject_wardrobes(
+    continuity_state,
+    expanded_story,
+    subject_definitions,
+    subject_names,
+    *,
+    character_canon=None,
+    history_metadata=None,
+    llm_request=None,
+    world_state_wardrobe_sink=None,
+):
+    """Seed canon attire or extract missing dynamic attire into compatibility state."""
+    state = copy.deepcopy(continuity_state) if isinstance(continuity_state, dict) else {}
+    canon_records = {}
+    if isinstance(character_canon, dict):
+        canon_records = {
+            " ".join(str(record.get("name") or "").split()).strip().casefold(): record
+            for record in character_canon.get("characters", [])
+            if isinstance(record, dict) and str(record.get("name") or "").strip()
+        }
+    if canon_records:
+        # Keep the legacy continuity view aligned with the canonical wardrobe,
+        # but do not run a second extractor for Subjects already covered by it.
+        state = seed_character_canon_wardrobe(
+            subject_definitions,
+            character_canon,
+            state,
+        )
+    subjects = state.get("subjects")
+    if not isinstance(subjects, dict):
+        return state
+
+    definition_lines = {}
+    for line in str(subject_definitions or "").splitlines():
+        match = re.match(
+            r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+(?P<name>[^,]+)",
+            line,
+        )
+        if match:
+            definition_lines[" ".join(match.group("name").split()).casefold()] = line.strip()
+
+    for requested_name in subject_names or []:
+        existing_name = _find_existing_subject_name(subjects, requested_name)
+        if existing_name is None:
+            continue
+        record = subjects.get(existing_name)
+        if not isinstance(record, dict):
+            continue
+        if " ".join(existing_name.split()).casefold() in canon_records:
+            console_log(
+                f"Using canonical character_canon wardrobe for {existing_name}; "
+                "skipping compatibility re-extraction.",
+                flush=True,
+            )
+            continue
+        clothing = extract_subject_canonical_wardrobe(
+            expanded_story,
+            existing_name,
+            definition_lines.get(existing_name.casefold(), ""),
+            record,
+            llm_request=llm_request,
+            history_metadata=history_metadata,
+        )
+        if world_state_wardrobe_sink is not None:
+            world_state_wardrobe_sink[existing_name] = (
+                _world_state_wardrobe_from_canonical_text(clothing)
+            )
+        existing_wardrobe = record.get("wardrobe")
+        if not isinstance(existing_wardrobe, dict):
+            existing_wardrobe = {}
+        wardrobe = {
+            field: copy.deepcopy(existing_wardrobe.get(field, "N/A"))
+            for field in _WARDROBE_FIELDS
+        }
+        if clothing != "N/A":
+            grouped = {}
+            for field, value in _split_wardrobe_components(clothing):
+                grouped.setdefault(field, []).append(value)
+            for field, values in grouped.items():
+                current = _known_replacement_value(
+                    wardrobe.get(field), f"wardrobe.{field}"
+                )
+                if current is None:
+                    wardrobe[field] = _join_wardrobe_components(values)
+            # Preserve the complete canonical outfit even when prose is richer
+            # than the deterministic garment splitter can fully decompose.
+            if not grouped:
+                if _known_replacement_value(wardrobe.get("other"), "wardrobe.other") is None:
+                    wardrobe["other"] = clothing
+        record["wardrobe"] = wardrobe
+        console_log(
+            f"Canonical appropriate attire for {existing_name}: {clothing}",
+            flush=True,
+        )
+    return state
 
 
 def canonicalize_defined_subject_wardrobes(
@@ -6526,9 +7889,6 @@ def canonicalize_defined_subject_wardrobes(
         raise ValueError("Character canon is required for wardrobe extraction.")
 
     registry = parse_subject_registry(subject_definitions)
-    if not registry:
-        return character_canon
-
     canon = copy.deepcopy(character_canon)
     records = [
         record
@@ -6551,34 +7911,70 @@ def canonicalize_defined_subject_wardrobes(
         )
     }
 
+    defined_subjects = {}
     for subject_id, subject in sorted(registry.items()):
         name = " ".join(str(subject.get("name") or "").split()).strip()
+        if not name:
+            continue
         record = by_name.get(name.casefold())
         if record is None:
             raise ValueError(
                 f"Defined Subject {name!r} has no canonical character record."
             )
-        raw = llm_request(
-            build_story_subject_wardrobe_messages(
-                expanded_story,
-                name,
-                definition_lines.get(subject_id, ""),
-                record,
-            ),
-            response_format=build_story_subject_wardrobe_response_format(),
-            max_tokens=256,
-            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-            history_metadata={
-                **dict(history_metadata or {}),
-                "purpose": "story_subject_wardrobe_extract",
-                "subject": name,
-                "subject_id": int(subject_id),
-            },
+        defined_subjects[name.casefold()] = (
+            int(subject_id), subject, definition_lines.get(int(subject_id), "")
         )
-        clothing = parse_story_subject_wardrobe_result(
-            raw,
-            llm_request=llm_request,
-        )
+
+    # Canonical wardrobe belongs to identity, not to the Subject's first
+    # appearance. Run the existing per-Subject extractor for every canon entry.
+    for record in records:
+        name = " ".join(str(record.get("name") or "").split()).strip()
+        if not name:
+            continue
+        definition = defined_subjects.get(name.casefold())
+        subject_id, _subject, definition_line = definition or (None, None, "")
+        clothing = None
+        last_wardrobe_error = None
+        for wardrobe_attempt in range(1, 4):
+            try:
+                raw = llm_request(
+                    build_story_subject_wardrobe_messages(
+                        expanded_story,
+                        name,
+                        definition_line,
+                        record,
+                    ),
+                    response_format=build_story_subject_wardrobe_response_format(),
+                    history_metadata={
+                        **dict(history_metadata or {}),
+                        "purpose": "story_subject_wardrobe_extract",
+                        "subject": name,
+                        "subject_id": int(subject_id) if subject_id is not None else None,
+                        "attempt": wardrobe_attempt,
+                    },
+                )
+                clothing = parse_story_subject_wardrobe_result(
+                    raw,
+                    llm_request=llm_request,
+                    subject_name=name,
+                )
+                break
+            except LLMConnectionError:
+                raise
+            except (TypeError, ValueError) as error:
+                last_wardrobe_error = error
+                if wardrobe_attempt < 3:
+                    console_log(
+                        f"Subject wardrobe extractor for {name} returned unusable "
+                        f"output (attempt {wardrobe_attempt}/3); retrying only this "
+                        f"extractor: {error}",
+                        flush=True,
+                    )
+        if clothing is None:
+            raise ValueError(
+                f"Could not extract canonical attire for {name}: "
+                f"{last_wardrobe_error or 'unknown wardrobe extraction error'}"
+            )
         record["clothing"] = clothing
         console_log(
             f"Canonical appropriate attire for {name}: {clothing}",
@@ -6790,6 +8186,14 @@ def format_dialogue_exclusion_instruction(dialogue_exclusions):
 
 # Create generation state.
 def new_generation_state(run_config):
+    world_state_seed = run_config.get("world_state_seed")
+    if not isinstance(world_state_seed, dict):
+        world_state_seed = {}
+    if not world_state_seed.get("source_sha256"):
+        world_state_seed = {
+            **world_state_seed,
+            "source_sha256": run_config.get("source_sha256", ""),
+        }
     state = {
         "version": 1,
         "config": dict(run_config),
@@ -6810,6 +8214,7 @@ def new_generation_state(run_config):
         "visual_end_state": {},
         "visual_end_frame_paths": [],
         "prop_ledger": {},
+        "location_state": {},
         "subject_state_ledger": {},
         "character_reference_images": {},
         "base_reference_image_count": None,
@@ -6831,6 +8236,9 @@ def new_generation_state(run_config):
             "subjects": {},
         },
         "subject_registry_state": new_continuity_state(),
+        # Canonical physical state begins only from the explicit source seed.
+        # Legacy continuity, beat, prompt, and visual snapshots are not read.
+        "world_state": new_world_state(world_state_seed),
         # This is the append-only identity contract for the run. Subject
         # continuity facts may change, but this lock may only gain a brand-new
         # Subject identity; an existing ID can never be reassigned.
@@ -6878,10 +8286,19 @@ def load_generation_state(path=GENERATION_STATE_FILE):
 
     if not isinstance(state, dict):
         raise RuntimeError("Generation checkpoint must contain a JSON object.")
+    if not isinstance(state.get("location_state"), dict):
+        state["location_state"] = {}
     _canonicalize_generation_state_continuity(state)
     _canonicalize_generation_state_subjects(state)
     _canonicalize_generation_state_props(state)
     _canonicalize_generation_state_subject_ledger(state)
+    if "world_state" not in state:
+        # Do not reconstruct canonical state from legacy continuity or ledgers.
+        state["world_state"] = empty_world_state(
+            (state.get("config") or {}).get("source_sha256", ""),
+            seed_status="legacy_checkpoint_unseeded",
+        )
+    validate_world_state(state["world_state"])
     # Validate the internal append-only identity chain even when callers only
     # load the checkpoint. Resume adds the subjects.txt comparison separately.
     validate_subject_identity_state(state)
@@ -6947,6 +8364,12 @@ def save_generation_state(state, path=GENERATION_STATE_FILE):
     _canonicalize_generation_state_subjects(state)
     _canonicalize_generation_state_props(state)
     _canonicalize_generation_state_subject_ledger(state)
+    if "world_state" not in state:
+        state["world_state"] = empty_world_state(
+            (state.get("config") or {}).get("source_sha256", ""),
+            seed_status="legacy_checkpoint_unseeded",
+        )
+    validate_world_state(state["world_state"])
     validate_subject_identity_state(state)
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
@@ -7509,6 +8932,9 @@ def restore_generation_state(
         state["prop_ledger"] = normalize_prop_ledger(
             last_record.get("prop_ledger", {})
         )
+        if isinstance(last_record.get("world_state"), dict):
+            validate_world_state(last_record["world_state"])
+            state["world_state"] = copy.deepcopy(last_record["world_state"])
     else:
         state["continuity_prompt_state"] = {}
         state["continuity_state"] = {}
@@ -7547,6 +8973,7 @@ def restore_generation_state(
         "subject_registry_state": migrate_continuity_state(
             state.get("subject_registry_state")
         ),
+        "world_state": copy.deepcopy(state.get("world_state", empty_world_state())),
         "subject_identity_lock": copy.deepcopy(
             state.get("subject_identity_lock", {"subjects": {}})
         ),
@@ -7637,8 +9064,17 @@ def record_completed_segment(
         "subject_identity_snapshot": subject_identity_snapshot(
             subject_registry_state
         ),
+        "world_state": copy.deepcopy(
+            state.get("world_state")
+            if isinstance(state.get("world_state"), dict)
+            else empty_world_state(
+                (state.get("config") or {}).get("source_sha256", ""),
+                seed_status="legacy_checkpoint_unseeded",
+            )
+        ),
         "continuity_summary_pending": bool(continuity_summary_pending),
     }
+    validate_world_state(record["world_state"])
     records.append(record)
     state["recent_dialogues"] = collect_recent_dialogues(records)
     state["recent_dialogue_exclusions"] = list(state["recent_dialogues"])
@@ -7654,10 +9090,69 @@ def record_completed_segment(
     state["subject_registry_state"] = migrate_continuity_state(
         subject_registry_state
     )
+    state["world_state"] = copy.deepcopy(record["world_state"])
     state["continuity_summary_pending"] = bool(
         continuity_summary_pending
     )
     return record
+
+
+def commit_accepted_director_world_state(
+    generation_state,
+    opening_world_state,
+    request1_result,
+    segment_number,
+):
+    """Commit accepted Director actions against the Segment's immutable opening."""
+    validate_world_state(opening_world_state)
+    if not isinstance(request1_result, dict) or not request1_result.get(
+        "state_actions_dry_run_accepted"
+    ):
+        raise BeatGenerationError(
+            f"Segment {segment_number} has no accepted Director WorldState action batch."
+        )
+    current_world_state = generation_state.get("world_state")
+    if current_world_state != opening_world_state:
+        raise RuntimeError(
+            f"WorldState changed after Segment {segment_number}'s Director opening "
+            "was captured; refusing to commit against a stale opening."
+        )
+    actions = request1_result.get("state_actions")
+    if not isinstance(actions, list):
+        raise BeatGenerationError(
+            f"Segment {segment_number} accepted Director actions are not an array."
+        )
+    reduction = reduce_world_state(
+        opening_world_state,
+        actions,
+        segment_number=int(segment_number),
+    )
+    if not reduction.committed:
+        failure = next(
+            (outcome for outcome in reduction.outcomes if not outcome.accepted),
+            None,
+        )
+        diagnostic = (
+            f"{failure.code}: {failure.message}"
+            if failure is not None
+            else "reducer rejected the accepted batch without a diagnostic"
+        )
+        console_log(
+            f"WorldState commit rejected for Segment {segment_number}; "
+            f"canonical state remains at its opening: {diagnostic}",
+            flush=True,
+        )
+        raise BeatGenerationError(
+            f"Segment {segment_number} WorldState commit failed: {diagnostic}"
+        )
+    generation_state["world_state"] = copy.deepcopy(reduction.world_state)
+    console_log(
+        f"Committed Director WorldState for Segment {segment_number}: "
+        f"{len(actions)} accepted action(s), revision "
+        f"{reduction.world_state['revision']}.",
+        flush=True,
+    )
+    return copy.deepcopy(reduction.world_state)
 
 
 # Find workflow node.
@@ -7834,19 +9329,20 @@ def connect_named_connection(
 # Restore the complete append video-to-conditioning graph by node title.
 def build_location_reference_h3_prompt(setting_description):
     """Build the character-free three-second persistent location reference prompt."""
-    setting = " ".join(str(setting_description or "").split()).strip(" .")
+    setting = str(setting_description or "").strip()
     if not setting:
         raise ValueError("Location reference requires a setting description.")
     return (
-        f"detailed_description: [Shot 1] The camera is positioned at a high, low-angle shot of the location. "
-        f"It is a static, fast, 3-second, full 360 orbital camera shot of the following setting: {setting}."
-        "The space contains no people, characters, creatures, or story action. "
-        "Maintain spatial relationships of major architecture, fixed fixtures, entrances, "
-        "surfaces, persistent furniture, landmarks, and lighting sources that are "
-        "actually present. Keep the view broad and readable; do not cut, zoom into "
-        "an object, or invent a plot event. Unspecified environmental details may be "
-        "designed coherently by the video model and should remain internally consistent.\n\n"
-        "overall_soundscape: N/A\n"
+        "subject_definitions: N/A\n\n"
+        "detailed_description:\n\n"
+        "[Shot 1] The camera is a medium shot of an empty "
+        "location. It is a 3-second, full 360 orbital camera shot of the location:\n\n"
+        "Preserve any historical period, culture, and genre stated below as visible "
+        "design constraints. A medieval fantasy tavern must look medieval and fantasy, "
+        "with no modern fixtures or period-neutral redesign. Preserve the listed layout "
+        "and fixed objects without adding unrelated props.\n\n"
+        f"{setting}\n\n"
+        "overall_soundscape: N/A\n\n"
         "non_diegetic_music: N/A\n"
     )
 
@@ -8841,6 +10337,10 @@ class BeatGenerationError(RuntimeError):
     """Legacy beat-generation exception retained for import compatibility."""
 
 
+class StateActionExtractionError(BeatGenerationError):
+    """Accepted RAW could not be paired with a reducer-valid action batch."""
+
+
 # Repair a narrow local-model error such as ``"growl" snarls``.
 def _merge_unquoted_json_string_suffixes(text):
     """Repair a narrow local-model error such as ``\"growl\" snarls``.
@@ -9382,35 +10882,27 @@ def ask_llm(
     retry_delay=5,
     response_format=RESPONSE_FORMAT,
     history_metadata=None,
-    temperature=None,
-    top_p=None,
-    top_k=None,
-    min_p=None,
-    presence_penalty=None,
-    frequency_penalty=None,
-    repeat_penalty=None,
-    seed=None,
-    thinking=None,
     chat_template=None,
     jinja=None,
-    reasoning_effort=None,
-    thinking_budget_tokens=None,
-    reasoning_budget_message=None,
-    enable_thinking=None,
-    max_tokens=8192,
     parse_json_response=None,
-    context_token_budget=None,
 ):
     last_error = None
     last_connection_error = None
     last_content = None
     received_response = False
     messages = normalize_llm_host_messages(messages)
+    history_purpose = str((history_metadata or {}).get("purpose", ""))
+    # Purpose selects one standardized sampling/reasoning profile. Request
+    # context and output capacity remain independent per-purpose requirements.
+    llm_settings = LLM_PURPOSE_PROFILES.get(
+        history_purpose,
+        EXTRACTOR_LLM_SETTINGS,
+    )
+
     estimated_input_tokens = estimate_message_tokens(messages)
-    effective_context_budget = (
-        LLM_CONTEXT_TOKEN_BUDGET
-        if context_token_budget is None
-        else int(context_token_budget)
+    effective_context_budget = LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS.get(
+        history_purpose,
+        LLM_DEFAULT_CONTEXT_TOKEN_BUDGET,
     )
     if effective_context_budget <= LLM_CONTEXT_SAFETY_TOKENS:
         raise ValueError("context_token_budget must leave room for completion.")
@@ -9427,27 +10919,12 @@ def ask_llm(
             f"{effective_context_budget}. Simplify the stage prompt."
         )
     effective_max_tokens = min(
-        int(max_tokens),
         int(available_completion_tokens),
+        int(LLM_PURPOSE_MAX_OUTPUT_TOKENS.get(
+            history_purpose,
+            LLM_DEFAULT_MAX_OUTPUT_TOKENS,
+        )),
     )
-    history_purpose = str((history_metadata or {}).get("purpose", ""))
-    # Select request behavior strictly by task/responsibility. Formatter/model
-    # selection is intentionally absent from this routing.
-    if history_purpose == "story_expansion":
-        llm_settings = STORY_EXPANSION_LLM_SETTINGS
-    elif history_purpose == "story_to_beats":
-        llm_settings = STORY_TO_BEATS_LLM_SETTINGS
-    elif history_purpose in MUSIC_GENERATION_LLM_PURPOSES:
-        llm_settings = MUSIC_GENERATION_LLM_SETTINGS
-    elif history_purpose in BEAT_WRITING_LLM_PURPOSES:
-        llm_settings = BEAT_WRITING_LLM_SETTINGS
-    elif history_purpose in DIRECTOR_RAW_SCENE_LLM_PURPOSES:
-        llm_settings = DIRECTOR_RAW_SCENE_LLM_SETTINGS
-    elif history_purpose in CREATIVE_GENERATION_LLM_PURPOSES:
-        llm_settings = CREATIVE_GENERATION_LLM_SETTINGS
-    else:
-        llm_settings = DETERMINISTIC_ANALYSIS_LLM_SETTINGS
-
     temperature = llm_settings["temperature"]
     top_p = llm_settings["top_p"]
     top_k = llm_settings["top_k"]
@@ -9455,7 +10932,7 @@ def ask_llm(
     presence_penalty = llm_settings["presence_penalty"]
     frequency_penalty = llm_settings["frequency_penalty"]
     repeat_penalty = llm_settings["repeat_penalty"]
-    configured_seed = llm_settings["seed"]
+    configured_seed = llm_settings.get("seed")
     seed = generate_random_llm_seed() if configured_seed is None else configured_seed
     reasoning_effort = llm_settings["reasoning_effort"]
     thinking_budget_tokens = llm_settings["thinking_budget_tokens"]
@@ -9469,10 +10946,17 @@ def ask_llm(
         "beat_generation",
         "beat_repair",
         "beat_instruction_review",
-        "beat_validation",
+        "beat_story_validation",
+        "beat_state_validation",
     }
     response_history_purposes = beat_history_purposes | {
-        "director_raw_scene",
+        "director_raw_scene_creative",
+        "add_scene_timing_refiner",
+        "add_camera_refiner",
+        "director_raw_scene_repair",
+        "director_raw_scene_physical",
+        "director_raw_scene_prop_state",
+        "validate_timing_valid",
         "director_h3_formatter",
         "director_raw_scene_subject_resolution",
         "continuity_combined_reduced_state",
@@ -9554,6 +11038,15 @@ def ask_llm(
                     **({"entry_type": "request"} if log_beat_response else {}),
                 },
             )
+            request_label = history_purpose or "unclassified"
+            llm_wait_started_at = time.monotonic()
+            console_log(
+                f"LLM request started: {request_label} "
+                f"(attempt {attempt}/{max_attempts}, "
+                f"~{estimated_input_tokens} input tokens, "
+                f"max {effective_max_tokens} output tokens).",
+                flush=True,
+            )
             response = requests.post(
                 f"{LLM_HOST_URL}/v1/chat/completions",
                 json=request_payload,
@@ -9606,6 +11099,13 @@ def ask_llm(
             content = choice["message"]["content"]
             last_content = content
             finish_reason = str(choice.get("finish_reason") or "").strip().lower()
+            console_log(
+                f"LLM request finished: {request_label} "
+                f"({time.monotonic() - llm_wait_started_at:.1f}s"
+                + (f", finish_reason={finish_reason}" if finish_reason else "")
+                + ").",
+                flush=True,
+            )
             if log_beat_response:
                 response_metadata = {
                     "response_format": response_format_used,
@@ -9626,25 +11126,29 @@ def ask_llm(
                     "LLM host truncated the response at the configured "
                     f"max_tokens={effective_max_tokens} before completion."
                 )
-            try:
-                result = parse_llm_json_content(
-                    content,
-                    repair_on_failure=False,
-                )
-            except json.JSONDecodeError:
-                should_repair_json = (
-                    parse_json_response is not False
-                    and (response_format is not None or parse_json_response is True)
-                )
-                if should_repair_json and content.strip():
-                    result = repair_json_with_llm(
+            if parse_json_response is False:
+                # Explicit raw-text callers own their own parsing. This is required
+                # for mixed responses such as Location + JSON + render prose.
+                result = content
+            else:
+                try:
+                    result = parse_llm_json_content(
                         content,
-                        history_metadata=history_metadata,
+                        repair_on_failure=False,
                     )
-                else:
-                    # The pure formatter can also recover plain labeled fields.
-                    # Preserve empty or intentionally free-form responses.
-                    result = content
+                except json.JSONDecodeError:
+                    should_repair_json = (
+                        response_format is not None or parse_json_response is True
+                    )
+                    if should_repair_json and content.strip():
+                        result = repair_json_with_llm(
+                            content,
+                            history_metadata=history_metadata,
+                        )
+                    else:
+                        # The pure formatter can also recover plain labeled fields.
+                        # Preserve empty or intentionally free-form responses.
+                        result = content
             if (
                 history_purpose == "director_h3_formatter"
                 and response_format is not None
@@ -12549,16 +14053,17 @@ def _beat_unassigned_barrier_end_state_errors(
     return errors
 
 
-def build_beat_validation_messages(
+def _build_beat_validator_messages(
     previous_final_beat,
     current_state,
     beat_job,
     next_beat_job,
     candidate_beat,
+    checks,
     settings=None,
     assigned_state_effects=None,
 ):
-    """Build the compact single-candidate beat-validation prompt."""
+    """Build one focused beat validator with the shared context contract."""
     settings = settings or {}
     state = compact_beat_validation_state(current_state)
     # Boundary/barrier enforcement is intentionally dormant during beat
@@ -12622,7 +14127,18 @@ CANDIDATE BEAT
 {candidate_beat}
 
 CHECKS
-1. CURRENT JOB is the only required work. Show every assigned action and result
+{checks}
+
+Return only {{"valid": true, "issue": ""}} when all checks pass, otherwise
+{{"valid": false, "issue": "short concrete explanation"}}. No extra keys or markdown.
+""".strip()
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+
+
+_BEAT_STORY_VALIDATION_CHECKS = """1. CURRENT JOB is the only required work. Show every assigned action and result
 in THIS beat. PREVIOUS FINAL BEAT or aftermath ("having finished X") cannot
 substitute for performing an assigned action now. Preparation or partial progress
 is insufficient when CURRENT JOB explicitly requires a terminal result. When the
@@ -12633,22 +14149,27 @@ activity is sufficient unless CURRENT JOB explicitly requires it to finish.
 2. Preserve every required participant and beneficiary role. If CURRENT JOB
 explicitly enumerates distinct participants, recipients, targets, or objects,
 the candidate must preserve each listed identity rather than collapse the list
-into a generic collective label. When immediate
-receipt is part of the job, food/hand-offs must reach the intended recipient;
-labeling or leaving them elsewhere is insufficient. Work made FOR someone needs
-no delivery unless required. Honor explicit later pickup/storage; watching or
-listening can satisfy a performance/lesson role.
+into a generic collective label. When immediate receipt is part of the job,
+food/hand-offs must reach the intended recipient; labeling or leaving them
+elsewhere is insufficient. Work made FOR someone needs no delivery unless
+required. Honor explicit later pickup/storage; watching or listening can satisfy
+a performance/lesson role.
 
-3. PREVIOUS FINAL BEAT and CURRENT STATE are authoritative history. Apply candidate
+4. RESERVED FOR LATER is never required now. Do not complete a distinct later job
+early. Allow preparation belonging to CURRENT JOB and another instance of an
+intentionally repeated job, without prematurely ending the process.
+
+6. Allow harmless staging. Reject details that materially change the assigned
+action, location, outcome, participant treatment, or story meaning. Tools must
+suit their actions unless an unusual capability is established. Do not invent
+harmful treatment of protected/non-hostile participants."""
+
+_BEAT_STATE_VALIDATION_CHECKS = """3. PREVIOUS FINAL BEAT and CURRENT STATE are authoritative history. Apply candidate
 actions in order. Reject clear impossibilities: an object explicitly established
 as absent/destroyed/inaccessible, conflicting locations, unresolved closed
 barriers/containment, or repeating an irreversible action without restoration.
 An ordinary story/staging prop is NOT unavailable merely because CURRENT STATE
 does not list it. Missing state is unknown, not absent.
-
-4. RESERVED FOR LATER is never required now. Do not complete a distinct later job
-early. Allow preparation belonging to CURRENT JOB and another instance of an
-intentionally repeated job, without prematurely ending the process.
 
 5. Every listed effect must match the candidate's FINAL state after all actions.
 For set_location(entity, place), that entity must visibly end at/in that place;
@@ -12659,20 +14180,49 @@ injury is not death; picked up then set down is not held at the end. For entitie
 already in CURRENT STATE or STATE EFFECTS IF VALID, new persistent changes require
 a matching assigned effect. Do not require effects for new incidental entities or
 temporary motion that restores the prior state. Boundary, barrier, door/window,
-and containment changes are intentionally outside this validation phase.
+and containment changes are intentionally outside this validation phase."""
 
-6. Allow harmless staging. Reject details that materially change the assigned
-action, location, outcome, participant treatment, or story meaning. Tools must
-suit their actions unless an unusual capability is established. Do not invent
-harmful treatment of protected/non-hostile participants.
 
-Return only {{"valid": true, "issue": ""}} when all checks pass, otherwise
-{{"valid": false, "issue": "short concrete explanation"}}. No extra keys or markdown.
-""".strip()
-    return [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user},
-    ]
+def build_beat_story_validation_messages(
+    previous_final_beat,
+    current_state,
+    beat_job,
+    next_beat_job,
+    candidate_beat,
+    settings=None,
+    assigned_state_effects=None,
+):
+    return _build_beat_validator_messages(
+        previous_final_beat,
+        current_state,
+        beat_job,
+        next_beat_job,
+        candidate_beat,
+        _BEAT_STORY_VALIDATION_CHECKS,
+        settings=settings,
+        assigned_state_effects=assigned_state_effects,
+    )
+
+
+def build_beat_state_validation_messages(
+    previous_final_beat,
+    current_state,
+    beat_job,
+    next_beat_job,
+    candidate_beat,
+    settings=None,
+    assigned_state_effects=None,
+):
+    return _build_beat_validator_messages(
+        previous_final_beat,
+        current_state,
+        beat_job,
+        next_beat_job,
+        candidate_beat,
+        _BEAT_STATE_VALIDATION_CHECKS,
+        settings=settings,
+        assigned_state_effects=assigned_state_effects,
+    )
 
 
 def build_beat_coherence_validation_messages(
@@ -12756,6 +14306,37 @@ def parse_beat_validation_result(raw_result):
     if not isinstance(result["issue"], str):
         raise ValueError("Beat validation returned a non-string issue field.")
     return {"valid": result["valid"], "issue": result["issue"].strip()}
+
+
+def log_director_raw_validator_result(
+    validator_name,
+    result,
+    *,
+    segment_number,
+    director_attempt,
+    repair_attempt=None,
+):
+    """Write a compact, structured verdict for each post-RAW validator pass."""
+    diagnostic = {
+        "validator": str(validator_name),
+        "segment": segment_number,
+        "director_attempt": director_attempt,
+        "repair_attempt": repair_attempt,
+        "valid": result.get("valid") if isinstance(result, dict) else None,
+        "issue": (
+            str(result.get("issue") or "")
+            if isinstance(result, dict)
+            else "Validator returned no structured result."
+        ),
+    }
+    console_log(
+        "DIRECTOR RAW VALIDATOR RESULT " + json.dumps(
+            diagnostic,
+            ensure_ascii=False,
+            default=str,
+        ),
+        flush=True,
+    )
 
 
 def _state_value_text(value):
@@ -13598,64 +15179,135 @@ def _run_forward_beat_validation(
                 )
                 continue
 
-            messages = build_beat_validation_messages(
-                previous_final_beat=(
+            shared_validator_context = {
+                "previous_final_beat": (
                     finalized_texts[-1] if finalized_texts else ""
                 ),
-                current_state=state_before,
-                beat_job=current_job,
-                next_beat_job=next_job,
-                candidate_beat=candidate,
-                assigned_state_effects=[
+                "current_state": state_before,
+                "beat_job": current_job,
+                "next_beat_job": next_job,
+                "candidate_beat": candidate,
+                "assigned_state_effects": [
                     {
                         "id": event["id"],
                         "state_effects": copy.deepcopy(event.get("state_effects", [])),
                     }
                     for event in assigned_current_events
                 ],
+            }
+            validator_inputs = (
+                (
+                    "Story",
+                    "beat_story_validation",
+                    build_beat_story_validation_messages,
+                ),
+                (
+                    "State",
+                    "beat_state_validation",
+                    build_beat_state_validation_messages,
+                ),
             )
+            validator_calls = {
+                name: (
+                    purpose,
+                    builder(**shared_validator_context),
+                )
+                for name, purpose, builder in validator_inputs
+            }
+
+            def run_beat_validator(validator_name, purpose, messages):
+                try:
+                    raw_result = llm_request(
+                        messages,
+                        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+                        parse_json_response=False,
+                        history_metadata={
+                            **(history_metadata or {}),
+                            "purpose": purpose,
+                            "beat_number": beat_number,
+                            "validation_attempt": validation_attempt,
+                            "total_segments": int(total_segments),
+                        },
+                    )
+                    return validator_name, parse_beat_validation_result(raw_result), None
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    return validator_name, None, error
+
             console_log(
                 f"Validating Beat {beat_number} "
                 f"(attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}) "
-                "with the single beat validator.",
+                "with concurrent Story and State validators.",
                 flush=True,
             )
-            try:
-                raw_result = llm_request(
-                    messages,
-                    response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
-                    parse_json_response=False,
-                    history_metadata={
-                        **(history_metadata or {}),
-                        "purpose": "beat_validation",
-                        "beat_number": beat_number,
-                        "validation_attempt": validation_attempt,
-                        "total_segments": int(total_segments),
-                    },
+            with ThreadPoolExecutor(
+                max_workers=2, thread_name_prefix="beat-validator"
+            ) as executor:
+                futures = {
+                    name: executor.submit(
+                        run_beat_validator,
+                        name,
+                        purpose,
+                        messages,
+                    )
+                    for name, (purpose, messages) in validator_calls.items()
+                }
+                validations = {
+                    name: future.result()
+                    for name, future in futures.items()
+                }
+
+            validator_failures = []
+            validator_errors = []
+            for name in ("Story", "State"):
+                _, validation, error = validations[name]
+                if error is not None:
+                    validator_errors.append(f"{name} validator failed: {error}")
+                    console_log(
+                        f"Beat {beat_number} {name.lower()} validator "
+                        f"attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                        f"ERROR; issue: {error}",
+                        flush=True,
+                    )
+                    continue
+                status = "VALID" if validation["valid"] else "INVALID"
+                issue = validation["issue"] or (
+                    f"The {name.lower()} validator rejected the candidate."
+                    if not validation["valid"] else "none"
                 )
-                validation = parse_beat_validation_result(raw_result)
-            except (LLMConnectionError, requests.RequestException, OSError, ValueError, TypeError) as error:
-                last_issue = f"Beat validator failed: {error}"
+                console_log(
+                    f"Beat {beat_number} {name.lower()} validator "
+                    f"attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                    f"{status}; issue: {issue}",
+                    flush=True,
+                )
+                if not validation["valid"]:
+                    validator_failures.append(f"{name} validator: {issue}")
+
+            if validator_errors:
+                last_issue = "; ".join(validator_errors + validator_failures)
                 retry_feedback = last_issue
                 regenerate_candidate = False
                 console_log(
                     f"Beat {beat_number} validation attempt "
                     f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
-                    f"{last_issue}",
+                    f"retrying after validator error: {last_issue}",
                     flush=True,
                 )
                 continue
 
-            validation_status = "VALID" if validation["valid"] else "INVALID"
-            last_issue = validation["issue"] or "The beat validator rejected the candidate."
-            console_log(
-                f"Beat {beat_number} validation attempt "
-                f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
-                f"{validation_status}; issue: "
-                f"{validation['issue'] or 'none'}",
-                flush=True,
-            )
-            if validation["valid"]:
+            if validator_failures:
+                last_issue = "; ".join(validator_failures)
+                retry_feedback = last_issue
+                regenerate_candidate = True
+                continue
+
+            if all(validations[name][1]["valid"] for name in ("Story", "State")):
                 try:
                     finite_endpoint_status = parse_beat_finite_endpoint_result(
                         llm_request(
@@ -18022,6 +19674,364 @@ def build_story_location_messages(expanded_story):
     ]
 
 
+def build_initial_location_subjects_messages(possible_subjects, beat_text):
+    """Build one Subject story-start presence request for a single beat."""
+    if isinstance(possible_subjects, str):
+        subject_names = [
+            " ".join(name.split()).strip()
+            for name in possible_subjects.split(",")
+            if name.strip()
+        ]
+    else:
+        subject_names = [
+            " ".join(str(name or "").split()).strip()
+            for name in possible_subjects or []
+            if str(name or "").strip()
+        ]
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Your job is to examine a STORY BEAT.  Each POSSIBLE SUBJECT that appears in that beat, you need to validate two things:\n"
+                "Are they entering the scene: walked in, opened the door and entered, etc., making present = false.\n"
+                "OR\n"
+                "Are they performing an action while already in the scene: picked up a cup, kicked the wall, etc., making present=true.\n\n"
+                "Use the above determination to determine if they were present in the scene before this story beat or not.\n\n"
+                "- if the POSSIBLE SUBJECT isn't referenced at all, don't return it.\n"
+                "- List the Subject (no adjectives), present:{true:false},  and one-sentence reasoning.\n"
+                "- Return a JSON array of Subjects."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "POSSIBLE SUBJECTS\n"
+                + ", ".join(subject_names)
+                + "\n\nSTORY BEAT\n"
+                + str(beat_text or "").strip()
+            ),
+        },
+    ]
+
+
+def parse_initial_location_subjects(raw_result, possible_subject_names=None):
+    """Normalize an array of Subject presence classifications."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, list):
+        raise ValueError("Subject presence extraction must return a JSON array.")
+    normalized = []
+    seen = set()
+    canonical_names = {
+        _subject_identity_key(name): " ".join(str(name).split()).strip()
+        for name in possible_subject_names or []
+        if str(name or "").strip()
+    }
+    # Build conservative aliases from numbered role names and descriptive
+    # canonical names. A suffix such as "Elf" can resolve "Beautiful Female
+    # Elf" only when it identifies exactly one supplied Subject.
+    aliases = {}
+    for canonical_name in canonical_names.values():
+        if canonical_name.casefold().endswith("1"):
+            alias_key = _subject_identity_key(canonical_name[:-1].strip())
+            if alias_key and alias_key not in canonical_names:
+                aliases.setdefault(alias_key, set()).add(canonical_name)
+        name_tokens = _subject_identity_key(canonical_name).split()
+        for start in range(1, len(name_tokens)):
+            alias_key = _subject_identity_key(" ".join(name_tokens[start:]))
+            if alias_key and alias_key not in canonical_names:
+                aliases.setdefault(alias_key, set()).add(canonical_name)
+    for item in candidate:
+        if not isinstance(item, dict) or set(item) != {"subject", "present", "reason"}:
+            raise ValueError(
+                "Each Subject presence entry must contain only subject, present, and reason."
+            )
+        name = " ".join(str(item.get("subject") or "").split()).strip(" ,.;:-")
+        if not name:
+            raise ValueError("Subject presence entry must name a Subject.")
+        if not isinstance(item.get("present"), bool):
+            raise ValueError(f"Subject presence for {name!r} must be a boolean.")
+        reason = " ".join(str(item.get("reason") or "").split()).strip()
+        if not reason:
+            raise ValueError(f"Subject presence reason for {name!r} must not be empty.")
+        name_key = _subject_identity_key(name)
+        canonical_name = canonical_names.get(name_key)
+        if canonical_name is not None:
+            name = canonical_name
+        elif name_key in aliases:
+            targets = aliases[name_key]
+            if len(targets) != 1:
+                raise ValueError(
+                    f"Subject presence name {name!r} is an ambiguous canonical alias."
+                )
+            name = next(iter(targets))
+        elif possible_subject_names is None and (
+            name
+            and name == name.casefold()
+            and re.fullmatch(r"[a-z][a-z0-9 '-]*", name)
+            and not re.search(r"\d$", name)
+        ):
+            role_tokens = re.findall(r"[a-z0-9]+", name)
+            if role_tokens:
+                name = "".join(token[:1].upper() + token[1:] for token in role_tokens) + "1"
+        key = _subject_identity_key(name)
+        if possible_subject_names is not None and key not in canonical_names:
+            raise ValueError(
+                f"Subject presence response contains unrecognized Subject key {name!r}."
+            )
+        if not name or not _subject_name_is_promotable(name):
+            raise ValueError("Initial-location Subject contains unusable data.")
+        if key in seen:
+            raise ValueError(f"Duplicate Subject presence classification for {name!r}.")
+        seen.add(key)
+        normalized.append({"name": name, "present": item["present"], "reason": reason})
+    return normalized
+
+
+def extract_initial_location_subjects(
+    beats,
+    subject_definitions="",
+    *,
+    possible_subjects=(),
+    llm_request=None,
+    history_metadata=None,
+    attempts=3,
+):
+    """Classify each beat in order; keep each Subject's earliest result."""
+    if llm_request is None:
+        llm_request = ask_llm
+    if not beats:
+        return []
+    if isinstance(possible_subjects, str):
+        possible_subjects = [
+            item.strip() for item in possible_subjects.split(",") if item.strip()
+        ]
+    canonical_subjects = []
+    for raw_name in possible_subjects or []:
+        name = " ".join(str(raw_name or "").split()).strip()
+        if name and _subject_name_is_promotable(name):
+            canonical_subjects.append(name)
+    canonical_subjects = list(dict.fromkeys(canonical_subjects))
+    if not canonical_subjects:
+        console_log(
+            "No character_canon Subjects were available for story-start "
+            "presence classification.",
+            flush=True,
+        )
+        return []
+    possible_subject_names = {
+        _subject_identity_key(name): name for name in canonical_subjects
+    }
+    max_attempts = max(1, int(attempts))
+    first_classification_by_subject = {}
+    aliases_by_key = {}
+    for canonical_name in canonical_subjects:
+        canonical_key = _subject_identity_key(canonical_name)
+        aliases_by_key.setdefault(canonical_key, set()).add(canonical_name)
+        if canonical_name.casefold().endswith("1"):
+            role_alias = _subject_identity_key(canonical_name[:-1].strip())
+            if role_alias and role_alias not in possible_subject_names:
+                aliases_by_key.setdefault(role_alias, set()).add(canonical_name)
+        name_tokens = canonical_key.split()
+        for start in range(1, len(name_tokens)):
+            role_alias = " ".join(name_tokens[start:])
+            if role_alias and role_alias not in possible_subject_names:
+                aliases_by_key.setdefault(role_alias, set()).add(canonical_name)
+    for beat_index, beat in enumerate(beats, start=1):
+        beat_text = str(beat or "").strip()
+        if not beat_text:
+            continue
+        normalized_beat = f" {_subject_identity_key(beat_text)} "
+        explicitly_named = {
+            next(iter(names))
+            for alias, names in aliases_by_key.items()
+            if len(names) == 1 and f" {alias} " in normalized_beat
+        }
+        last_error = None
+        base_messages = build_initial_location_subjects_messages(
+            canonical_subjects,
+            beat_text,
+        )
+        for attempt in range(1, max_attempts + 1):
+            messages = [dict(message) for message in base_messages]
+            try:
+                raw = llm_request(
+                    messages,
+                    response_format=INITIAL_LOCATION_SUBJECTS_RESPONSE_FORMAT,
+                    parse_json_response=False,
+                    history_metadata={
+                        **dict(history_metadata or {}),
+                        "purpose": "director_raw_scene_subject_resolution",
+                        "beat_index": beat_index,
+                        "attempt": attempt,
+                    },
+                )
+                console_log(
+                    "director_raw_scene_subject_resolution LLM result "
+                    f"(Beat {beat_index}, attempt {attempt}/{max_attempts}):\n{raw}",
+                    flush=True,
+                )
+                classifications = parse_initial_location_subjects(
+                    raw,
+                    possible_subject_names=canonical_subjects,
+                )
+                classified_names = {
+                    _subject_identity_key(item["name"])
+                    for item in classifications
+                }
+                missing_names = sorted(
+                    name for name in explicitly_named
+                    if _subject_identity_key(name) not in classified_names
+                )
+                if missing_names:
+                    raise ValueError(
+                        "Subject presence response omitted explicitly referenced "
+                        "canonical Subjects: " + ", ".join(missing_names) + "."
+                    )
+                for item in classifications:
+                    key = _subject_identity_key(item["name"])
+                    canonical_name = possible_subject_names.get(key)
+                    if canonical_name is None:
+                        raise ValueError(
+                            "Subject presence response contains unrecognized "
+                            f"character_canon Subject {item['name']!r}."
+                        )
+                    previous = first_classification_by_subject.get(key)
+                    if previous is not None:
+                        console_log(
+                            "Ignoring later story-start Subject classification for "
+                            f"{canonical_name} in Beat {beat_index}; first classified in "
+                            f"Beat {previous['beat_index']} as "
+                            f"present={previous['present']}.",
+                            flush=True,
+                        )
+                        continue
+                    first_classification_by_subject[key] = {
+                        **item,
+                        "name": canonical_name,
+                        "beat_index": beat_index,
+                    }
+                    console_log(
+                        "First story-start Subject classification: "
+                        f"{canonical_name} in Beat {beat_index} "
+                        f"present={item['present']}; reason={item['reason']}",
+                        flush=True,
+                    )
+                break
+            except LLMConnectionError:
+                raise
+            except (TypeError, ValueError) as error:
+                last_error = error
+                if attempt < max_attempts:
+                    console_log(
+                        f"Initial-location Subject extractor returned unusable output "
+                        f"for Beat {beat_index} (attempt {attempt}/{max_attempts}); "
+                        f"retrying this beat: {error}",
+                        flush=True,
+                    )
+        else:
+            raise ValueError(
+                f"Could not extract initial-location Subjects for Beat {beat_index}: "
+                + str(last_error or "unknown initial Subject extraction error")
+            )
+
+    defined_names = {
+        _subject_identity_key(name)
+        for _number, name in parse_defined_subjects(subject_definitions)
+    }
+    selected = []
+    for item in first_classification_by_subject.values():
+        if not item["present"]:
+            continue
+        if _subject_identity_key(item["name"]) in defined_names:
+            console_log(
+                "Story-start Subject classification omitted from dynamic seed "
+                f"because {item['name']} is already defined in subjects.txt.",
+                flush=True,
+            )
+            continue
+        selected.append({
+            "name": item["name"],
+            "initial_state": "present in the opening scene",
+            "reason": item["reason"],
+        })
+    return selected
+
+
+def seed_initial_location_subjects(
+    continuity_state,
+    subject_definitions,
+    initial_subjects,
+):
+    """Register inferred story-start Subjects and seed their opening physical state."""
+    state = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(continuity_state),
+    )
+    used_ids = {
+        int(record.get("subject_id"))
+        for record in state.get("subjects", {}).values()
+        if isinstance(record, dict) and str(record.get("subject_id", "")).isdigit()
+    }
+    added = []
+    for item in initial_subjects or []:
+        name = " ".join(str(item.get("name") or "").split()).strip()
+        initial_state = " ".join(
+            str(item.get("initial_state") or "").split()
+        ).strip()
+        if not name or not initial_state:
+            continue
+        existing_name = _find_existing_subject_name(state["subjects"], name)
+        if existing_name is not None:
+            record = state["subjects"][existing_name]
+        else:
+            subject_id = max(used_ids, default=0) + 1
+            while subject_id in used_ids:
+                subject_id += 1
+            used_ids.add(subject_id)
+            record = new_subject_continuity_record({
+                "subject_id": subject_id,
+                "name": name,
+                "gender": "unknown",
+                "picture_ids": [],
+                "picture_id": None,
+                "speaker_id": available_subject_speaker_id(
+                    subject_id,
+                    state["subjects"].values(),
+                ),
+                "origin_segment": 0,
+                "canonical_description": _functional_subject_role_description(name),
+            })
+            state["subjects"][name] = record
+            added.append(name)
+        record["position"] = initial_state
+    return state, added
+
+
+def format_initial_location_subjects_opening_state(initial_subjects):
+    """Render beat-inferred Subjects as required Segment-1 visual presence."""
+    lines = []
+    for item in initial_subjects or []:
+        name = " ".join(str(item.get("name") or "").split()).strip()
+        initial_state = " ".join(
+            str(item.get("initial_state") or "").split()
+        ).strip(" .")
+        if name and initial_state:
+            lines.append(f"- {name}: already present; {initial_state}.")
+    if not lines:
+        return ""
+    return (
+        "SUBJECTS ALREADY PRESENT AT STORY START — VISUAL ESTABLISHMENT REQUIRED\n"
+        "These Subjects physically exist from frame 0 and their listed initial states "
+        "are authoritative. In Segment 1, show each Subject at least once in that state, "
+        "even if only in the background or at the edge of frame. Do not invent an "
+        "entrance or add a new action merely because a Subject is listed; a Subject may "
+        "remain stationary while CURRENT BEAT action proceeds.\n"
+        + "\n".join(lines)
+    )
+
+
 def build_story_location_response_format():
     """Return the strict response shape for story-level location extraction."""
     return {
@@ -18105,8 +20115,6 @@ def extract_story_locations(
                 build_story_location_messages(expanded_story),
                 response_format=build_story_location_response_format(),
                 parse_json_response=False,
-                max_tokens=256,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **dict(history_metadata or {}),
                     "purpose": "story_location_extract",
@@ -18124,12 +20132,12 @@ def extract_story_locations(
     )
 
 
-def build_story_setting_description_messages(
+def build_static_setting_extraction_messages(
     expanded_story,
     overall_location,
     visual_style=DEFAULT_VISUAL_STYLE,
 ):
-    """Build a narrow extractor for persistent static environment facts."""
+    """Extract a concise story-grounded location description before spatial refinement."""
     visual_style = normalize_visual_style(visual_style)
     return [
         {
@@ -18149,9 +20157,12 @@ def build_story_setting_description_messages(
                 "fact. When only one instance is established, describe it generically "
                 "(for example, entrance door rather than back door). Do not invent details. "
                 "Respect the supplied visual style when choosing concise appearance "
-                "language, but do not let style add or alter setting facts. If the story "
-                "gives only a broad setting, return only that broad setting and let the "
-                "video model design unspecified details. Return JSON only."
+                "language, but do not let style add or alter setting facts. Preserve any "
+                "explicit historical period, culture, or genre in the story or overall "
+                "location (for example, medieval or fantasy) as a mandatory visual cue; "
+                "do not reduce a medieval-fantasy tavern to a period-neutral tavern. If the "
+                "story gives only a broad setting, return that broad setting with its stated "
+                "period/genre and let the video model design unspecified details. Return JSON only."
             ),
         },
         {
@@ -18169,11 +20180,11 @@ def build_story_setting_description_messages(
     ]
 
 
-def build_story_setting_description_response_format():
+def build_static_setting_extraction_response_format():
     return {
         "type": "json_schema",
         "json_schema": {
-            "name": "story_setting_extract",
+            "name": "static_setting_extract",
             "strict": True,
             "schema": {
                 "type": "object",
@@ -18187,66 +20198,376 @@ def build_story_setting_description_response_format():
     }
 
 
-def parse_story_setting_description(raw_result, fallback=""):
+def parse_static_setting_extraction(raw_result, fallback=""):
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
     if not isinstance(candidate, dict) or set(candidate) != {"setting_description"}:
         raise ValueError(
-            "Story setting extraction must contain only setting_description."
+            "Story setting seed extraction must contain only setting_description."
         )
-    value = " ".join(str(candidate.get("setting_description") or "").split()).strip(" .")
+    value = " ".join(
+        str(candidate.get("setting_description") or "").split()
+    ).strip(" .")
     if not value or value.casefold() in {"n/a", "na", "none", "null", "unknown"}:
         value = " ".join(str(fallback or "").split()).strip(" .")
     if not value:
-        raise ValueError("Story setting extraction returned no usable description.")
+        raise ValueError("Story setting seed extraction returned no usable description.")
     return value
 
 
-def extract_story_setting_description(
+def extract_static_setting(
     expanded_story,
     overall_location,
     *,
     visual_style=DEFAULT_VISUAL_STYLE,
     llm_request=None,
     history_metadata=None,
+    attempts=3,
 ):
-    """Extract only persistent spatial/environment facts from the expanded story."""
+    """Extract the compact story-grounded description consumed by spatial passes."""
     if llm_request is None:
         llm_request = ask_llm
     fallback = " ".join(str(overall_location or "").split()).strip(" .")
-    try:
-        raw = llm_request(
-            build_story_setting_description_messages(
-                expanded_story,
-                overall_location,
-                visual_style=visual_style,
-            ),
-            response_format=build_story_setting_description_response_format(),
-            parse_json_response=False,
-            max_tokens=512,
-            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-            history_metadata={
-                **dict(history_metadata or {}),
-                "purpose": "story_setting_extract",
-                "attempt": 1,
-            },
-            temperature=0,
-            top_p=1,
-            seed=42,
-        )
-        return parse_story_setting_description(raw, fallback=fallback)
-    except LLMConnectionError:
-        raise
-    except (TypeError, ValueError) as error:
-        if fallback:
-            console_log(
-                f"WARNING: setting-detail extraction failed ({error}); "
-                f"using overall location {fallback!r}.",
-                flush=True,
+    last_error = None
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        try:
+            raw = llm_request(
+                build_static_setting_extraction_messages(
+                    expanded_story,
+                    overall_location,
+                    visual_style=visual_style,
+                ),
+                response_format=build_static_setting_extraction_response_format(),
+                parse_json_response=False,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "static_setting_extract",
+                    "attempt": attempt,
+                },
             )
-            return fallback
-        raise
+            return parse_static_setting_extraction(raw, fallback=fallback)
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            if attempt < max(1, int(attempts)):
+                console_log(
+                    f"Static setting extractor returned unusable output "
+                    f"(attempt {attempt}/{max(1, int(attempts))}); retrying only "
+                    f"this extractor: {error}",
+                    flush=True,
+                )
+    if fallback:
+        console_log(
+            f"WARNING: static setting extraction failed after "
+            f"{max(1, int(attempts))} attempts ({last_error}); "
+            f"using overall location {fallback!r}.",
+            flush=True,
+        )
+        return fallback
+    raise ValueError(
+        "Could not extract static setting: "
+        + str(last_error or "unknown static setting extraction error")
+    )
+
+
+def build_story_setting_spatial_refinement_messages(location):
+    """Build the first SMART extractor that makes one location spatially explicit."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Refine this description to be spatially compliant.\n"
+                "- use east/west/north/south.\n"
+                "- if it is an interior, define anchor objects first, such as doors "
+                "or large objects, if exterior, use houses or other large landmarks.\n"
+                "- Define the size of the overall space and sizes of the objects.\n"
+                "- Make sure nothing is overlapping and everything is accessible "
+                "(especially doors).\n"
+                "- Preserve every stated historical period, culture, and genre cue exactly; "
+                "spatial refinement must not turn a medieval/fantasy place into a modern or "
+                "period-neutral one.\n"
+                "- Return plain text, no tables or JSON."
+            ),
+        },
+        {
+            "role": "user",
+            "content": str(location or "").strip(),
+        },
+    ]
+
+
+def _parse_plain_extractor_text(raw_result, label):
+    value = str(raw_result or "").strip()
+    value = re.sub(
+        r"(?im)^\s*```(?:text|plaintext)?\s*$|^\s*```\s*$",
+        "",
+        value,
+    ).strip()
+    if not value:
+        raise ValueError(f"{label} returned no usable text.")
+    return value
+
+
+def refine_story_setting_spatially(
+    location,
+    *,
+    llm_request=None,
+    history_metadata=None,
+    attempts=3,
+):
+    """Make a compact location description spatially explicit before structuring it."""
+    if llm_request is None:
+        llm_request = ask_llm
+    last_error = None
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        try:
+            raw = llm_request(
+                build_story_setting_spatial_refinement_messages(location),
+                response_format=None,
+                parse_json_response=False,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "story_setting_spatial_refine",
+                    "attempt": attempt,
+                },
+            )
+            return _parse_plain_extractor_text(raw, "Spatial setting refinement")
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            if attempt < max(1, int(attempts)):
+                console_log(
+                    f"Spatial setting refinement returned unusable output "
+                    f"(attempt {attempt}/{max(1, int(attempts))}); retrying only "
+                    f"this extractor: {error}",
+                    flush=True,
+                )
+    raise ValueError(
+        "Could not refine story setting spatially: "
+        + str(last_error or "unknown spatial refinement error")
+    )
+
+
+def build_story_setting_description_messages(spatial_location, static_setting=""):
+    """Build the second SMART extractor that emits JSON state plus render prose."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Describe this location spatially in detail; describe ALL objects.\n"
+                "- Define anchors, such as doors for interiors or buildings for exteriors.\n"
+                "- Do not include exact coordinates, but use references to anchors and "
+                "north/south/east/west instead.  If interior, use west wall, east wall, "
+                "etc. For exteriors, use east_side, west_side, etc.\n"
+                "- Return a spatial description of the specified area only.\n"
+                "- Keep it literal without embellishment.\n"
+                "- For each anchor and object, add world_state_role with one of "
+                "fixture, support, fixture_support, or untracked, and mobility with "
+                "movable, fixed, or unknown. Use untracked for ordinary scene nouns; "
+                "only identify persistent fixtures/supports needed for cross-segment "
+                "state reasoning. Anchors are fixed fixtures unless clearly movable. "
+                "Do not create IDs.\n"
+                "- Preserve any historical period, culture, and genre in STATIC SETTING "
+                "FACTS and SPATIAL REFINEMENT in both the JSON location name/description "
+                "and the final text description. Treat those cues as visual constraints; "
+                "a stated medieval fantasy tavern must read visibly medieval and fantasy, "
+                "not modern or period-neutral.\n"
+                "- Make the format:\n"
+                "Location: [location]\n"
+                "[JSON representation]\n"
+                "[Text description based on JSON]\n\n"
+                "JSON format:\n"
+                "{\n"
+                "  \"location\": {\n"
+                "    \"name\": \"[name]\",\n"
+                "    ...\n"
+                "  },\n"
+                "  \"anchors\": [\n"
+                "    { \"name\": \"entrance\", \"type\": \"door\", "
+                "\"wall\": \"west\", \"world_state_role\": \"fixture\", "
+                "\"mobility\": \"fixed\" },\n"
+                "    { \"name\": \"city hall\", \"type\": \"building\", "
+                "\"location\": \"east\", \"world_state_role\": \"fixture\", "
+                "\"mobility\": \"fixed\" }\n"
+                "  ],\n"
+                "  \"objects\": [\n"
+                "    {\n"
+                "      \"name\": \"sign post\",\n"
+                "      \"type\": \"wooden sign\",\n"
+                "      \"near\": [\"hearth\", \"barrel\"],\n"
+                "      \"world_state_role\": \"untracked\",\n"
+                "      \"mobility\": \"unknown\",\n"
+                "      ...\n"
+                "    },\n"
+                "    ...\n"
+                "  ]\n"
+                "}"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "STATIC SETTING FACTS\n"
+                + str(static_setting or "").strip()
+                + "\n\nSPATIAL REFINEMENT\n"
+                + str(spatial_location or "").strip()
+                + "\n\nReturn all three required parts: Location line, valid "
+                  "double-quoted JSON, then plain-text description based on that JSON."
+            ),
+        },
+    ]
+
+
+def _first_balanced_json_object(value):
+    text = str(value or "")
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("Spatial setting extractor returned no JSON object.")
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return start, index + 1, text[start:index + 1]
+    raise ValueError("Spatial setting extractor returned unterminated JSON.")
+
+
+def parse_story_setting_description(raw_result):
+    """Split Location + JSON + text output into persistent state and render prose."""
+    text = str(raw_result or "").strip()
+    text = re.sub(r"(?im)^\s*```(?:json|text|plaintext)?\s*$", "", text)
+    text = re.sub(r"(?im)^\s*```\s*$", "", text).strip()
+    if not text:
+        raise ValueError("Spatial setting extraction returned no output.")
+
+    json_start, json_end, json_text = _first_balanced_json_object(text)
+    try:
+        location_state = json.loads(json_text)
+    except json.JSONDecodeError as error:
+        console_log(
+            "Spatial setting extractor raw response that failed JSON parsing:\n"
+            + text,
+            flush=True,
+        )
+        raise ValueError(
+            f"Spatial setting extractor returned invalid JSON: {error}"
+        ) from error
+    if not isinstance(location_state, dict):
+        raise ValueError("Spatial location_state must be a JSON object.")
+    for key, expected_type in (
+        ("location", dict),
+        ("anchors", list),
+        ("objects", list),
+    ):
+        if not isinstance(location_state.get(key), expected_type):
+            raise ValueError(
+                f"Spatial location_state requires {key!r} as "
+                f"{expected_type.__name__}."
+            )
+
+    prefix = text[:json_start]
+    location_match = re.search(
+        r"(?im)^\s*Location\s*:\s*(.+?)\s*$",
+        prefix,
+    )
+    location_name = (
+        location_match.group(1).strip()
+        if location_match
+        else str(location_state.get("location", {}).get("name") or "").strip()
+    )
+    if not location_name:
+        raise ValueError("Spatial setting extractor returned no Location name.")
+
+    description = text[json_end:].strip()
+    description = re.sub(
+        r"(?im)^\s*(?:\*\*)?Text description based on JSON"
+        r"(?:\*\*)?\s*:?\s*",
+        "",
+        description,
+        count=1,
+    ).strip()
+    if not description:
+        raise ValueError(
+            "Spatial setting extractor returned no text description based on JSON."
+        )
+
+    return {
+        "location_name": location_name,
+        "location_state": location_state,
+        "text_description": description,
+    }
+
+
+def extract_story_setting_description(
+    spatial_location,
+    *,
+    static_setting="",
+    llm_request=None,
+    history_metadata=None,
+    attempts=3,
+):
+    """Create canonical location_state JSON plus the matching ComfyUI description."""
+    if llm_request is None:
+        llm_request = ask_llm
+    last_error = None
+    base_messages = build_story_setting_description_messages(
+        spatial_location,
+        static_setting=static_setting,
+    )
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        messages = [dict(message) for message in base_messages]
+        if attempt > 1:
+            messages[-1]["content"] += (
+                "\n\nRETRY: The previous response could not be parsed. Preserve the "
+                "same setting facts. Return exactly: one Location: line, one valid JSON "
+                "object using double quotes with location/anchors/objects, then a plain-"
+                "text location description derived from that JSON."
+            )
+        try:
+            raw = llm_request(
+                messages,
+                response_format=None,
+                parse_json_response=False,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "story_setting_extract",
+                    "attempt": attempt,
+                },
+            )
+            return parse_story_setting_description(raw)
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            if attempt < max(1, int(attempts)):
+                console_log(
+                    f"Spatial setting extractor returned unusable mixed output "
+                    f"(attempt {attempt}/{max(1, int(attempts))}); retrying only "
+                    f"this extractor: {error}",
+                    flush=True,
+                )
+    raise ValueError(
+        "Could not extract canonical spatial setting: "
+        + str(last_error or "unknown spatial setting extraction error")
+    )
 
 
 def format_story_starting_location(starting_location):
@@ -18568,8 +20889,6 @@ def generate_beats_via_story_expansion(
                 ),
                 response_format=None,
                 parse_json_response=False,
-                max_tokens=12000,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **(history_metadata or {}),
                     "purpose": "story_expansion",
@@ -18610,8 +20929,6 @@ def generate_beats_via_story_expansion(
                     total_segments
                 ),
                 parse_json_response=False,
-                max_tokens=4096,
-                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
                 history_metadata={
                     **(history_metadata or {}),
                     "purpose": "story_to_beats",
@@ -18683,11 +21000,9 @@ def generate_beats_via_story_expansion(
                 beat_number
             ),
             parse_json_response=False,
-            max_tokens=1024,
-            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
             history_metadata={
                 **(history_metadata or {}),
-                "purpose": "story_to_beats",
+                "purpose": "story_to_beats_repair",
                 "beat_number": beat_number,
                 "total_segments": total_segments,
                 "repair": True,
@@ -19081,7 +21396,6 @@ def generate_beats_from_story(
                                 "attempt": validation_round,
                                 "total_segments": total_segments,
                             },
-                            max_tokens=1000,
                         )
                         replacements = parse_macro_arc_majority_tail_repair_result(
                             tail_raw,
@@ -19958,20 +22272,9 @@ def build_story_segment_ending_rules(is_final_story_segment):
 
 # Return the Director camera choreography rules.
 def build_director_camera_choreography_rules(segment_number, conditioning_mode=None):
-    """Return the shared camera rules used by every Director segment."""
+    """Retired; camera choreography is handled by add_camera_refiner."""
     del segment_number, conditioning_mode
-    lines = [
-        "- Stage the entire segment as one continuous camera take. Do not use "
-        "cuts unless CURRENT BEAT explicitly requires a location change that "
-        "cannot be shown continuously.",
-        "- When framing, angle, distance, height, or viewed subject must change, "
-        "move the camera instead of cutting. Use natural English camera actions "
-        "such as pushes in, pulls out, pans left/right, trucks left/right, tilts "
-        "up/down, pedestals up/down, arcs around, or tracks with a moving subject. "
-        "A static shot is valid when movement would not help.",
-        "- Camera movement must follow, reveal, or refocus important story action.",
-    ]
-    return "\n".join(lines)
+    return ""
 
 
 # Return the narrow Request-1 Director system prompt.
@@ -19985,34 +22288,18 @@ def build_director_rules(
     conditioning_mode=None,
     is_final_story_segment=None,
 ):
-    """Return the narrow Request-1 Director system prompt.
-
-    The legacy signature is retained so repair/resume callers do not need a
-    separate compatibility path.  Segment duration, beat number, and the
-    deterministic story-ending status matter to this micro-prompt; all narrative
-    context is supplied in the user turn.
-    """
-    del total_length, subject_definitions, beats_enabled
-    delivered_seconds = float(segment_length)
-    director_seconds = delivered_seconds
-    if is_final_story_segment is None:
-        # Compatibility for direct callers that predate the explicit runtime
-        # boolean. Production callers pass this value explicitly.
-        is_final_story_segment = int(segment_number) == int(total_segments)
-    rules = DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-        segment_seconds=f"{director_seconds:g}",
-        final_quarter_start=f"{delivered_seconds * 0.75:g}",
-        segment_min_beats=max(0, int(math.ceil(delivered_seconds / 2))),
-        beat_number=int(segment_number),
-        story_segment_ending_rules=build_story_segment_ending_rules(
-            is_final_story_segment
-        ),
-        camera_choreography_rules=build_director_camera_choreography_rules(
-            segment_number,
-            conditioning_mode=conditioning_mode,
-        ),
+    """Retired legacy formatter builder; creative prompts are built separately."""
+    del (
+        total_length,
+        segment_length,
+        total_segments,
+        subject_definitions,
+        segment_number,
+        beats_enabled,
+        conditioning_mode,
+        is_final_story_segment,
     )
-    return rules
+    return ""
 
 
 # Return the active beat and the immediately following beat separately.
@@ -20063,75 +22350,217 @@ def _normalize_raw_scene_result(raw_result):
     return text
 
 
-# Parse Request 1's structured raw-scene response.
-def _parse_director_raw_scene_result(raw_result):
-    """Return Request 1's scene text and model-owned completion claim."""
+_RAW_INLINE_TIMESTAMP_RE = re.compile(
+    r"(?i)(?<!\w)(?:at|by)\s+\d{1,2}\s*[:：]\s*\d{1,2}"
+    r"(?:[.,]\s*\d{1,3})?"
+)
+_RAW_BARE_INLINE_TIMESTAMP_RE = re.compile(
+    r"(?<!\w)\d{1,2}\s*[:：]\s*\d{1,2}[.,]\s*\d{3}(?!\d)"
+)
+_RAW_TIMESTAMP_LINE_PREFIX_RE = re.compile(
+    r"(?i)^\s*(?:[-*]\s*)?(?:(?:at|by)\s+)?\d{1,2}\s*[:：]\s*\d{1,2}"
+    r"(?:[.,]\s*\d{1,3})?\s*[,;:\-–—]?\s*"
+)
+
+
+def _strip_creative_raw_timestamps(raw_scene):
+    """Remove timestamp annotations from creative RAW; timing Python owns them."""
+    untimed_lines = []
+    for line in str(raw_scene or "").splitlines():
+        line = _RAW_TIMESTAMP_LINE_PREFIX_RE.sub("", line, count=1)
+        line = _RAW_INLINE_TIMESTAMP_RE.sub("", line)
+        line = _RAW_BARE_INLINE_TIMESTAMP_RE.sub("", line)
+        line = re.sub(r"[ \t]+([,;:.!?])", r"\1", line)
+        untimed_lines.append(line)
+    return "\n".join(untimed_lines).strip()
+
+
+def _parse_add_scene_timing_refiner_result(raw_result):
+    """Parse the strict status/timestamp-list response from the timing refiner."""
     candidate = raw_result
-    if isinstance(raw_result, str):
-        try:
-            candidate = parse_llm_json_content(
-                raw_result,
-                repair_on_failure=False,
-            )
-        except (TypeError, ValueError, json.JSONDecodeError):
-            candidate = raw_result
-
-    if isinstance(candidate, dict):
-        raw_scene_value = candidate.get("raw_scene")
-        raw_scene = (
-            _normalize_raw_scene_result(raw_scene_value)
-            if isinstance(raw_scene_value, str)
-            else ""
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"status", "timestamps"}:
+        raise ValueError(
+            "Timing refiner response must contain exactly status and timestamps."
         )
-        reported_beat_complete = candidate.get("beat_complete") is True
-        completion_checks_present = all(
-            key in candidate
-            for key in (
-                "finite_activity_complete",
-                "named_beneficiaries_complete",
-                "activity_tools_settled",
-            )
-        )
-        if completion_checks_present:
-            finite_activity_complete = (
-                candidate.get("finite_activity_complete") is True
-            )
-            named_beneficiaries_complete = (
-                candidate.get("named_beneficiaries_complete") is True
-            )
-            activity_tools_settled = (
-                candidate.get("activity_tools_settled") is True
-            )
-            beat_complete = (
-                reported_beat_complete
-                and finite_activity_complete
-                and named_beneficiaries_complete
-                and activity_tools_settled
-            )
-        else:
-            # Preserve legacy/mock callers that predate the expanded Request-1
-            # response contract. Production structured output requires all
-            # three explicit completion checks.
-            beat_complete = reported_beat_complete
-            finite_activity_complete = beat_complete
-            named_beneficiaries_complete = beat_complete
-            activity_tools_settled = beat_complete
-    else:
-        # Legacy/free-form responses contain no trustworthy completion claim.
-        # Preserve their text for diagnostics, but force Request 1 retry logic.
-        raw_scene = _normalize_raw_scene_result(candidate)
-        beat_complete = False
-        finite_activity_complete = False
-        named_beneficiaries_complete = False
-        activity_tools_settled = False
-
+    status = candidate.get("status")
+    timestamps = candidate.get("timestamps")
+    if status not in {"ok", "not_enough_time"}:
+        raise ValueError("Timing refiner returned an unknown status.")
+    if not isinstance(timestamps, list) or any(
+        not isinstance(timestamp, str) for timestamp in timestamps
+    ):
+        raise ValueError("Timing refiner timestamps must be an array of strings.")
+    if status == "not_enough_time":
+        if timestamps:
+            raise ValueError("not_enough_time requires an empty timestamps array.")
+        return {"status": status, "timestamps": []}
+    if not timestamps:
+        raise ValueError("Timing refiner returned an empty timestamps array.")
     return {
-        "raw_scene": raw_scene,
-        "finite_activity_complete": finite_activity_complete,
-        "named_beneficiaries_complete": named_beneficiaries_complete,
-        "activity_tools_settled": activity_tools_settled,
-        "beat_complete": beat_complete,
+        "status": status,
+        "timestamps": [
+            _normalize_timing_refiner_timestamp(value, index)
+            for index, value in enumerate(timestamps, start=1)
+        ],
     }
+
+
+def _normalize_timing_refiner_timestamp(value, line_number):
+    """Canonicalize an unambiguous local-time spelling from the timing model."""
+    text = str(value or "").strip()
+    if len(text) >= 2 and (text[0], text[-1]) in {("(", ")"), ("[", "]")}:
+        text = text[1:-1].strip()
+    match = re.fullmatch(
+        r"(?i)(?:at\s+)?(?P<minutes>\d{1,2}):(?P<seconds>\d{1,2})"
+        r"(?:[.:](?P<fraction>\d{1,3}))?"
+        r"(?:\s+seconds?)?\s*[,;:\-]?\s*",
+        text,
+    )
+    if match is None:
+        raise ValueError(
+            f"Timestamp {line_number} is malformed or ambiguous; expected a "
+            "local MM:SS timestamp with up to three fractional digits."
+        )
+    minutes = int(match.group("minutes"))
+    seconds = int(match.group("seconds"))
+    fraction = (match.group("fraction") or "0").ljust(3, "0")
+    return f"{minutes:02d}:{seconds:02d}.{fraction}"
+
+
+def _normalize_timing_refiner_action_lines(raw_scene):
+    """Drop blank lines while preserving every nonblank action line verbatim."""
+    return [
+        line
+        for line in str(raw_scene or "").splitlines()
+        if line.strip()
+    ]
+
+
+def _timing_refiner_timestamp_error(action_lines, timestamps, segment_seconds):
+    """Validate timestamp-only output against the fixed source action list."""
+    if len(timestamps) != len(action_lines):
+        return (
+            "Timing refiner returned the wrong number of timestamps: expected "
+            f"{len(action_lines)}, received {len(timestamps)}."
+        )
+    if not action_lines:
+        return "RAW SCENE contains no nonempty action lines to timestamp."
+    try:
+        duration_ms = int(round(float(segment_seconds) * 1000))
+    except (TypeError, ValueError):
+        return "Segment duration is invalid for timestamp validation."
+    times = []
+    for line_number, timestamp in enumerate(timestamps, start=1):
+        match = re.fullmatch(
+            r"(?P<minutes>\d{2}):(?P<seconds>\d{2})\."
+            r"(?P<milliseconds>\d{3})",
+            timestamp,
+        )
+        if match is None:
+            return f"Timestamp {line_number} is malformed; expected MM:SS.mmm."
+        minutes = int(match.group("minutes"))
+        seconds = int(match.group("seconds"))
+        milliseconds = int(match.group("milliseconds"))
+        if seconds >= 60:
+            return (
+                f"Timestamp {line_number} has invalid seconds; seconds must be "
+                "below 60."
+            )
+        absolute_ms = (minutes * 60 + seconds) * 1000 + milliseconds
+        if absolute_ms >= duration_ms:
+            return (
+                f"Timestamp {line_number} is outside the "
+                "segment duration."
+            )
+        times.append(absolute_ms)
+    if times[0] != 0:
+        return "The first action timestamp must be 00:00.000."
+    if any(current <= previous for previous, current in zip(times, times[1:])):
+        return "Timestamps must increase strictly in the original action order."
+    return ""
+
+
+def _assemble_timed_scene(action_lines, timestamps):
+    """Apply validated timestamps to the original, unchanged action lines."""
+    return "\n".join(
+        f"At {timestamp}, {action}"
+        for timestamp, action in zip(timestamps, action_lines)
+    )
+
+
+_DIRECTOR_CAMERA_PREFIX_RE = re.compile(
+    r"^At (?P<timestamp>\d{2}:\d{2}\.\d{3}, )(?P<body>.*)$"
+)
+_DIRECTOR_CAMERA_TAG_RE = re.compile(r"^\[CAMERA: [^\]\r\n]+\] (?P<action>.*)$")
+
+
+def _camera_refiner_content_error(timed_scene, camera_scene):
+    """Require camera output to preserve all lines and actions exactly."""
+    source_lines = str(timed_scene or "").splitlines()
+    camera_lines = str(camera_scene or "").splitlines()
+    if len(source_lines) != len(camera_lines):
+        return "Camera output changed the number of scene lines."
+    for line_number, (source_line, camera_line) in enumerate(
+        zip(source_lines, camera_lines),
+        start=1,
+    ):
+        if not source_line.strip():
+            if camera_line != source_line:
+                return f"Camera output changed blank line {line_number}."
+            continue
+        source_match = _DIRECTOR_CAMERA_PREFIX_RE.match(source_line)
+        camera_match = _DIRECTOR_CAMERA_PREFIX_RE.match(camera_line)
+        if source_match is None or camera_match is None:
+            return f"Camera output changed or removed timestamp line {line_number}."
+        if source_match.group("timestamp") != camera_match.group("timestamp"):
+            return f"Camera output changed timestamp on line {line_number}."
+        expected_action = source_match.group("body")
+        actual_body = camera_match.group("body")
+        tag_match = _DIRECTOR_CAMERA_TAG_RE.match(actual_body)
+        if tag_match is not None:
+            actual_body = tag_match.group("action")
+        if actual_body != expected_action:
+            return (
+                f"Camera output changed action text on line {line_number}; only a "
+                "[CAMERA: ...] annotation may be added."
+            )
+    return ""
+
+
+def _director_strip_camera_instructions(raw_scene):
+    """Remove only separately tagged camera instructions from RAW action lines."""
+    result = []
+    for line in str(raw_scene or "").splitlines():
+        match = _DIRECTOR_CAMERA_PREFIX_RE.match(line)
+        if match is None:
+            result.append(line)
+            continue
+        tag = _DIRECTOR_CAMERA_TAG_RE.match(match.group("body"))
+        if tag is None:
+            result.append(line)
+            continue
+        result.append(
+            line[:match.start("body")]
+            + tag.group("action")
+        )
+    return "\n".join(result)
+
+
+def _assert_state_action_raw_unchanged(
+    expected_raw_scene,
+    state_action_result,
+    segment,
+):
+    """Require StateAction extraction to echo its exact immutable RAW input."""
+    if (
+        not isinstance(state_action_result, dict)
+        or state_action_result.get("raw_scene") != expected_raw_scene
+    ):
+        raise StateActionExtractionError(
+            f"Segment {segment} StateAction extraction changed the accepted RAW."
+        )
 
 
 def _director_timestamp_range_errors(value, segment_seconds=None):
@@ -20338,7 +22767,7 @@ def _director_unassigned_release_from_storage_errors(raw_scene, assigned_source)
 
 def _director_raw_scene_last_timed_action(raw_scene):
     """Return the final timed action text without its timestamp."""
-    text = str(raw_scene or "")
+    text = _director_strip_camera_instructions(raw_scene)
     matches = list(_DIRECTOR_TIMESTAMP_RE.finditer(text))
     if not matches:
         return ""
@@ -20387,92 +22816,13 @@ def _normalize_director_end_continuity_marker(raw_scene):
     ).strip()
 
 
-def _format_director_timestamp_ms(absolute_ms):
-    """Return one canonical Director timestamp token for absolute milliseconds."""
-    absolute_ms = max(0, int(round(absolute_ms)))
-    minutes, remainder = divmod(absolute_ms, 60_000)
-    seconds, milliseconds = divmod(remainder, 1000)
-    return f"At {minutes:02d}:{seconds:02d}.{milliseconds:03d},"
-
-
-def _normalize_director_frame_zero(raw_scene):
-    """Insert Python-owned frame-zero staging when Request 1 starts later."""
-    text = str(raw_scene or "").strip()
-    marker = re.search(
-        r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
-        text,
-    )
-    if marker is None:
-        return text
-    timed_scene = text[:marker.start()].rstrip()
-    ending = text[marker.start():].lstrip()
-    timestamps = _director_timestamps(timed_scene)
-    if not timestamps or timestamps[0] == (0, 0):
-        return text
-
-    anchor = (
-        "At 00:00.000, The shot begins from the established opening state."
-    )
-    return f"{anchor}\n{timed_scene}\n{ending}".strip()
-
-
-def _normalize_director_final_quarter_timing(raw_scene, segment_seconds=None):
-    """Move only the final timestamp into the final quarter when needed."""
-    text = str(raw_scene or "").strip()
-    try:
-        duration = float(segment_seconds) if segment_seconds is not None else None
-    except (TypeError, ValueError):
-        duration = None
-    if duration is None or not math.isfinite(duration) or duration <= 0:
-        return text
-
-    marker = re.search(
-        r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
-        text,
-    )
-    if marker is None:
-        return text
-    timed_scene = text[:marker.start()].rstrip()
-    ending = text[marker.start():].lstrip()
-    matches = list(_DIRECTOR_CANONICAL_TIMESTAMP_RE.finditer(timed_scene))
-    timestamps = _director_timestamps(timed_scene)
-    if not matches or not timestamps:
-        return text
-
-    last_seconds, last_milliseconds = timestamps[-1]
-    last_ms = last_seconds * 1000 + last_milliseconds
-    target_ms = int(round(duration * 0.75 * 1000.0))
-    if last_ms >= target_ms:
-        return text
-
-    if last_ms <= 0:
-        hold = (
-            _format_director_timestamp_ms(target_ms)
-            + " The camera holds on the final visible result of the completed action."
-        )
-        return f"{timed_scene}\n{hold}\n{ending}".strip()
-
-    last_match = matches[-1]
-    retimed = (
-        timed_scene[:last_match.start()]
-        + _format_director_timestamp_ms(target_ms)
-        + timed_scene[last_match.end():]
-    )
-    return f"{retimed.rstrip()}\n{ending}".strip()
-
-
 def _normalize_director_raw_scene_structure(raw_scene, segment_seconds=None):
-    """Repair deterministic RAW structure before semantic validation."""
+    """Canonicalize existing timestamps and ensure the trailing state marker."""
     text = _canonicalize_director_timestamps(raw_scene).strip()
     if not text or text == "N/A":
         return text
-    text = _normalize_director_end_continuity_marker(text)
-    text = _normalize_director_frame_zero(text)
-    text = _normalize_director_final_quarter_timing(
-        text,
-        segment_seconds=segment_seconds,
-    )
-    return text
+    del segment_seconds
+    return _normalize_director_end_continuity_marker(text)
 
 
 def _director_raw_scene_structure_errors(
@@ -20546,20 +22896,6 @@ def _director_raw_scene_structure_errors(
     )
     if range_errors:
         return range_errors
-    try:
-        duration = float(segment_seconds) if segment_seconds is not None else None
-    except (TypeError, ValueError):
-        duration = None
-    if duration is not None and math.isfinite(duration) and duration > 0:
-        last_seconds, last_milliseconds = timestamps[-1]
-        last_time = last_seconds + (last_milliseconds / 1000.0)
-        coverage_floor = duration * 0.75
-        if last_time < coverage_floor:
-            return [
-                f"RAW SCENE ends its timed action at {last_time:g}s, too early for "
-                f"a {duration:g}-second segment; the final timed micro-beat must "
-                f"land in the final quarter (at or after {coverage_floor:g}s)."
-            ]
     if _DIRECTOR_TIMESTAMP_RE.search(ending_state):
         return ["End continuity state must be the trailing untimed final-frame statement."]
     state_restatement_errors = _director_timed_state_restatement_errors(timed_scene)
@@ -20584,23 +22920,12 @@ def _director_timestamps(value):
     return timestamps
 
 
-_CONTINUATION_FRAME_ZERO_RE = re.compile(
-    r"(?im)^[ \t]*At 00:00\.000,[^\r\n]*"
-)
-
-
-def _anchor_continuation_frame_zero_to_guide(raw_scene):
-    """Make the native Guide, not prompt-derived state, own visible frame zero."""
-    replacement = (
-        "At 00:00.000, The shot continues exactly from the supplied opening guide, "
-        "preserving its camera composition, currently visible subjects, positions, "
-        "poses, props, lighting, and ongoing motion."
-    )
-    return _CONTINUATION_FRAME_ZERO_RE.sub(
-        replacement,
-        str(raw_scene or ""),
-        count=1,
-    )
+def _director_raw_scene_timeline_duration(segment_seconds, conditioning_mode):
+    """Return the timestamp domain used by Director/H3 for one segment."""
+    duration = float(segment_seconds)
+    if str(conditioning_mode or "").strip().lower() == "continuation":
+        duration += APPEND_GUIDE_CONTEXT_SECONDS
+    return duration
 
 
 def _shift_continuation_timestamps_for_guide(raw_scene, offset_seconds=APPEND_GUIDE_CONTEXT_SECONDS):
@@ -20813,11 +23138,6 @@ def filter_continuity_attached_objects(
                     "subject": str(subject_name),
                     "object": object_text,
                 },
-                temperature=0,
-                top_p=1,
-                max_tokens=512,
-                seed=42,
-                repeat_penalty=1.15,
             )
             if parse_continuity_attachment(result) == "ATTACHED":
                 kept.append(object_name)
@@ -21399,11 +23719,6 @@ def validate_final_h3_action_preservation(
                 "purpose": "final_h3_action_preservation",
                 "timestamp": timestamp,
             },
-            temperature=0,
-            top_p=1,
-            max_tokens=512,
-            seed=42,
-            repeat_penalty=1.15,
         )
         status = parse_h3_action_preservation(result)
         observations.append({
@@ -23261,6 +25576,17 @@ def _complete_partial_continuity_candidate(candidate, committed_snapshot):
     for raw_name, record in list(subjects.items()):
         if not isinstance(record, dict):
             continue
+        explicit_empty_lists = set(
+            record.get("_explicit_empty_list_fields", [])
+            if isinstance(record.get("_explicit_empty_list_fields"), list)
+            else []
+        )
+        explicit_empty_lists.update(
+            field
+            for field in SUBJECT_LIST_FIELDS
+            if field in record and record[field] == []
+        )
+        record["_explicit_empty_list_fields"] = sorted(explicit_empty_lists)
         raw_text = str(raw_name).strip()
         known = known_by_name.get(raw_text.casefold())
         if known is None and raw_text.isdigit():
@@ -23509,6 +25835,124 @@ def _split_wardrobe_components(value):
     return parts
 
 
+_WORLD_STATE_GARMENT_CONDITIONS = (
+    "worn", "torn", "ripped", "damaged", "dirty", "muddy", "wet", "soaked",
+    "bloody", "burned", "burnt", "scorched", "stained", "patched", "frayed",
+    "pristine", "clean", "singed", "dusty",
+)
+
+
+def _world_state_garment_record(component):
+    """Separate explicitly stated garment condition from its identity."""
+    text = " ".join(str(component or "").split()).strip(" ,;:-")
+    conditions = []
+    remaining = text
+    for condition in _WORLD_STATE_GARMENT_CONDITIONS:
+        pattern = re.compile(rf"(?i)(?<!\w){re.escape(condition)}(?!\w)")
+        if pattern.search(remaining):
+            conditions.append(condition)
+            remaining = pattern.sub("", remaining)
+    garment = " ".join(remaining.split()).strip(" ,;:-") or text
+    return {
+        "garment": garment,
+        "condition": ", ".join(conditions) if conditions else "unknown",
+    }
+
+
+def _world_state_wardrobe_from_canonical_text(clothing):
+    """Convert dedicated canonical wardrobe text without another model call."""
+    slots = ("upper", "lower", "footwear", "other")
+    text = " ".join(str(clothing or "").split()).strip()
+    if not text or text.casefold() in {"n/a", "none", "unknown"}:
+        value = "N/A" if text.casefold() in {"n/a", "none"} else "unknown"
+        return {slot: value for slot in slots}
+    grouped = {slot: [] for slot in slots}
+    for slot, garment in _split_wardrobe_components(text):
+        if garment.casefold() in {"barefoot", "bare-chested", "bare chested"}:
+            continue
+        grouped[slot].append(_world_state_garment_record(garment))
+    if not any(grouped.values()):
+        grouped["other"].append(_world_state_garment_record(text))
+    return grouped
+
+
+def world_state_wardrobes_from_character_canon(character_canon):
+    """Adapt only the per-Subject dedicated wardrobe extractor output."""
+    wardrobes = {}
+    if not isinstance(character_canon, dict):
+        return wardrobes
+    for record in character_canon.get("characters", []):
+        if not isinstance(record, dict):
+            continue
+        name = " ".join(str(record.get("name") or "").split()).strip()
+        clothing = record.get("clothing")
+        if name and isinstance(clothing, str) and clothing.strip():
+            wardrobes[name] = _world_state_wardrobe_from_canonical_text(clothing)
+    return wardrobes
+
+
+def seed_character_canon_subject_identities(world_state, character_canon):
+    """Register every canonical identity without implying scene presence."""
+    records = character_canon.get("characters", []) if isinstance(character_canon, dict) else []
+    identities = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        name = " ".join(str(record.get("name") or "").split()).strip()
+        if not name:
+            continue
+        gender = str(record.get("gender") or "unknown").strip().casefold()
+        if gender not in {"female", "male", "unknown", "n/a"}:
+            gender = "unknown"
+        identities.append({
+            "name": name,
+            "gender": gender,
+            "physical_form": "unknown",
+            "source_description": "unknown",
+        })
+    return seed_current_segment_subject_identities(
+        world_state,
+        identities,
+        identity_authority="character_canon",
+    )
+
+
+def seed_generation_world_state_subjects(
+    world_state,
+    subject_definitions_seed,
+    character_canon,
+):
+    """Apply the authored identity and wardrobe seeds used at run startup."""
+    state = seed_predefined_subject_identities(
+        world_state,
+        subject_definitions_seed,
+    )
+    state = seed_character_canon_subject_identities(state, character_canon)
+    wardrobes = world_state_wardrobes_from_character_canon(character_canon)
+    if wardrobes:
+        state = seed_canonical_wardrobes(state, wardrobes)
+    return state
+
+
+def new_checkpoint_recovery_state(
+    run_config,
+    base_subject_definitions,
+    character_canon,
+):
+    """Start recovery with the authored Subject identities and wardrobes."""
+    state = new_generation_state(run_config)
+    state["world_state"] = seed_generation_world_state_subjects(
+        state["world_state"],
+        run_config.get("world_state_seed", {}),
+        character_canon,
+    )
+    subject_definitions = world_state_subject_definitions(
+        base_subject_definitions,
+        state["world_state"],
+    )
+    return state, subject_definitions
+
+
 # Join wardrobe components.
 def _join_wardrobe_components(values):
     values = list(dict.fromkeys(value for value in values if value))
@@ -23716,6 +26160,21 @@ def _wardrobe_action_updates(description, subject_name):
     for _position, field, value in sorted(events, key=lambda event: event[0]):
         updates[field] = value
     return updates
+
+
+def _subject_definition_is_humanoid(subject_definitions, subject_name):
+    """Return true only when the authored definition calls this Subject humanoid."""
+    name = str(subject_name or "").strip()
+    if not name:
+        return False
+    for line in str(subject_definitions or "").splitlines():
+        if name.casefold() not in line.casefold():
+            continue
+        if re.search(r"(?i)\bnon[- ]humanoid\b", line):
+            continue
+        if re.search(r"(?i)\bhumanoid\b", line):
+            return True
+    return False
 
 
 # Return whether one wardrobe phrase belongs to a named Subject sentence.
@@ -24644,6 +27103,13 @@ def normalize_structured_continuity_state(
                 target["persistent_structural_change"] = True
 
         wardrobe = record.get("wardrobe", {})
+        wardrobe_actions = _wardrobe_action_updates(newest_description, name)
+        if not _subject_definition_is_humanoid(subject_definitions, name):
+            wardrobe_actions.update({
+                field: "absent"
+                for field in _wardrobe_absence_fields(newest_description, name)
+                if field not in wardrobe_actions
+            })
         for garment in wardrobe_fields:
             wardrobe_field = f"wardrobe.{garment}"
             value = _known_replacement_value(
@@ -24651,6 +27117,31 @@ def normalize_structured_continuity_state(
                 wardrobe_field,
             )
             if value is not None:
+                if (
+                    value.casefold() == "absent"
+                    and _subject_definition_is_humanoid(subject_definitions, name)
+                ):
+                    console_log(
+                        "WARNING: Ignoring wardrobe removal that would leave "
+                        f"humanoid Subject {name!r} without clothing."
+                    )
+                    continue
+                previous_wardrobe_value = _known_replacement_value(
+                    committed_record.get("wardrobe", {}).get(garment),
+                    wardrobe_field,
+                )
+                explicit_action_value = wardrobe_actions.get(garment)
+                if (
+                    previous_wardrobe_value is not None
+                    and value != previous_wardrobe_value
+                ):
+                    if explicit_action_value is None:
+                        console_log(
+                            "WARNING: Ignoring wardrobe replacement without an "
+                            f"explicit clothing action for {name} ({garment})."
+                        )
+                        continue
+                    value = explicit_action_value
                 value = _authoritative_terminal_replacement(
                     committed_record.get("wardrobe", {}).get(garment, "N/A"),
                     value,
@@ -24667,6 +27158,9 @@ def normalize_structured_continuity_state(
             ))
 
         for field in (*PERSISTENT_SUBJECT_LIST_FIELDS, "held_props"):
+            explicitly_cleared = field in set(
+                record.get("_explicit_empty_list_fields", [])
+            )
             cleaned = list(dict.fromkeys(
                 item
                 for raw_item in record.get(field, [])
@@ -24691,6 +27185,8 @@ def normalize_structured_continuity_state(
                 # A non-empty candidate is treated as the model's complete
                 # current list, preventing indefinite historical accumulation.
                 target[field] = cleaned
+            elif explicitly_cleared:
+                target[field] = []
             elif target.get(field) and _explicit_list_clear_is_grounded(
                 field,
                 newest_description,
@@ -24927,10 +27423,9 @@ def sanitize_prompt_derived_continuity_state(state):
     ``clothing_state``). Those claims are not rendered evidence and can bypass
     the atomic wardrobe replacement, so discard the aliases before the state is
     serialized or merged into the next segment. The canonical ``wardrobe``
-    field is intentionally retained here: merge_prompt_and_visual_end_state()
-    needs it in order to preserve a previously authoritative rendered slot
-    when the new visual observation is unknown. Prompt-only callers remove it
-    through clear_unrendered_wardrobes().
+    field is intentionally retained so visibility changes and prompt-only
+    processing cannot erase persistent wardrobe slots. Candidate state must
+    still be checked against its committed source before it is canonicalized.
     """
     if not isinstance(state, dict):
         return copy.deepcopy(state)
@@ -25178,9 +27673,6 @@ def request_continuity_opening_state(
             raw_opening = llm_request(
                 phase2_messages,
                 response_format=None,
-                temperature=0.10,
-                top_p=0.90,
-                max_tokens=2000,
                 **({"history_metadata": attempt_metadata} if attempt_metadata else {}),
             )
             opening_state = _normalize_continuity_opening_text(raw_opening)
@@ -25501,9 +27993,6 @@ def request_combined_continuity(
                 # this request, so JSON syntax is enforced by the prompt,
                 # parser, and bounded retry loop below.
                 response_format=None,
-                temperature=0.10,
-                top_p=0.90,
-                max_tokens=6000,
                 **({"history_metadata": metadata} if metadata else {}),
             )
             raw_received = True
@@ -25694,8 +28183,6 @@ def request_structured_continuity_state(
         raw_delta = llm_request(
             messages,
             response_format=None,
-            temperature=0.10,
-            top_p=0.90,
             **({"history_metadata": metadata} if metadata else {}),
         )
         if isinstance(raw_delta, str):
@@ -25775,8 +28262,6 @@ def request_structured_continuity_state(
             raw_validation = llm_request(
                 validation_messages,
                 response_format=None,
-                temperature=0.05,
-                top_p=0.90,
                 **(
                     {"history_metadata": validation_metadata}
                     if validation_metadata else {}
@@ -25881,10 +28366,312 @@ def build_segment_request(
 
 # Prefer the previous Director shot ending for adjacent-shot continuity.
 def director_opening_handoff(previous_result, structured_summary=""):
-    """Return the previous explicit shot ending, falling back to structured state."""
+    """Return choreography from the prior shot, never a legacy state summary."""
     previous = previous_result if isinstance(previous_result, dict) else {}
     shot_end = str(previous.get("_director_end_state") or "").strip()
-    return shot_end or str(structured_summary or "").strip()
+    del structured_summary
+    return shot_end
+
+
+# Render concise identity/reference bindings for Director Request 1.
+def _director_subject_prompt_context(subject_definitions, world_state):
+    registry = parse_subject_registry(subject_definitions)
+    records = {
+        record["name"].casefold(): {
+            "number": int(number),
+            "name": record["name"],
+            "pictures": list(record.get("picture_ids") or []),
+            "speaker": str(record.get("speaker_id") or "").strip(),
+        }
+        for number, record in registry.items()
+        if str(record.get("name") or "").strip()
+    }
+    for key, subject in (world_state.get("subjects") or {}).items():
+        if not isinstance(subject, dict):
+            continue
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        if name and name.casefold() not in records:
+            number = _world_state_prompt_subject_number(subject, key)
+            records[name.casefold()] = {
+                "number": number,
+                "name": name,
+                "pictures": list(subject.get("picture_ids") or []),
+                "speaker": str(subject.get("speaker_id") or "").strip(),
+            }
+
+    # The current wardrobe references are declared on Picture lines; attach
+    # those registered numbers to their canonical Subject name.
+    for line in str(subject_definitions or "").splitlines():
+        match = re.match(r"(?i)^\s*<Picture\s+(\d+)>\s+(.+)$", line)
+        if not match:
+            continue
+        candidates = [
+            record for record in records.values()
+            if re.search(
+                rf"(?<![\w]){re.escape(record['name'])}(?![\w])",
+                match.group(2), re.I,
+            )
+        ]
+        if len(candidates) == 1:
+            picture = int(match.group(1))
+            if picture not in candidates[0]["pictures"]:
+                candidates[0]["pictures"].append(picture)
+
+    lines = []
+    refs = {}
+    for record in sorted(records.values(), key=lambda item: (item["number"], item["name"].casefold())):
+        number = record["number"]
+        name = record["name"]
+        pictures = list(dict.fromkeys(
+            int(value) for value in record["pictures"]
+            if isinstance(value, int) or str(value).isdigit()
+        ))
+        fields = [f"<Subject {number}> {name}"]
+        speaker = record["speaker"]
+        if speaker and speaker.casefold() != f"S{number}".casefold():
+            fields.append(f"speaker {speaker}")
+        fields.extend(f"<Picture {picture}>" for picture in pictures)
+        lines.append("- " + "; ".join(fields))
+        refs[name.casefold()] = pictures
+    return "\n".join(lines), refs
+
+
+def _director_static_position_map(location_state):
+    positions = {}
+    if not isinstance(location_state, dict):
+        return positions
+    for field in ("anchors", "objects"):
+        for record in location_state.get(field, []) or []:
+            if not isinstance(record, dict):
+                continue
+            name = " ".join(str(record.get("name") or "").split()).strip()
+            position = " ".join(str(record.get("position") or "").split()).strip()
+            if position:
+                position = re.split(r",\s*", position, maxsplit=1)[0]
+                position = re.sub(r"(?i)^rear\s+", "", position)
+                position = re.sub(
+                    r"(?i)^hanging\s+\d+(?:\.\d+)?\s*(?:ft|feet)\s+",
+                    "", position,
+                )
+            if not position:
+                position = " ".join(str(record.get("location") or "").split()).strip()
+            if not position and record.get("wall"):
+                position = f"{record['wall']} wall"
+            if not position and record.get("near"):
+                nearby = record["near"]
+                nearby = [nearby] if isinstance(nearby, str) else nearby
+                if isinstance(nearby, (list, tuple)):
+                    position = "near " + _english_join(
+                        " ".join(str(value).split()) for value in nearby
+                    )
+            if name and position:
+                positions[name.casefold()] = position
+    return positions
+
+
+def _director_wardrobe_prompt_context(subject, active_picture_ids, references):
+    wardrobe = subject.get("wardrobe", {})
+    if not isinstance(wardrobe, dict):
+        return ""
+    current = {}
+    for slot in ("upper", "lower", "footwear", "other"):
+        value = wardrobe.get(slot, "unknown")
+        if isinstance(value, list):
+            garments = []
+            for item in value:
+                if not isinstance(item, dict) or not _world_state_known(item.get("garment")):
+                    continue
+                garment = " ".join(str(item["garment"]).split())
+                condition = item.get("condition")
+                if _world_state_known(condition):
+                    garment += f" ({condition})"
+                garments.append(garment)
+            if garments:
+                current[slot] = ", ".join(garments)
+        elif isinstance(value, str) and value.strip().casefold() == "n/a":
+            current[slot] = "N/A"
+    if not current:
+        return ""
+
+    reference_matches = False
+    stale_reference = False
+    for name, reference in normalize_character_reference_images(references).items():
+        if name.casefold() not in active_picture_ids:
+            continue
+        if int(reference.get("picture_number") or 0) not in active_picture_ids[name.casefold()]:
+            continue
+        if reference.get("authority") not in {"clothing_only", "identity_and_clothing"}:
+            continue
+        snapshot = reference.get("wardrobe", {})
+        if not snapshot:
+            stale_reference = True
+            continue
+        matches = True
+        has_match = False
+        for slot, value in current.items():
+            snapshot_value = " ".join(str(snapshot.get(slot) or "").split()).casefold()
+            current_value = " ".join(value.split()).casefold()
+            if value == "N/A":
+                if snapshot_value:
+                    matches = False
+                    break
+            elif not snapshot_value or snapshot_value != current_value:
+                matches = False
+                break
+            else:
+                has_match = True
+        if matches and has_match:
+            reference_matches = True
+            break
+        stale_reference = True
+    if reference_matches:
+        return ""
+    attire = "; ".join(
+        f"{slot}: {value}" for slot, value in current.items() if value != "N/A"
+    )
+    if not attire:
+        return ""
+    precedence = (
+        "; current WorldState overrides older reference clothing"
+        if stale_reference else ""
+    )
+    return f"- {subject.get('name')}: {attire}{precedence}"
+
+
+def _director_worldstate_prompt_context(
+    world_state,
+    *,
+    subject_definitions="",
+    location_state=None,
+    character_references=None,
+):
+    """Render concise, authority-separated identity and physical state."""
+    if not isinstance(world_state, dict) or "schema_version" not in world_state:
+        return {"subjects": "", "locations": "", "wardrobe": "", "props": ""}
+    validate_world_state(world_state)
+    subjects = world_state.get("subjects", {})
+    props = world_state.get("props", {})
+    locations = world_state.get("locations", {})
+    subject_text, references_by_subject = _director_subject_prompt_context(
+        subject_definitions, world_state,
+    )
+    static_positions = _director_static_position_map(location_state)
+    subject_lines, wardrobe_lines, prop_lines = [], [], []
+    for subject_id, subject in sorted(
+        subjects.items(), key=lambda item: (str(item[1].get("subject_id", "")), item[0])
+    ):
+        name = str(subject.get("name") or "").strip()
+        if not name:
+            continue
+        if subject.get("presence") == "absent":
+            subject_lines.append(f"- {name}: absent")
+        else:
+            support = props.get(subject.get("support_id"), {})
+            support_name = str(support.get("name") or "").strip()
+            location = locations.get(subject.get("location_id"), {})
+            location_name = " ".join(str(location.get("name") or "").split()).strip()
+            posture = subject.get("posture")
+            posture = " ".join(str(posture).split()).strip() if _world_state_known(posture) else ""
+            if support_name:
+                position = f"on {support_name}"
+            elif location_name:
+                location_name = re.sub(r"(?i)^(?:the|a|an)\s+", "", location_name)
+                possessive = re.match(r"(?i)^(.+?)[’']s\s+(.+)$", location_name)
+                if possessive:
+                    location_name = f"{possessive.group(1)} {possessive.group(2).split()[-1]}"
+                preposition = "on" if re.search(r"(?i)\b(?:floor|ground|surface)$", location_name) else "in"
+                position = f"{preposition} {location_name}"
+            else:
+                position = ""
+            facts = " ".join(value for value in (posture, position) if value)
+            if not facts and subject.get("presence") == "present":
+                facts = "present"
+            if facts:
+                subject_lines.append(f"- {name}: {facts}")
+        wardrobe_line = _director_wardrobe_prompt_context(
+            subject,
+            {name.casefold(): references_by_subject.get(name.casefold(), [])},
+            character_references,
+        )
+        if wardrobe_line:
+            wardrobe_lines.append(wardrobe_line)
+
+    names_by_id = {
+        **{key: str(value.get("name") or "").strip() for key, value in subjects.items()},
+        **{key: str(value.get("name") or "").strip() for key, value in props.items()},
+    }
+    for _prop_id, prop in sorted(
+        props.items(), key=lambda item: (str(item[1].get("name", "")).casefold(), item[0])
+    ):
+        name = " ".join(str(prop.get("name") or "").split()).strip()
+        if not name:
+            continue
+        facts = []
+        if prop.get("status") in {"consumed", "destroyed", "lost"}:
+            facts.append(prop["status"])
+        else:
+            placement = prop.get("placement", {})
+            provenance = prop.get("provenance", {}).get("registration", {})
+            is_static = (
+                prop.get("mobility") == "fixed"
+                or provenance.get("authority") == "canonical_location_state"
+            )
+            static_position = static_positions.get(name.casefold())
+            if is_static and static_position:
+                facts.append(static_position)
+            elif placement.get("kind") == "held":
+                holder = names_by_id.get(placement.get("subject_id"), "")
+                if holder:
+                    facts.append(f"held by {holder}")
+            elif placement.get("kind") == "located":
+                support = names_by_id.get(placement.get("support_id"), "")
+                if support:
+                    facts.append(f"on {support}")
+                else:
+                    location = locations.get(placement.get("location_id"), {})
+                    location_name = str(location.get("name") or "").strip()
+                    if location_name:
+                        location_name = re.sub(r"(?i)^(?:the|a|an)\s+", "", location_name)
+                        possessive = re.match(r"(?i)^(.+?)[’']s\s+(.+)$", location_name)
+                        if possessive:
+                            location_name = f"{possessive.group(1)} {possessive.group(2).split()[-1]}"
+                        preposition = "on" if re.search(r"(?i)\b(?:floor|ground|surface)$", location_name) else "in"
+                        facts.append(f"{preposition} {location_name}")
+        for content in prop.get("contents", []):
+            if isinstance(content, dict) and _world_state_known(content.get("substance")) and content.get("amount") not in {"none", "unknown"}:
+                facts.append(f"contains {content['amount']} {content['substance']}")
+        if _world_state_known(prop.get("condition")):
+            facts.append(f"condition {prop['condition']}")
+        if _world_state_known(prop.get("mechanism_state")):
+            facts.append(f"mechanism {prop['mechanism_state']}")
+        prop_lines.append("- " + name + (": " + "; ".join(facts) if facts else ""))
+    return {
+        "subjects": subject_text,
+        "locations": "\n".join(subject_lines),
+        "wardrobe": "\n".join(wardrobe_lines),
+        "props": "\n".join(prop_lines),
+    }
+
+
+def _director_worldstate_prompt_sections(context):
+    """Return the shared readable WorldState sections used across Director calls."""
+    return {
+        "subjects": "SUBJECTS:\n" + (context.get("subjects") or "N/A"),
+        "locations": (
+            "SUBJECT LOCATIONS (WorldState):\n" + context["locations"]
+            if context.get("locations") else ""
+        ),
+        "wardrobe": (
+            "WARDROBE (current WorldState; reference images never override a "
+            "different current outfit):\n" + context["wardrobe"]
+            if context.get("wardrobe") else ""
+        ),
+        "props": (
+            "PROPS:\nWorldState placement and persistent facts; held props are "
+            "exclusive unless CURRENT BEAT explicitly transfers them:\n"
+            + (context.get("props") or "- No persistent props are registered.")
+        ),
+    }
 
 
 # Build Request 1 of the two-stage Director micro-prompt pipeline.
@@ -25908,6 +28695,12 @@ def build_generation_messages(
     canonical_data="",
     static_setting_description="",
     persistent_movable_prop_state=None,
+    initial_location_subjects=(),
+    world_state=None,
+    canonical_location_state=None,
+    character_references=None,
+    previous_shot_choreography="",
+    assigned_source="",
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
@@ -25919,24 +28712,29 @@ def build_generation_messages(
         current_phase,
         current_segment,
     )
-    continuity_text = (
-        str(continuity_summary or "").strip()
-        if int(current_segment) > 1
-        else "N/A"
-    ) or "N/A"
+    # Prior physical facts come only from WorldState. The previous-shot ending
+    # is retained separately as Director-owned choreography.
+    continuity_text = str(previous_shot_choreography or "").strip() or "N/A"
 
-    subject_text = str(subject_definitions or "").strip()
-    starting_facts = str(canonical_character_facts or canonical_data or "").strip()
-    if (
-        int(current_segment) == 1
-        and starting_facts
-        and starting_facts not in subject_text
-    ):
-        subject_text = (
-            f"{subject_text}\n{starting_facts}"
-            if subject_text
-            else starting_facts
+    has_world_state = isinstance(world_state, dict) and "schema_version" in world_state
+    if has_world_state:
+        context = _director_worldstate_prompt_context(
+            world_state,
+            subject_definitions=subject_definitions,
+            location_state=canonical_location_state,
+            character_references=character_references,
         )
+        context_sections = _director_worldstate_prompt_sections(context)
+        subject_text = context["subjects"] or "N/A"
+    else:
+        subject_text = str(subject_definitions or "").strip()
+        starting_facts = str(canonical_character_facts or canonical_data or "").strip()
+        if (
+            int(current_segment) == 1
+            and starting_facts
+            and starting_facts not in subject_text
+        ):
+            subject_text = f"{subject_text}\n{starting_facts}" if subject_text else starting_facts
     subject_text = subject_text or "N/A"
     phrase_exclusion_text = format_phrase_exclusions_section(
         phrase_exclusions
@@ -25944,7 +28742,29 @@ def build_generation_messages(
     static_setting = " ".join(
         str(static_setting_description or "").split()
     ).strip()
-    sections = [f"SUBJECT DEFINITIONS:\n{subject_text}"]
+    sections = [
+        context_sections["subjects"]
+        if has_world_state else f"SUBJECT DEFINITIONS:\n{subject_text}"
+    ]
+    if has_world_state and context_sections["locations"]:
+        sections.append(context_sections["locations"])
+    if has_world_state and context_sections["wardrobe"]:
+        sections.append(context_sections["wardrobe"])
+    initial_subject_text = (
+        ""
+        if isinstance(world_state, dict) and "schema_version" in world_state
+        else format_initial_location_subjects_opening_state(
+            initial_location_subjects
+        )
+    )
+    if initial_subject_text:
+        sections.append(initial_subject_text)
+    assigned_source_text = str(assigned_source or "").strip()
+    if assigned_source_text:
+        sections.append(
+            "ASSIGNED SOURCE — authoritative work for this segment:\n"
+            + assigned_source_text
+        )
     if static_setting:
         sections.append(
             "STATIC SETTING AUTHORITY — preserve these established static "
@@ -25977,13 +28797,8 @@ def build_generation_messages(
     ])
     if phrase_exclusion_text:
         sections.append(phrase_exclusion_text)
-    sections.append(
-        "PERSISTENT MOVABLE PROP STATE — authoritative physical state. "
-        "Owner/holder fields are exclusive continuity facts: do not treat another "
-        "subject's owned or held prop as shared inventory unless CURRENT BEAT "
-        "explicitly authorizes that use or transfer:\n"
-        + format_prop_ledger_for_prompt(persistent_movable_prop_state)
-    )
+    if has_world_state:
+        sections.append(context_sections["props"])
     sections.append("RETURN only JSON.")
     user_content = "\n\n".join(sections)
 
@@ -27955,20 +30770,45 @@ def ensure_h3_continuous_take_instruction(description):
     ).strip()
 
 
-def ensure_h3_continuing_subject_state(description, continuity_state):
+def ensure_h3_continuing_subject_state(
+    description,
+    continuity_state,
+    subject_state_ledger=None,
+):
     """Keep stationary continuing Subjects from silently disappearing."""
     text = str(description or "").strip()
-    if not text or not isinstance(continuity_state, dict):
+    if not text:
         return text
-    subjects = continuity_state.get("subjects", {})
-    if isinstance(subjects, list):
-        subjects = {
-            str(record.get("name") or "").strip(): record
-            for record in subjects
-            if isinstance(record, dict) and str(record.get("name") or "").strip()
-        }
-    if not isinstance(subjects, dict):
-        return text
+    subjects = {}
+    for source in (subject_state_ledger, continuity_state):
+        source_subjects = (
+            source.get("subjects", source)
+            if isinstance(source, dict)
+            else {}
+        )
+        if isinstance(source_subjects, list):
+            source_subjects = {
+                str(record.get("name") or "").strip(): record
+                for record in source_subjects
+                if isinstance(record, dict)
+                and str(record.get("name") or "").strip()
+            }
+        if not isinstance(source_subjects, dict):
+            continue
+        for raw_name, raw_record in source_subjects.items():
+            if not isinstance(raw_record, dict):
+                continue
+            name = str(raw_record.get("name") or raw_name or "").strip()
+            if name:
+                # Current concrete observations win; N/A/empty values should
+                # not erase the last known position from the durable ledger.
+                existing = subjects.setdefault(name, {})
+                for key, value in raw_record.items():
+                    if isinstance(value, str) and (
+                        not value.strip() or value.strip().upper() == "N/A"
+                    ):
+                        continue
+                    existing[key] = value
 
     carry = []
     for raw_name, record in subjects.items():
@@ -28056,6 +30896,8 @@ def build_h3_prompt(
     starting_location="",
     retained_subject_ids=None,
     visual_style=DEFAULT_VISUAL_STYLE,
+    subject_state_ledger=None,
+    world_state=None,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -28142,12 +30984,6 @@ def build_h3_prompt(
                     + (f" {integrated_body}" if integrated_body else "")
                 )
 
-    integrated = reconcile_h3_wardrobe_with_canonical_state(
-        integrated,
-        subject_definitions,
-        continuity_state,
-    )
-
     if conditioning_mode == "continuation":
         subject_text = _append_video_origin_to_h3_subject_definitions(
             str(subject_definitions or "").strip(),
@@ -28181,6 +31017,20 @@ def build_h3_prompt(
             )
             for line in subject_text.splitlines()
         )
+    if isinstance(world_state, dict) and "schema_version" in world_state:
+        subject_text = "\n".join(
+            _strip_character_description_clothing(line)
+            for line in subject_text.splitlines()
+        ).strip()
+    if isinstance(world_state, dict) and "schema_version" in world_state:
+        world_state_context = format_world_state_prompt_context(
+            world_state,
+            heading=None,
+        )
+        if world_state_context:
+            subject_text = "\n\n".join(
+                part for part in (subject_text, world_state_context) if part
+            )
     # The filtering step can discover a registered Subject from its canonical
     # name. Recompute visibility so retention_analysis follows the same Subject
     # set as the final prose.
@@ -28300,28 +31150,33 @@ def build_h3_prompt(
                 )
                 if part
             )
-    if conditioning_mode == "continuation":
-        integrated = ensure_h3_continuing_subject_state(
-            integrated,
-            continuity_state,
-        )
     integrated = ensure_h3_continuous_take_instruction(integrated)
     integrated = ensure_h3_prop_identity_instruction(integrated)
     integrated = inject_h3_visual_style(integrated, visual_style)
     canonical_prompt_text = ""
     if segment_number is not None and int(segment_number) == 1:
+        canonical_sentences = canonical_character_subject_descriptions(
+            character_canon
+        ).values()
+        if isinstance(world_state, dict) and "schema_version" in world_state:
+            canonical_sentences = (
+                _strip_character_description_clothing(sentence)
+                for sentence in canonical_sentences
+            )
         canonical_prompt_text = "\n".join(
-            sentence
-            for sentence in canonical_character_subject_descriptions(character_canon).values()
+            sentence for sentence in canonical_sentences
             if sentence not in subject_text
         )
-        try:
-            with open(CANONICAL_DATA_FILE, "r", encoding="utf-8", newline="") as canonical_file:
-                raw_canonical_data = canonical_file.read()
-            if raw_canonical_data:
-                canonical_prompt_text += ("\n" if canonical_prompt_text else "") + raw_canonical_data
-        except FileNotFoundError:
-            pass
+        if not (isinstance(world_state, dict) and "schema_version" in world_state):
+            try:
+                with open(CANONICAL_DATA_FILE, "r", encoding="utf-8", newline="") as canonical_file:
+                    raw_canonical_data = canonical_file.read()
+                if raw_canonical_data:
+                    canonical_prompt_text += (
+                        "\n" if canonical_prompt_text else ""
+                    ) + raw_canonical_data
+            except FileNotFoundError:
+                pass
     # Insert canon prose and raw data after sanitization and identity repair
     # so the optional raw file retains its whitespace and line endings.
     canonical_marker = "CANONICAL_DATA_VERBATIM_INSERTION_POINT"
@@ -28514,6 +31369,12 @@ def wait_for_completion(
     consecutive_errors = 0
     last_connection_error = None
     deadline = clock() + timeout if timeout is not None else None
+    render_wait_started_at = time.monotonic()
+    next_progress_log_at = render_wait_started_at + 15.0
+    console_log(
+        f"Waiting for ComfyUI prompt {prompt_id} to finish rendering.",
+        flush=True,
+    )
 
     while True:
         if deadline is not None and clock() >= deadline:
@@ -28564,7 +31425,21 @@ def wait_for_completion(
                         raise ComfyUIExecutionError(
                             "ComfyUI execution failed:\n" + detail_text
                         )
+                    console_log(
+                        f"ComfyUI prompt {prompt_id} finished after "
+                        f"{time.monotonic() - render_wait_started_at:.1f}s.",
+                        flush=True,
+                    )
                     return result
+
+            wall_now = time.monotonic()
+            if wall_now >= next_progress_log_at:
+                console_log(
+                    f"Still waiting for ComfyUI prompt {prompt_id} "
+                    f"({wall_now - render_wait_started_at:.0f}s elapsed).",
+                    flush=True,
+                )
+                next_progress_log_at = wall_now + 15.0
 
             sleep_time = 2
             if deadline is not None:
@@ -29083,10 +31958,10 @@ def ask_vision_model(
             {"role": "system", "content": VISUAL_END_STATE_SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
         ],
-        "temperature": 0,
-        "seed": BENCHMARK_SEED,
-        "repeat_penalty": 1.15,
-        "max_tokens": VISION_REQUEST_MAX_TOKENS,
+        "temperature": VISION_LLM_SETTINGS["temperature"],
+        "seed": VISION_LLM_SETTINGS["seed"],
+        "repeat_penalty": VISION_LLM_SETTINGS["repeat_penalty"],
+        "max_tokens": VISION_LLM_SETTINGS["max_output_tokens"],
     }
     if VISION_MODEL:
         payload["model"] = VISION_MODEL
@@ -29303,88 +32178,36 @@ def _visual_wardrobe_update(visual_wardrobe, field):
     return _rendered_wardrobe_value(value)
 
 
-# Apply only positive wardrobe observations to one Subject.
+# Legacy hook retained for compatibility; observations are stored separately.
 def _replace_rendered_wardrobe(prompt_subject, visual_subject):
-    """Apply only positive wardrobe observations to one Subject.
-
-    A prompt-derived wardrobe is a request/prediction, not evidence, but an
-    unknown visual slot is not evidence either. Preserve the existing value
-    for N/A, unknown, occluded, or otherwise unobserved slots; only a positive
-    visual observation may update that slot.
-    """
-    visual_wardrobe = visual_subject.get("wardrobe")
-    rendered = {
-        field: _visual_wardrobe_update(visual_wardrobe, field)
-        for field in _WARDROBE_FIELDS
-    }
-
-    # Vision models can repeat the same garment in more than one slot. Keep
-    # one canonical occurrence so the next prompt cannot contain duplicate
-    # wardrobe descriptions.
-    seen = set()
-    for field in _WARDROBE_FIELDS:
-        value = rendered[field]
-        if value is _WARDROBE_NOT_OBSERVED or value == "N/A":
-            continue
-        folded = value.casefold()
-        if folded in seen:
-            rendered[field] = _WARDROBE_NOT_OBSERVED
-        else:
-            seen.add(folded)
-
-    wardrobe = prompt_subject.get("wardrobe")
-    if not isinstance(wardrobe, dict):
-        wardrobe = {}
-        prompt_subject["wardrobe"] = wardrobe
-    for field, value in rendered.items():
-        if value is not _WARDROBE_NOT_OBSERVED:
-            wardrobe[field] = value
-    prompt_subject.pop("clothing", None)
+    """Deprecated no-op: rendered wardrobe belongs in VisualObservation."""
+    del visual_subject
+    return prompt_subject
 
 
-# Remove all unobserved wardrobe claims from one Subject.
+# Retain the legacy helper name as a safe wardrobe-preserving operation.
 def _clear_unobserved_wardrobe(subject):
-    """Remove prompt-derived wardrobe claims without deleting body state."""
+    """Scrub prose aliases while preserving the canonical wardrobe slots."""
     if not isinstance(subject, dict):
         return subject
-
-    # Apply the same deterministic alias scrub used before continuity merge,
-    # then remove the canonical wardrobe from every nested malformed location.
-    # Updating in place matters because callers retain the canonical Subject
-    # record object for identity/state bookkeeping.
     cleaned = sanitize_prompt_derived_continuity_state(subject)
     if isinstance(cleaned, dict):
+        _remove_wardrobe_owned_persistent_effects(cleaned)
         subject.clear()
         subject.update(cleaned)
-
-    def remove_nested_wardrobe(value):
-        if isinstance(value, dict):
-            for key in list(value):
-                if str(key).strip().casefold() == "wardrobe":
-                    value.pop(key, None)
-                else:
-                    remove_nested_wardrobe(value[key])
-        elif isinstance(value, list):
-            for item in value:
-                remove_nested_wardrobe(item)
-
-    # The canonical wardrobe is still prompt-derived until a rendered visual
-    # observation replaces one or more slots. Clear it on prompt-only paths so
-    # requested clothing cannot become authoritative opening continuity.
-    remove_nested_wardrobe(subject)
-    _remove_wardrobe_owned_persistent_effects(subject)
     return subject
 
 
 # Return state without wardrobe claims when no positive observation exists.
 def clear_unrendered_wardrobes(state):
-    """Remove wardrobe claims when no rendered visual evidence exists."""
+    """Sanitize legacy aliases without erasing persistent wardrobe slots."""
     cleared = sanitize_prompt_derived_continuity_state(state)
     if not isinstance(cleared, dict):
         cleared = {}
     _subject_key, subjects = _prompt_subject_collection(cleared)
     for _key, subject in _continuity_subject_entries(subjects):
-        _clear_unobserved_wardrobe(subject)
+        if isinstance(subject, dict):
+            _remove_wardrobe_owned_persistent_effects(subject)
     return cleared
 
 
@@ -29439,12 +32262,10 @@ def _prompt_subject_collection(merged_state):
 
 # Overlay directly observed rendered facts onto Phase 1 continuity.
 def merge_prompt_and_visual_end_state(prompt_state, visual_state):
-    """Overlay directly observed rendered facts onto Phase 1 continuity.
+    """Overlay visible position and pose onto the legacy continuity view.
 
-    Prompt-derived state supplies facts the camera cannot establish. Wardrobe
-    is different: for a visible subject the rendered snapshot owns all four
-    slots, including explicit unknown/not-visible values. This prevents a
-    requested garment from being promoted into rendered state.
+    Rendered observations remain separately persisted diagnostics. Visibility
+    and wardrobe observations cannot erase or replace persistent subject facts.
     """
     merged = sanitize_prompt_derived_continuity_state(prompt_state)
     if not isinstance(merged, dict):
@@ -29477,7 +32298,6 @@ def merge_prompt_and_visual_end_state(prompt_state, visual_state):
         merged[camera_key] = visual_camera
 
     _subject_key, subjects = _prompt_subject_collection(merged)
-    visible_names = set()
     for visual_subject in visual_state.get("subjects") or []:
         if not isinstance(visual_subject, dict) or not visual_subject.get("visible", True):
             continue
@@ -29495,10 +32315,6 @@ def merge_prompt_and_visual_end_state(prompt_state, visual_state):
             # identity. Unknown names are ignored until the Director/state
             # registry establishes the subject explicitly.
             continue
-        visible_names.add(
-            str(prompt_subject.get("name") or visual_name).strip().casefold()
-        )
-
         for field, aliases in (
             ("position", ("position",)),
             ("pose_action", ("pose_action", "pose", "pose/action")),
@@ -29510,20 +32326,6 @@ def merge_prompt_and_visual_end_state(prompt_state, visual_state):
                     aliases[0],
                 )
                 prompt_subject[target_field] = value
-
-        _replace_rendered_wardrobe(prompt_subject, visual_subject)
-
-    # A subject omitted from the final-frame observation has no rendered
-    # wardrobe evidence. Clear the copied/requested value rather than allowing
-    # it to leak into the next segment as if it were visible.
-    for subject_key, subject in _continuity_subject_entries(subjects):
-        if not isinstance(subject, dict):
-            continue
-        subject_name = str(
-            subject.get("name") or subject_key or ""
-        ).strip().casefold()
-        if subject_name not in visible_names:
-            _clear_unobserved_wardrobe(subject)
 
     return merged
 
@@ -29883,12 +32685,20 @@ def build_segment_reference_bindings(
             subject_definitions,
         )
     )
+    initial_picture_subject_ids = set()
+    if segment_number == 1:
+        initial_picture_subject_ids = {
+            int(subject_id)
+            for subject_id, subject in registry.items()
+            if isinstance(subject, dict) and subject.get("picture_ids")
+        }
+    current_reference_ids = explicit_ids | initial_picture_subject_ids
     state = copy.deepcopy(binding_state) if isinstance(binding_state, dict) else {}
     subjects = state.get("subjects")
     if not isinstance(subjects, dict):
         subjects = {}
 
-    for subject_id in sorted(explicit_ids):
+    for subject_id in sorted(current_reference_ids):
         name = _reference_binding_subject_name(registry, subject_id)
         if not name:
             continue
@@ -29911,6 +32721,7 @@ def build_segment_reference_bindings(
         }
 
     active_ids = set()
+    defined_ids = set()
     removed_ids = set()
     binding_reason_by_name = {}
     for name, tracking in list(subjects.items()):
@@ -29921,21 +32732,31 @@ def build_segment_reference_bindings(
             last_explicit = int(tracking.get("last_explicit_segment"))
         except (TypeError, ValueError):
             continue
+        if subject_id in explicit_ids:
+            tracking["explicitly_departed"] = (
+                _director_subject_explicitly_leaves_final_frame(
+                    name,
+                    detailed_description,
+                )
+            )
+        explicitly_departed = bool(tracking.get("explicitly_departed"))
         segments_since = max(0, segment_number - last_explicit)
         currently_bound = bool(
-            disable_subject_removal
-            or segments_since < window
-            or subject_id in explicit_ids
-        )
-        reason = (
-            "explicit_current_segment"
-            if subject_id in explicit_ids
-            else (
-                "forced_persistent"
-                if disable_subject_removal
-                else "within_sliding_window"
+            not explicitly_departed
+            and (
+                disable_subject_removal
+                or segments_since < window
+                or subject_id in current_reference_ids
             )
         )
+        if subject_id in explicit_ids:
+            reason = "explicit_current_segment"
+        elif subject_id in initial_picture_subject_ids:
+            reason = "authored_initial_picture"
+        elif disable_subject_removal:
+            reason = "forced_persistent"
+        else:
+            reason = "within_sliding_window"
         threshold = last_explicit + window
         tracking.update({
             "segments_since_explicit": segments_since,
@@ -29950,12 +32771,14 @@ def build_segment_reference_bindings(
             tracking["last_bound_segment"] = segment_number
         else:
             removed_ids.add(subject_id)
+        if not explicitly_departed:
+            defined_ids.add(subject_id)
 
     active_subject_definitions, _ = _filter_h3_subject_definitions(
         subject_definitions,
-        active_ids,
+        defined_ids,
         "",
-        retained_subject_ids=active_ids,
+        retained_subject_ids=defined_ids,
     )
 
     configured_picture_ids = set()
@@ -30097,6 +32920,7 @@ def build_segment_reference_bindings(
         "current_segment_number": segment_number,
         "current_bindings": copy.deepcopy(bindings),
         "current_active_subject_ids": sorted(active_ids),
+        "current_defined_subject_ids": sorted(defined_ids),
         "current_explicit_subject_ids": sorted(explicit_ids),
         "current_removed_subject_ids": sorted(removed_ids),
         "current_excluded_configured_picture_ids": list(
@@ -30110,6 +32934,7 @@ def build_segment_reference_bindings(
         "subject_removal_window_segments": window,
         "explicit_subject_ids": sorted(explicit_ids),
         "active_subject_ids": sorted(active_ids),
+        "defined_subject_ids": sorted(defined_ids),
         "removed_subject_ids": sorted(removed_ids),
         "excluded_configured_picture_ids": list(
             excluded_configured_picture_ids
@@ -30364,9 +33189,12 @@ def build_character_reference_h3_prompt(
         "distinguishing features clear and unobstructed. For a nonhuman creature, keep "
         "external anatomy species-appropriate and do not invent human sex-specific anatomy "
         "unless the description explicitly establishes it. Clothing in the supplied "
-        "description is authoritative. Do not add, remove, substitute, or redesign "
-        "garments, footwear, or accessories. If no clothing is described, do not invent "
-        "clothing. Use a plain unobtrusive background. Do not orbit, "
+        "description is authoritative. FIXED CLOTHING RULE: any subject described as "
+        "humanoid must wear clothes regardless of species. "
+        "If such a humanoid has no clothing specified in text, render simple "
+        "setting-appropriate clothing. Otherwise do not add, remove, substitute, or "
+        "redesign garments, footwear, or accessories; for a non-humanoid whose text "
+        "specifies no clothing, do not invent clothing. Use a plain unobtrusive background. Do not orbit, "
         "pan, zoom, cut, add another character, or invent story action.\n\n"
         "overall_soundscape: N/A\n"
         "non_diegetic_music: N/A\n"
@@ -30644,6 +33472,46 @@ def subject_identity_reference_image(subject_record):
     return image_name
 
 
+def _world_state_subject_reference_records(world_state):
+    """Build ephemeral identity/reference inputs from canonical WorldState."""
+    if not isinstance(world_state, dict) or "schema_version" not in world_state:
+        return None
+    validate_world_state(world_state)
+    records = {}
+    for subject in world_state.get("subjects", {}).values():
+        name = str(subject.get("name") or "").strip()
+        if not name:
+            continue
+        identity = subject.get("identity", {})
+        picture_ids = list(identity.get("picture_ids", []))
+        wardrobe = {}
+        for slot in ("upper", "lower", "footwear", "other"):
+            garments = subject.get("wardrobe", {}).get(slot, "unknown")
+            if isinstance(garments, list):
+                wardrobe[slot] = _join_wardrobe_components([
+                    str(item.get("garment") or "").strip()
+                    for item in garments
+                    if isinstance(item, dict) and _world_state_known(item.get("garment"))
+                ]) or "N/A"
+            elif garments == "N/A":
+                wardrobe[slot] = "N/A"
+            else:
+                wardrobe[slot] = "unknown"
+        records[name] = {
+            "name": name,
+            "subject_id": subject.get("subject_id"),
+            "gender": identity.get("gender", "unknown"),
+            "picture_ids": picture_ids,
+            "picture_id": picture_ids[0] if picture_ids else None,
+            "speaker_id": f"S{_world_state_prompt_subject_number(subject, subject.get('id', name))}",
+            "canonical_description": _strip_character_description_clothing(
+                identity.get("canonical_description", "")
+            ),
+            "wardrobe": wardrobe,
+        }
+    return records
+
+
 def character_reference_resolution(
     megapixels,
     *,
@@ -30874,12 +33742,18 @@ def ensure_character_reference_images(
     loras=None,
     prior_detailed_description="",
     visual_style=DEFAULT_VISUAL_STYLE,
+    world_state=None,
 ):
     """Create/update clothing Pictures for visible Subjects before H3 rendering."""
     references = normalize_character_reference_images(character_references)
-    state = continuity_state_for_registry(
-        subject_definitions,
-        copy.deepcopy(continuity_state),
+    world_state_records = _world_state_subject_reference_records(world_state)
+    state = (
+        {"subjects": world_state_records}
+        if world_state_records is not None
+        else continuity_state_for_registry(
+            subject_definitions,
+            copy.deepcopy(continuity_state),
+        )
     )
     visual_text = _h3_visual_identity_text(detailed_description)
     changed = []
@@ -31006,13 +33880,19 @@ def plan_character_reference_images(
     loras=None,
     prior_detailed_description="",
     visual_style=DEFAULT_VISUAL_STYLE,
+    world_state=None,
 ):
     """Plan immutable character-reference renders without contacting ComfyUI."""
     references = normalize_character_reference_images(character_references)
     jobs = reference_jobs if isinstance(reference_jobs, list) else []
-    state = continuity_state_for_registry(
-        subject_definitions,
-        copy.deepcopy(continuity_state),
+    world_state_records = _world_state_subject_reference_records(world_state)
+    state = (
+        {"subjects": world_state_records}
+        if world_state_records is not None
+        else continuity_state_for_registry(
+            subject_definitions,
+            copy.deepcopy(continuity_state),
+        )
     )
     visual_text = _h3_visual_identity_text(detailed_description)
     changed = []
@@ -32548,28 +35428,23 @@ def repair_existing_segment(
         #    )
 
     base_subject_definitions = load_text_file(subjects_path, required=False)
-    registry_state = repair["previous_record"].get(
-        "subject_registry_state",
+    opening_state = repair["previous_record"].get("world_state")
+    if not isinstance(opening_state, dict):
+        opening_state = empty_world_state("repair_previous_world_state_missing")
+    validate_world_state(opening_state)
+    historical_subject_definitions = world_state_subject_definitions(
+        base_subject_definitions,
+        opening_state,
+    )
+    identity_state = continuity_state_for_registry(
+        historical_subject_definitions,
         new_continuity_state(),
     )
-    historical_subject_definitions = subject_definitions_for_state(
-        base_subject_definitions,
-        registry_state,
+    excluded_picture_ids = get_refresh_incompatible_picture_ids(identity_state)
+    director_opening_summary = format_world_state_prompt_context(
+        opening_state,
+        heading="CANONICAL WORLDSTATE OPENING",
     )
-    opening_state = continuity_state_for_registry(
-        historical_subject_definitions,
-        copy.deepcopy(registry_state),
-    )
-    excluded_picture_ids = get_refresh_incompatible_picture_ids(opening_state)
-    director_opening_summary = str(
-        repair["previous_record"].get("continuity_summary", "")
-        or ""
-    ).strip()
-    if not director_opening_summary:
-        director_opening_summary = format_director_opening_state(
-            opening_state,
-            historical_subject_definitions,
-        )
     h3_opening_summary = director_opening_summary
 
     beats_raw = load_text_file(beats_path, required=True)
@@ -32631,8 +35506,13 @@ def repair_existing_segment(
         dialogue_exclusions=dialogue_exclusions,
         current_phase=current_phase,
         phrase_exclusions=phrase_exclusions,
+        assigned_source=director_assigned_source(current_phase, segment_number),
         persistent_movable_prop_state=repair.get("state", {}).get(
             "prop_ledger", {}
+        ),
+        world_state=opening_state,
+        previous_shot_choreography=director_opening_handoff(
+            repair["previous_record"].get("llm_result"),
         ),
     )
     director_bundle = {
@@ -32650,23 +35530,21 @@ def repair_existing_segment(
         "is_final_story_segment": segment_number == repair["total_segments"],
         "messages": messages,
         "opening_state": director_opening_summary,
+        "previous_final_frame": director_opening_handoff(
+            repair["previous_record"].get("llm_result"),
+        ),
         "previous_music": str(
             ((repair.get("previous_record") or {}).get("llm_result") or {}).get(
                 "non_diegetic_music"
             )
             or ""
         ).strip(),
-        "registry_state": opening_state,
+        "registry_state": None,
+        "world_state_opening": copy.deepcopy(opening_state),
         "subject_definitions": historical_subject_definitions,
         "dialogue_exclusions": dialogue_exclusions,
         "phrase_exclusions": phrase_exclusions,
-        "opening_state_sha256": hashlib.sha256(
-            json.dumps(
-                opening_state,
-                ensure_ascii=False,
-                sort_keys=True,
-            ).encode("utf-8")
-        ).hexdigest(),
+        "opening_state_sha256": world_state_sha256(opening_state),
     }
     director_run_config = dict(repair["config"])
     if no_music:
@@ -32694,12 +35572,6 @@ def repair_existing_segment(
         get_detailed_description(llm_result, "")
     )
     hard_cut_subject_continuity = ""
-    if is_hard_cut_segment(segment_number):
-        hard_cut_subject_continuity = build_hard_cut_subject_continuity_from_state(
-            historical_subject_definitions,
-            llm_result,
-            opening_state,
-        )
     h3_prompt = build_h3_prompt(
         llm_result,
         historical_subject_definitions,
@@ -32709,8 +35581,10 @@ def repair_existing_segment(
         ff=False,
         conditioning_mode=conditioning_mode,
         excluded_picture_ids=excluded_picture_ids,
-        continuity_state=opening_state,
+        continuity_state=identity_state,
+        subject_state_ledger=generation_state.get("subject_state_ledger", {}),
         visual_style=repair_visual_style,
+        world_state=opening_state,
     )
 
     console_log()
@@ -32758,7 +35632,7 @@ def repair_existing_segment(
         loras=loras,
         continuity_summary=director_opening_summary,
         subject_definitions=historical_subject_definitions,
-        continuity_state=opening_state,
+        continuity_state=identity_state,
         segment_length=segment_length,
     )
     repaired_video_path = os.path.abspath(repaired_video_path)
@@ -33785,7 +36659,7 @@ def validate_director_continuity(bundle):
         "prompt_only": "prompt",
         "prompt_plus_visual": "vision",
     }.get(source, source)
-    if source not in {"prompt", "vision"}:
+    if source not in {"prompt", "vision", "world_state"}:
         console_log(
             f"WARNING: Segment {segment_number} Director continuity source is "
             f"invalid ({source or 'missing'!r}); using prompt best effort.",
@@ -33804,18 +36678,22 @@ def build_director_pronoun_resolution_messages(
         {
             "role": "system",
             "content": (
-                "Make ambiguous person references explicit for a video prompt. Scan the "
-                "supplied timed scene and replace only clear personal subject/object "
+                "- Make ambiguous person references explicit for a video prompt.\n"
+                "- Scan the supplied timed scene and replace only clear personal subject/object "
                 "pronouns whose explicit name would help identify the actor or target "
-                "(especially she, he, they, him, her, them). Prefer names for standalone "
-                "they/them. Leave ordinary possessive determiners unchanged when their "
-                "owner is already clear from the sentence or nearby context: keep "
-                "'her hand', 'his collar', and 'their bowls' as written. Do not rewrite "
-                "a readable local possessive merely to repeat a name. Change only the "
-                "pronoun itself. Preserve every timestamp, action, action order, object, "
-                "location, sound, camera instruction, dialogue, and punctuation meaning. "
-                "Do not add, remove, combine, split, or reinterpret actions. If a "
-                "pronoun's referent is uncertain, leave it unchanged. Return JSON only."
+                "(especially she, he, they, him, her, them).\n"
+                "- Prefer names for standalone they/them.\n"
+                "- Leave ordinary possessive determiners unchanged when their owner is "
+                "already clear from the sentence or nearby context: keep 'her hand', "
+                "'his collar', and 'their bowls' as written.\n"
+                "- Do not rewrite a readable local possessive merely to repeat a name.\n"
+                "- Change only the pronoun itself.\n"
+                "- Preserve every timestamp, action, action order, object, location, "
+                "sound, camera instruction, dialogue, and punctuation meaning.\n"
+                "- Do not alter timestamps.\n"
+                "- Do not add, remove, combine, split, or reinterpret actions.\n"
+                "- If a pronoun's referent is uncertain, leave it unchanged.\n"
+                "- Return JSON only."
             ),
         },
         {
@@ -33862,20 +36740,14 @@ def resolve_director_raw_scene_pronouns(
             **dict(history_metadata or {}),
             "purpose": "director_raw_scene_pronoun_resolution",
         },
-        temperature=0,
-        top_p=1,
-        max_tokens=2048,
-        seed=42,
-        repeat_penalty=1.15,
     )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
     if not isinstance(result, dict) or set(result) != {"raw_scene"}:
         raise ValueError("RAW pronoun resolver must return only raw_scene.")
 
-    resolved_timed = _canonicalize_director_timestamps(
-        result.get("raw_scene", "")
-    ).strip()
+    returned_timed_raw = str(result.get("raw_scene", "")).strip()
+    resolved_timed = _canonicalize_director_timestamps(returned_timed_raw).strip()
     console_log(
         "Checking pronouns segment: LLM result="
         + (resolved_timed or "<empty>"),
@@ -33883,8 +36755,24 @@ def resolve_director_raw_scene_pronouns(
     )
     if not resolved_timed:
         raise ValueError("RAW pronoun resolver returned empty raw_scene.")
-    if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
-        raise ValueError("RAW pronoun resolver changed timestamps.")
+    input_timestamp_values = _director_timestamp_lexemes(timed_original)
+    returned_timestamp_values = _director_timestamp_lexemes(returned_timed_raw)
+    if returned_timestamp_values != input_timestamp_values:
+        raise ValueError(
+            "RAW pronoun resolver changed timestamps: expected exact timestamp "
+            f"sequence {input_timestamp_values!r}, received "
+            f"{returned_timestamp_values!r}."
+        )
+
+    range_errors = _director_timestamp_range_errors(
+        resolved_timed,
+        segment_seconds=segment_seconds,
+    )
+    if range_errors:
+        raise ValueError(
+            "RAW pronoun resolver returned out-of-range timestamps: "
+            + "; ".join(range_errors)
+        )
 
     resolved = (resolved_timed + "\n" + end_state_original).strip()
     structure_errors = _director_raw_scene_structure_errors(
@@ -33919,68 +36807,64 @@ def resolve_director_raw_scene_pronouns(
     return resolved
 
 
+def _director_timestamp_lexemes(value):
+    """Return the literal timestamp values in appearance order."""
+    text_value = str(value or "")
+    values = []
+    for match in _DIRECTOR_TIMESTAMP_RE.finditer(text_value):
+        end = (
+            match.end("fraction")
+            if match.group("fraction") is not None
+            else match.end("seconds")
+        )
+        values.append(text_value[match.start("minutes"):end])
+    return values
+
+
 def build_director_raw_subject_resolution_messages(
     raw_scene,
-    subject_definitions="",
-    story_context="",
-    current_beat="",
+    known_subjects,
 ):
-    """Build the narrow post-RAW dynamic Subject identity pass."""
+    """Build the identity-only post-RAW Subject matching request."""
     return [
         {
             "role": "system",
             "content": (
-                "Resolve only unnamed foreground animate identities in one finalized "
-                "timed RAW scene. Keep every timestamp, action, action order, object, "
-                "location, sound, camera instruction, dialogue, and punctuation meaning "
-                "unchanged. Keep already-named Subjects unchanged. For each distinct "
-                "unnamed foreground animate participant who acts or is acted on, replace "
-                "EVERY reference to that participant in returned raw_scene with one stable "
-                "functional name; every name listed in subject_names must literally appear "
-                "in returned raw_scene. Make the functional name from its most specific "
-                "explicit role/species plus an integer. If RAW says dragon, use Dragon1; "
-                "if RAW says griffin, use Griffin1. Use CreatureN only when the type is "
-                "truly unknown. Capitalization alone does not make a role/species noun an "
-                "established name. Reuse a KNOWN SUBJECT when RAW continues that same "
-                "individual; when exactly one KNOWN SUBJECT has the same role/species stem, "
-                "reuse it unless RAW explicitly says another/new/second individual appears. "
-                "Use the next unused suffix only for a genuinely new identity. Do not label "
-                "interchangeable background crowds/groups. For each newly named Subject, "
-                "also return subject_descriptions with one short stable visual identity "
-                "sentence using only explicit non-clothing appearance facts already present "
-                "in RAW or CURRENT BEAT (species/type, sex/gender wording, age, hair, skin/scales/fur, build, "
-                "body/anatomy, and distinguishing features). Never put clothing in "
-                "subject_descriptions. Also return subject_wardrobes for each newly named "
-                "Subject using exactly upper, lower, footwear, and other. Preserve clothing "
-                "explicitly stated in RAW. If RAW does not state clothing and the Subject is "
-                "a human or normally clothed humanoid, choose one simple setting-appropriate "
-                "outfit now; this becomes canonical and must not be re-invented later. "
-                "Use STORY CONTEXT only when RAW does not specify clothing, so the chosen "
-                "outfit matches the established setting, period, culture, and visual world. "
-                "Do not use STORY CONTEXT to change RAW actions or explicit appearance facts. "
-                "For animals or creatures that normally do not wear clothing, use N/A for all "
-                "four wardrobe fields unless RAW explicitly gives clothing. Use absent for "
-                "an explicitly absent garment/footwear slot; explicit nudity, barefoot state, "
-                "or garment absence wins over invention. Exclude action, pose, "
-                "location, held props, camera, and mood. Return JSON only."
+                "Match Subjects appearing in RAW SCENE to KNOWN SUBJECTS.\n\n"
+                "Rules:\n"
+                "- Identify each distinct foreground Subject appearing in RAW SCENE.\n"
+                "- Match each Subject to an existing KNOWN SUBJECT whenever possible.\n"
+                "- Reuse the existing Subject ID for matches.\n"
+                "- If no match exists, mark the Subject as new.\n"
+                "- Do not create duplicate Subjects.\n"
+                "- Do not include background crowds or unnamed extras.\n"
+                "- Use only RAW SCENE and KNOWN SUBJECTS to determine identity.\n\n"
+                "Return as a JSON object:\n\n"
+                "{\n"
+                '  "subjects": [\n'
+                "    {\n"
+                '      "raw_name": "name or description used in RAW",\n'
+                '      "subject_id": null,\n'
+                '      "is_new": true\n'
+                "    }\n"
+                "  ]\n"
+                "}\n\n"
+                "For a match, use its exact Subject ID from KNOWN SUBJECTS and set "
+                "is_new to false. For a new Subject, use null and true."
             ),
         },
         {
             "role": "user",
             "content": (
-                "CURRENT BEAT\n"
-                f"{str(current_beat or '').strip() or 'N/A'}\n\n"
-                "STORY CONTEXT\n"
-                f"{str(story_context or '').strip() or 'N/A'}\n\n"
                 "KNOWN SUBJECTS\n"
-                f"{str(subject_definitions or '').strip() or 'N/A'}\n\n"
+                + json.dumps(
+                    known_subjects if isinstance(known_subjects, list) else [],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                )
+                + "\n\n"
                 "RAW SCENE\n"
-                f"{str(raw_scene or '').strip()}\n\n"
-                "Return raw_scene plus subject_names containing only the functional "
-                "Subject names used in the returned RAW scene, subject_descriptions mapping "
-                "each newly named Subject to its concise non-clothing visual identity "
-                "sentence, and subject_wardrobes mapping each newly named Subject to its "
-                "canonical upper/lower/footwear/other wardrobe."
+                f"{str(raw_scene or '')}"
             ),
         },
     ]
@@ -34135,260 +37019,610 @@ def _director_carry_forward_final_subjects(
     return repaired, carried
 
 
+def _director_raw_subject_resolution_can_be_skipped(raw_scene, world_state):
+    """Return whether every visible Subject is already explicitly identified."""
+    if not isinstance(world_state, dict) or not isinstance(
+        world_state.get("subjects"), dict
+    ):
+        return False
+
+    raw_text = str(raw_scene or "")
+    visual_text = _director_strip_camera_instructions(raw_text)
+    registered = []
+    for subject in world_state["subjects"].values():
+        if not isinstance(subject, dict):
+            continue
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        if name:
+            registered.append((name, subject))
+
+    remaining = visual_text
+    for name, _subject in sorted(registered, key=lambda item: len(item[0]), reverse=True):
+        pattern = re.compile(rf"(?i)(?<![\w]){re.escape(name)}(?![\w])")
+        if pattern.search(remaining) is None:
+            continue
+        remaining = pattern.sub(" ", remaining)
+
+    registered_names = [name for name, _subject in registered]
+    for line in visual_text.splitlines():
+        candidate = line.strip()
+        if not candidate or re.match(r"(?i)^End continuity state\s*:", candidate):
+            continue
+        timestamp = _DIRECTOR_CAMERA_PREFIX_RE.match(candidate)
+        if timestamp is not None:
+            candidate = timestamp.group("body")
+        camera_tag = _DIRECTOR_CAMERA_TAG_RE.match(candidate)
+        if camera_tag is not None:
+            candidate = camera_tag.group("action")
+        if re.match(r"(?i)^(?:the\s+)?camera\b", candidate):
+            continue
+        if any(
+            re.match(rf"(?i)^{re.escape(name)}(?![\w])", candidate)
+            for name in registered_names
+        ):
+            continue
+        if re.match(r"(?i)^(?:he|she|they|it|this subject|that subject)\b", candidate):
+            continue
+        # If an action line introduces a new grammatical subject, its noun
+        # need not be in a genre-specific vocabulary for us to retain the
+        # existing resolver.
+        return False
+
+    # Be conservative: a name or animate description that cannot be tied to a
+    # registered canonical name must continue through the existing resolver.
+    residual = _canonicalize_director_timestamps(remaining)
+    residual = re.sub(r"(?im)^\s*End continuity state\s*:", " ", residual)
+    residual = re.sub(r"(?i)\b(?:at|end|continuity|state)\b", " ", residual)
+    if re.search(r"\b[A-Z][a-z]+(?:[-'][A-Z]?[a-z]+)*\b", residual):
+        return False
+    if re.search(
+        r"(?i)\b(?:a|an|the)\s+(?:[a-z][a-z'-]*\s+){0,3}"
+        r"(?:person|individual|figure|stranger|visitor|guest|guard|soldier|"
+        r"woman|man|child|boy|girl|creature|animal|someone|somebody|"
+        r"elf|goblin|dragon|dwarf|orc|wizard|robot|alien|monster|dog|cat|horse)\b",
+        residual,
+    ):
+        return False
+    if re.search(r"(?i)\b(?:as|while|when|after|before|and|but)\s+(?:a|an|the)\b", residual):
+        return False
+
+    return True
+
+
+def _director_raw_subject_vocabulary(world_state):
+    """Build model-visible Subject references and their canonical IDs."""
+    rows = []
+    by_reference = {}
+    subjects = world_state.get("subjects", {}) if isinstance(world_state, dict) else {}
+    if not isinstance(subjects, dict):
+        subjects = {}
+    for world_state_id, subject in subjects.items():
+        if not isinstance(subject, dict):
+            continue
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        if not name:
+            continue
+        reference = f"<Subject {_world_state_prompt_subject_number(subject, world_state_id)}>"
+        if reference in by_reference:
+            raise ValueError(f"Duplicate visible Subject reference {reference!r}.")
+        by_reference[reference] = {
+            "id": str(world_state_id),
+            "name": name,
+        }
+        rows.append({"subject_id": reference, "name": name})
+    rows.sort(key=lambda row: row["subject_id"])
+    return rows, by_reference
+
+
+def _director_subject_raw_name_matches(raw_scene, raw_name):
+    name = " ".join(str(raw_name or "").split()).strip()
+    if not name:
+        return []
+    return list(re.finditer(
+        rf"(?i)(?<![\w]){re.escape(name)}(?![\w])",
+        str(raw_scene or ""),
+    ))
+
+
+def _director_subject_alias_candidates(raw_name, known_subjects):
+    """Return canonical entries with a unique, descriptive-name alias match."""
+    alias = _subject_identity_key(raw_name)
+    if not alias:
+        return []
+    alias_words = alias.split()
+    matches = []
+    for row in known_subjects or []:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("name") or "").strip()
+        name_key = _subject_identity_key(name)
+        name_words = name_key.split()
+        functional_key, _numbered = _functional_subject_type_key(name)
+        if (
+            name_key == alias
+            or (len(alias_words) <= len(name_words) and name_words[-len(alias_words):] == alias_words)
+            or functional_key == alias
+        ):
+            matches.append(row)
+    unique = {}
+    for row in matches:
+        unique[str(row.get("subject_id") or "")] = row
+    return list(unique.values())
+
+
 def resolve_director_raw_scene_subjects(
     raw_scene,
-    subject_definitions="",
+    world_state,
     *,
     llm_request=ask_llm,
     history_metadata=None,
     segment_seconds=None,
-    return_subject_descriptions=False,
-    return_subject_bootstrap=False,
-    story_context="",
-    current_beat="",
 ):
-    """Name distinct unnamed foreground animate actors after RAW is finalized."""
-    original = _canonicalize_director_timestamps(raw_scene).strip()
-    if not original:
-        if return_subject_bootstrap:
-            return original, [], {}, {}
-        if return_subject_descriptions:
-            return original, [], {}
-        return original, []
+    """Match RAW Subject mentions to WorldState identities without LLM rewriting."""
+    raw_input = raw_scene if isinstance(raw_scene, str) else str(raw_scene or "")
+    if not raw_input.strip():
+        return raw_input, []
+    if _director_raw_subject_resolution_can_be_skipped(raw_input, world_state):
+        errors = _director_raw_scene_structure_errors(raw_input, segment_seconds)
+        if errors:
+            raise ValueError(
+                "RAW Subject resolver bypass found invalid shot-script structure: "
+                + "; ".join(errors)
+            )
+        console_log(
+            "Skipping RAW Subject resolution: all action-line Subjects are "
+            "already registered and named.",
+            flush=True,
+        )
+        return raw_input, []
 
-    end_match = _DIRECTOR_END_CONTINUITY_RE.search(original)
-    if not end_match:
-        raise ValueError("RAW Subject resolver requires End continuity state.")
-    timed_original = original[:end_match.start()].rstrip()
-    end_state_original = original[end_match.start():].strip()
-
+    known_subjects, subject_by_reference = _director_raw_subject_vocabulary(world_state)
     result = llm_request(
-        build_director_raw_subject_resolution_messages(
-            timed_original,
-            subject_definitions=subject_definitions,
-            story_context=story_context,
-            current_beat=current_beat,
-        ),
+        build_director_raw_subject_resolution_messages(raw_input, known_subjects),
         response_format=DIRECTOR_RAW_SUBJECT_RESOLUTION_RESPONSE_FORMAT,
         history_metadata={
             **dict(history_metadata or {}),
-            "purpose": "director_raw_scene_subject_resolution",
+            "purpose": "director_raw_scene_visible_subject_resolution",
         },
-        max_tokens=2048,
     )
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
-    allowed_result_keys = (
-        {"raw_scene", "subject_names"},
-        {"raw_scene", "subject_names", "subject_descriptions"},
-        {
-            "raw_scene",
-            "subject_names",
-            "subject_descriptions",
-            "subject_wardrobes",
-        },
-    )
-    if not isinstance(result, dict) or set(result) not in allowed_result_keys:
-        raise ValueError(
-            "RAW Subject resolver must return raw_scene and subject_names, with "
-            "optional subject_descriptions and subject_wardrobes."
-        )
-    raw_subject_descriptions = result.get("subject_descriptions", {})
-    if not isinstance(raw_subject_descriptions, dict):
-        raise ValueError("RAW Subject resolver subject_descriptions must be an object.")
-    raw_subject_wardrobes = result.get("subject_wardrobes", {})
-    if not isinstance(raw_subject_wardrobes, dict):
-        raise ValueError("RAW Subject resolver subject_wardrobes must be an object.")
+    if not isinstance(result, dict) or set(result) != {"subjects"}:
+        raise ValueError("RAW Subject resolver must return only a subjects array.")
+    raw_subjects = result.get("subjects")
+    if not isinstance(raw_subjects, list):
+        raise ValueError("RAW Subject resolver subjects must be an array.")
 
-    resolved_timed = _canonicalize_director_timestamps(
-        result.get("raw_scene", "")
-    ).strip()
-    if not resolved_timed:
-        raise ValueError("RAW Subject resolver returned empty raw_scene.")
-    if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
-        raise ValueError("RAW Subject resolver changed timestamps.")
+    normalized = []
+    row_by_raw_name = {}
+    seen_subjects = set()
+    for item in raw_subjects:
+        if not isinstance(item, dict) or set(item) != {"raw_name", "subject_id", "is_new"}:
+            raise ValueError("RAW Subject entries require raw_name, subject_id, and is_new.")
+        raw_name = " ".join(str(item.get("raw_name") or "").split()).strip()
+        if not raw_name or not _director_subject_raw_name_matches(raw_input, raw_name):
+            raise ValueError(f"RAW Subject name {raw_name!r} is not present in RAW SCENE.")
+        is_new = item.get("is_new")
+        subject_reference = item.get("subject_id")
+        if not isinstance(is_new, bool):
+            raise ValueError("RAW Subject is_new must be a boolean.")
+        if is_new:
+            if subject_reference is not None:
+                raise ValueError("A new RAW Subject must have subject_id null.")
+            alias_matches = _director_subject_alias_candidates(raw_name, known_subjects)
+            if len(alias_matches) == 1:
+                raise ValueError(
+                    f"RAW Subject {raw_name!r} aliases registered Subject "
+                    f"{alias_matches[0]['name']!r} but was marked new."
+                )
+            if len(alias_matches) > 1:
+                raise ValueError(
+                    f"RAW Subject {raw_name!r} ambiguously aliases multiple registered Subjects."
+                )
+            identity_key = ("new", _subject_identity_key(raw_name))
+            name = raw_name.strip(" ,.;:()[]{}\"'“”‘’")
+            canonical_id = None
+        else:
+            if not isinstance(subject_reference, str) or subject_reference not in subject_by_reference:
+                raise ValueError(
+                    f"RAW Subject ID {subject_reference!r} is not in the supplied vocabulary."
+                )
+            registered = subject_by_reference[subject_reference]
+            alias_matches = _director_subject_alias_candidates(raw_name, known_subjects)
+            if len(alias_matches) == 1 and alias_matches[0]["subject_id"] != subject_reference:
+                raise ValueError(
+                    f"RAW Subject alias {raw_name!r} conflicts with returned Subject ID "
+                    f"{subject_reference!r}."
+                )
+            if len(alias_matches) > 1:
+                raise ValueError(
+                    f"RAW Subject alias {raw_name!r} ambiguously matches multiple "
+                    "registered Subjects."
+                )
+            canonical_id = registered["id"]
+            name = registered["name"]
+            identity_key = ("registered", canonical_id)
 
-    # The Subject pass may label previously unnamed actors, but identifiers that
-    # already existed in accepted RAW are immutable. Restore deterministic
-    # suffixed aliases such as Will1 -> Will or Zombie2_1 -> Zombie2.
-    protected_names = {
-        name
-        for _subject_number, name in parse_defined_subjects(subject_definitions)
-    }
-    protected_names.update(
-        re.findall(r"(?<![\w])([A-Z][A-Za-z'\u2019-]*\d+)(?![\w])", timed_original)
-    )
-    for protected_name in sorted(protected_names, key=len, reverse=True):
-        alias_pattern = re.compile(
-            rf"(?<![\w]){re.escape(protected_name)}(?:_\d+|\d+)(?![\w])",
-            re.I,
-        )
-        resolved_timed = alias_pattern.sub(protected_name, resolved_timed)
-
-    # If the model invents a new label for a role/species with exactly one
-    # established functional Subject, reuse that identity unless RAW explicitly
-    # introduces another individual of the same type.
-    resolved_subject_names = list(result.get("subject_names", []))
-    known_functional_names = [
-        name
-        for _subject_number, name in parse_defined_subjects(subject_definitions)
-        if _functional_subject_type_key(name)[1]
-    ]
-    for index, raw_name in enumerate(resolved_subject_names):
-        proposed_name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
-        type_key, _numbered = _functional_subject_type_key(proposed_name)
-        if not proposed_name or not type_key:
+        previous = row_by_raw_name.get(_subject_identity_key(raw_name))
+        if previous is not None:
+            if previous["identity_key"] != identity_key:
+                raise ValueError(
+                    f"RAW Subject name {raw_name!r} maps to conflicting identities."
+                )
             continue
-        matching_known = [
-            known_name
-            for known_name in known_functional_names
-            if _functional_subject_type_key(known_name)[0] == type_key
+        row_by_raw_name[_subject_identity_key(raw_name)] = {
+            "identity_key": identity_key,
+            "name": name,
+            "subject_id": canonical_id,
+            "is_new": is_new,
+        }
+        if identity_key not in seen_subjects:
+            normalized.append({
+                "raw_name": raw_name,
+                "name": name,
+                "subject_id": canonical_id,
+                "is_new": is_new,
+            })
+            seen_subjects.add(identity_key)
+
+    # Apply only exact identity-label substitutions. The LLM never returns RAW.
+    substitutions = []
+    for raw_name_key, row in row_by_raw_name.items():
+        if row["is_new"] or row["name"].casefold() == raw_name_key:
+            continue
+        for match in _director_subject_raw_name_matches(raw_input, row["name"]):
+            substitutions.append((match.start(), match.end(), row["name"], row["subject_id"]))
+        # Match the original surface form too; canonical-name matches above
+        # are harmless and preserve already-canonical references.
+        raw_names = [
+            str(item.get("raw_name") or "").strip()
+            for item in raw_subjects
+            if _subject_identity_key(item.get("raw_name")) == raw_name_key
         ]
-        if len(matching_known) != 1:
-            continue
-        canonical_name = matching_known[0]
-        if _subject_identity_key(proposed_name) == _subject_identity_key(canonical_name):
-            continue
-        if _raw_explicitly_introduces_distinct_functional_subject(
-            timed_original,
-            type_key,
-        ):
-            continue
-        resolved_timed = re.sub(
-            rf"(?<![\w]){re.escape(proposed_name)}(?![\w])",
-            canonical_name,
-            resolved_timed,
-            flags=re.I,
-        )
-        resolved_subject_names[index] = canonical_name
-        if proposed_name in raw_subject_descriptions:
-            description = raw_subject_descriptions.pop(proposed_name)
-            raw_subject_descriptions.setdefault(canonical_name, description)
-        if proposed_name in raw_subject_wardrobes:
-            wardrobe = raw_subject_wardrobes.pop(proposed_name)
-            raw_subject_wardrobes.setdefault(canonical_name, wardrobe)
+        for surface_name in raw_names:
+            if _subject_identity_key(surface_name) == _subject_identity_key(row["name"]):
+                continue
+            for match in _director_subject_raw_name_matches(raw_input, surface_name):
+                substitutions.append((match.start(), match.end(), row["name"], row["subject_id"]))
 
-    # The resolver can return correct Subject metadata while leaving generic
-    # role/species nouns in RAW. Canonicalize unambiguous references here so
-    # resolved Subjects cannot disappear before reference generation.
-    resolved_timed = _canonicalize_end_continuity_functional_subjects(
-        resolved_timed,
-        subject_definitions,
-        resolved_subject_names,
-    )
-    # If the resolver returned useful Subject metadata but failed to rewrite
-    # the participant label in its raw_scene, recover from the already-accepted
-    # Director RAW instead of making the whole segment retry. This keeps the
-    # semantic scene untouched and applies only deterministic functional-name
-    # canonicalization.
-    fallback_timed = _canonicalize_end_continuity_functional_subjects(
-        timed_original,
-        subject_definitions,
-        resolved_subject_names,
-    )
-    missing_resolved_names = [
-        " ".join(str(name or "").split()).strip(" ,.;:-")
-        for name in resolved_subject_names
-        if str(name or "").strip()
-        and re.search(
-            rf"(?<![\w]){re.escape(' '.join(str(name or '').split()).strip(' ,.;:-'))}(?![\w])",
-            _h3_visual_identity_text(resolved_timed),
-            re.I,
-        ) is None
-    ]
-    if missing_resolved_names and all(
-        re.search(
-            rf"(?<![\w]){re.escape(name)}(?![\w])",
-            _h3_visual_identity_text(fallback_timed),
-            re.I,
-        ) is not None
-        for name in missing_resolved_names
-    ):
-        resolved_timed = fallback_timed
+    selected = []
+    for candidate in sorted(substitutions, key=lambda item: (item[0], -(item[1] - item[0]))):
+        overlaps = [
+            prior for prior in selected
+            if candidate[0] < prior[1] and prior[0] < candidate[1]
+        ]
+        if overlaps and any(prior[3] != candidate[3] for prior in overlaps):
+            raise ValueError("Overlapping RAW Subject aliases map to different identities.")
+        if not overlaps:
+            selected.append(candidate)
+    resolved = raw_input
+    for start, end, canonical_name, _canonical_id in sorted(selected, reverse=True):
+        resolved = resolved[:start] + canonical_name + resolved[end:]
 
-    resolved_end_state = _canonicalize_end_continuity_functional_subjects(
-        end_state_original,
-        subject_definitions,
-        resolved_subject_names,
-    )
-    resolved = (resolved_timed + "\n" + resolved_end_state).strip()
-    structure_errors = _director_raw_scene_structure_errors(
-        resolved,
-        segment_seconds,
-    )
-    if structure_errors:
-        raise ValueError(
-            "RAW Subject resolver changed shot-script structure: "
-            + "; ".join(structure_errors)
-        )
-
-    names = []
-    descriptions = {}
-    wardrobes = {}
-    seen = set()
-    known_keys = {name.casefold() for name in protected_names}
-    for raw_name in resolved_subject_names:
-        name = " ".join(str(raw_name or "").split()).strip(" ,.;:-")
-        for protected_name in sorted(protected_names, key=len, reverse=True):
-            if re.fullmatch(
-                rf"{re.escape(protected_name)}(?:_\d+|\d+)",
-                name,
-                re.I,
-            ):
-                name = protected_name
-                break
-        key = name.casefold()
-        if key in known_keys and any(
-            existing.casefold() == key
-            for _number, existing in parse_defined_subjects(subject_definitions)
-        ):
-            continue
-        if not name or key in seen or not _subject_name_is_promotable(name):
-            continue
-        if re.search(
-            rf"(?<![\w]){re.escape(name)}(?![\w])",
-            _h3_visual_identity_text(resolved_timed),
-            re.I,
-        ) is None:
-            console_log(
-                f"WARNING: RAW Subject resolver returned {name!r} in subject_names "
-                "but no safe deterministic mapping exists in accepted RAW; ignoring "
-                "that resolver entry instead of restarting the segment.",
-                flush=True,
-            )
-            continue
-        seen.add(key)
-        names.append(name)
-        description = " ".join(
-            str(raw_subject_descriptions.get(raw_name)
-                or raw_subject_descriptions.get(name)
-                or "").split()
-        ).strip()
-        if description:
-            # Clothing has exactly one canonical owner: subject_wardrobes.
-            # Do not allow a duplicate wearing-clause to survive in identity prose.
-            descriptions[name] = _strip_character_description_clothing(description)
-        raw_wardrobe = (
-            raw_subject_wardrobes.get(raw_name)
-            or raw_subject_wardrobes.get(name)
-            or {}
-        )
-        if isinstance(raw_wardrobe, dict):
-            wardrobes[name] = {
-                field: str(raw_wardrobe.get(field) or "N/A").strip() or "N/A"
-                for field in _WARDROBE_FIELDS
-            }
+    if _director_timestamp_lexemes(resolved) != _director_timestamp_lexemes(raw_input):
+        raise ValueError("Python Subject canonicalization changed RAW timestamps.")
+    errors = _director_raw_scene_structure_errors(resolved, segment_seconds)
+    if errors:
+        raise ValueError("Subject identity mapping produced invalid RAW structure: " + "; ".join(errors))
 
     console_log(
-        "Checking RAW Subjects segment: "
-        + (", ".join(names) if names else "no dynamic Subjects"),
+        "RAW Subject identity matches: "
+        + (", ".join(f"{row['raw_name']} -> {row['name']}" for row in normalized) or "none"),
         flush=True,
     )
-    if return_subject_bootstrap:
-        return resolved, names, descriptions, wardrobes
-    if return_subject_descriptions:
-        return resolved, names, descriptions
-    return resolved, names
+    return resolved, normalized
+
+
+def format_known_subject_state_for_validator(continuity_state):
+    """Render compact durable Subject presence for the physical RAW validator."""
+    if isinstance(continuity_state, dict) and "schema_version" in continuity_state:
+        return format_world_state_prompt_context(
+            continuity_state,
+            heading="CANONICAL WORLDSTATE OPENING",
+        )
+    state = continuity_state if isinstance(continuity_state, dict) else {}
+    subjects = state.get("subjects")
+    if not isinstance(subjects, dict):
+        return "N/A"
+    lines = []
+    for name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        position = _known_continuity_value(record.get("position"))
+        pose = _known_continuity_value(record.get("pose_action"))
+        details = []
+        if position:
+            details.append(f"position: {position}")
+        if pose:
+            details.append(f"pose/action: {pose}")
+        if details:
+            lines.append(f"- {name}: already established; " + "; ".join(details))
+    return "\n".join(lines) or "N/A"
+
+
+def build_director_raw_scene_repair_messages(raw_prompt, validation_errors):
+    """Build a focused text repair request for Director RAW validator errors."""
+    if isinstance(validation_errors, str):
+        errors = [line.strip().lstrip("-* ").strip() for line in validation_errors.splitlines()]
+    else:
+        errors = [
+            " ".join(str(error or "").split()).strip().lstrip("-* ").strip()
+            for error in (validation_errors or [])
+        ]
+    errors = [error for error in errors if error]
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Fix the RAW PROMPT based on the VALIDATOR ERRORS.\n"
+                "Only alter what is needed to fix the error(s).\n"
+                "Return the altered RAW PROMPT."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "RAW PROMPT\n"
+                f"{str(raw_prompt or '').strip()}\n\n"
+                "VALIDATOR ERRORS:\n"
+                + "\n".join(f"- {error}" for error in errors)
+            ),
+        },
+    ]
+
+
+def _director_state_action_prompt_contract(operation_shapes):
+    """Format the shared JSON envelope and request-specific action shapes."""
+    prompt = (
+        'Return exactly this JSON structure:\n{\n  "state_actions": []\n}\n'
+        "Treat the opening WorldState as the baseline. A fact merely described as "
+        "already true is not a change. A clothing or accessory description alone "
+        "does not establish a clothing change, even when the opening wardrobe is "
+        "unknown; emit change_clothing only for an explicit event that changes "
+        "clothing or a garment's condition. Review the entire RAW from beginning "
+        "to end and include every explicit persistent change to a registered entity "
+        "that is representable by a permitted operation, including prop pickup, "
+        "placement, handoff, and content transfer when the registered entities and "
+        "opening-state prerequisites support it. The array may be empty only when "
+        "no such change occurs. Omit transient actions and changes that WorldState "
+        "cannot represent. Do not infer or invent a transfer, pour, consumption, "
+        "or other change, and do not substitute an unrelated operation. Each item "
+        "must be one StateAction "
+        "object matching exactly one permitted operation structure below. "
+        "Include every shown field and no others. Use exact registered entity "
+        "names from the vocabulary, never Python-assigned IDs. Replace angle-"
+        "bracketed placeholders with values of the shown type; use null only "
+        "where shown. A `retrieve_prop` action may introduce a prop only when "
+        "validated RAW explicitly shows a Subject retrieving it from a registered "
+        "support accessible to that Subject. Do not introduce a prop without that "
+        "origin and retrieval action. Later actions in the same batch may refer to "
+        "the exact name introduced earlier. Reuse existing registered props "
+        "whenever available.\n"
+    )
+    if operation_shapes:
+        prompt += "PERMITTED STATEACTION OBJECT STRUCTURES\n" + json.dumps(
+            operation_shapes,
+            ensure_ascii=False,
+            indent=2,
+        )
+    else:
+        prompt += "No StateAction object is permitted for this request."
+    return prompt
+
+
+def build_director_state_actions_messages(raw_scene, vocabulary, operation_shapes):
+    """Build a compact action-extraction request over immutable validated RAW."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract only persistent WorldState StateActions explicitly shown "
+                "in the validated RAW SCENE. Use only registered names and the "
+                "operations allowed for this request. "
+                + _director_state_action_prompt_contract(operation_shapes)
+                + "Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "REGISTERED WORLDSTATE VOCABULARY AND OPENING STATE\n"
+                + json.dumps(vocabulary, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nVALIDATED RAW SCENE\n"
+                + str(raw_scene or "")
+            ),
+        },
+    ]
+
+
+def build_director_state_actions_repair_messages(
+    raw_scene,
+    vocabulary,
+    rejected_state_actions,
+    reducer_failure,
+    operation_shapes,
+):
+    """Build a repair request that cannot rewrite the accepted RAW scene."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Repair only the StateActions rejected by the WorldState reducer. "
+                "Keep the validated RAW SCENE unchanged. Use only registered names "
+                "and the operations allowed for this request. "
+                + _director_state_action_prompt_contract(operation_shapes)
+                + " "
+                "Return the entire corrected state_actions batch, including actions "
+                "that were already valid; do not return only the failing action. "
+                "Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "REGISTERED WORLDSTATE VOCABULARY AND OPENING STATE\n"
+                + json.dumps(vocabulary, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nVALIDATED RAW SCENE (IMMUTABLE)\n"
+                + str(raw_scene or "")
+                + "\n\nREJECTED STATE ACTIONS\n"
+                + json.dumps(
+                    rejected_state_actions,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                )
+                + "\n\nFIRST REDUCER FAILURE\n"
+                + str(reducer_failure or "")
+            ),
+        },
+    ]
+
+
+def extract_and_dry_run_director_state_actions(
+    world_state,
+    raw_scene,
+    *,
+    segment_number,
+    run_id=None,
+    run_config=None,
+    current_segment_subject_names=None,
+):
+    """Extract and dry-run StateActions without changing RAW or WorldState.
+
+    The validated RAW and opening WorldState remain immutable throughout
+    extraction and the action-only repair loop.
+    """
+    immutable_raw_scene = str(raw_scene or "")
+    contract = build_state_action_only_contract(
+        world_state,
+        current_segment_text=immutable_raw_scene,
+        current_segment_subject_names=current_segment_subject_names,
+    )
+    metadata_base = {
+        "run_id": run_id,
+        "source_sha256": (run_config or {}).get("source_sha256"),
+        "segment": int(segment_number),
+        "opening_state_sha256": hashlib.sha256(
+            json.dumps(
+                world_state,
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+    }
+    response = ask_llm(
+        build_director_state_actions_messages(
+            immutable_raw_scene,
+            contract["vocabulary"],
+            contract["prompt_operation_shapes"],
+        ),
+        response_format=contract["response_format"],
+        history_metadata={**metadata_base, "purpose": "director_state_actions", "attempt": 1},
+    )
+    console_log(
+        "DIRECTOR STATE ACTION EXTRACTION RESPONSE " + json.dumps(
+            {"segment": segment_number, "attempt": 1, "response": response},
+            ensure_ascii=False,
+            default=str,
+        ),
+        flush=True,
+    )
+
+    def validate_response(candidate):
+        try:
+            result = parse_and_dry_run_state_actions(
+                world_state,
+                candidate,
+                segment_number=int(segment_number),
+                name_resolution=contract["name_resolution"],
+            )
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            return None, "invalid_state_action_response: " + " ".join(str(error).split())
+        if result["accepted"]:
+            return result, ""
+        first_failure = next(
+            (item for item in result["outcomes"] if not item.accepted),
+            None,
+        )
+        if first_failure is None:
+            return None, "invalid_state_action_batch: reducer rejected the batch."
+        return None, (
+            f"{first_failure.op} action {first_failure.action_id}: "
+            f"{first_failure.code}: {first_failure.message}"
+        )
+
+    accepted, failure = validate_response(response)
+    for repair_attempt in range(1, DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS + 1):
+        if accepted is not None:
+            return {
+                **accepted,
+                "raw_scene": immutable_raw_scene,
+                "opening_state_sha256": metadata_base["opening_state_sha256"],
+            }
+        console_log(
+            f"Director StateAction extraction failed for Segment {segment_number} "
+            f"(repair {repair_attempt}/{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS}); "
+            f"retrying actions only: {failure}",
+            flush=True,
+        )
+        repaired_response = ask_llm(
+            build_director_state_actions_repair_messages(
+                immutable_raw_scene,
+                contract["vocabulary"],
+                response.get("state_actions") if isinstance(response, dict) else response,
+                failure,
+                contract["prompt_operation_shapes"],
+            ),
+            response_format=contract["response_format"],
+            history_metadata={
+                **metadata_base,
+                "purpose": "director_state_actions_repair",
+                "attempt": repair_attempt,
+            },
+        )
+        console_log(
+            "DIRECTOR STATE ACTION REPAIR RESPONSE " + json.dumps(
+                {
+                    "segment": segment_number,
+                    "attempt": repair_attempt,
+                    "first_failure": failure,
+                    "response": repaired_response,
+                },
+                ensure_ascii=False,
+                default=str,
+            ),
+            flush=True,
+        )
+        response = repaired_response
+        accepted, failure = validate_response(response)
+
+    raise StateActionExtractionError(
+        f"Director StateActions failed for Segment {segment_number} after "
+        f"{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS} action-only repairs: {failure}"
+    )
+
+
+def _format_director_validator_worldstate_context(
+    world_state,
+    *,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
+):
+    if not isinstance(world_state, dict) or "schema_version" not in world_state:
+        return ""
+    context = _director_worldstate_prompt_context(
+        world_state,
+        subject_definitions=subject_definitions,
+        location_state=canonical_location_state,
+        character_references=character_references,
+    )
+    sections = _director_worldstate_prompt_sections(context)
+    return "\n\n".join(
+        sections[key]
+        for key in ("subjects", "locations", "wardrobe", "props")
+        if sections[key]
+    )
 
 
 def build_director_raw_scene_physical_messages(
@@ -34397,21 +37631,43 @@ def build_director_raw_scene_physical_messages(
     previous_shot_end="",
     *,
     static_setting_description="",
+    known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
 ):
     """Check only subject movement, spatial continuity, and physical action order."""
+    if (
+        isinstance(known_subject_state, dict)
+        and "schema_version" in known_subject_state
+    ):
+        known_subject_context = _format_director_validator_worldstate_context(
+            known_subject_state,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
+        )
+    else:
+        known_subject_context = format_known_subject_state_for_validator(
+            known_subject_state
+        )
     return [
         {
             "role": "system",
             "content": (
-                "Validate only subject movement in RAW. Reject if: 1) a new participant "
-                "is not shown entering or revealed by the camera; 2) a subject interacts at "
-                "a different established location without visibly moving there first; 3) a "
-                "subject changes support or elevation without showing that movement; 4) End "
-                "continuity moves a subject after the final timed action. Ordinary furniture "
-                "required by CURRENT BEAT is allowed. Ignore prop identity, contents, "
-                "ownership, transfers, prose, camera taste, and timing. Return exactly one "
-                "JSON object with boolean valid and string issue. Report only the first "
-                "concrete problem."
+                "Validate only subject movement in the RAW SCENE.  Update subject positions "
+                "after each sentence internally and determine if the following sentence's "
+                "actions, whether movement or not, can occur spatially.\n"
+                "Reject only actual changes of support or elevation that are not required "
+                "by CURRENT BEAT or established by the previous state. Do not treat ordinary "
+                "movement across an already-occupied surface, or wording such as stepping "
+                "onto a floor the subject already occupies, as a support change. Continue "
+                "to reject unsupported climbing or stepping onto furniture; ordinary "
+                "interaction with furniture does not imply climbing onto it. When rejecting "
+                "an actual unsupported change, identify the movement itself as the error, "
+                "not merely a later contradiction.\n\n"
+                "Return only one JSON object with boolean valid and string issue. Report "
+                "only the first concrete problem."
             ),
         },
         {
@@ -34421,6 +37677,8 @@ def build_director_raw_scene_physical_messages(
                 f"{str(current_beat or '').strip()}\n\n"
                 "PREVIOUS SHOT END\n"
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
+                "KNOWN SUBJECT STATE\n"
+                f"{known_subject_context}\n\n"
                 "STATIC SETTING AUTHORITY\n"
                 f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
@@ -34441,8 +37699,20 @@ def build_director_raw_scene_prop_state_messages(
     *,
     prop_ledger=None,
     static_setting_description="",
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
 ):
     """Check only prop identity, transfers, beat-role fidelity, and final prop state."""
+    if isinstance(prop_ledger, dict) and "schema_version" in prop_ledger:
+        prop_context = _format_director_validator_worldstate_context(
+            prop_ledger,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
+        )
+    else:
+        prop_context = format_prop_ledger_for_prompt(prop_ledger)
     return [
         {
             "role": "system",
@@ -34466,7 +37736,7 @@ def build_director_raw_scene_prop_state_messages(
                 "PREVIOUS SHOT END\n"
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
                 "PROP LEDGER\n"
-                f"{format_prop_ledger_for_prompt(prop_ledger)}\n\n"
+                f"{prop_context}\n\n"
                 "STATIC SETTING AUTHORITY\n"
                 f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
                 "RAW SCENE\n"
@@ -34487,6 +37757,10 @@ def build_director_raw_scene_coherence_messages(
     *,
     prop_ledger=None,
     static_setting_description="",
+    known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
 ):
     """Compatibility alias for the old combined validator prompt."""
     return build_director_raw_scene_physical_messages(
@@ -34494,6 +37768,10 @@ def build_director_raw_scene_coherence_messages(
         raw_scene,
         previous_shot_end=previous_shot_end,
         static_setting_description=static_setting_description,
+        known_subject_state=known_subject_state,
+        subject_definitions=subject_definitions,
+        canonical_location_state=canonical_location_state,
+        character_references=character_references,
     )
 
 
@@ -34527,11 +37805,24 @@ def normalize_prop_ledger(value):
 def merge_prop_ledger(committed, observed):
     """Copy persistent props forward and apply only safe observed changes."""
     merged = copy.deepcopy(normalize_prop_ledger(committed))
-    observations = normalize_prop_ledger(observed)
+    # Keep observations sparse here: normalize_prop_ledger fills compatibility
+    # defaults, but those defaults must not be mistaken for reported changes.
+    observations = observed if isinstance(observed, dict) else {}
 
-    for observed_id, observed_record in observations.items():
+    for raw_observed_id, raw_record in observations.items():
+        observed_id = str(raw_observed_id or "").strip()
+        if not observed_id or not isinstance(raw_record, dict):
+            continue
+        observed_record = copy.deepcopy(raw_record)
+        observed_record["kind"] = str(
+            observed_record.get("kind") or ""
+        ).strip()
+        if not observed_record["kind"]:
+            continue
         if observed_id not in merged:
-            merged[observed_id] = copy.deepcopy(observed_record)
+            merged[observed_id] = normalize_prop_ledger(
+                {observed_id: observed_record}
+            ).get(observed_id, {})
             continue
 
         existing_record = merged[observed_id]
@@ -34540,7 +37831,43 @@ def merge_prop_ledger(committed, observed):
 
         if existing_kind.casefold() == observed_kind.casefold():
             updated = copy.deepcopy(existing_record)
-            updated.update(copy.deepcopy(observed_record))
+            for field in ("owner", "holder", "location", "contents", "status"):
+                if field not in observed_record:
+                    continue
+                value = observed_record[field]
+                if value is None:
+                    continue
+                if isinstance(value, str):
+                    value = value.strip()
+                    if not value or value.casefold() in {"n/a", "unknown"}:
+                        continue
+                if field == "status":
+                    normalized_status = str(value).casefold()
+                    if normalized_status not in PROP_LEDGER_STATUSES:
+                        continue
+                    if (
+                        str(existing_record.get("status") or "present").casefold()
+                        in {"lost", "destroyed", "consumed"}
+                        and normalized_status == "present"
+                    ):
+                        continue
+                    value = normalized_status
+                updated[field] = copy.deepcopy(value)
+
+            # Holder and location are one physical placement fact. A concrete
+            # update to either clears the mutually exclusive counterpart.
+            if (
+                "holder" in observed_record
+                and str(updated.get("holder") or "N/A").casefold()
+                not in {"n/a", "unknown", ""}
+            ):
+                updated["location"] = "N/A"
+            elif (
+                "location" in observed_record
+                and str(updated.get("location") or "N/A").casefold()
+                not in {"n/a", "unknown", ""}
+            ):
+                updated["holder"] = "N/A"
             updated["kind"] = existing_kind
             merged[observed_id] = updated
             continue
@@ -34554,7 +37881,9 @@ def merge_prop_ledger(committed, observed):
         while replacement_id in merged or replacement_id in observations:
             index += 1
             replacement_id = f"{base}_{index}"
-        merged[replacement_id] = copy.deepcopy(observed_record)
+        merged[replacement_id] = normalize_prop_ledger(
+            {replacement_id: observed_record}
+        ).get(replacement_id, {})
         console_log(
             f"WARNING: continuity tried to change {observed_id!r} from "
             f"{existing_kind!r} to {observed_kind!r}; preserved the original "
@@ -34627,8 +37956,14 @@ def merge_subject_state_ledger(committed, observed_state, segment_number=None):
             if field == "wardrobe" and isinstance(value, dict):
                 wardrobe = copy.deepcopy(target.get("wardrobe") or {})
                 for slot in _WARDROBE_FIELDS:
-                    slot_value = value.get(slot)
-                    if isinstance(slot_value, str) and slot_value.strip() and slot_value.strip().upper() != "N/A":
+                    if slot not in value:
+                        continue
+                    slot_value = value[slot]
+                    if (
+                        isinstance(slot_value, str)
+                        and slot_value.strip()
+                        and slot_value.strip().casefold() not in {"n/a", "unknown"}
+                    ):
                         wardrobe[slot] = slot_value.strip()
                         observed_any = True
                 if wardrobe:
@@ -34636,13 +37971,19 @@ def merge_subject_state_ledger(committed, observed_state, segment_number=None):
                 continue
             if isinstance(value, str):
                 stripped = value.strip()
-                if not stripped or stripped.upper() == "N/A":
+                if not stripped or stripped.casefold() in {"n/a", "unknown"}:
                     continue
                 target[field] = stripped
                 observed_any = True
             elif isinstance(value, list):
-                if value:
-                    target[field] = copy.deepcopy(value)
+                # Field absence means unchanged; an explicit [] is a known
+                # empty collection and must be able to release held props or
+                # clear resolved persistent lists.
+                target[field] = copy.deepcopy(value)
+                observed_any = True
+            elif field == "persistent_structural_change" and isinstance(value, bool):
+                if value or not target.get(field, False):
+                    target[field] = value
                     observed_any = True
             elif value is not None:
                 target[field] = copy.deepcopy(value)
@@ -34757,12 +38098,185 @@ def apply_authoritative_prop_state_effects(prop_ledger, effects):
 
 def format_prop_ledger_for_prompt(prop_ledger):
     """Return compact deterministic JSON for Director prop context."""
+    if isinstance(prop_ledger, dict) and "schema_version" in prop_ledger:
+        return json.dumps(
+            prop_ledger,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
     return json.dumps(
         normalize_prop_ledger(prop_ledger),
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
     )
+
+
+def _world_state_known(value):
+    return value not in (None, "", "unknown", "N/A", "na")
+
+
+def world_state_sha256(world_state):
+    """Return a deterministic digest for a canonical WorldState snapshot."""
+    return hashlib.sha256(
+        json.dumps(
+            world_state if isinstance(world_state, dict) else {},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def format_world_state_prompt_context(world_state, *, heading="WORLDSTATE OPENING"):
+    """Render established physical facts from canonical WorldState only.
+
+    This is a presentation of WorldState, not a second state model. Unknown
+    fields are omitted; no legacy continuity, RAW, or visual data is consulted.
+    """
+    if not isinstance(world_state, dict) or "schema_version" not in world_state:
+        return ""
+    validate_world_state(world_state)
+    lines = [str(heading)] if heading is not None else []
+    locations = world_state.get("locations", {})
+    subjects = world_state.get("subjects", {})
+    props = world_state.get("props", {})
+
+    def entity_name(entity_id, collection):
+        record = collection.get(entity_id) if isinstance(collection, dict) else None
+        return str(record.get("name") or "").strip() if isinstance(record, dict) else ""
+
+    for subject_id, subject in sorted(
+        subjects.items(), key=lambda item: (str(item[1].get("subject_id", "")), item[0])
+    ):
+        name = str(subject.get("name") or "").strip()
+        if not name:
+            continue
+        facts = []
+        presence = subject.get("presence")
+        if presence in {"present", "absent"}:
+            facts.append(presence)
+        location = entity_name(subject.get("location_id"), locations)
+        support = entity_name(subject.get("support_id"), props)
+        if location:
+            facts.append(f"at {location}")
+        if support:
+            facts.append(f"supported by {support}")
+        posture = subject.get("posture")
+        if _world_state_known(posture):
+            facts.append(f"posture {posture}")
+        wardrobe = []
+        for slot in ("upper", "lower", "footwear", "other"):
+            garments = subject.get("wardrobe", {}).get(slot, "unknown")
+            if not isinstance(garments, list):
+                continue
+            for garment in garments:
+                if not isinstance(garment, dict) or not _world_state_known(
+                    garment.get("garment")
+                ):
+                    continue
+                description = str(garment["garment"]).strip()
+                if _world_state_known(garment.get("condition")):
+                    description += f" ({garment['condition']})"
+                wardrobe.append(description)
+        if wardrobe:
+            facts.append("wearing " + _english_join(wardrobe))
+        condition = subject.get("persistent_condition")
+        if _world_state_known(condition):
+            facts.append(f"condition {condition}")
+        if facts:
+            lines.append(f"Subject {name}: " + "; ".join(facts) + ".")
+
+    for prop_id, prop in sorted(
+        props.items(), key=lambda item: (item[1].get("name", "").casefold(), item[0])
+    ):
+        if prop.get("status") in {"consumed", "destroyed", "lost"}:
+            lines.append(f"Prop {prop['name']}: {prop['status']}.")
+            continue
+        facts = []
+        placement = prop.get("placement", {})
+        if placement.get("kind") == "held":
+            holder = entity_name(placement.get("subject_id"), subjects)
+            if holder:
+                facts.append(f"held by {holder}")
+        elif placement.get("kind") == "located":
+            location = entity_name(placement.get("location_id"), locations)
+            support = entity_name(placement.get("support_id"), props)
+            if location:
+                facts.append(f"at {location}")
+            if support:
+                facts.append(f"on {support}")
+        condition = prop.get("condition")
+        if _world_state_known(condition):
+            facts.append(f"condition {condition}")
+        mechanism = prop.get("mechanism_state")
+        if _world_state_known(mechanism):
+            facts.append(f"mechanism {mechanism}")
+        for content in prop.get("contents", []):
+            if not isinstance(content, dict) or not _world_state_known(
+                content.get("substance")
+            ) or content.get("amount") in {"none", "unknown"}:
+                continue
+            facts.append(f"contains {content['amount']} {content['substance']}")
+        if facts:
+            lines.append(f"Prop {prop['name']}: " + "; ".join(facts) + ".")
+
+    if len(lines) == 1 and heading is not None:
+        lines.append("No physical facts are established.")
+    if not lines:
+        return ""
+    return "\n".join(lines)
+
+
+def world_state_subject_definitions(base_subject_definitions, world_state):
+    """Append identity-only definitions for Subjects registered in WorldState."""
+    base_text = str(base_subject_definitions or "").strip()
+    base = parse_subject_registry(base_text)
+    known_ids = set(base)
+    known_names = {str(record.get("name") or "").casefold() for record in base.values()}
+    definitions = []
+    used_numbers = {
+        int(value) for value in known_ids
+        if str(value).isdigit() and int(value) > 0
+    }
+    for key, subject in sorted(
+        (world_state or {}).get("subjects", {}).items(),
+        key=lambda item: (str(item[1].get("subject_id", "")), item[0]),
+    ):
+        subject_number = _world_state_prompt_subject_number(subject, key)
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        if not name or subject_number in known_ids or name.casefold() in known_names:
+            continue
+        while subject_number in used_numbers:
+            subject_number += 1
+        used_numbers.add(subject_number)
+        definition = f"<Subject {subject_number}> is {name} (S{subject_number})."
+        identity = subject.get("identity", {})
+        identity_description = str(
+            identity.get("canonical_description")
+            if _world_state_known(identity.get("canonical_description"))
+            else identity.get("source_description", "")
+            or ""
+        ).strip()
+        identity_description = _strip_character_description_clothing(
+            identity_description
+        ).strip()
+        if identity_description:
+            definition += " " + identity_description
+        definitions.append(definition)
+    return combine_subject_definitions(base_text, definitions)
+
+
+def _world_state_prompt_subject_number(subject, key):
+    """Return a stable positive display number for a WorldState Subject."""
+    value = subject.get("subject_id") if isinstance(subject, dict) else None
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    if isinstance(value, str) and value.isdigit() and int(value) > 0:
+        return int(value)
+    digest = hashlib.sha256(str(key).encode("utf-8")).hexdigest()
+    return 1_000_000_000_000 + int(digest[:12], 16)
 
 
 def build_director_raw_scene_timing_messages(raw_scene):
@@ -34822,13 +38336,8 @@ def validate_director_raw_scene_timing(
         parse_json_response=False,
         history_metadata={
             **dict(history_metadata or {}),
-            "purpose": "director_raw_scene_timing",
+            "purpose": "validate_timing_valid",
         },
-        temperature=0,
-        top_p=1,
-        max_tokens=384,
-        seed=42,
-        repeat_penalty=1.15,
     )
     return parse_beat_validation_result(result)
 
@@ -34839,12 +38348,23 @@ def validate_director_raw_scene_physical(
     *,
     previous_shot_end="",
     static_setting_description="",
+    known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
     llm_request=ask_llm,
     history_metadata=None,
 ):
     """Return a narrow subject-movement/spatial verdict for one RAW scene."""
     if not str(current_beat or "").strip():
         return {"valid": True, "issue": ""}
+    if isinstance(known_subject_state, dict) and "schema_version" in known_subject_state:
+        fixed_prop_issue = _fixed_prop_motion_issue(
+            raw_scene,
+            known_subject_state.get("props", {}),
+        )
+        if fixed_prop_issue:
+            return {"valid": False, "issue": fixed_prop_issue}
     if re.search(r"(?i)\b(?:suddenly\s+appears?|appears?|pops?\s+into\s+view)\b", str(raw_scene or "")):
         return {
             "valid": False,
@@ -34856,6 +38376,10 @@ def validate_director_raw_scene_physical(
             raw_scene,
             previous_shot_end=previous_shot_end,
             static_setting_description=static_setting_description,
+            known_subject_state=known_subject_state,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
         ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
@@ -34863,13 +38387,72 @@ def validate_director_raw_scene_physical(
             **dict(history_metadata or {}),
             "purpose": "director_raw_scene_physical",
         },
-        temperature=0,
-        top_p=1,
-        max_tokens=384,
-        seed=42,
-        repeat_penalty=1.15,
     )
     return parse_beat_validation_result(result)
+
+
+def _fixed_prop_motion_issue(raw_scene, props):
+    """Reject explicit lifting/tilting/transport of a registered fixed prop."""
+    if not isinstance(props, dict):
+        return ""
+    movement = re.compile(
+        r"\b(?:pick(?:s|ed)?\s+up|lift(?:s|ed|ing)?|tilt(?:s|ed|ing)?|"
+        r"tip(?:s|ped|ping)?|carr(?:y|ies|ied|ying)|drag(?:s|ged|ging)?|"
+        r"roll(?:s|ed|ing)?|hoist(?:s|ed|ing)?|haul(?:s|ed|ing)?|"
+        r"relocat(?:e|es|ed|ing)|reposition(?:s|ed|ing)|"
+        r"rais(?:e|es|ed|ing)|lower(?:s|ed|ing)?|"
+        r"shift(?:s|ed|ing)?|rotat(?:e|es|ed|ing))\b",
+        re.IGNORECASE,
+    )
+    raw = str(raw_scene or "")
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", raw):
+        movement_matches = list(movement.finditer(sentence))
+        if not movement_matches:
+            continue
+        for prop in props.values():
+            if not isinstance(prop, dict) or prop.get("mobility") != "fixed":
+                continue
+            name = str(prop.get("name") or "").strip()
+            if not name:
+                continue
+            name_pattern = re.compile(
+                r"(?<!\w)" + r"\s+".join(re.escape(part) for part in name.split()) + r"(?!\w)",
+                re.IGNORECASE,
+            )
+            for entity_match in name_pattern.finditer(sentence):
+                for action_match in movement_matches:
+                    if action_match.end() <= entity_match.start():
+                        gap = sentence[action_match.end():entity_match.start()]
+                        associated = (
+                            len(re.findall(r"[\w’'-]+", gap)) <= 3
+                            and not re.search(
+                                r"\b(?:at|beside|by|from|into|near|onto|over|through|to|under|with)\b",
+                                gap,
+                                re.IGNORECASE,
+                            )
+                        )
+                    else:
+                        gap = sentence[entity_match.end():action_match.start()]
+                        associated = bool(
+                            re.fullmatch(
+                                r"\s+(?:(?:is|was|were|being|been|has|had)\s+){0,2}",
+                                gap,
+                                re.IGNORECASE,
+                            )
+                        )
+                    if not associated:
+                        continue
+                    if re.search(
+                        r"\b(?:not|never|cannot|can't|unable\s+to)\s+(?:\w+\s+){0,2}$",
+                        sentence[max(0, action_match.start() - 32):action_match.start()],
+                        re.IGNORECASE,
+                    ):
+                        continue
+                    return (
+                        f"RAW moves registered fixed prop {name!r}; a fixed prop "
+                        "cannot be lifted, tilted, or relocated."
+                    )
+    return ""
 
 
 def validate_director_raw_scene_prop_state(
@@ -34879,12 +38462,18 @@ def validate_director_raw_scene_prop_state(
     previous_shot_end="",
     prop_ledger=None,
     static_setting_description="",
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
     llm_request=ask_llm,
     history_metadata=None,
 ):
     """Return a narrow prop/transfer/final-state verdict for one RAW scene."""
     if not str(current_beat or "").strip():
         return {"valid": True, "issue": ""}
+    transfer_issue = _unsupported_bare_hand_fluid_transfer_issue(raw_scene)
+    if transfer_issue:
+        return {"valid": False, "issue": transfer_issue}
     result = llm_request(
         build_director_raw_scene_prop_state_messages(
             current_beat,
@@ -34892,6 +38481,9 @@ def validate_director_raw_scene_prop_state(
             previous_shot_end=previous_shot_end,
             prop_ledger=prop_ledger,
             static_setting_description=static_setting_description,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
         ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
@@ -34899,13 +38491,44 @@ def validate_director_raw_scene_prop_state(
             **dict(history_metadata or {}),
             "purpose": "director_raw_scene_prop_state",
         },
-        temperature=0,
-        top_p=1,
-        max_tokens=384,
-        seed=42,
-        repeat_penalty=1.15,
     )
     return parse_beat_validation_result(result)
+
+
+def _unsupported_bare_hand_fluid_transfer_issue(raw_scene):
+    """Reject explicit bare-hand carrying of fluids without a carrier/mechanism."""
+    fluid = (
+        r"liquid|fluid|water|oil|ale|beer|wine|milk|juice|broth|soup|tea|coffee|"
+        r"brew|nectar|elixir|molten\s+(?:metal|rock|lava|wax|glass)"
+    )
+    handled_fluid = re.compile(
+        rf"(?i)\b(?:handful|palmful)\s+of\s+(?:the\s+)?(?:{fluid})\b"
+        rf"|\b(?:{fluid})\b[^.!?;]{{0,40}}\b(?:in|between)\s+"
+        r"(?:(?:the|her|his|their|its)\s+)?(?:bare\s+)?(?:hand|hands|palm|palms|fingers)\b"
+    )
+    transfer = re.compile(
+        r"(?i)\b(?:pour(?:s|ed|ing)?|fill(?:s|ed|ing)?|refill(?:s|ed|ing)?|"
+        r"scoop(?:s|ed|ing)?|lift(?:s|ed|ing)?|carry|carries|carried|carrying|"
+        r"tip(?:s|ped|ping)?|tilt(?:s|ed|ing)?|transfer(?:s|red|ring)?|"
+        r"decant(?:s|ed|ing)?|drain(?:s|ed|ing)?|dispense(?:s|d|ing)?|"
+        r"flow(?:s|ed|ing)?)\b"
+    )
+    carrier = re.compile(
+        r"(?i)\b(?:with|using|through|via|by\s+operating)\s+"
+        r"(?:(?:a|an|the|her|his|their)\s+)?"
+        r"(?:ladle|scoop|spoon|pitcher|bottle|jug|cup|mug|glass|bowl|vessel|"
+        r"container|bucket|hose|pipe|tube|funnel|tap|spigot|faucet|valve|"
+        r"pump|dispenser|channel|trough|gutter|siphon|spout)\b"
+    )
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", str(raw_scene or "")):
+        if handled_fluid.search(sentence) and transfer.search(sentence):
+            if carrier.search(sentence):
+                continue
+            return (
+                "RAW transfers a fluid by bare hand without showing a carrier or "
+                "dispensing mechanism."
+            )
+    return ""
 
 
 def validate_director_raw_scene_coherence(
@@ -34915,6 +38538,10 @@ def validate_director_raw_scene_coherence(
     previous_shot_end="",
     prop_ledger=None,
     static_setting_description="",
+    known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -34924,6 +38551,10 @@ def validate_director_raw_scene_coherence(
         raw_scene,
         previous_shot_end=previous_shot_end,
         static_setting_description=static_setting_description,
+        known_subject_state=known_subject_state,
+        subject_definitions=subject_definitions,
+        canonical_location_state=canonical_location_state,
+        character_references=character_references,
         llm_request=llm_request,
         history_metadata=history_metadata,
     )
@@ -34935,19 +38566,108 @@ def validate_director_raw_scene_coherence(
         previous_shot_end=previous_shot_end,
         prop_ledger=prop_ledger,
         static_setting_description=static_setting_description,
+        subject_definitions=subject_definitions,
+        canonical_location_state=canonical_location_state,
+        character_references=character_references,
         llm_request=llm_request,
         history_metadata=history_metadata,
     )
 
 
-# Run the two-stage Director micro-prompt pipeline for one segment.
-def request_segment_llm(bundle, beats, run_id, run_config):
-    """Run the two-stage Director pipeline with baseline-first acceptance.
+# Build the untimed and timed RAW stages for one Director segment.
+def build_director_raw_scene_creative_messages(base_messages, segment_length):
+    """Build the untimed creative request from the established Director context."""
+    messages = copy.deepcopy(base_messages or [])
+    user_message = next(
+        (message for message in reversed(messages) if message.get("role") == "user"),
+        None,
+    )
+    if user_message is None:
+        raise ValueError("Director creative RAW request has no user context.")
+    user_content = str(user_message.get("content") or "")
+    user_content = re.sub(
+        r"(?m)^RETURN only JSON\.\s*$", "", user_content
+    ).strip()
+    user_message["content"] = user_content
+    system_message = next(
+        (message for message in messages if message.get("role") == "system"),
+        None,
+    )
+    if system_message is None:
+        messages.insert(0, {"role": "system", "content": ""})
+        system_message = messages[0]
+    try:
+        duration = float(segment_length)
+    except (TypeError, ValueError):
+        duration = 0.0
+    system_message["content"] = DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+        segment_length=f"{duration:g}"
+    )
+    return messages
 
-    ARC/BEATS own story semantics. Request 1 creates a scene. Existing Director
-    state/continuity guards are diagnostics only while the baseline is rebuilt;
-    they must not prevent later segments from being generated. Request 2 is a
-    best-effort H3 formatter/translator.
+
+def build_add_scene_timing_refiner_messages(raw_scene, segment_seconds, issue=""):
+    """Build a numbered action list for timestamp-only assignment."""
+    try:
+        duration = float(segment_seconds)
+    except (TypeError, ValueError):
+        duration = 0.0
+    action_lines = _normalize_timing_refiner_action_lines(raw_scene)
+    numbered_actions = "\n".join(
+        f"{index}. {action}"
+        for index, action in enumerate(action_lines, start=1)
+    )
+    messages = [
+        {
+            "role": "system",
+            "content": ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE.format(
+                segment_length=f"{duration:g}"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "RAW SCENE\n"
+                f"{numbered_actions}"
+                + (
+                    "\n\nTIMING REFINER ISSUE\n"
+                    + str(issue).strip()
+                    if str(issue or "").strip()
+                    else ""
+                )
+            ),
+        },
+    ]
+    return messages
+
+
+def build_add_camera_refiner_messages(current_beat, timed_scene):
+    """Build the camera-only request with a parseable annotation convention."""
+    return [
+        {"role": "system", "content": ADD_CAMERA_REFINER_SYSTEM},
+        {
+            "role": "user",
+            "content": (
+                "CURRENT BEAT\n"
+                f"{str(current_beat or 'N/A').strip()}\n\n"
+                "TIMED SCENE\n"
+                f"{str(timed_scene or '')}\n\n"
+                "CAMERA INSTRUCTION FORMAT\n"
+                "If adding a camera instruction, place it immediately after the "
+                "existing timestamp as `[CAMERA: instruction] `, followed by "
+                "the original action text unchanged. Add no other text."
+            ),
+        },
+    ]
+
+
+def request_segment_llm(bundle, beats, run_id, run_config):
+    """Run pre-refinement content validation, timing/camera, and final checks.
+
+    Physical and prop/state validation repair untimed creative RAW. Timing and
+    camera refiners preserve its accepted action text; deterministic final
+    structure/dialogue checks and semantic timing validation run before the
+    segment proceeds to StateAction extraction.
     """
     del beats
     try:
@@ -34969,17 +38689,95 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             flush=True,
         )
     conditioning_mode = bundle.get("conditioning_mode")
-    continuation_offset = (
-        APPEND_GUIDE_CONTEXT_SECONDS
-        if str(conditioning_mode or "").strip().lower() == "continuation"
-        else 0.0
+    h3_prompt_duration = _director_raw_scene_timeline_duration(
+        duration,
+        conditioning_mode,
     )
+    continuation_offset = h3_prompt_duration - duration
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
     current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
-    prop_ledger = normalize_prop_ledger(bundle.get("prop_ledger", {}))
+    world_state_opening = copy.deepcopy(
+        bundle.get("world_state_opening")
+        if isinstance(bundle.get("world_state_opening"), dict)
+        else empty_world_state("director_request1_no_registered_world_state")
+    )
+    validate_world_state(world_state_opening)
+    prop_ledger = world_state_opening
+    subject_definitions = str(bundle.get("subject_definitions") or "")
+    canonical_location_state = bundle.get("canonical_location_state")
+    character_references = bundle.get("character_references")
 
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
+    expected_replay_messages = bundle.get(
+        "pre_director_replay_expected_messages"
+    )
+    if expected_replay_messages is not None:
+        # The fixture may contain the retired one-call system prompt. Replay
+        # equivalence is about the deterministic dynamic user context; each
+        # current stage owns its own system prompt.
+        actual_replay_context = [
+            message for message in request1_base_messages
+            if message.get("role") != "system"
+        ]
+        expected_replay_context = [
+            message for message in expected_replay_messages
+            if message.get("role") != "system"
+        ]
+        if actual_replay_context != expected_replay_context:
+            mismatch_index = next(
+                (
+                    index for index, (actual, expected) in enumerate(zip(
+                        actual_replay_context, expected_replay_context,
+                    ))
+                    if actual != expected
+                ),
+                min(len(actual_replay_context), len(expected_replay_context)),
+            )
+            actual_message = (
+                actual_replay_context[mismatch_index]
+                if mismatch_index < len(actual_replay_context) else {}
+            )
+            expected_message = (
+                expected_replay_context[mismatch_index]
+                if mismatch_index < len(expected_replay_context) else {}
+            )
+            actual_content = str(actual_message.get("content") or "")
+            expected_content = str(expected_message.get("content") or "")
+            common_prefix = 0
+            for actual_char, expected_char in zip(actual_content, expected_content):
+                if actual_char != expected_char:
+                    break
+                common_prefix += 1
+            raise BeatGenerationError(
+                "Pre-Director replay Director Request 1 does not match the "
+                "captured job's dynamic messages at message "
+                f"{mismatch_index} (actual/expected lengths "
+                f"{len(actual_content)}/{len(expected_content)}; first "
+                f"content difference at character {common_prefix}; roles "
+                f"{actual_message.get('role')!r}/"
+                f"{expected_message.get('role')!r})."
+            )
+        if bundle.get("opening_state_sha256") != bundle.get(
+            "pre_director_replay_opening_state_sha256"
+        ):
+            raise BeatGenerationError(
+                "Pre-Director replay opening WorldState hash changed before "
+                "Director Request 1."
+            )
+        console_log(
+            "PRE-DIRECTOR REPLAY MATCH " + json.dumps(
+                {
+                    "segment": segment_number,
+                    "opening_world_state_sha256": bundle.get(
+                        "opening_state_sha256"
+                    ),
+                    "message_count": len(request1_base_messages),
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
     request1_topology_contracts = build_director_barrier_topology_contract(
         bundle.get("assigned_state_effects", []),
         bundle.get("subject_definitions", ""),
@@ -35016,218 +38814,598 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
     request1_messages = request1_base_messages
     for request1_attempt in range(1, DIRECTOR_RAW_SCENE_ATTEMPTS + 1):
-        request1_metadata = {
+        current_beat_text = str(bundle.get("current_beat_text") or "").strip()
+        raw_repair_attempt = 0
+        regenerate_raw = False
+        validator_metadata = {
             "run_id": run_id,
             "source_sha256": (run_config or {}).get("source_sha256"),
-            "purpose": "director_raw_scene",
             "segment": segment_number,
             "attempt": request1_attempt,
             "conditioning_mode": conditioning_mode,
             "opening_state_sha256": bundle.get("opening_state_sha256"),
         }
-        raw_scene_result = ask_llm(
-            request1_messages,
-            response_format=DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
-            history_metadata=request1_metadata,
+        previous_shot_end = (
+            bundle.get("previous_final_frame", "")
+            if segment_number > 1
+            else ""
         )
-        request1_result = _parse_director_raw_scene_result(raw_scene_result)
-        raw_scene = _normalize_director_raw_scene_structure(
-            request1_result.get("raw_scene", ""),
-            segment_seconds=duration,
+        static_setting_description = bundle.get("static_setting_description", "")
+
+        def raw_validator_metadata(repair_attempt):
+            metadata = dict(validator_metadata)
+            if repair_attempt is not None:
+                metadata["repair_attempt"] = repair_attempt
+            return metadata
+
+        creative_messages = build_director_raw_scene_creative_messages(
+            request1_messages,
+            duration,
+        )
+        creative_metadata = {
+            **validator_metadata,
+            "purpose": "director_raw_scene_creative",
+            "attempt": request1_attempt,
+            "stage": "untimed_creative",
+        }
+        creative_scene_result = ask_llm(
+            creative_messages,
+            response_format=None,
+            parse_json_response=False,
+            history_metadata=creative_metadata,
+        )
+        creative_scene = _strip_creative_raw_timestamps(
+            _normalize_raw_scene_result(creative_scene_result)
+        ).split("End continuity state:", 1)[0].strip()
+        console_log(
+            "DIRECTOR CREATIVE RAW RESPONSE " + json.dumps(
+                {
+                    "segment": segment_number,
+                    "attempt": request1_attempt,
+                    "opening_state_sha256": bundle.get("opening_state_sha256"),
+                    "response": creative_scene_result,
+                },
+                ensure_ascii=False,
+                default=str,
+            ),
+            flush=True,
+        )
+
+        if not creative_scene or creative_scene == "N/A":
+            if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                raise BeatGenerationError(
+                    f"Director creative RAW returned no usable scene for Segment "
+                    f"{segment_number} after {DIRECTOR_RAW_SCENE_ATTEMPTS} attempts."
+                )
+            request1_messages = build_request1_retry_messages(
+                "Return a non-empty untimed scene for CURRENT BEAT."
+            )
+            continue
+
+        def validate_creative_candidate(candidate, repair_attempt=None):
+            """Validate RAW content/state before timing or camera refinement."""
+            if not current_beat_text:
+                return None
+            try:
+                result = validate_director_raw_scene_physical(
+                    current_beat_text,
+                    candidate,
+                    previous_shot_end=previous_shot_end,
+                    static_setting_description=static_setting_description,
+                    known_subject_state=world_state_opening,
+                    subject_definitions=subject_definitions,
+                    canonical_location_state=canonical_location_state,
+                    character_references=character_references,
+                    history_metadata=raw_validator_metadata(repair_attempt),
+                )
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+            ) as error:
+                result = {
+                    "valid": False,
+                    "issue": f"RAW physical validator failed: {error}",
+                }
+            log_director_raw_validator_result(
+                "physical/spatial creative",
+                result,
+                segment_number=segment_number,
+                director_attempt=request1_attempt,
+                repair_attempt=repair_attempt,
+            )
+            if not result.get("valid"):
+                return (
+                    "PHYSICAL/SPATIAL",
+                    result.get("issue") or (
+                        "RAW SCENE has an impossible subject movement or action order."
+                    ),
+                )
+
+            try:
+                prop_state = validate_director_raw_scene_prop_state(
+                    current_beat_text,
+                    candidate,
+                    previous_shot_end=previous_shot_end,
+                    prop_ledger=prop_ledger,
+                    static_setting_description=static_setting_description,
+                    subject_definitions=subject_definitions,
+                    canonical_location_state=canonical_location_state,
+                    character_references=character_references,
+                    history_metadata=raw_validator_metadata(repair_attempt),
+                )
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+            ) as error:
+                prop_state = {
+                    "valid": False,
+                    "issue": f"RAW prop/state validator failed: {error}",
+                }
+            log_director_raw_validator_result(
+                "prop/state creative",
+                prop_state,
+                segment_number=segment_number,
+                director_attempt=request1_attempt,
+                repair_attempt=repair_attempt,
+            )
+            if not prop_state.get("valid"):
+                return (
+                    "PROP/STATE",
+                    prop_state.get("issue") or (
+                        "RAW SCENE has inconsistent prop, transfer, or final object state."
+                    ),
+                )
+            return None
+
+        while True:
+            creative_failure = validate_creative_candidate(
+                creative_scene,
+                raw_repair_attempt or None,
+            )
+            if creative_failure is None:
+                break
+            failure_category, creative_issue = creative_failure
+            if raw_repair_attempt >= DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS:
+                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    raise BeatGenerationError(
+                        f"Director RAW {failure_category} validation remained invalid "
+                        f"for Segment {segment_number} after "
+                        f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS} repairs: {creative_issue}"
+                    )
+                console_log(
+                    "Director RAW repair exhausted before timed formatting; "
+                    f"regenerating creative RAW (Director attempt "
+                    f"{request1_attempt + 1}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                    f"last validator={failure_category}: {creative_issue}",
+                    flush=True,
+                )
+                request1_messages = build_request1_retry_messages(
+                    f"{failure_category}: {creative_issue}"
+                )
+                regenerate_raw = True
+                break
+
+            raw_repair_attempt += 1
+            console_log(
+                "DIRECTOR RAW REPAIR DISPATCH " + json.dumps(
+                    {
+                        "purpose": "director_raw_scene_repair",
+                        "stage": "untimed_creative",
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "repair_attempt": raw_repair_attempt,
+                        "validator": failure_category,
+                        "issue": creative_issue,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+            repaired_creative = ask_llm(
+                build_director_raw_scene_repair_messages(
+                    creative_scene,
+                    [creative_issue],
+                ),
+                response_format=None,
+                parse_json_response=False,
+                history_metadata={
+                    **validator_metadata,
+                    "purpose": "director_raw_scene_repair",
+                    "attempt": raw_repair_attempt,
+                    "director_attempt": request1_attempt,
+                    "validator": failure_category,
+                    "stage": "untimed_creative",
+                },
+            )
+            console_log(
+                "DIRECTOR RAW SCENE REPAIR RESPONSE " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "repair_attempt": raw_repair_attempt,
+                        "validator": failure_category,
+                        "issue": creative_issue,
+                        "response": repaired_creative,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+            if isinstance(repaired_creative, str) and repaired_creative.strip():
+                creative_scene = _strip_creative_raw_timestamps(
+                    _normalize_raw_scene_result(repaired_creative)
+                ).split("End continuity state:", 1)[0].strip()
+
+        if regenerate_raw:
+            continue
+
+        timed_scene = ""
+        timing_failure = ""
+        timing_infeasible = False
+        action_lines = _normalize_timing_refiner_action_lines(creative_scene)
+        for timing_attempt in range(1, DIRECTOR_RAW_REFINER_ATTEMPTS + 1):
+            timing_output = None
+            try:
+                timing_output = ask_llm(
+                    build_add_scene_timing_refiner_messages(
+                        creative_scene,
+                        duration,
+                        issue=timing_failure,
+                    ),
+                    response_format=ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT,
+                    history_metadata={
+                        **validator_metadata,
+                        "purpose": "add_scene_timing_refiner",
+                        "attempt": timing_attempt,
+                        "director_attempt": request1_attempt,
+                    },
+                )
+                timing_result = _parse_add_scene_timing_refiner_result(
+                    timing_output
+                )
+                if timing_result["status"] == "not_enough_time":
+                    timing_infeasible = True
+                    timing_failure = (
+                        "The accepted creative scene cannot reasonably fit in "
+                        f"{duration:g} seconds."
+                    )
+                    console_log(
+                        "DIRECTOR TIMING REFINER RESPONSE " + json.dumps(
+                            {
+                                "segment": segment_number,
+                                "director_attempt": request1_attempt,
+                                "timing_attempt": timing_attempt,
+                                "creative_scene": creative_scene,
+                                "response": timing_output,
+                                "issue": timing_failure,
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        ),
+                        flush=True,
+                    )
+                    break
+                timing_failure = _timing_refiner_timestamp_error(
+                    action_lines,
+                    timing_result["timestamps"],
+                    duration,
+                )
+                if not timing_failure:
+                    timed_scene = _assemble_timed_scene(
+                        action_lines,
+                        timing_result["timestamps"],
+                    )
+                    console_log(
+                        "DIRECTOR TIMING REFINER RESPONSE " + json.dumps(
+                            {
+                                "segment": segment_number,
+                                "director_attempt": request1_attempt,
+                                "timing_attempt": timing_attempt,
+                                "creative_scene": creative_scene,
+                                "response": timing_output,
+                                "accepted": True,
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        ),
+                        flush=True,
+                    )
+                    break
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+                json.JSONDecodeError,
+            ) as error:
+                timing_failure = f"Malformed timing-refiner response: {error}"
+            console_log(
+                "DIRECTOR TIMING REFINER RESPONSE " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "timing_attempt": timing_attempt,
+                        "opening_state_sha256": bundle.get(
+                            "opening_state_sha256"
+                        ),
+                        "creative_scene": creative_scene,
+                        "response": timing_output,
+                        "issue": timing_failure,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+        if timing_infeasible:
+            console_log(
+                "DIRECTOR TIMING INFEASIBLE " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "issue": timing_failure,
+                    },
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
+            if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                raise BeatGenerationError(
+                    f"Director timing remained infeasible for Segment "
+                    f"{segment_number} after {DIRECTOR_RAW_SCENE_ATTEMPTS} "
+                    f"creative attempts: {timing_failure}"
+                )
+            request1_messages = build_request1_retry_messages(
+                f"TIMING INFEASIBLE: {timing_failure}"
+            )
+            continue
+        if not timed_scene:
+            raise BeatGenerationError(
+                f"Timing refiner failed to preserve the accepted RAW scene for "
+                f"Segment {segment_number} after "
+                f"{DIRECTOR_RAW_REFINER_ATTEMPTS} attempts: {timing_failure}"
+            )
+
+        try:
+            timing_validation = validate_director_raw_scene_timing(
+                timed_scene,
+                history_metadata=raw_validator_metadata(None),
+            )
+        except (
+            LLMConnectionError,
+            requests.RequestException,
+            OSError,
+            ValueError,
+            TypeError,
+        ) as error:
+            timing_validation = {
+                "valid": False,
+                "issue": f"RAW timing validator failed: {error}",
+            }
+        log_director_raw_validator_result(
+            "timing",
+            timing_validation,
+            segment_number=segment_number,
+            director_attempt=request1_attempt,
+            repair_attempt=None,
+        )
+        if not timing_validation.get("valid"):
+            timing_issue = timing_validation.get("issue") or (
+                "RAW SCENE timestamps do not realistically accommodate the actions."
+            )
+            if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                raise BeatGenerationError(
+                    f"Director timing remained infeasible for Segment "
+                    f"{segment_number} after {DIRECTOR_RAW_SCENE_ATTEMPTS} "
+                    f"creative attempts: {timing_issue}"
+                )
+            console_log(
+                f"Director semantic timing rejected Segment {segment_number}; "
+                f"regenerating creative RAW (Director attempt "
+                f"{request1_attempt + 1}/{DIRECTOR_RAW_SCENE_ATTEMPTS}): "
+                f"{timing_issue}",
+                flush=True,
+            )
+            request1_messages = build_request1_retry_messages(
+                f"TIMING: {timing_issue}"
+            )
+            continue
+
+        camera_scene = timed_scene
+        camera_failure = ""
+        camera_accepted = False
+        for camera_attempt in range(1, DIRECTOR_RAW_REFINER_ATTEMPTS + 1):
+            camera_output = None
+            try:
+                camera_output = ask_llm(
+                    build_add_camera_refiner_messages(
+                        current_beat_text,
+                        timed_scene,
+                    ),
+                    response_format=None,
+                    parse_json_response=False,
+                    history_metadata={
+                        **validator_metadata,
+                        "purpose": "add_camera_refiner",
+                        "attempt": camera_attempt,
+                        "director_attempt": request1_attempt,
+                    },
+                )
+                if not isinstance(camera_output, str):
+                    raise ValueError("Camera refiner must return scene text.")
+                camera_failure = _camera_refiner_content_error(
+                    timed_scene,
+                    camera_output,
+                )
+                if not camera_failure:
+                    camera_scene = camera_output
+                    camera_accepted = True
+                    console_log(
+                        "DIRECTOR CAMERA REFINER RESPONSE " + json.dumps(
+                            {
+                                "segment": segment_number,
+                                "director_attempt": request1_attempt,
+                                "camera_attempt": camera_attempt,
+                                "timed_scene": timed_scene,
+                                "response": camera_output,
+                                "accepted": True,
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        ),
+                        flush=True,
+                    )
+                    break
+            except (
+                LLMConnectionError,
+                requests.RequestException,
+                OSError,
+                ValueError,
+                TypeError,
+            ) as error:
+                camera_failure = f"Malformed camera-refiner response: {error}"
+            console_log(
+                "DIRECTOR CAMERA REFINER RESPONSE " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "camera_attempt": camera_attempt,
+                        "timed_scene": timed_scene,
+                        "response": camera_output,
+                        "issue": camera_failure,
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+        if not camera_accepted:
+            camera_scene = timed_scene
+            console_log(
+                "DIRECTOR CAMERA REFINER FALLBACK " + json.dumps(
+                    {
+                        "segment": segment_number,
+                        "director_attempt": request1_attempt,
+                        "attempts": DIRECTOR_RAW_REFINER_ATTEMPTS,
+                        "issue": camera_failure,
+                        "fallback": "accepted timed scene unchanged",
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                flush=True,
+            )
+
+        raw_scene = _normalize_director_end_continuity_marker(
+            camera_scene
         ).strip()
+        request1_result = {
+            "raw_scene": raw_scene,
+            "finite_activity_complete": False,
+            "named_beneficiaries_complete": False,
+            "activity_tools_settled": False,
+            "beat_complete": False,
+            "completion_metadata_source": "existing_raw_validation_pending",
+        }
         if raw_scene and raw_scene != "N/A":
             request1_result["raw_scene"] = raw_scene
 
-            structure_errors = _director_raw_scene_structure_errors(
-                raw_scene,
-                duration,
-            )
-            if structure_errors:
-                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                    raise BeatGenerationError(
-                        f"Director Request 1 returned malformed shot script for "
-                        f"Segment {segment_number}: " + "; ".join(structure_errors)
+            def validate_raw_candidate(candidate, repair_attempt=None):
+                """Return the first failing RAW-scene validator and its issue."""
+                semantic_candidate = _director_strip_camera_instructions(
+                    candidate
+                )
+                structure_errors = _director_raw_scene_structure_errors(
+                    candidate,
+                    duration,
+                )
+                if structure_errors:
+                    issue = "; ".join(structure_errors)
+                    log_director_raw_validator_result(
+                        "shot-script structure",
+                        {"valid": False, "issue": issue},
+                        segment_number=segment_number,
+                        director_attempt=request1_attempt,
+                        repair_attempt=repair_attempt,
                     )
-                console_log(
-                    f"Director Request 1 shot-script structure failed "
-                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                    f"retrying: " + "; ".join(structure_errors),
-                    flush=True,
-                )
-                request1_messages = build_request1_retry_messages(
-                    "SHOT SCRIPT: " + "; ".join(structure_errors)
-                )
-                continue
-
-            current_beat_text = str(bundle.get("current_beat_text") or "").strip()
-            dialogue_issue = director_required_dialogue_issue(
-                current_beat_text,
-                raw_scene,
-            )
-            if dialogue_issue:
-                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                    raise BeatGenerationError(
-                        f"Director Request 1 never rendered required direct dialogue "
-                        f"for Segment {segment_number}: {dialogue_issue}"
-                    )
-                console_log(
-                    f"Director Request 1 dialogue contract failed "
-                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                    f"retrying: {dialogue_issue}",
-                    flush=True,
-                )
-                request1_messages = build_request1_retry_messages(
-                    "DIALOGUE: CURRENT BEAT requires intelligible speech. "
-                    + dialogue_issue
-                    + " Use one brief direct line in the form "
-                    "Speaker said <d>exact words</d>."
-                )
-                continue
-
-            if current_beat_text:
-                validator_metadata = {
-                    "run_id": run_id,
-                    "source_sha256": (run_config or {}).get("source_sha256"),
-                    "segment": segment_number,
-                    "attempt": request1_attempt,
-                    "conditioning_mode": conditioning_mode,
-                }
-                previous_shot_end = (
-                    bundle.get("previous_final_frame", "")
-                    if segment_number > 1
-                    else ""
-                )
-                static_setting_description = bundle.get(
-                    "static_setting_description", ""
+                    return "SHOT SCRIPT", issue
+                log_director_raw_validator_result(
+                    "shot-script structure",
+                    {"valid": True, "issue": ""},
+                    segment_number=segment_number,
+                    director_attempt=request1_attempt,
+                    repair_attempt=repair_attempt,
                 )
 
-                try:
-                    physical = validate_director_raw_scene_physical(
-                        current_beat_text,
-                        raw_scene,
-                        previous_shot_end=previous_shot_end,
-                        static_setting_description=static_setting_description,
-                        history_metadata=validator_metadata,
-                    )
-                except (
-                    LLMConnectionError,
-                    requests.RequestException,
-                    OSError,
-                    ValueError,
-                    TypeError,
-                ) as error:
-                    physical = {
-                        "valid": False,
-                        "issue": f"RAW physical validator failed: {error}",
-                    }
-
-                if not physical["valid"]:
-                    issue = physical["issue"] or (
-                        "RAW SCENE has an impossible subject movement or action order."
-                    )
-                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                        raise BeatGenerationError(
-                            f"Director Request 1 remained physically incoherent for "
-                            f"Segment {segment_number}: {issue}"
-                        )
-                    console_log(
-                        f"Director Request 1 physical/spatial validation failed "
-                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                        f"retrying: {issue}",
-                        flush=True,
-                    )
-                    request1_messages = build_request1_retry_messages(
-                        f"PHYSICAL/SPATIAL: Fix this physical/spatial problem: {issue}"
-                    )
-                    continue
-
-                try:
-                    prop_state = validate_director_raw_scene_prop_state(
-                        current_beat_text,
-                        raw_scene,
-                        previous_shot_end=previous_shot_end,
-                        prop_ledger=prop_ledger,
-                        static_setting_description=static_setting_description,
-                        history_metadata=validator_metadata,
-                    )
-                except (
-                    LLMConnectionError,
-                    requests.RequestException,
-                    OSError,
-                    ValueError,
-                    TypeError,
-                ) as error:
-                    prop_state = {
-                        "valid": False,
-                        "issue": f"RAW prop/state validator failed: {error}",
-                    }
-
-                if not prop_state["valid"]:
-                    issue = prop_state["issue"] or (
-                        "RAW SCENE has inconsistent prop, transfer, or final object state."
-                    )
-                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                        raise BeatGenerationError(
-                            f"Director Request 1 remained prop/state incoherent for "
-                            f"Segment {segment_number}: {issue}"
-                        )
-                    console_log(
-                        f"Director Request 1 prop/state validation failed "
-                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                        f"retrying: {issue}",
-                        flush=True,
-                    )
-                    request1_messages = build_request1_retry_messages(
-                        f"PROP/STATE: Fix this prop/state problem: {issue}"
-                    )
-                    continue
-
-                try:
-                    timing = validate_director_raw_scene_timing(
-                        raw_scene,
-                        history_metadata={
-                            "run_id": run_id,
-                            "source_sha256": (run_config or {}).get("source_sha256"),
-                            "segment": segment_number,
-                            "attempt": request1_attempt,
-                            "conditioning_mode": conditioning_mode,
-                        },
-                    )
-                except (
-                    LLMConnectionError,
-                    requests.RequestException,
-                    OSError,
-                    ValueError,
-                    TypeError,
-                ) as error:
-                    timing = {
-                        "valid": False,
-                        "issue": f"RAW timing validator failed: {error}",
-                    }
-
-                if not timing["valid"]:
+                dialogue_issue = director_required_dialogue_issue(
+                    current_beat_text,
+                    semantic_candidate,
+                )
+                if dialogue_issue:
                     issue = (
-                        timing["issue"]
-                        or "RAW SCENE compresses a physical transition into too little visible time."
+                        "CURRENT BEAT requires intelligible speech. "
+                        + dialogue_issue
+                        + " Use one brief direct line in the form "
+                        "Speaker said <d>exact words</d>."
                     )
-                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
-                        raise BeatGenerationError(
-                            f"Director Request 1 remained physically over-compressed for "
-                            f"Segment {segment_number}: {issue}"
-                        )
-                    console_log(
-                        f"Director Request 1 timing feasibility failed "
-                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
-                        f"retrying: {issue}",
-                        flush=True,
+                    log_director_raw_validator_result(
+                        "dialogue",
+                        {"valid": False, "issue": issue},
+                        segment_number=segment_number,
+                        director_attempt=request1_attempt,
+                        repair_attempt=repair_attempt,
                     )
-                    request1_messages = build_request1_retry_messages(
-                        "TIMING: "
-                        + issue
-                        + " Give required travel and prerequisite actions enough visible "
-                        "time by simplifying optional staging and/or redistributing timestamps."
+                    return "DIALOGUE", issue
+                log_director_raw_validator_result(
+                    "dialogue",
+                    {"valid": True, "issue": ""},
+                    segment_number=segment_number,
+                    director_attempt=request1_attempt,
+                    repair_attempt=repair_attempt,
+                )
+
+                return None
+
+            final_failure = validate_raw_candidate(raw_scene)
+            if final_failure is not None:
+                failure_category, issue = final_failure
+                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    raise BeatGenerationError(
+                        f"Director final {failure_category} validation remained invalid "
+                        f"for Segment {segment_number} after "
+                        f"{DIRECTOR_RAW_SCENE_ATTEMPTS} creative attempts: {issue}"
                     )
-                    continue
+                console_log(
+                    f"Final RAW {failure_category} validation failed after the "
+                    f"text-preserving refiners; regenerating creative RAW "
+                    f"(Director attempt {request1_attempt + 1}/"
+                    f"{DIRECTOR_RAW_SCENE_ATTEMPTS}): {issue}",
+                    flush=True,
+                )
+                request1_messages = build_request1_retry_messages(
+                    f"{failure_category}: {issue}"
+                )
+                continue
+
+            # The old combined formatter's self-reported completion flags no
+            # longer exist. Preserve their downstream shape as a record that
+            # the accepted split RAW pipeline passed every blocking validator.
+            request1_result.update({
+                "finite_activity_complete": True,
+                "named_beneficiaries_complete": True,
+                "activity_tools_settled": True,
+                "beat_complete": True,
+                "completion_metadata_source": "validated_split_raw_pipeline",
+            })
 
             # Baseline-reset rule: old deterministic Director guards report
             # defects but do not reject or regenerate the scene. This lets a
@@ -35352,13 +39530,21 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             "Director Request 1 returned no usable scene result."
         )
 
-    h3_prompt_duration = duration + continuation_offset
     if continuation_offset:
         raw_scene = _shift_continuation_timestamps_for_guide(
             raw_scene,
             continuation_offset,
         )
-        raw_scene = _anchor_continuation_frame_zero_to_guide(raw_scene)
+        shifted_range_errors = _director_timestamp_range_errors(
+            raw_scene,
+            segment_seconds=h3_prompt_duration,
+        )
+        if shifted_range_errors:
+            raise BeatGenerationError(
+                f"Segment {segment_number} continuation timestamp shift produced "
+                "out-of-range RAW timestamps: "
+                + "; ".join(shifted_range_errors)
+            )
         request1_result["raw_scene"] = raw_scene
 
     try:
@@ -35405,21 +39591,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     # context. It is not a semantic validator for Request 1.
     h3_opening_summary = ""
     if segment_number > 1:
-        registry_state = bundle.get("registry_state")
-        if isinstance(registry_state, dict) and registry_state:
+        world_state_opening = bundle.get("world_state_opening")
+        if isinstance(world_state_opening, dict) and "schema_version" in world_state_opening:
             h3_opening_summary = format_authoritative_opening_state(
-                registry_state,
-                bundle.get("subject_definitions", ""),
+                world_state_opening,
                 include_camera=False,
                 current_scene=raw_scene,
                 conditioning_mode=conditioning_mode,
             )
-        else:
-            h3_opening_summary = str(
-                bundle.get("opening_state")
-                or bundle.get("h3_opening_summary")
-                or ""
-            ).strip()
 
     console_log()
     console_log("=" * 64)
@@ -35441,7 +39620,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     "attempt": audio_attempt,
                     "conditioning_mode": conditioning_mode,
                 },
-                max_tokens=512,
             )
             soundscape = parse_h3_soundscape_result(
                 raw_soundscape,
@@ -35503,7 +39681,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "attempt": audio_attempt,
                         "conditioning_mode": conditioning_mode,
                     },
-                    max_tokens=512,
                 )
                 music = parse_h3_music_result(raw_music)
                 console_log(
@@ -35918,6 +40095,103 @@ def require_existing_beats(path, total_segments):
     return beats
 
 
+def load_pre_director_replay_fixture(path):
+    """Load a test-only, immutable pre-Director input/state snapshot."""
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            fixture = json.load(handle)
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(
+            f"Could not load pre-Director replay fixture {path!r}: {error}"
+        ) from error
+    if not isinstance(fixture, dict) or fixture.get("schema_version") != 1:
+        raise ValueError("Unsupported pre-Director replay fixture schema.")
+    inputs = fixture.get("inputs")
+    pre_director = fixture.get("pre_director")
+    provenance = fixture.get("provenance")
+    request = fixture.get("director_request1")
+    if not all(isinstance(value, dict) for value in (
+        inputs, pre_director, provenance, request,
+    )):
+        raise ValueError("Pre-Director replay fixture is missing required sections.")
+    required_inputs = (
+        "story_source", "expanded_story", "story_arc", "beats",
+        "subject_definitions", "character_canon", "phrase_exclusions",
+    )
+    missing = [name for name in required_inputs if name not in inputs]
+    if missing:
+        raise ValueError(
+            "Pre-Director replay fixture is missing inputs: "
+            + ", ".join(missing)
+            + "."
+        )
+    if (
+        not isinstance(inputs.get("story_source"), str)
+        or not isinstance(inputs.get("expanded_story"), str)
+        or not isinstance(inputs.get("story_arc"), dict)
+        or not isinstance(inputs.get("beats"), list)
+        or any(not isinstance(beat, str) for beat in inputs["beats"])
+        or not isinstance(inputs.get("subject_definitions"), str)
+        or not isinstance(inputs.get("character_canon"), dict)
+        or not isinstance(inputs.get("phrase_exclusions"), list)
+        or not isinstance(fixture.get("run_config"), dict)
+    ):
+        raise ValueError("Pre-Director replay fixture inputs have invalid types.")
+    world_state = pre_director.get("world_state")
+    validate_world_state(world_state)
+    if provenance.get("completed_segments") != 0:
+        raise ValueError(
+            "Pre-Director replay fixture must come from before any Segment commit."
+        )
+    recorded_hash = str(provenance.get("opening_world_state_sha256") or "")
+    request_metadata = request.get("metadata")
+    if not isinstance(request_metadata, dict):
+        raise ValueError("Pre-Director replay fixture has no Director request metadata.")
+    request_hash = str(request_metadata.get("opening_state_sha256") or "")
+    actual_hash = world_state_sha256(world_state)
+    if not recorded_hash or recorded_hash != request_hash or recorded_hash != actual_hash:
+        raise ValueError(
+            "Pre-Director replay WorldState does not match the captured first "
+            "Director opening hash."
+        )
+    if (
+        request_metadata.get("purpose") not in {
+            "director_raw_scene",
+            "director_raw_scene_creative",
+        }
+        or request_metadata.get("segment") != 1
+    ):
+        raise ValueError("Replay reference must be the first Director Request 1.")
+    messages = request.get("messages")
+    if (
+        not isinstance(messages, list)
+        or not messages
+        or any(
+            not isinstance(message, dict)
+            or not isinstance(message.get("role"), str)
+            or not isinstance(message.get("content"), str)
+            for message in messages
+        )
+    ):
+        raise ValueError("Replay reference must contain captured Director messages.")
+    names = pre_director.get("current_segment_subject_names")
+    if not isinstance(names, list) or any(
+        not isinstance(name, str) or not name.strip() for name in names
+    ):
+        raise ValueError("Replay fixture must define current-Segment Subject names.")
+    registered_names = {
+        str(subject.get("name") or "").casefold()
+        for subject in world_state.get("subjects", {}).values()
+        if isinstance(subject, dict)
+    }
+    if any(name.casefold() not in registered_names for name in names):
+        raise ValueError(
+            "Replay fixture current-Segment Subject names must be registered "
+            "in its WorldState."
+        )
+    return copy.deepcopy(fixture)
+
+
 def _run_main(
     summary_executor,
     director_prefetch_executor=None,
@@ -35926,6 +40200,12 @@ def _run_main(
 ):
     args = parse_args()
     configure_reference_image_overrides(args)
+    pre_director_replay = None
+    replay_fixture_path = getattr(args, "pre_director_replay_fixture", None)
+    if replay_fixture_path:
+        pre_director_replay = load_pre_director_replay_fixture(
+            replay_fixture_path
+        )
     use_prompts_path = getattr(args, "use_prompts", None)
     if use_prompts_path:
         return render_generated_prompts(args, path=use_prompts_path)
@@ -35958,9 +40238,13 @@ def _run_main(
             "arc/beat generation is disabled.",
             flush=True,
         )
-    configure_story_temperature(
-        getattr(args, "temp", DEFAULT_STORY_TEMPERATURE)
-    )
+    if pre_director_replay is not None:
+        console_log(
+            "Pre-Director replay enabled: captured upstream outputs and the "
+            "pre-Director WorldState are loaded; first Request 1 must match "
+            "the fixture's captured dynamic messages.",
+            flush=True,
+        )
     configure_formatter(getattr(args, "model", "gpt"))
     requested_visual_style = getattr(args, "visual_style", None)
     visual_style = normalize_visual_style(requested_visual_style)
@@ -36012,16 +40296,63 @@ def _run_main(
         else args.resume
     )
 
-    story_source = load_text_file(
-        STORY_FILE,
-        required=not generate_beats_only,
+    if pre_director_replay is not None:
+        replay_config = pre_director_replay.get("run_config", {})
+        expected_config = {
+            "segment_length": segment_length,
+            "total_length": total_length,
+            "megapixels": megapixels,
+            "total_segments": total_segments,
+            "refresh_interval": refresh_interval,
+            "vision_continuity": args.vision_continuity,
+            "trim_frames": trim_frames,
+            "retention": retention,
+            "no_music": bool(getattr(args, "no_music", False)),
+            "disable_subject_removal": bool(
+                getattr(args, "disable_subject_removal", False)
+            ),
+            "visual_style": normalize_visual_style(requested_visual_style),
+        }
+        mismatches = [
+            key for key, value in expected_config.items()
+            if replay_config.get(key) != value
+        ]
+        resuming_after_replay_start = resume_segment > 1
+        if mismatches:
+            raise ValueError(
+                "Pre-Director replay requires the captured run settings; "
+                "mismatched fields: "
+                + ", ".join(mismatches)
+                + "."
+            )
+        if resuming_after_replay_start:
+            console_log(
+                f"Pre-Director replay resume at Segment {resume_segment}: "
+                "reuse captured upstream inputs and restore WorldState from the "
+                "completed-segment checkpoint; do not reseed the fixture opening.",
+                flush=True,
+            )
+
+    replay_inputs = (
+        pre_director_replay.get("inputs", {})
+        if pre_director_replay is not None
+        else {}
+    )
+    story_source = (
+        str(replay_inputs.get("story_source") or "")
+        if pre_director_replay is not None
+        else load_text_file(
+            STORY_FILE,
+            required=not generate_beats_only,
+        )
     )
     story, beat_instructions = parse_story_beat_instructions(story_source)
     if not story:
         raise ValueError("story.txt must have a story defined.")
-    base_subject_definitions = load_text_file(
-        SUBJECT_DEFINITIONS_FILE,
-        required=False,
+    base_subject_definitions = (
+        str(replay_inputs.get("subject_definitions") or "")
+        if pre_director_replay is not None
+        else load_text_file(SUBJECT_DEFINITIONS_FILE, required=False)
     )
     subject_definitions = base_subject_definitions
     existing_beats = (
@@ -36029,14 +40360,26 @@ def _run_main(
         if getattr(args, "existing_beats", False)
         else None
     )
-    canonical_data = load_canonical_data()
-    if getattr(args, "new_run", False) and recovery_resume_segment is None:
+    canonical_data = (
+        str(replay_inputs.get("canonical_data") or "")
+        if pre_director_replay is not None
+        else load_canonical_data()
+    )
+    if (
+        pre_director_replay is None
+        and getattr(args, "new_run", False)
+        and recovery_resume_segment is None
+    ):
         prepare_new_generation()
-    character_canon = load_or_generate_character_canon(
-        canonical_data,
-        story=story,
-        subject_definitions=subject_definitions,
-        history_metadata={"run_id": run_id},
+    character_canon = (
+        copy.deepcopy(replay_inputs["character_canon"])
+        if pre_director_replay is not None
+        else load_or_generate_character_canon(
+            canonical_data,
+            story=story,
+            subject_definitions=subject_definitions,
+            history_metadata={"run_id": run_id},
+        )
     )
     subject_information = format_beat_generation_subjects(subject_definitions)
     canonical_character_facts = format_character_canon_for_beats(character_canon)
@@ -36050,15 +40393,25 @@ def _run_main(
         subject_information = (
             subject_information + "\n" + canonical_character_facts
         ).strip()
-    phrase_exclusions_found = os.path.isfile(PHRASE_EXCLUSIONS_FILE)
+    phrase_exclusions_found = (
+        bool(replay_inputs.get("phrase_exclusions"))
+        if pre_director_replay is not None
+        else os.path.isfile(PHRASE_EXCLUSIONS_FILE)
+    )
     phrase_exclusions = (
-        load_phrase_exclusions(PHRASE_EXCLUSIONS_FILE)
-        if phrase_exclusions_found
-        else []
+        list(replay_inputs.get("phrase_exclusions", []))
+        if pre_director_replay is not None
+        else (
+            load_phrase_exclusions(PHRASE_EXCLUSIONS_FILE)
+            if phrase_exclusions_found
+            else []
+        )
     )
     if resume_segment == 1:
         reset_prompt_history()
-    if existing_beats is not None:
+    if pre_director_replay is not None:
+        beats = [str(beat) for beat in replay_inputs["beats"]]
+    elif existing_beats is not None:
         beats = existing_beats
         exclusion_issues = validate_generated_beat_exclusions(beats, phrase_exclusions)
         if exclusion_issues:
@@ -36111,11 +40464,12 @@ def _run_main(
             f"One-beat-per-segment requires exactly {total_segments} beats for "
             f"{total_segments} segments, but beats.txt contains {len(beats)} beats."
         )
-    expanded_story_context = load_text_file(
-        EXPANDED_STORY_FILE,
-        required=False,
+    expanded_story_context = (
+        str(replay_inputs.get("expanded_story") or "")
+        if pre_director_replay is not None
+        else load_text_file(EXPANDED_STORY_FILE, required=False)
     )
-    if expanded_story_context:
+    if expanded_story_context and pre_director_replay is None:
         character_canon = canonicalize_defined_subject_wardrobes(
             character_canon,
             expanded_story_context,
@@ -36149,24 +40503,57 @@ def _run_main(
 
     story_location_metadata = {}
     if resume_segment == 1:
-        if expanded_story_context:
+        if pre_director_replay is not None:
+            prior = pre_director_replay["pre_director"]
+            metadata = prior.get("metadata", {})
+            story_location_metadata = {
+                key: copy.deepcopy(metadata[key])
+                for key in (
+                    "overall_location",
+                    "starting_location",
+                    "setting_description",
+                    "spatial_location_description",
+                )
+                if key in metadata
+            }
+            story_location_metadata["location_state"] = copy.deepcopy(
+                prior.get("location_state", {})
+            )
+        elif expanded_story_context:
             story_location_metadata = extract_story_locations(
                 expanded_story_context,
                 history_metadata={"run_id": run_id},
             )
+            static_setting = extract_static_setting(
+                expanded_story_context,
+                story_location_metadata["overall_location"],
+                visual_style=visual_style,
+                history_metadata={"run_id": run_id},
+            )
+            spatial_location = refine_story_setting_spatially(
+                static_setting,
+                history_metadata={"run_id": run_id},
+            )
+            spatial_setting = extract_story_setting_description(
+                spatial_location,
+                static_setting=static_setting,
+                history_metadata={"run_id": run_id},
+            )
             story_location_metadata["setting_description"] = (
-                extract_story_setting_description(
-                    expanded_story_context,
-                    story_location_metadata["overall_location"],
-                    visual_style=visual_style,
-                    history_metadata={"run_id": run_id},
-                )
+                spatial_setting["text_description"]
+            )
+            story_location_metadata["location_state"] = copy.deepcopy(
+                spatial_setting["location_state"]
+            )
+            story_location_metadata["spatial_location_description"] = (
+                spatial_location
             )
             console_log(
                 "Story location metadata: "
                 f"overall={story_location_metadata['overall_location']!r}; "
                 f"starting={story_location_metadata['starting_location']!r}; "
-                f"setting={story_location_metadata['setting_description']!r}",
+                f"setting={story_location_metadata['setting_description']!r}; "
+                f"location_state={story_location_metadata['location_state']!r}",
                 flush=True,
             )
         else:
@@ -36176,12 +40563,55 @@ def _run_main(
                 flush=True,
             )
 
+    initial_location_subjects = (
+        copy.deepcopy(
+            pre_director_replay["pre_director"].get(
+                "initial_location_subjects", []
+            )
+        )
+        if pre_director_replay is not None
+        else []
+    )
+    initial_location_subjects_extracted = pre_director_replay is not None
+    if (
+        pre_director_replay is None
+        and resume_segment == 1
+        and beats
+    ):
+        initial_location_subjects = extract_initial_location_subjects(
+            beats,
+            base_subject_definitions,
+            possible_subjects=canonical_subject_names,
+            history_metadata={"run_id": run_id},
+        )
+        initial_location_subjects_extracted = True
+        if initial_location_subjects:
+            console_log(
+                "Subjects inferred as already present at story start: "
+                + "; ".join(
+                    f"{item['name']} ({item['initial_state']})"
+                    for item in initial_location_subjects
+                ),
+                flush=True,
+            )
+        else:
+            console_log(
+                "No additional Subjects inferred as already present at story start.",
+                flush=True,
+            )
+
     segments_to_generate = get_segments_to_generate(
         resume_segment,
         total_segments,
     )
     try:
-        if director_only:
+        if pre_director_replay is not None:
+            macro_arc = parse_beat_arc_plan(
+                pre_director_replay["inputs"]["story_arc"],
+                total_segments,
+                validate_state_effects=False,
+            )
+        elif director_only:
             raw_frozen_arc = load_text_file(STORY_ARC_FILE, required=True)
             declared_count = _story_arc_declared_beat_count(raw_frozen_arc)
             if declared_count is not None and declared_count != int(total_segments):
@@ -36276,6 +40706,10 @@ def _run_main(
                 str(number): path
                 for number, path in REFERENCE_IMAGE_OVERRIDES.items()
             },
+            "location_state": copy.deepcopy(
+                story_location_metadata.get("location_state", {})
+            ),
+            "initial_location_subjects": copy.deepcopy(initial_location_subjects),
         },
         "macro_arc": copy.deepcopy(macro_arc),
         "reference_jobs": saved_reference_jobs,
@@ -36313,13 +40747,107 @@ def _run_main(
             getattr(args, "disable_subject_removal", False)
         ),
         visual_style=visual_style,
+        world_state_seed=authoritative_world_state_seed_from_subject_definitions(
+            base_subject_definitions,
+            SUBJECT_DEFINITIONS_FILE,
+        ),
     )
+    if (
+        pre_director_replay is not None
+        and run_config.get("source_sha256")
+        != pre_director_replay.get("run_config", {}).get("source_sha256")
+    ):
+        raise ValueError(
+            "Pre-Director replay source inputs do not match the captured run."
+        )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
-        if story_location_metadata:
-            generation_state["metadata"] = copy.deepcopy(
-                story_location_metadata
+        if pre_director_replay is not None:
+            replay_state = pre_director_replay["pre_director"]
+            for key in (
+                "world_state",
+                "location_state",
+                "metadata",
+                "initial_location_subjects",
+                "subject_identity_lock",
+                "reference_binding_state",
+                "character_reference_images",
+                "base_reference_image_count",
+            ):
+                if key in replay_state:
+                    generation_state[key] = copy.deepcopy(replay_state[key])
+            validate_world_state(generation_state["world_state"])
+        elif story_location_metadata:
+            location_metadata = copy.deepcopy(story_location_metadata)
+            generation_state["location_state"] = copy.deepcopy(
+                location_metadata.pop("location_state", {})
             )
+            generation_state["metadata"] = location_metadata
+        # Gate C phase 1: compose WorldState only from named authoritative
+        # sources before any Segment is generated. Legacy continuity/ledgers,
+        # RAW, accepted beats, and visual observations do not enter here.
+        world_state = copy.deepcopy(generation_state["world_state"])
+        if pre_director_replay is None:
+            world_state = seed_generation_world_state_subjects(
+                world_state,
+                run_config.get("world_state_seed", {}),
+                character_canon,
+            )
+        canonical_location_state = generation_state.get("location_state")
+        if not isinstance(canonical_location_state, dict) or not isinstance(
+            canonical_location_state.get("location"), dict
+        ):
+            starting_location = str(
+                story_location_metadata.get("starting_location") or ""
+            ).strip()
+            if starting_location:
+                canonical_location_state = {
+                    "location": {"name": starting_location},
+                    "anchors": [],
+                    "objects": [],
+                }
+        location_id = None
+        if pre_director_replay is None and isinstance(canonical_location_state, dict) and isinstance(
+            canonical_location_state.get("location"), dict
+        ):
+            world_state, location_id = seed_canonical_static_location_state(
+                world_state,
+                canonical_location_state,
+                location_name=str(
+                    story_location_metadata.get("starting_location") or ""
+                ),
+            )
+        if (
+            pre_director_replay is None
+            and initial_location_subjects_extracted
+            and not location_id
+        ):
+            raise ValueError(
+                "WorldState story-start presence requires canonical starting-location state."
+            )
+        if (
+            pre_director_replay is None
+            and initial_location_subjects_extracted
+            and location_id
+        ):
+            world_state = seed_story_start_presence(
+                world_state,
+                initial_location_subjects,
+                location_id=location_id,
+            )
+        if pre_director_replay is None and location_id:
+            world_state = extract_registered_subject_story_start_presence(
+                world_state,
+                story,
+                beats,
+                location_id=location_id,
+                history_metadata={"run_id": run_id},
+            )
+        generation_state["world_state"] = world_state
+        subject_definitions = world_state_subject_definitions(
+            base_subject_definitions,
+            world_state,
+        )
         additional_subject_definitions = []
         completed_beat_ids = set()
         recent_results = []
@@ -36328,20 +40856,17 @@ def _run_main(
         continuity_summary = ""
         prompt_reduced_continuity_state = {}
         reduced_continuity_state = {}
-        # Keep the old structured object only as an internal Subject registry.
-        # Creative continuity now comes from the combined continuity LLM call.
+        # Retain the identity/reference registry for nonphysical metadata only.
         continuity_state = continuity_state_for_registry(
             subject_definitions,
             new_continuity_state(),
         )
-        continuity_state = seed_canonical_opening_wardrobe(
-            subject_definitions,
-            expanded_story_context or story,
-            character_canon,
-            continuity_state,
-        )
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
+        )
+        generation_state["subject_state_ledger"] = {}
+        generation_state["initial_location_subjects"] = copy.deepcopy(
+            initial_location_subjects
         )
         generation_state["continuity_state"] = {}
         # Bind the first segment to the current subjects.txt definitions before
@@ -36383,7 +40908,11 @@ def _run_main(
                 f"video is {previous_video_path}.",
                 flush=True,
             )
-            generation_state = new_generation_state(run_config)
+            generation_state, subject_definitions = new_checkpoint_recovery_state(
+                run_config,
+                base_subject_definitions,
+                character_canon,
+            )
             additional_subject_definitions = []
             completed_beat_ids = set()
             recent_results = []
@@ -36406,12 +40935,6 @@ def _run_main(
                 subject_definitions,
                 new_continuity_state(),
             )
-            continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                continuity_state,
-            )
             generation_state["subject_registry_state"] = migrate_continuity_state(
                 continuity_state
             )
@@ -36422,34 +40945,35 @@ def _run_main(
             )
         else:
             generation_state = restored["state"]
-            additional_subject_definitions = restored[
-                "additional_subject_definitions"
-            ]
-            subject_definitions = combine_subject_definitions(
+            additional_subject_definitions = []
+            subject_definitions = world_state_subject_definitions(
                 base_subject_definitions,
-                additional_subject_definitions,
+                generation_state.get("world_state"),
             )
             completed_beat_ids = restored["completed_beat_ids"]
             recent_results = restored["recent_results"]
             generated_video_paths = restored["video_paths"]
             previous_video_path = restored["previous_video_path"]
-            continuity_summary = restored["continuity_summary"]
-            reduced_continuity_state = copy.deepcopy(
-                restored.get("continuity_state", {})
-            )
-            prompt_reduced_continuity_state = copy.deepcopy(
-                restored.get("continuity_prompt_state", reduced_continuity_state)
-            )
+            continuity_summary = ""
+            reduced_continuity_state = {}
+            prompt_reduced_continuity_state = {}
             continuity_state = continuity_state_for_registry(
                 subject_definitions,
-                restored["subject_registry_state"],
+                new_continuity_state(),
             )
             generation_state.pop("additional_subject_definitions", None)
 
-    prop_ledger = normalize_prop_ledger(
-        generation_state.get("prop_ledger", {})
+    # Legacy prop ledgers are not inputs to Director or H3 state. Registered
+    # props and their placements live only in WorldState.
+    prop_ledger = {}
+    generation_state["prop_ledger"] = {}
+    generation_state["continuity_state"] = {}
+    generation_state["continuity_prompt_state"] = {}
+    generation_state["continuity_summary"] = ""
+    generation_state["subject_state_ledger"] = {}
+    generation_state["subject_registry_state"] = migrate_continuity_state(
+        continuity_state
     )
-    generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
     character_reference_images = normalize_character_reference_images(
         generation_state.get("character_reference_images", {})
     )
@@ -36480,17 +41004,8 @@ def _run_main(
     ).strip().casefold()
     if resume_segment <= 1:
         continuity_source = "initial"
-    elif continuity_source not in {"prompt", "vision"}:
-        continuity_source = (
-            "vision"
-            if should_run_vision_continuity(
-                resume_segment - 1,
-                getattr(args, "vision_continuity", 1),
-                refresh_interval,
-                macro_arc=macro_arc,
-            )
-            else "prompt"
-        )
+    else:
+        continuity_source = "world_state"
 
     # Serialize the shared checkpoint without racing a prefetch worker.
     def checkpoint_generation_state():
@@ -36512,6 +41027,16 @@ def _run_main(
         location_metadata.get("location_reference_video")
         or ""
     ).strip()
+    location_state = copy.deepcopy(
+        generation_state.get("location_state")
+        if isinstance(generation_state.get("location_state"), dict)
+        else {}
+    )
+
+    if location_state:
+        generated_prompts_payload["config"]["location_state"] = copy.deepcopy(
+            location_state
+        )
 
     if location_setting_description:
         generated_prompts_payload["config"]["setting_description"] = (
@@ -36530,7 +41055,7 @@ def _run_main(
             console_log("=" * 64)
             console_log(
                 f"Setting: {location_setting_description}\n"
-                "Rendering one character-free 2-second panoramic reference.",
+                "Rendering one character-free 3-second panoramic reference.",
                 flush=True,
             )
             location_reference_video_path = render_location_reference_video(
@@ -36723,16 +41248,6 @@ def _run_main(
         checkpoint_generation_state()
 
 
-    # Compute a stable digest of continuity state.
-    def continuity_state_sha(state):
-        return hashlib.sha256(
-            json.dumps(
-                state,
-                ensure_ascii=False,
-                sort_keys=True,
-            ).encode("utf-8")
-        ).hexdigest()
-
     # Build a stable fingerprint for one segment request.
     def build_segment_fingerprint(
         segment_number,
@@ -36758,22 +41273,83 @@ def _run_main(
                 ),
                 "recent_results": list(recent_items),
                 "dialogue_exclusions": list(dialogue_exclusions),
-                "opening_state_sha256": continuity_state_sha(opening_state),
-                "opening_summary_sha256": hashlib.sha256(
-                    str(opening_summary_text or "").encode("utf-8")
-                ).hexdigest(),
+                "world_state_sha256": world_state_sha256(
+                    generation_state.get("world_state")
+                ),
                 "subject_definitions_sha256": hashlib.sha256(
                     str(subject_definitions or "").encode("utf-8")
                 ).hexdigest(),
                 "static_setting_sha256": hashlib.sha256(
                     str(location_setting_description or "").encode("utf-8")
                 ).hexdigest(),
-                "prop_ledger_sha256": hashlib.sha256(
-                    format_prop_ledger_for_prompt(prop_ledger_state).encode("utf-8")
-                ).hexdigest(),
             },
             ensure_ascii=False,
             sort_keys=True,
+        )
+
+    prepared_world_state_segments = (
+        {1} if pre_director_replay is not None else set()
+    )
+    prepared_world_state_subject_names = (
+        {
+            1: copy.deepcopy(
+                pre_director_replay["pre_director"][
+                    "current_segment_subject_names"
+                ]
+            )
+        }
+        if pre_director_replay is not None
+        else {}
+    )
+
+    def prepare_current_segment_world_state(segment_number):
+        """Register beat-established identities/props before Request 1."""
+        nonlocal subject_definitions, additional_subject_definitions
+        segment_number = int(segment_number)
+        if segment_number in prepared_world_state_segments:
+            return
+        world_state = generation_state.get("world_state")
+        if not isinstance(world_state, dict):
+            world_state = empty_world_state("pre_director_world_state_unavailable")
+        current_beat = (
+            str(beats[segment_number - 1])
+            if beats and 1 <= segment_number <= len(beats)
+            else ""
+        )
+        current_phase = story_arc_phase_for_beat(macro_arc, segment_number)
+        assigned_source = director_assigned_source(current_phase, segment_number)
+        world_state, added = prepare_segment_world_state_for_director(
+            world_state,
+            segment_number,
+            current_beat,
+            assigned_source,
+            expanded_story_context or story,
+            history_metadata={"run_id": run_id},
+        )
+        if generation_state.get("world_state") != world_state:
+            generation_state["world_state"] = world_state
+            checkpoint_generation_state()
+        if added:
+            console_log(
+                f"Pre-Director WorldState registered Segment {segment_number} "
+                "Subject(s): " + ", ".join(added),
+                flush=True,
+            )
+        subject_definitions = world_state_subject_definitions(
+            base_subject_definitions,
+            world_state,
+        )
+        additional_subject_definitions = [
+            line for line in subject_definitions.splitlines()
+            if line not in base_subject_definitions.splitlines()
+        ]
+        prepared_world_state_segments.add(segment_number)
+        present_names = [
+            subject["name"] for subject in world_state["subjects"].values()
+            if subject.get("presence") == "present"
+        ]
+        prepared_world_state_subject_names[segment_number] = list(
+            dict.fromkeys(present_names + list(added))
         )
 
     # Assemble the prefetched data needed for one segment.
@@ -36816,60 +41392,12 @@ def _run_main(
             previous_result,
             structured_opening_summary,
         )
-        h3_opening_summary = structured_opening_summary
-        state_metadata = generation_state.get("metadata")
-        starting_location = (
-            str(state_metadata.get("starting_location") or "").strip()
-            if isinstance(state_metadata, dict)
-            else ""
+        # Physical opening facts come from the request's WorldState snapshot.
+        # Keep only the previous Director ending as choreography context.
+        h3_opening_summary = format_world_state_prompt_context(
+            generation_state.get("world_state"),
+            heading="CANONICAL WORLDSTATE OPENING",
         )
-        if segment_number == 1 and starting_location:
-            starting_location_sentence = format_story_starting_location(
-                starting_location
-            )
-            director_opening_summary = (
-                "STARTING LOCATION (authoritative)\n"
-                + starting_location_sentence
-            )
-            h3_opening_summary = director_opening_summary
-        source_opening_state = format_source_authorized_opening_state(
-            macro_arc,
-            segment_number,
-            subject_information=subject_information,
-        )
-        if source_opening_state:
-            director_context = director_opening_summary or "N/A"
-            h3_context = h3_opening_summary or "N/A"
-            if segment_number == 1:
-                director_opening_summary = (
-                    source_opening_state
-                    + (
-                        "\n\n" + director_context
-                        if director_context != "N/A"
-                        else ""
-                    )
-                )
-                h3_opening_summary = (
-                    source_opening_state
-                    + (
-                        "\n\n" + h3_context
-                        if h3_context != "N/A"
-                        else ""
-                    )
-                )
-            else:
-                director_opening_summary = (
-                    source_opening_state
-                    + "\n\nPREVIOUS SHOT END (primary adjacent-shot continuity; "
-                    "do not override source-authorized facts)\n"
-                    + director_context
-                )
-                h3_opening_summary = (
-                    source_opening_state
-                    + "\n\nRENDERED CONTINUITY (supplemental; do not override "
-                    "source-authorized facts)\n"
-                    + h3_context
-                )
         excluded_picture_ids = (
             get_conditioning_excluded_picture_ids(
                 opening_state,
@@ -36894,10 +41422,30 @@ def _run_main(
             dialogue_exclusions=dialogue_exclusions,
             current_phase=current_phase,
             phrase_exclusions=phrase_exclusions,
+            assigned_source=director_assigned_source(
+                current_phase,
+                active_beat_id,
+            ),
             canonical_character_facts=canonical_character_facts,
             canonical_data=canonical_data,
             static_setting_description=location_setting_description,
             persistent_movable_prop_state=prop_ledger_snapshot,
+            initial_location_subjects=(
+                generation_state.get("initial_location_subjects", [])
+                if segment_number == 1 else []
+            ),
+            world_state=(
+                generation_state.get("world_state")
+                if isinstance(generation_state.get("world_state"), dict)
+                else empty_world_state("director_bundle_world_state_unavailable")
+            ),
+            canonical_location_state=(
+                generation_state.get("location_state")
+                if isinstance(generation_state.get("location_state"), dict)
+                else None
+            ),
+            character_references=generation_state.get("character_reference_images", {}),
+            previous_shot_choreography=director_opening_summary,
         )
         return {
             "segment": segment_number,
@@ -36917,14 +41465,33 @@ def _run_main(
             "messages": messages,
             "estimated_tokens": estimated_tokens,
             "recent_count": recent_count,
-            "opening_state": director_opening_summary,
+            "opening_state": format_world_state_prompt_context(
+                generation_state.get("world_state"),
+                heading="CANONICAL WORLDSTATE OPENING",
+            ),
             "previous_final_frame": director_opening_summary,
             "previous_music": str(
                 previous_result.get("non_diegetic_music") or ""
             ).strip(),
-            "registry_state": opening_state,
-            "prop_ledger": prop_ledger_snapshot,
+            "registry_state": None,
+            "world_state_opening": copy.deepcopy(
+                generation_state.get("world_state")
+                if isinstance(generation_state.get("world_state"), dict)
+                else empty_world_state("request1_world_state_unavailable")
+            ),
+            "world_state_current_segment_subject_names": list(
+                prepared_world_state_subject_names.get(segment_number, [])
+            ),
+            "prop_ledger": {},
             "static_setting_description": location_setting_description,
+            "canonical_location_state": copy.deepcopy(
+                generation_state.get("location_state")
+                if isinstance(generation_state.get("location_state"), dict)
+                else None
+            ),
+            "character_references": copy.deepcopy(
+                generation_state.get("character_reference_images", {})
+            ),
             "opening_summary": director_opening_summary,
             "h3_opening_summary": h3_opening_summary,
             "continuity_source": (
@@ -36935,7 +41502,23 @@ def _run_main(
             "phrase_exclusions": list(phrase_exclusions),
             "current_phase": copy.deepcopy(current_phase or {}),
             "subject_definitions": subject_definitions,
-            "opening_state_sha256": continuity_state_sha(opening_state),
+            "opening_state_sha256": world_state_sha256(
+                generation_state.get("world_state")
+            ),
+            "pre_director_replay_expected_messages": (
+                copy.deepcopy(
+                    pre_director_replay["director_request1"]["messages"]
+                )
+                if pre_director_replay is not None and segment_number == 1
+                else None
+            ),
+            "pre_director_replay_opening_state_sha256": (
+                pre_director_replay["provenance"][
+                    "opening_world_state_sha256"
+                ]
+                if pre_director_replay is not None and segment_number == 1
+                else None
+            ),
             "fingerprint": build_segment_fingerprint(
                 segment_number,
                 completed_ids,
@@ -36975,30 +41558,20 @@ def _run_main(
 
     run_start_time = time.perf_counter()
     prefetched_next = None
-    pending_previous_render_future = None
     render_futures_by_segment = {}
-    # Keep the prompt inputs for the next segment in the main thread. A
-    # cadence-skipped render is finalized by a callback, and that callback
-    # updates generation_state["recent_dialogues"] asynchronously. Reading
-    # that field while rebuilding the next segment bundle can therefore make
-    # an otherwise identical prefetch look stale.
+    # Keep the next-segment dialogue exclusions in the main thread so prompt
+    # construction uses the same committed segment history in every run.
     recent_dialogue_exclusions = list(
         generation_state.get(
             "recent_dialogue_exclusions",
             generation_state.get("recent_dialogues", []),
         )
     )
-    # The completed-segment list is also updated by the cadence-skipped render
-    # callback. Keep a private history for deriving the next exclusion window
-    # so that callback timing cannot change the next prompt's fingerprint.
+    # Keep a private history for deriving the next exclusion window from the
+    # completed-segment records restored at run start.
     dialogue_history_records = copy.deepcopy(
         generation_state.get("segments", [])
     )[-DIALOGUE_HISTORY_SEGMENTS_MAX:]
-    # Set by finalize_skipped_vision_segment once it has finished appending a
-    # non-final segment's video path to generated_video_paths. The final
-    # segment is always drained synchronously below, so this event is only
-    # relevant when a later segment needs the preceding background render.
-    pending_render_finalized = threading.Event()
     for segment in segments_to_generate:
         if is_new_phase_start(beats, segment):
             #Dynamic Subject cleanup at phase boundaries is intentionally
@@ -37018,6 +41591,7 @@ def _run_main(
                 f"Starting phase {phase_number} at segment {segment}; retaining "
                 "dynamically created Subjects from earlier phases."
             )
+        prepare_current_segment_world_state(segment)
         segment_bundle = build_segment_bundle(
             segment,
             completed_beat_ids,
@@ -37096,33 +41670,56 @@ def _run_main(
         request2_result_for_fixture = copy.deepcopy(payload["llm_result"])
         llm_result = dict(payload["llm_result"])
         raw_subject_names = []
-        raw_subject_descriptions = {}
-        raw_subject_wardrobes = {}
+        resolved_subject_names = []
         accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
         resolved_raw_scene = accepted_raw_scene
         subject_resolution_error = None
         subject_resolution_succeeded = False
+        raw_scene_timeline_duration = _director_raw_scene_timeline_duration(
+            segment_bundle["current_duration"],
+            segment_bundle.get("conditioning_mode"),
+        )
+        pre_subject_timestamp_errors = _director_timestamp_range_errors(
+            accepted_raw_scene,
+            segment_seconds=raw_scene_timeline_duration,
+        )
+        if pre_subject_timestamp_errors:
+            raise BeatGenerationError(
+                f"Segment {segment} RAW has timestamps outside its duration "
+                "before visible-Subject resolution: "
+                + "; ".join(pre_subject_timestamp_errors)
+            )
+        subject_resolution_bypassed = _director_raw_subject_resolution_can_be_skipped(
+            accepted_raw_scene,
+            segment_bundle.get("world_state_opening"),
+        )
         for subject_attempt in range(1, 3):
             try:
-                (
-                    resolved_raw_scene,
-                    raw_subject_names,
-                    raw_subject_descriptions,
-                    raw_subject_wardrobes,
-                ) = resolve_director_raw_scene_subjects(
+                resolved_raw_scene, resolved_subjects = resolve_director_raw_scene_subjects(
                     accepted_raw_scene,
-                    subject_definitions=subject_definitions,
-                    return_subject_bootstrap=True,
-                    story_context=expanded_story_context,
-                    current_beat=segment_bundle.get("current_beat_text", ""),
+                    world_state=segment_bundle.get("world_state_opening"),
                     history_metadata={
                         "run_id": run_id,
                         "source_sha256": run_config["source_sha256"],
                         "segment": segment,
                         "attempt": subject_attempt,
                     },
-                    segment_seconds=segment_bundle["current_duration"],
+                    segment_seconds=raw_scene_timeline_duration,
                 )
+                resolved_subject_names = list(dict.fromkeys(
+                    str(item.get("name") or "").strip()
+                    for item in resolved_subjects
+                    if isinstance(item, dict) and str(item.get("name") or "").strip()
+                ))
+                raw_subject_names = list(dict.fromkeys(
+                    str(item.get("name") or "").strip()
+                    for item in resolved_subjects
+                    if (
+                        isinstance(item, dict)
+                        and item.get("is_new") is True
+                        and str(item.get("name") or "").strip()
+                    )
+                ))
                 subject_resolution_succeeded = True
                 break
             except (
@@ -37144,13 +41741,19 @@ def _run_main(
                 f"RAW Subject resolution failed for Segment {segment} after "
                 f"2 attempts: {subject_resolution_error}"
             )
-        resolved_raw_scene, carried_final_subjects = (
-            _director_carry_forward_final_subjects(
-                resolved_raw_scene,
-                subject_definitions=subject_definitions,
-                resolved_subject_names=raw_subject_names,
+        if subject_resolution_bypassed:
+            # Keep the accepted Director text byte-for-byte intact throughout
+            # this no-discovery path, including its existing end-state wording.
+            resolved_raw_scene = accepted_raw_scene
+            carried_final_subjects = []
+        else:
+            resolved_raw_scene, carried_final_subjects = (
+                _director_carry_forward_final_subjects(
+                    resolved_raw_scene,
+                    subject_definitions=subject_definitions,
+                    resolved_subject_names=resolved_subject_names,
+                )
             )
-        )
         if carried_final_subjects:
             console_log(
                 f"Segment {segment} deterministic final-participant carry-forward: "
@@ -37173,6 +41776,50 @@ def _run_main(
             raise BeatGenerationError(
                 f"Segment {segment} has no confirmed complete Request 1 result."
             )
+        opening_world_state = segment_bundle.get("world_state_opening")
+        if not isinstance(opening_world_state, dict):
+            raise StateActionExtractionError(
+                f"Segment {segment} has no immutable opening WorldState for "
+                "StateAction extraction."
+            )
+        state_action_raw_scene = _director_strip_camera_instructions(
+            resolved_raw_scene
+        )
+        try:
+            state_action_result = extract_and_dry_run_director_state_actions(
+                opening_world_state,
+                state_action_raw_scene,
+                segment_number=segment,
+                run_id=run_id,
+                run_config=run_config,
+                current_segment_subject_names=segment_bundle.get(
+                    "world_state_current_segment_subject_names", []
+                ),
+            )
+        except LLMConnectionError:
+            raise
+        except Exception as error:
+            if isinstance(error, StateActionExtractionError):
+                raise
+            raise StateActionExtractionError(
+                f"Director StateAction extraction failed for Segment {segment}: "
+                f"{error}"
+            ) from error
+        _assert_state_action_raw_unchanged(
+            state_action_raw_scene,
+            state_action_result,
+            segment,
+        )
+        request1_result["state_actions"] = copy.deepcopy(
+            state_action_result["state_actions"]
+        )
+        request1_result["state_actions_dry_run_accepted"] = True
+        console_log(
+            f"Director StateActions accepted for Segment {segment}: "
+            f"{len(request1_result['state_actions'])} action(s), opening "
+            f"WorldState {state_action_result['opening_state_sha256']}.",
+            flush=True,
+        )
         reported_beat_ids = (
             [int(payload.get("active_beat_id"))]
             if beats and payload.get("active_beat_id") is not None
@@ -37197,16 +41844,9 @@ def _run_main(
             else {}
         )
         formatter_subject_names = list(formatter_subject_genders)
+
         registration_subject_genders = dict(formatter_subject_genders)
         registration_subject_genders.update(canonical_subject_genders)
-        for subject_name, description in raw_subject_descriptions.items():
-            description_text = str(description or "")
-            if re.search(r"(?i)\b(?:female|woman|girl)\b", description_text):
-                registration_subject_genders[subject_name] = "female"
-            elif re.search(r"(?i)\b(?:male|man|boy)\b", description_text):
-                registration_subject_genders[subject_name] = "male"
-        registration_subject_descriptions = dict(raw_subject_descriptions)
-        registration_subject_descriptions.update(canonical_subject_descriptions)
         continuity_state, hinted_subject_names = register_named_subject_hints(
             continuity_state,
             subject_definitions,
@@ -37218,8 +41858,7 @@ def _run_main(
             )),
             origin_segment=segment,
             subject_genders=registration_subject_genders,
-            subject_descriptions=registration_subject_descriptions,
-            subject_wardrobes=raw_subject_wardrobes,
+            subject_descriptions=canonical_subject_descriptions,
         )
         newly_registered_names = list(dict.fromkeys(
             dialogue_subject_names + hinted_subject_names
@@ -37239,30 +41878,42 @@ def _run_main(
                 + ", ".join(missing_resolved_subjects)
             )
         if newly_registered_names:
-            previous_dynamic_definitions = list(additional_subject_definitions)
-            additional_subject_definitions, new_subject_lines = (
-                collect_additional_subject_definitions(
-                    base_subject_definitions,
-                    previous_dynamic_definitions,
-                    continuity_state,
-                    segment,
-                )
-            )
-            subject_definitions = combine_subject_definitions(
+            subject_definitions = world_state_subject_definitions(
                 base_subject_definitions,
-                additional_subject_definitions,
+                generation_state.get("world_state"),
             )
+            registered_world_state_names = {
+                str(subject.get("name") or "").casefold()
+                for subject in (generation_state.get("world_state") or {}).get(
+                    "subjects", {}
+                ).values()
+                if isinstance(subject, dict)
+            }
+            identity_fallback_definitions = derive_additional_subject_definitions(
+                base_subject_definitions,
+                continuity_state,
+            )
+            identity_fallback_definitions = [
+                definition
+                for definition in identity_fallback_definitions
+                if not any(
+                    str(record.get("name") or "").casefold()
+                    in registered_world_state_names
+                    for record in parse_subject_registry(definition).values()
+                )
+            ]
+            subject_definitions = combine_subject_definitions(
+                subject_definitions,
+                identity_fallback_definitions,
+            )
+            additional_subject_definitions = [
+                line for line in subject_definitions.splitlines()
+                if line not in base_subject_definitions.splitlines()
+            ]
+            new_subject_lines = additional_subject_definitions
             continuity_state = continuity_state_for_registry(
                 subject_definitions,
                 continuity_state,
-            )
-            generation_state["subject_registry_state"] = migrate_continuity_state(
-                continuity_state
-            )
-            generation_state["subject_state_ledger"] = merge_subject_state_ledger(
-                generation_state.get("subject_state_ledger", {}),
-                continuity_state,
-                segment_number=segment,
             )
             console_log("Registered new Subject definition(s) before H3 prompt:")
             for definition in new_subject_lines:
@@ -37278,12 +41929,6 @@ def _run_main(
         )
 
         hard_cut_subject_continuity = ""
-        if is_hard_cut_segment(segment):
-            hard_cut_subject_continuity = build_hard_cut_subject_continuity_from_state(
-                subject_definitions,
-                llm_result,
-                continuity_state,
-            )
         prior_clothing_reference_description = ""
         if recent_results:
             prior_segment_number, prior_result = recent_results[-1]
@@ -37314,6 +41959,7 @@ def _run_main(
                     loras=global_loras,
                     prior_detailed_description=prior_clothing_reference_description,
                     visual_style=visual_style,
+                    world_state=segment_bundle.get("world_state_opening"),
                 )
             )
         else:
@@ -37330,6 +41976,7 @@ def _run_main(
                     loras=global_loras,
                     prior_detailed_description=prior_clothing_reference_description,
                     visual_style=visual_style,
+                    world_state=segment_bundle.get("world_state_opening"),
                 )
             )
         if changed_character_references:
@@ -37380,6 +42027,21 @@ def _run_main(
                 "excluded_configured_picture_ids", []
             )
         )
+        console_log(
+            f"Segment {segment} Subject/Picture reference bindings before "
+            "final H3 assembly: "
+            + json.dumps(
+                {
+                    "bindings": segment_reference_binding_snapshot.get(
+                        "bindings", []
+                    ),
+                    "subject_definitions": h3_subject_definitions,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            flush=True,
+        )
         h3_prompt = build_h3_prompt(
             llm_result,
             h3_subject_definitions,
@@ -37390,6 +42052,7 @@ def _run_main(
             conditioning_mode=segment_bundle["conditioning_mode"],
             excluded_picture_ids=segment_excluded_picture_ids,
             continuity_state=continuity_state,
+            subject_state_ledger=generation_state.get("subject_state_ledger", {}),
             previous_visible_subject_ids=previous_visible_subject_ids,
             character_canon=character_canon,
             retention=retention,
@@ -37407,9 +42070,11 @@ def _run_main(
                 else ""
             ),
             retained_subject_ids=segment_reference_binding_snapshot.get(
-                "active_subject_ids", []
+                "defined_subject_ids",
+                segment_reference_binding_snapshot.get("active_subject_ids", []),
             ),
             visual_style=visual_style,
+            world_state=segment_bundle.get("world_state_opening"),
         )
         if (
             location_setting_description
@@ -37496,46 +42161,10 @@ def _run_main(
             macro_arc,
             continuity_phase_beat,
         ) or segment_bundle.get("current_phase", {})
-        candidate_future = None
-        continuity_pipeline_result = None
-        if segment < total_segments:
-            candidate_future = summary_executor.submit(
-                request_combined_continuity,
-                h3_prompt,
-                continuity_phase,
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": run_config["source_sha256"],
-                    "purpose": "combined_continuity",
-                    "segment": segment,
-                    "attempt": 1,
-                    "conditioning_mode": segment_bundle["conditioning_mode"],
-                },
-                defer_opening=True,
-                subject_definitions=subject_definitions,
-                committed_state=copy.deepcopy(continuity_state),
-                ending_scene=request1_ending_scene,
-                assigned_state_effects=segment_bundle.get(
-                    "assigned_state_effects", []
-                ),
-                barrier_binding=build_director_barrier_binding_contract(
-                    segment_bundle.get("assigned_state_effects", [])
-                ),
-                committed_prop_ledger=copy.deepcopy(prop_ledger),
-            )
-            console_log(
-                f"Combined continuity requested for segment {segment} "
-                + (
-                    "during prompt generation."
-                    if test_prompt_generation
-                    else "during render."
-                )
-            )
-        else:
-            console_log(
-                f"Skipping continuity for final segment {segment}; "
-                "no later segment needs its state."
-            )
+        console_log(
+            f"Segment {segment} continuity context is sourced from WorldState; "
+            "legacy continuity extraction is disabled."
+        )
 
         prompt_completed_beat_ids, _ = print_minimax_beat_plan(
             beats,
@@ -37550,30 +42179,6 @@ def _run_main(
         console_log(h3_prompt)
         console_log(f"# {'=' * 64} END H3 PROMPT - SEGMENT {segment}")
         console_log()
-
-        # A skipped vision-continuity render runs in the background. The path
-        # from the prior completed segment may still be non-None, so checking
-        # only previous_video_path is insufficient: Segment N must wait for
-        # Segment N-1's render before its continuation anchor is extracted.
-        if segment > 1 and pending_previous_render_future is not None:
-            try:
-                _, previous_video_path, _, _, _ = pending_previous_render_future.result()
-                previous_video_path = _append_unique_video_path(
-                    generated_video_paths,
-                    previous_video_path,
-                    generation_state_lock,
-                )
-            except ComfyUIConnectionError:
-                raise
-            except Exception as error:
-                console_log(
-                    f"WARNING: waiting for the previous segment render to finish "
-                    f"before starting segment {segment} failed: {error}. "
-                    "Returning to the last committed segment checkpoint."
-                )
-                raise
-            finally:
-                pending_previous_render_future = None
 
         vision_required = (
             False
@@ -37659,13 +42264,6 @@ def _run_main(
                 excluded_picture_ids=segment_excluded_picture_ids,
             )
             render_futures_by_segment[int(segment)] = render_future
-            # A cadence-skipped final render must still be completed on the main
-            # path. If it is submitted as a background render, the loop can reach
-            # stitch_videos after Future.result() but before the future's done
-            # callback has appended the final path. The reusable completion event
-            # is not sufficient here: it may already be set by an earlier segment.
-            if not vision_required and segment < total_segments:
-                pending_previous_render_future = render_future
             while not render_started.wait(0.05):
                 if render_future.done():
                     # Surface workflow preparation/queue failures instead of waiting
@@ -37673,119 +42271,22 @@ def _run_main(
                     render_future.result()
             console_log(
                 f"ComfyUI render started for segment {segment}; building the "
-                "prompt-derived end-state prediction while the video renders."
+                "accepted segment record while the video renders."
             )
 
-        # The combined continuity call predicts the ending from the prompt while
-        # H3 renders. Phase 2 is deferred until rendered visual facts are
-        # available only when the cadence actually requires a visual check.
-        if candidate_future is not None:
-            try:
-                continuity_pipeline_result = candidate_future.result()
-            except LLMConnectionError:
-                raise
-            except Exception as error:
-                console_log(
-                    f"WARNING: combined continuity for segment {segment} failed: "
-                    f"{error}; retaining the last continuity outputs."
-                )
-                continuity_pipeline_result = {
-                    "reduced_state": continuity_state_for_registry(
-                        subject_definitions,
-                        copy.deepcopy(continuity_state),
-                    ),
-                    "opening_state": "",
-                    "prop_ledger": copy.deepcopy(prop_ledger),
-                }
-
-        if continuity_pipeline_result is not None:
-            prompt_reduced_continuity_state = copy.deepcopy(
-                continuity_pipeline_result["reduced_state"]
-            )
-            prop_ledger = normalize_prop_ledger(
-                continuity_pipeline_result.get("prop_ledger", prop_ledger)
-            )
-            generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
-            # The source story is the only authority for the opening outfit;
-            # restore it when the combined continuity response omitted the
-            # still-unknown slots. Rendered observations below may override it.
-            prompt_reduced_continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                prompt_reduced_continuity_state,
-            )
-            if vision_required:
-                console_log(
-                    f"Combined continuity completed for segment {segment}; "
-                    "Phase 2 is waiting for rendered visual state."
-                )
-            else:
-                console_log(
-                    f"Combined continuity completed for segment {segment}; "
-                    "vision continuity is disabled for this cadence, so Phase 2 "
-                    "uses the prompt-derived state immediately."
-                )
-
-        if segment < total_segments and continuity_pipeline_result is None:
-            continuity_pipeline_result = {
-                "reduced_state": continuity_state_for_registry(
-                    subject_definitions,
-                    copy.deepcopy(continuity_state),
-                ),
-                "opening_state": "",
-                "prop_ledger": copy.deepcopy(prop_ledger),
-            }
+        # No legacy continuity LLM call or predicted physical state is used.
+        # The committed reducer state supplies the next Segment opening.
+        prompt_reduced_continuity_state = continuity_state_for_registry(
+            subject_definitions,
+            new_continuity_state(),
+        )
+        reduced_continuity_state = copy.deepcopy(prompt_reduced_continuity_state)
+        continuity_summary = ""
+        continuity_source = "world_state"
+        if segment < total_segments:
             console_log(
-                f"WARNING: Segment {segment} prompt-derived continuity is "
-                "missing; scheduling the next Director with the last known "
-                "state as best effort."
-            )
-
-        # With visual continuity disabled, serialize only non-wardrobe prompt
-        # continuity before starting the next Director, while leaving the
-        # current ComfyUI render in flight.
-        prompt_only_opening_summary = None
-        if not vision_required and segment < total_segments:
-            # No rendered observation means no wardrobe evidence. Keep the
-            # opening state useful for scene continuity, but do not promote
-            # prompt-requested clothing into current rendered wardrobe.
-            prompt_reduced_continuity_state = clear_unrendered_wardrobes(
-                prompt_reduced_continuity_state
-            )
-            prompt_reduced_continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                prompt_reduced_continuity_state,
-            )
-            prompt_only_opening_summary = request_continuity_opening_state(
-                prompt_reduced_continuity_state,
-                continuity_phase,
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": run_config["source_sha256"],
-                    "purpose": "continuity_phase_2_h3_opening",
-                    "segment": segment,
-                    "attempt": 1,
-                    "conditioning_mode": segment_bundle["conditioning_mode"],
-                    "state_source": "prompt_only",
-                },
-                subject_definitions=subject_definitions,
-                ending_scene=request1_ending_scene,
-            )
-            continuity_summary = prompt_only_opening_summary
-            continuity_source = "prompt"
-            reduced_continuity_state = copy.deepcopy(
-                prompt_reduced_continuity_state
-            )
-            generation_state["continuity_state"] = copy.deepcopy(
-                reduced_continuity_state
-            )
-            generation_state["continuity_summary"] = continuity_summary
-            console_log(
-                f"Segment {segment} continuity source: prompt-derived state; "
-                "opening state is ready before Director prefetch."
+                f"Segment {segment} ending state will come from the accepted "
+                "WorldState reducer actions."
             )
 
         # Dynamic identities still come from explicit Director text and stay in
@@ -37799,25 +42300,37 @@ def _run_main(
                 segment,
             )
         )
-        subject_definitions = combine_subject_definitions(
+        subject_definitions = world_state_subject_definitions(
             base_subject_definitions,
-            additional_subject_definitions,
+            generation_state.get("world_state"),
+        )
+        world_state_names = {
+            str(subject.get("name") or "").casefold()
+            for subject in (generation_state.get("world_state") or {}).get(
+                "subjects", {}
+            ).values()
+            if isinstance(subject, dict)
+        }
+        appended_subject_lines = [
+            line
+            for line in appended_subject_lines
+            if not any(
+                str(record.get("name") or "").casefold() in world_state_names
+                for record in parse_subject_registry(line).values()
+            )
+        ]
+        subject_definitions = combine_subject_definitions(
+            subject_definitions,
+            [
+                line for line in appended_subject_lines
+                if line not in subject_definitions.splitlines()
+            ],
         )
         continuity_state = continuity_state_for_registry(
             subject_definitions,
-            continuity_state,
+            new_continuity_state(),
         )
-        if not vision_required:
-            continuity_state = continuity_state_for_registry(
-                subject_definitions,
-                clear_unrendered_wardrobes(continuity_state),
-            )
-            continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                continuity_state,
-            )
+        completed_subject_identity_registry = copy.deepcopy(continuity_state)
         if appended_subject_lines:
             console_log("Registered video-created subject definition(s) internally:")
             for definition in appended_subject_lines:
@@ -37855,18 +42368,12 @@ def _run_main(
         generation_state["recent_dialogue_exclusions"] = list(
             recent_dialogue_exclusions
         )
-        generation_state["continuity_prompt_state"] = copy.deepcopy(
-            prompt_reduced_continuity_state
-        )
-        generation_state["subject_registry_state"] = migrate_continuity_state(
-            continuity_state
-        )
-        generation_state["subject_state_ledger"] = merge_subject_state_ledger(
-            generation_state.get("subject_state_ledger", {}),
-            continuity_state,
-            segment_number=segment,
-        )
-        generation_state["prop_ledger"] = copy.deepcopy(prop_ledger)
+        generation_state["continuity_prompt_state"] = {}
+        generation_state["continuity_state"] = {}
+        generation_state["continuity_summary"] = ""
+        generation_state["subject_registry_state"] = new_continuity_state()
+        generation_state["subject_state_ledger"] = {}
+        generation_state["prop_ledger"] = {}
         generation_state["character_reference_images"] = copy.deepcopy(
             character_reference_images
         )
@@ -37880,33 +42387,23 @@ def _run_main(
         # so an interrupted or failed render is never advertised as resumable.
         checkpoint_generation_state()
         console_log(
-            f"Prompt-derived continuity prediction saved before the ComfyUI "
+            f"WorldState and render metadata checkpointed before the ComfyUI "
             f"response for segment {segment}."
         )
 
         if test_prompt_generation:
-            # Prompt-only runs have no rendered pixels or video path to commit.
-            # Persist the prompt result and prompt-derived continuity so the
-            # run remains inspectable and can be resumed in the same mode.
-            reduced_continuity_state = clear_unrendered_wardrobes(
-                prompt_reduced_continuity_state
-            )
-            reduced_continuity_state = seed_canonical_opening_wardrobe(
-                subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                reduced_continuity_state,
-            )
-            continuity_state = continuity_state_for_registry(
-                subject_definitions,
-                reduced_continuity_state,
-            )
-            continuity_source = "prompt"
-            generation_state["continuity_state"] = copy.deepcopy(
-                reduced_continuity_state
-            )
-            generation_state["continuity_source"] = continuity_source
+            # Prompt-only runs commit the accepted reducer candidate; no
+            # prompt-derived continuity state is written alongside it.
+            reduced_continuity_state = new_continuity_state()
+            continuity_state = new_continuity_state()
+            continuity_source = "world_state"
             with generation_state_lock:
+                commit_accepted_director_world_state(
+                    generation_state,
+                    segment_bundle["world_state_opening"],
+                    payload.get("request1_result"),
+                    segment,
+                )
                 completed_record = record_completed_segment(
                     generation_state,
                     segment,
@@ -37915,12 +42412,12 @@ def _run_main(
                     completed_beat_ids,
                     continuity_summary,
                     continuity_state=reduced_continuity_state,
-                    prop_ledger=prop_ledger,
+                    prop_ledger={},
                     continuity_summary_pending=False,
-                    subject_registry_state=continuity_state,
+                    subject_registry_state=completed_subject_identity_registry,
                 )
                 completed_record["continuity_prompt_state"] = copy.deepcopy(
-                    prompt_reduced_continuity_state
+                    {}
                 )
                 completed_record["continuity_source"] = continuity_source
                 completed_record["h3_prompt"] = h3_prompt
@@ -37931,9 +42428,7 @@ def _run_main(
                 completed_record["reference_bindings"] = copy.deepcopy(
                     segment_reference_binding_snapshot
                 )
-                generation_state["continuity_prompt_state"] = copy.deepcopy(
-                    prompt_reduced_continuity_state
-                )
+                generation_state["continuity_prompt_state"] = {}
                 save_generation_state(generation_state)
             console_log(
                 f"Completed prompt generation for segment {segment}; "
@@ -37941,142 +42436,13 @@ def _run_main(
             )
             continue
 
-        # When the cadence skips rendered-frame vision continuity, the prompt-
-        # derived continuity state is authoritative and the next Director prompt
-        # can be prefetched without waiting for the render to finish.
+        # Stateful Director actions must reach the canonical commit before the
+        # next Segment opening is built, even when vision cadence is disabled.
         if not vision_required and segment < total_segments:
-            next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
-            if (
-                segment < total_segments
-                and director_prefetch_executor is not None
-                and not next_segment_starts_phase
-            ):
-                next_bundle = build_segment_bundle(
-                    segment + 1,
-                    completed_beat_ids,
-                    recent_results,
-                    continuity_state,
-                    continuity_summary,
-                    next_dialogue_exclusions,
-                )
-                prefetch_cancellation = threading.Event()
-                prefetched_next = {
-                    "segment": segment + 1,
-                    "cancellation_event": prefetch_cancellation,
-                    "future": director_prefetch_executor.submit(
-                        request_prefetched_segment,
-                        next_bundle,
-                        prefetch_cancellation,
-                    ),
-                }
-                console_log(
-                    f"Started LLM prefetch for segment {segment + 1} without waiting "
-                    f"for segment {segment}'s video render because vision continuity "
-                    "is skipped by cadence."
-                )
             console_log(
-                "Skipping the render wait for this segment so the next prompt can "
-                "start immediately while the render continues in the background."
+                f"Segment {segment} vision continuity is skipped; waiting for its "
+                "render so WorldState can commit before the next Segment opens."
             )
-
-            skipped_segment_number = int(segment)
-            skipped_llm_result = copy.deepcopy(llm_result)
-            skipped_completed_beat_ids = sorted(set(completed_beat_ids))
-            skipped_prompt_state = copy.deepcopy(prompt_reduced_continuity_state)
-            skipped_registry_state = migrate_continuity_state(continuity_state)
-            skipped_prop_ledger = copy.deepcopy(prop_ledger)
-            skipped_prompt_completed_beat_ids = list(prompt_completed_beat_ids)
-            skipped_opening_summary = prompt_only_opening_summary
-            skipped_subject_definitions = str(h3_subject_definitions)
-            skipped_character_reference_images = copy.deepcopy(
-                segment_character_reference_images
-            )
-            skipped_reference_bindings = copy.deepcopy(
-                segment_reference_binding_snapshot
-            )
-
-            # Finalize a segment whose vision check was skipped.
-            def finalize_skipped_vision_segment(future):
-                nonlocal previous_video_path, pending_previous_render_future
-                try:
-                    (
-                        workflow,
-                        video_path,
-                        width,
-                        height,
-                        rendered_megapixels,
-                    ) = future.result()
-                except Exception:
-                    console_log(
-                        f"Segment {skipped_segment_number} render failed after the "
-                        "cadence skipped its visual continuity check; the prompt-"
-                        "derived state was already allowed to proceed."
-                    )
-                    pending_previous_render_future = None
-                    pending_render_finalized.set()
-                    return
-                if not isinstance(video_path, str) or not video_path.strip():
-                    console_log(
-                        f"Segment {skipped_segment_number} finished without a valid "
-                        "video path; skipping the background completion record."
-                    )
-                    pending_previous_render_future = None
-                    pending_render_finalized.set()
-                    return
-                previous_video_path = os.path.abspath(video_path)
-                _append_unique_video_path(
-                    generated_video_paths,
-                    previous_video_path,
-                    generation_state_lock,
-                )
-                pending_previous_render_future = None
-                pending_render_finalized.set()
-                reduced_continuity_state = copy.deepcopy(skipped_prompt_state)
-                continuity_summary = skipped_opening_summary
-                with generation_state_lock:
-                    completed_record = record_completed_segment(
-                        generation_state,
-                        skipped_segment_number,
-                        video_path,
-                        skipped_llm_result,
-                        skipped_completed_beat_ids,
-                        continuity_summary,
-                        continuity_state=reduced_continuity_state,
-                        prop_ledger=skipped_prop_ledger,
-                        continuity_summary_pending=False,
-                        subject_registry_state=skipped_registry_state,
-                    )
-                    completed_record["continuity_prompt_state"] = copy.deepcopy(
-                        skipped_prompt_state
-                    )
-                    generation_state["continuity_prompt_state"] = copy.deepcopy(
-                        skipped_prompt_state
-                    )
-                    completed_record["continuity_source"] = "prompt"
-                    completed_record["subject_definitions"] = skipped_subject_definitions
-                    completed_record["character_reference_images"] = copy.deepcopy(
-                        skipped_character_reference_images
-                    )
-                    completed_record["reference_bindings"] = copy.deepcopy(
-                        skipped_reference_bindings
-                    )
-                    generation_state["continuity_source"] = "prompt"
-                    if beats:
-                        generation_state["beat_progress"] = {
-                            "completed_beat_ids": sorted(skipped_completed_beat_ids),
-                            "last_segment_number": skipped_segment_number,
-                            "newly_completed_beat_ids": skipped_prompt_completed_beat_ids,
-                        }
-                    save_generation_state(generation_state)
-                console_log(
-                    f"Completed segment {skipped_segment_number} from the "
-                    "prompt-derived state while its render finished in the "
-                    "background."
-                )
-
-            render_future.add_done_callback(finalize_skipped_vision_segment)
-            continue
-
         try:
             (
                 workflow,
@@ -38134,85 +42500,27 @@ def _run_main(
                     f"failed: {error}. Generation will continue without it."
                 )
 
-            visual_state_for_merge = (
-                visual_result["end_state"] if visual_result is not None else {}
-            )
-            reduced_continuity_state = merge_prompt_and_visual_end_state(
-                prompt_reduced_continuity_state,
-                visual_state_for_merge,
-            )
-            console_log()
-            console_log("=" * 64)
-            console_log(f"MERGED END STATE: SEGMENT {segment} (VISUAL PRECEDENCE)")
-            console_log("=" * 64)
-            console_log(json.dumps(reduced_continuity_state, ensure_ascii=False, indent=2))
-            console_log("=" * 64)
-            state_source = "prompt_plus_visual"
-            continuity_source = "vision" if visual_result is not None else "prompt"
-        else:
-            reduced_continuity_state = clear_unrendered_wardrobes(
-                prompt_reduced_continuity_state
-            )
-            reduced_continuity_state = seed_canonical_opening_wardrobe(
+            # Rendered observations remain separately recorded diagnostics and
+            # media evidence; they never write WorldState or legacy continuity.
+            reduced_continuity_state = continuity_state_for_registry(
                 subject_definitions,
-                expanded_story_context or story,
-                character_canon,
-                reduced_continuity_state,
+                new_continuity_state(),
+            )
+        else:
+            reduced_continuity_state = continuity_state_for_registry(
+                subject_definitions,
+                new_continuity_state(),
             )
             console_log(
                 f"Skipping rendered-frame vision continuity for segment {segment} "
-                f"(cadence={getattr(args, 'vision_continuity', 1)}); using the "
-                "non-wardrobe prompt continuity state."
+                f"(cadence={getattr(args, 'vision_continuity', 1)}); "
+                "WorldState remains the physical authority."
             )
-            state_source = "prompt_only"
-            continuity_source = "prompt"
+            continuity_source = "world_state"
 
-        # Keep the internal Subject registry synchronized with the same
-        # rendered/current wardrobe snapshot used by the next Director. This
-        # prevents resume and hard-cut paths from reintroducing stale clothing.
-        continuity_state = continuity_state_for_registry(
-            subject_definitions,
-            reduced_continuity_state,
-        )
-
-        if segment < total_segments:
-            phase2_state_for_opening = copy.deepcopy(reduced_continuity_state)
-            try:
-                phase2_state_for_opening = _phase2_continuity_state_for_scene(
-                    reduced_continuity_state,
-                    subject_definitions=subject_definitions,
-                    ending_scene=request1_ending_scene,
-                )
-                next_opening_summary = request_continuity_opening_state(
-                    reduced_continuity_state,
-                    continuity_phase,
-                    history_metadata={
-                        "run_id": run_id,
-                        "source_sha256": run_config["source_sha256"],
-                        "purpose": "continuity_phase_2_h3_opening",
-                        "segment": segment,
-                        "attempt": 1,
-                        "conditioning_mode": segment_bundle["conditioning_mode"],
-                        "state_source": state_source,
-                    },
-                    subject_definitions=subject_definitions,
-                    ending_scene=request1_ending_scene,
-                )
-                if not _meaningful_director_continuity(next_opening_summary):
-                    next_opening_summary = _best_effort_continuity_opening_state(
-                        phase2_state_for_opening
-                    )
-                continuity_summary = next_opening_summary
-            except LLMConnectionError:
-                raise
-            except Exception as error:
-                continuity_summary = _best_effort_continuity_opening_state(
-                    phase2_state_for_opening
-                )
-                console_log(
-                    f"WARNING: Continuity for Segment {segment} is unavailable; "
-                    f"using serialized best effort and continuing: {error}"
-                )
+        # The next segment formats its opening directly from committed
+        # WorldState. No prose summary or visual merge is synchronized here.
+        continuity_summary = ""
 
         generation_state["continuity_prompt_state"] = copy.deepcopy(
             prompt_reduced_continuity_state
@@ -38230,10 +42538,15 @@ def _run_main(
             generation_state_lock,
         )
 
-        # Commit the rendered video and structured continuity state together.
-        # The lock also prevents a just-completed prompt prefetch from
-        # serializing this dictionary halfway through the commit.
+        # Commit the reducer candidate and completed render record under the
+        # same lock, then save them as one resumable checkpoint.
         with generation_state_lock:
+            commit_accepted_director_world_state(
+                generation_state,
+                segment_bundle["world_state_opening"],
+                payload.get("request1_result"),
+                segment,
+            )
             completed_record = record_completed_segment(
                 generation_state,
                 segment,
@@ -38244,7 +42557,7 @@ def _run_main(
                 continuity_state=reduced_continuity_state,
                 prop_ledger=prop_ledger,
                 continuity_summary_pending=False,
-                subject_registry_state=continuity_state,
+                subject_registry_state=completed_subject_identity_registry,
             )
             completed_record["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state
@@ -38286,6 +42599,7 @@ def _run_main(
             and director_prefetch_executor is not None
             and not next_segment_starts_phase
         ):
+            prepare_current_segment_world_state(segment + 1)
             next_bundle = build_segment_bundle(
                 segment + 1,
                 completed_beat_ids,
@@ -38510,6 +42824,7 @@ def main():
             raise
         except (
             re.error,
+            StateActionExtractionError,
             RequiredEventStateApplicationError,
             WorkflowConfigurationError,
         ):

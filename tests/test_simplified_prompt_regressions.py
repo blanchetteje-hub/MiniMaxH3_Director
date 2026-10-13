@@ -82,7 +82,7 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
 
 
     def test_beat_validator_rejects_aftermath_only_finite_action(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="None",
             current_state={},
             beat_job="Amy is cooking breakfast for her kids.",

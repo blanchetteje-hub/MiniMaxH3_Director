@@ -24,10 +24,11 @@ ARC = {"phases": [{
 class BeatRetryHierarchyTests(unittest.TestCase):
     def test_failed_beat_is_repaired_before_commit(self):
         purposes = []
-        validation_count = 0
+        story_validation_count = 0
+        state_validation_count = 0
 
         def llm(messages, **kwargs):
-            nonlocal validation_count
+            nonlocal story_validation_count, state_validation_count
             purpose = kwargs.get("history_metadata", {}).get("purpose")
             purposes.append(purpose)
             if purpose == "source_unit_split_gate":
@@ -49,11 +50,18 @@ class BeatRetryHierarchyTests(unittest.TestCase):
                 self.assertIn("Make the smallest textual change", repair_prompt)
                 self.assertIn("Preserve wording that is not part of the problem", repair_prompt)
                 self.assertIn("do not reintroduce it", repair_prompt)
+                self.assertIn("Story validator: Story fidelity issue.", repair_prompt)
+                self.assertIn("State validator: Physical state issue.", repair_prompt)
                 return {"beats": ["Operator completes action X."]}
-            if purpose == "beat_validation":
-                validation_count += 1
-                if validation_count == 1:
-                    return {"valid": False, "issue": "Regenerate the current beat."}
+            if purpose == "beat_story_validation":
+                story_validation_count += 1
+                if story_validation_count == 1:
+                    return {"valid": False, "issue": "Story fidelity issue."}
+                return {"valid": True, "issue": ""}
+            if purpose == "beat_state_validation":
+                state_validation_count += 1
+                if state_validation_count == 1:
+                    return {"valid": False, "issue": "Physical state issue."}
                 return {"valid": True, "issue": ""}
             if purpose == "beat_finite_endpoint_extract":
                 return {"status": "COMPLETE"}
@@ -73,6 +81,9 @@ class BeatRetryHierarchyTests(unittest.TestCase):
 
         self.assertEqual(result, ["Operator completes action X."])
         messages = [call.args[0] for call in printed.call_args_list if call.args]
+        diagnostic_log = "\n".join(messages)
+        self.assertIn("story validator attempt 1/10: INVALID; issue: Story fidelity issue.", diagnostic_log)
+        self.assertIn("state validator attempt 1/10: INVALID; issue: Physical state issue.", diagnostic_log)
         self.assertEqual(
             messages.count("Beat 1 created: Operator completes action X."), 2
         )
@@ -83,12 +94,20 @@ class BeatRetryHierarchyTests(unittest.TestCase):
         self.assertNotIn("macro_arc_validate", purposes)
         self.assertEqual(purposes.count("beat_generation"), 1)
         self.assertEqual(purposes.count("beat_repair"), 1)
-        first_validation = purposes.index("beat_validation")
+        first_validation = min(
+            purposes.index("beat_story_validation"),
+            purposes.index("beat_state_validation"),
+        )
         repair = purposes.index("beat_repair")
-        second_validation = purposes.index("beat_validation", first_validation + 1)
+        second_validation = max(
+            purposes.index("beat_story_validation", first_validation + 1),
+            purposes.index("beat_state_validation", first_validation + 1),
+        )
         self.assertLess(first_validation, repair)
         self.assertLess(repair, second_validation)
-        self.assertEqual(purposes.count("beat_validation"), 2)
+        self.assertEqual(purposes.count("beat_story_validation"), 2)
+        self.assertEqual(purposes.count("beat_state_validation"), 2)
+        self.assertNotIn("beat_validation", purposes)
         self.assertNotIn("macro_state_preparation", purposes)
         self.assertNotIn("macro_state_semantic_validation", purposes)
 

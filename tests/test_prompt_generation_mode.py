@@ -1,5 +1,6 @@
 import copy
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
@@ -77,8 +78,173 @@ def test_director_only_implies_prompt_generation_and_never_combines_with_generat
         minimax.parse_args(["5", "10", ".2", "--director-only", "--generate-prompts", "2"])
 
 
+def test_director_only_saved_expansion_seeds_location_world_state(tmp_path):
+    fixture_dir = (
+        Path(__file__).parent
+        / "acceptance"
+        / "fixtures"
+        / "tavern_run21_plan"
+    )
+    expanded_story = (fixture_dir / "expanded_story.txt").read_text(
+        encoding="utf-8"
+    )
+    story_file = tmp_path / "story.txt"
+    story_file.write_text("Amy works in a tavern.", encoding="utf-8")
+    beats_file = tmp_path / "beats.txt"
+    beats_file.write_text(
+        (fixture_dir / "beats.txt").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    arc_file = tmp_path / "story_arc.json"
+    arc_file.write_text(
+        (fixture_dir / "story_arc.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    expanded_story_file = tmp_path / "expanded_story.txt"
+    expanded_story_file.write_text(expanded_story, encoding="utf-8")
+    subjects_file = tmp_path / "subjects.txt"
+    subjects_file.write_text("", encoding="utf-8")
+    phrase_exclusions_file = tmp_path / "phrase_exclusions.txt"
+    args = _args(
+        director_only=True,
+        segment_length=8.0,
+        total_length=48.0,
+        total_segments=6,
+        refresh=999999,
+        vision_continuity=0,
+    )
+    expected_location_state = {
+        "location": {"name": "The Hearthside Tavern"},
+        "anchors": [{"name": "stone counter", "type": "stone counter"}],
+        "objects": [],
+    }
+    captured = {}
+
+    class _StopAfterWorldStateSeed(Exception):
+        pass
+
+    def capture_seeded_state(state, *seed_args, **seed_kwargs):
+        original_validate(state, *seed_args, **seed_kwargs)
+        captured["location_state"] = copy.deepcopy(state["location_state"])
+        captured["world_state"] = copy.deepcopy(state["world_state"])
+        raise _StopAfterWorldStateSeed()
+
+    def extract_story_locations(expanded, **_kwargs):
+        captured["expanded_story_for_location"] = expanded
+        return {
+            "overall_location": "a medieval tavern",
+            "starting_location": "The Hearthside Tavern",
+        }
+
+    location_description = {
+        "text_description": "A medieval tavern with stone walls and a counter.",
+        "location_state": expected_location_state,
+    }
+    original_validate = minimax.validate_subject_identity_state
+    generate_beats_patcher = mock.patch.object(minimax, "load_or_generate_beats")
+    expand_story_patcher = mock.patch.object(
+        minimax, "generate_beats_via_story_expansion"
+    )
+    validate_beats_patcher = mock.patch.object(
+        minimax, "_run_forward_beat_validation"
+    )
+    generate_beats = generate_beats_patcher.start()
+    expand_story = expand_story_patcher.start()
+    validate_beats = validate_beats_patcher.start()
+    patches = [
+        mock.patch.object(minimax, "parse_args", return_value=args),
+        mock.patch.object(minimax, "configure_reference_image_overrides"),
+        mock.patch.object(minimax, "configure_formatter"),
+        mock.patch.object(minimax, "STORY_FILE", story_file),
+        mock.patch.object(minimax, "BEATS_FILE", beats_file),
+        mock.patch.object(minimax, "STORY_ARC_FILE", arc_file),
+        mock.patch.object(minimax, "EXPANDED_STORY_FILE", expanded_story_file),
+        mock.patch.object(minimax, "SUBJECT_DEFINITIONS_FILE", subjects_file),
+        mock.patch.object(minimax, "PHRASE_EXCLUSIONS_FILE", phrase_exclusions_file),
+        mock.patch.object(minimax, "load_beats", return_value=[f"Beat {i}" for i in range(1, 7)]),
+        mock.patch.object(minimax, "load_canonical_data", return_value={}),
+        mock.patch.object(minimax, "load_or_generate_character_canon", return_value={}),
+        mock.patch.object(minimax, "canonicalize_defined_subject_wardrobes", return_value={}),
+        mock.patch.object(minimax, "reset_prompt_history"),
+        mock.patch.object(minimax, "save_generated_prompts_file"),
+        mock.patch.object(minimax, "extract_story_locations", side_effect=extract_story_locations),
+        mock.patch.object(minimax, "extract_static_setting", return_value="Static setting"),
+        mock.patch.object(minimax, "refine_story_setting_spatially", return_value="Spatial setting"),
+        mock.patch.object(minimax, "extract_story_setting_description", return_value=location_description),
+        mock.patch.object(minimax, "extract_initial_location_subjects", return_value=[]),
+        mock.patch.object(minimax, "extract_registered_subject_story_start_presence", side_effect=lambda state, *_a, **_k: state),
+        mock.patch.object(minimax, "validate_subject_identity_state", side_effect=capture_seeded_state),
+    ]
+    for patcher in patches:
+        patcher.start()
+    try:
+        with pytest.raises(_StopAfterWorldStateSeed):
+            minimax._run_main(None)
+    finally:
+        for patcher in reversed(patches):
+            patcher.stop()
+        validate_beats_patcher.stop()
+        expand_story_patcher.stop()
+        generate_beats_patcher.stop()
+
+    assert captured["expanded_story_for_location"] == expanded_story.strip()
+    assert captured["location_state"] == expected_location_state
+    assert {
+        location["name"] for location in captured["world_state"]["locations"].values()
+    } == {"The Hearthside Tavern"}
+    assert {
+        prop["name"] for prop in captured["world_state"]["props"].values()
+    } == {"stone counter"}
+    minimax.validate_world_state(captured["world_state"])
+    generate_beats.assert_not_called()
+    expand_story.assert_not_called()
+    validate_beats.assert_not_called()
+
+
 def test_director_raw_scene_retry_budget_is_five():
     assert minimax.DIRECTOR_RAW_SCENE_ATTEMPTS == 5
+    assert minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS == 5
+
+
+def test_state_action_integrity_accepts_unchanged_camera_stripped_raw_and_empty_batch():
+    accepted_raw = (
+        "At 00:00.000, [CAMERA: slow pan] Amy moves toward the counter.\n"
+        "End continuity state: Amy stands by the counter."
+    )
+    state_action_input = minimax._director_strip_camera_instructions(accepted_raw)
+    result = {
+        "accepted": True,
+        "raw_scene": state_action_input,
+        "state_actions": [],
+    }
+
+    assert state_action_input == (
+        "At 00:00.000, Amy moves toward the counter.\n"
+        "End continuity state: Amy stands by the counter."
+    )
+    minimax._assert_state_action_raw_unchanged(state_action_input, result, 1)
+
+
+@pytest.mark.parametrize(
+    "changed_raw",
+    [
+        "At 00:01.000, Amy moves toward the counter.\nEnd continuity state: Amy stands by the counter.",
+        "At 00:00.000, Amy waits at the counter.\nEnd continuity state: Amy stands by the counter.",
+    ],
+    ids=["changed-timestamp", "changed-action"],
+)
+def test_state_action_integrity_rejects_actual_raw_mutations(changed_raw):
+    expected_raw = (
+        "At 00:00.000, Amy moves toward the counter.\n"
+        "End continuity state: Amy stands by the counter."
+    )
+    result = {"accepted": True, "raw_scene": changed_raw, "state_actions": []}
+
+    with pytest.raises(
+        minimax.StateActionExtractionError,
+        match="StateAction extraction changed the accepted RAW",
+    ):
+        minimax._assert_state_action_raw_unchanged(expected_raw, result, 1)
 
 
 @pytest.mark.parametrize("count, render_enabled", [(1, False), (5, False), (1, True)])
@@ -87,6 +253,12 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
                  test_prompt_generation=not render_enabled)
     saved_packages = []
     durations = []
+    completed_world_states = []
+    console_messages = []
+    extracted_action_inputs = []
+
+    def capture_console_log(*values, **_kwargs):
+        console_messages.append(" ".join(str(value) for value in values))
 
     def load_text(path, required=True):
         del required
@@ -102,12 +274,34 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         assert _run_config["total_length"] == 8 * count
         payload = dict(bundle)
         payload["llm_result"] = {
-            "detailed_description": "[Shot 1] A scene.",
+            "detailed_description": "[Shot 1] Amy waits behind the counter.",
             "overall_soundscape": "Room tone.",
             "non_diegetic_music": "N/A",
             "completed_beat_ids": [],
         }
+        payload["raw_scene"] = (
+            "At 00:00.000, Amy waits behind the counter.\n"
+            "At 00:07.500, Amy remains behind the counter.\n"
+            "End continuity state: Amy remains behind the counter."
+        )
+        payload["request1_result"] = {
+            "beat_complete": True,
+        }
         return payload
+
+    def extract_actions(opening_state, raw_scene, **kwargs):
+        extracted_action_inputs.append((copy.deepcopy(opening_state), raw_scene, kwargs))
+        return {
+            "accepted": True,
+            "state_actions": [],
+            "raw_scene": raw_scene,
+            "opening_state_sha256": minimax.world_state_sha256(opening_state),
+        }
+
+    def capture_completed_state(state, *args, **kwargs):
+        del args, kwargs
+        completed_world_states.append(copy.deepcopy(state["world_state"]))
+        return {}
 
     def assemble_prompt(*args, **kwargs):
         assert kwargs["character_canon"]["characters"][0]["name"] == "Amy"
@@ -141,6 +335,10 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         mock.patch("minimax.save_generated_prompts_file", side_effect=lambda payload: saved_packages.append(copy.deepcopy(payload))),
         mock.patch("minimax.request_segment_llm", side_effect=request_segment),
         mock.patch(
+            "minimax.extract_and_dry_run_director_state_actions",
+            side_effect=extract_actions,
+        ),
+        mock.patch(
             "minimax.request_combined_continuity",
             return_value={"reduced_state": {}},
         ),
@@ -149,7 +347,14 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
             "minimax.request_continuity_opening_state",
             return_value="OPENING",
         ),
-        mock.patch("minimax.record_completed_segment", return_value={}),
+        mock.patch(
+            "minimax.record_completed_segment",
+            side_effect=capture_completed_state,
+        ),
+        mock.patch(
+            "minimax.commit_accepted_director_world_state",
+            wraps=minimax.commit_accepted_director_world_state,
+        ),
         verify_images,
         verify_loras,
         render,
@@ -159,7 +364,12 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
     verify_loras_mock = verify_loras.start()
     render_mock = render.start()
     stitch_mock = stitch.start()
-    for patcher in patches[:-4]:
+    console_log_patch = mock.patch(
+        "minimax.console_log", side_effect=capture_console_log
+    )
+    console_log_patch.start()
+    world_state_commit_mock = patches[-5].start()
+    for patcher in patches[:-5]:
         patcher.start()
     try:
         with ThreadPoolExecutor(max_workers=1) as summary_executor, ThreadPoolExecutor(max_workers=1) as render_executor:
@@ -169,12 +379,40 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
             else:
                 minimax._run_main(summary_executor, None, render_executor if render_enabled else None)
     finally:
+        console_log_patch.stop()
         for patcher in reversed(patches):
             patcher.stop()
 
     assert durations == [8.0] * count
+    assert len(extracted_action_inputs) == count
+    assert all(
+        "Amy waits behind the counter" in raw
+        for _opening, raw, _kwargs in extracted_action_inputs
+    )
+    assert all(
+        kwargs["current_segment_subject_names"] == []
+        for _opening, _raw, kwargs in extracted_action_inputs
+    )
     assert len(saved_packages[-1]["prompts"]) == count
+    if not render_enabled:
+        assert len(completed_world_states) == count
+        assert world_state_commit_mock.call_count == count
+        assert all(
+            call.args[2]["state_actions_dry_run_accepted"]
+            and call.args[2]["state_actions"] == []
+            for call in world_state_commit_mock.call_args_list
+        )
+    else:
+        assert completed_world_states == []
+        world_state_commit_mock.assert_not_called()
     assert saved_packages[-1]["prompts"][0]["h3_prompt"] == "H3 prompt"
+    binding_logs = [
+        message for message in console_messages
+        if "Subject/Picture reference bindings before final H3 assembly" in message
+    ]
+    assert len(binding_logs) == count
+    assert all('"bindings"' in message for message in binding_logs)
+    assert all('"subject_definitions"' in message for message in binding_logs)
     if render_enabled:
         render_mock.assert_called_once()
     else:

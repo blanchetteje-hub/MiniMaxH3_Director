@@ -2,6 +2,84 @@
 
 This file is for promising ideas, heuristics, and experiments that are **not current production architecture** and should not be treated as implemented requirements.
 
+## TODO — future work / experiments
+
+These are **not approved implementation tasks**. Revisit only when they become relevant; detailed notes remain below.
+
+- [ ] **Optional user-defined RAW validator:** consider a single opt-in system-prompt `.txt` file for story-specific plausibility checks, reusing existing RAW validator inputs and repair loop; no call by default. See [Optional custom RAW validator](#optional-custom-raw-validator).
+- [ ] **Parallel Director validators:** benchmark concurrent independent LLM validation and aggregate failures into one RAW repair request. See [Parallel Director validation experiment](#parallel-director-validation-experiment).
+- [ ] **Modularize `minimax.py`:** after WorldState/Director acceptance is stable, incrementally separate pipeline, LLM, planning, Director, and rendering responsibilities into modules, without changing behavior or adding OOP ceremony. See [Future modularization of minimax.py](#future-modularization-of-minimaxpy).
+- [ ] **Minimum local LLM context and long-story chunking:** evaluate **6,044 tokens** as the minimum supported context window; redesign story-dependent requests so expanded stories of **50+ beats** and other large story chunks can be processed in bounded, coherent pieces without losing source coverage, beat ordering, or cross-chunk continuity. See [Minimum-context / long-story scaling](#minimum-context--long-story-scaling).
+- [ ] **Dialogue-density classification:** evaluate a narrow story-type dialogue prior; keep source dialogue authoritative. See [Dialogue-density classification experiment](#dialogue-density-classification-experiment).
+- [ ] **Segment timing / duration fit:** deterministic timing budgets plus narrow extraction for genuinely underspecified action durations. See [Segment timing / duration-fit validation](#segment-timing--duration-fit-validation).
+- [ ] **Structured static-space catalog:** evaluate only if simpler location/relative-label handling fails. See [Structured static-space catalog experiment](#structured-static-space-catalog-experiment).
+- [ ] **RefMod conditioning:** A/B test previous-segment reference compression and reusable location references. See [RefMod reference-conditioning experiment](#refmod-reference-conditioning-experiment).
+- [ ] **Standalone outfit references:** test clothing-only reference assets separately from identity. See [Reusable standalone outfit-reference experiment](#reusable-standalone-outfit-reference-experiment).
+- [ ] **Clothing-state reference refresh:** test short updated reference videos when visible wardrobe condition changes materially. See [Clothing-state reference-video refresh](#clothing-state-reference-video-refresh).
+
+The persistent room geometry / navigable topology item is already marked **SOLVED** below and is intentionally not an open TODO.
+
+## Parallel Director validation experiment
+
+**Deferred performance experiment, not approved for current implementation.** Once the unified RAW-scene validate → repair → revalidate loop is stable, compare sequential versus concurrent independent Director LLM validators (physical/spatial, prop/state, timing) against the same immutable RAW candidate.
+
+- Run cheap deterministic parsing, reducer dry-run, shot-script structure, and required-dialogue checks first; only parallelize independent LLM calls.
+- Gather all validator results in stable order regardless of completion order. Preserve complete individual diagnostics; feed one deduplicated, actionable set of failures into **one** repair prompt.
+- Revalidate the repaired RAW against all required validators. Regenerate RAW only after the repair budget is exhausted.
+- Benchmark wall-clock time, request contention, VRAM/throughput, reliability, and total LLM calls on the actual local GPT-OSS 20B / LM Studio setup; concurrent requests may be slower if the backend serializes or contends.
+- Use a minimal concurrency mechanism such as `ThreadPoolExecutor`; do not add scheduler, manager, extra state ledger, or change WorldState authority.
+
+**Status:** TODO / performance investigation only. Do not combine with the ongoing repair-loop changes.
+
+## Future modularization of minimax.py
+
+**Deferred refactor, not current implementation work.** Split the oversized procedural `minimax.py` into cohesive Python modules, prioritizing clear ownership and testable boundaries over conversion to a C#-style class hierarchy.
+
+Proposed *target layout* (illustrative; verify actual dependencies before moving code):
+
+```text
+minimax/
+    pipeline.py
+    world_state.py
+    llm/
+        client.py
+        profiles.py
+        prompts.py
+    planning/
+        story.py
+        beats.py
+    director/
+        raw.py
+        validation.py
+    rendering/
+        comfyui.py
+        continuity.py
+```
+
+Migration constraints:
+- **Modularization, not a rewrite:** move one cohesive responsibility at a time, keeping runtime behavior, prompts, JSON contracts, LLM call counts, and diagnostic logging unchanged.
+- Preserve **one Python-owned canonical WorldState and reducer**; do not create shadow object state, duplicated ledgers, or compatibility writers.
+- Avoid introducing classes/interfaces, dependency-injection frameworks, or abstraction layers unless demonstrably simpler than modules/functions.
+- Consider import dependencies, CLI compatibility, checkpoints, existing automation deployment/copies, and tests before changing module boundaries.
+- Perform only **after** the active continuity migration and end-to-end acceptance stabilize; validate each move with focused tests and acceptance comparisons. Do not bundle this refactor with behavioral fixes.
+
+**Status:** TODO / deferred.
+
+## Minimum-context / long-story scaling
+
+**Future requirement / proposal, not implemented:** consider **6,044 tokens** as a bare-minimum local LLM context window. Do not enforce this threshold until tested against actual prompt sizes, schemas, reasoning/output reserves, and representative stories.
+
+For expanded stories with **50+ beats**, and any other stage currently supplied large portions of story text:
+
+- Inventory consumers of the expanded story, full beat lists, prior prompts, and other unbounded narrative context.
+- Break long inputs into **bounded, meaningfully segmented chunks** (for example, ordered contiguous story/beat spans), rather than truncating the story or silently dropping source events.
+- Preserve global source authority, event/beat order, exact coverage, and continuity across boundaries using **Python-owned indexing and compact factual context**. Avoid duplicating an evolving narrative authority or inventing an additional state ledger.
+- Only send the local model the story span and necessary context for the current job; keep end-to-end checks that every required source event is accounted for.
+- Evaluate the real minimum viable context window and the quality/performance tradeoff using longer stories (50+ beats), without adding unnecessary serial LLM calls or ComfyUI downtime.
+- Keep context-window support separate from the four sampling/reasoning profiles, so each task's actual context and output needs can be controlled.
+
+**Status:** TODO for future design/testing; no runtime code or settings changes requested here.
+
 ## Dialogue-density classification experiment
 
 Potential future use: estimate how dialogue-heavy the **type of film** should be before deciding how aggressively dialogue should be requested or inserted into generated beats/scenes.
@@ -216,3 +294,73 @@ Status: back-pocket experiment only. Current production architecture still gener
 character-specific 1-second clothing reference, now conditioned by that character's
 identity Picture.
 
+
+
+## Clothing-state reference-video refresh
+
+Potential future implementation: when a Subject's visible clothing state changes materially
+during a segment — for example clothing becomes torn, soaked, bloodied, burned, muddy, or
+otherwise visually altered — generate a new short ComfyUI state/reference video so later
+segments do not have to reconstruct the changed wardrobe state from text alone.
+
+Possible workflow:
+1. Detect and persist the canonical clothing-state change in Python continuity state.
+2. After the segment in which the clothing visibly changes, generate a new Subject
+   state/reference video.
+3. Condition that state-video generation with:
+   - the previous segment video where the clothing state changed; and
+   - the Subject's initial reference image, when one exists.
+4. Tell the H3 prompt to create a video of the person with their clothing in the state
+   established by **<Video 1>**.
+5. Use the resulting state video as the refreshed visual wardrobe authority for subsequent
+   segments until another material clothing-state change occurs.
+
+The previous segment video should provide authority for the changed clothing condition,
+while the initial reference image preserves Subject identity. Canonical Python clothing
+state remains semantic authority; the refreshed video is visual conditioning.
+
+Questions to validate:
+- whether H3 reliably preserves the changed clothing state from <Video 1> while the initial
+  image preserves identity;
+- whether the initial clean reference image competes with a damaged/soaked clothing state;
+- whether one short refreshed state video is sufficient for later segments;
+- which clothing-state changes are visually significant enough to justify the extra render.
+
+Status: back-pocket experiment only; do not integrate until clothing-state continuity needs
+it and controlled tests show that refreshed state videos improve persistence.
+
+## Optional custom RAW validator
+
+Back-pocket experiment if implausible staging (for example, unnecessary climbing or standing on furniture) continues despite refinements to the existing `director_raw_scene_physical` check. Do **not** add a permanent furniture-specific validator.
+
+- Opt-in only: load one user-authored `.txt` file as the validator **system prompt**; if no file is configured, skip it and make no LLM request.
+- Supply the same relevant RAW, CURRENT BEAT, opening WorldState, and physical/spatial context already supplied to existing RAW validators; do not create another context assembly subsystem.
+- Use the existing validator verdict contract `{"valid": true, "issue": ""}` with its exact JSON structure stated in the system prompt, following `PROJECT_NOTES.md`.
+- Feed an invalid verdict into the **existing** `director_raw_scene_repair` path and shared RAW repair budget. No new repair loop, state authority, plugin framework, or schema family.
+- Keep judgment user-configurable: unusual staging may be intentionally appropriate to the authored story. Treat the file as an optional extra check, subordinate to `story.txt` and `subjects.txt`.
+
+Status: deferred. Revisit only with repeated acceptance evidence that the existing physical/spatial validator cannot adequately handle the desired stylistic/behavioral constraint.
+
+## Populated 360-degree location-reference orbit
+
+Future experiment: include persistent background NPCs/patrons in the 360-degree location-orbit reference video (for example, a busy tavern) to establish a stable *populated* environment, not just static architecture.
+
+- Compare an empty location orbit against a populated orbit for background crowd density, visual consistency, NPC placement, and continuity across H3 segments.
+- Treat background NPCs as ambient visual conditioning only unless they are explicitly registered Subjects; do not let the reference silently establish named characters, ownership, or WorldState presence.
+- Test whether orbit conditioning causes NPC duplication, frozen crowds, inconsistent movement, or conflicts with active story Subjects entering/leaving.
+- Preserve canonical location geometry and WorldState as semantic authority; the orbit remains visual reference material.
+- Explore whether a stable baseline crowd can coexist with scene-specific NPC additions/removals without regenerating the orbit for every segment.
+
+Status: future/back-pocket experiment only; no current pipeline change.
+
+## Spatial WorldState extraction from reconstructed location geometry
+
+Future research experiment: derive **semantic spatial data** from our existing AI-generated 360-degree location-orbit video, rather than producing another image/video reference.
+
+- Evaluate multi-view 3D reconstruction (including Gaussian splatting) from the orbit; test whether frame-to-frame scene drift makes the geometry unreliable.
+- Evaluate small local specialized spatial/vision models (e.g., SpatialLM 0.5B/1B or SpatioLM 8B, subject to real hardware/model compatibility) to identify fixed elements such as counters, barrels, tables and doors, with approximate positions, supports, obstacles, and spatial relationships.
+- Convert only verified, useful observations into proposed structured Python location/WorldState data; never silently override authored location definitions or canonical WorldState.
+- First benchmark: can the local process accurately reconstruct and position the tavern counter, barrel, tables, and doorways? Compare against existing authored spatial facts, human inspection, cost, VRAM, and runtime.
+- Reject the approach if its output amounts only to extra visual references or speculative object coordinates rather than more accurate deterministic spatial validation.
+
+Status: back-pocket research only; do not integrate into the current Director pipeline without measured improvement.

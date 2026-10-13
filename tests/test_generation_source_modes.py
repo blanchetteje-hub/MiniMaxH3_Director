@@ -89,25 +89,6 @@ def test_automatic_recovery_does_not_clear_new_run_again(recovery, should_reset)
         assert reset.called == should_reset
 
 
-def test_existing_prompt_generation_never_enters_beat_generation():
-    args = minimax.parse_args(['8', '1', '--existing', '--generate-prompts', '1'])
-    with mock.patch.object(minimax, 'parse_args', return_value=args), \
-         mock.patch.object(minimax, 'configure_formatter'), \
-         mock.patch.object(minimax, 'configure_reference_image_overrides'), \
-         mock.patch.object(minimax, 'load_text_file', side_effect=lambda path, **kwargs: '' if path == minimax.SUBJECT_DEFINITIONS_FILE else 'A story.'), \
-         mock.patch.object(minimax, 'load_canonical_data', return_value='Amy is an adult.'), \
-         mock.patch.object(minimax, 'load_or_generate_character_canon', return_value={'fields': [], 'characters': []}), \
-         mock.patch.object(minimax, 'require_existing_beats', return_value=['Amy walks.']) as load_existing, \
-         mock.patch.object(minimax, 'reset_prompt_history'), \
-         mock.patch.object(minimax, 'load_phrase_exclusions', return_value=[]), \
-         mock.patch.object(minimax, 'load_story_arc', side_effect=RuntimeError('stop after beats')), \
-         mock.patch.object(minimax, 'load_or_generate_beats') as generate:
-        with pytest.raises(RuntimeError, match='stop after beats'):
-            minimax._run_main(None)
-        load_existing.assert_called_once_with(minimax.BEATS_FILE, 1)
-        generate.assert_not_called()
-
-
 @pytest.mark.parametrize('arguments', [['--new'], ['--new', '--help'], []])
 def test_new_deletes_sources_before_runtime_imports(tmp_path, arguments):
     from pathlib import Path

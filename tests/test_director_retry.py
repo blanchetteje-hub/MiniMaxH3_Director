@@ -1,9 +1,21 @@
 import unittest
 import json
 import re
+import copy
+from contextlib import nullcontext
+from pathlib import Path
 from unittest import mock
 
 import minimax
+from world_state import (
+    build_state_action_only_contract,
+    new_world_state,
+    register_explicit_persistent_props,
+    seed_canonical_static_location_state,
+    seed_story_start_presence,
+    stable_world_state_id,
+    validate_state_actions,
+)
 
 
 def segment_bundle():
@@ -15,6 +27,205 @@ def segment_bundle():
         "conditioning_mode": "initial",
         "opening_state_sha256": "opening-hash",
     }
+
+
+def goblin_mug_world_state():
+    state = new_world_state({
+        "source_sha256": "request1-world-state",
+        "subjects": {
+            "1": {"subject_id": 1, "name": "Goblin1", "gender": "unknown", "picture_ids": []},
+            "2": {"subject_id": 2, "name": "Elf1", "gender": "unknown", "picture_ids": []},
+            "3": {"subject_id": 3, "name": "Amy", "gender": "female", "picture_ids": []},
+        },
+    })
+    state, location_id = seed_canonical_static_location_state(
+        state,
+        {"location": {"name": "Room"}, "anchors": [], "objects": []},
+    )
+    state = seed_story_start_presence(
+        state,
+        [
+            {"name": "Goblin1", "initial_state": "standing near the table"},
+            {"name": "Elf1", "initial_state": "standing near the door"},
+            {"name": "Amy", "initial_state": "standing by the counter"},
+        ],
+        location_id=location_id,
+    )
+    state = register_explicit_persistent_props(state, [{
+        "name": "mug",
+        "kind": "object",
+        "mobility": "movable",
+        "needed_for_state": True,
+        "reason": "The mug is transferred between registered Subjects.",
+        "location_id": location_id,
+    }])
+    return state, location_id, next(
+        prop_id for prop_id, prop in state["props"].items()
+        if prop["name"] == "mug"
+    )
+
+
+def goblin_mug_bundle():
+    state, _location_id, _mug_id = goblin_mug_world_state()
+    bundle = segment_bundle()
+    bundle.update({
+        "world_state_opening": copy.deepcopy(state),
+        "current_beat_text": "Goblin1 picks up the mug and hands it to Elf1.",
+    })
+    return bundle
+
+
+TAVERN_BENCHMARK = json.loads(
+    (Path(__file__).parent / "acceptance" / "gold" / "amy_medieval_tavern_six.json")
+    .read_text(encoding="utf-8")
+)
+TAVERN_SOURCE_PARAGRAPHS = TAVERN_BENCHMARK["story_text"].split("\n\n")
+TAVERN_SEGMENT_BEATS = [
+    "\n".join(item["must_happen"])
+    for item in TAVERN_BENCHMARK["beats"]
+]
+TAVERN_SEGMENT_SOURCES = [
+    TAVERN_SOURCE_PARAGRAPHS[0],
+    TAVERN_SOURCE_PARAGRAPHS[0],
+    TAVERN_SOURCE_PARAGRAPHS[1],
+    TAVERN_SOURCE_PARAGRAPHS[2],
+    TAVERN_SOURCE_PARAGRAPHS[3],
+    TAVERN_SOURCE_PARAGRAPHS[4],
+]
+
+
+def current_prop(name, holder=None, location="Tavern", support=None, evidence="", reason=""):
+    return {
+        "name": name,
+        "kind": "container",
+        "mobility": "movable",
+        "initial_location": location if holder is None else None,
+        "initial_holder": holder,
+        "support_name": support,
+        "contents": [],
+        "capabilities": {
+            "container": True,
+            "consumable": "unknown",
+            "openable": "unknown",
+            "lockable": "unknown",
+        },
+        "reason": reason,
+        "evidence": evidence,
+    }
+
+
+def tavern_segment_prop_results(segment_number):
+    if segment_number == 1:
+        return {"props": [
+            current_prop(
+                "mug", holder="Goblin1",
+                evidence="tiny hands clutching a chipped mug",
+                reason="The goblin holds this persistent container in the opening scene.",
+            ),
+            current_prop(
+                "barrel", support=None,
+                evidence="a barrel beside the hearth",
+                reason="The barrel is the source container for the current tavern service sequence.",
+            ),
+        ]}
+    if segment_number == 3:
+        return {"props": [
+            current_prop(
+                "crystal chalice",
+                evidence="Amy pours a steaming cup into a crystal chalice for the elf",
+                reason="The chalice is the serving container introduced and handled this Segment.",
+            ),
+        ]}
+    if segment_number == 4:
+        return {"props": [
+            current_prop(
+                "crystal cup", support="shelf",
+                evidence="lifts a crystal cup from her shelf",
+                reason="The crystal cup is picked up, filled, and handed to the new arrival this Segment.",
+            ),
+        ]}
+    return {"props": []}
+
+
+def tavern_world_state_from_authorities():
+    """Seed from the locked benchmark's authored identity, location, and opening facts."""
+    identity_seed = minimax.authoritative_world_state_seed_from_subject_definitions(
+        "\n".join(TAVERN_BENCHMARK["input_subjects"]),
+        "tests/acceptance/gold/amy_medieval_tavern_six.json",
+    )
+    state = new_world_state(identity_seed)
+    state, location_id = seed_canonical_static_location_state(
+        state,
+        {
+            "location": {"name": "Tavern"},
+            "anchors": [
+                {"name": "counter", "type": "work surface", "world_state_role": "fixture_support", "mobility": "fixed"},
+                {"name": "hearth", "type": "hearth", "world_state_role": "fixture", "mobility": "fixed"},
+                {"name": "back table", "type": "table", "world_state_role": "fixture_support", "mobility": "fixed"},
+                {"name": "shelf", "type": "shelf", "world_state_role": "fixture_support", "mobility": "fixed"},
+                {"name": "high bar stool", "type": "stool", "world_state_role": "fixture_support", "mobility": "fixed"},
+            ],
+            "objects": [],
+        },
+    )
+    state = seed_story_start_presence(
+        state,
+        [{"name": "Goblin1", "initial_state": "leaning over the counter, tiny hands clutching a chipped mug"}],
+        location_id=location_id,
+    )
+    state = minimax.extract_registered_subject_story_start_presence(
+        state,
+        TAVERN_BENCHMARK["story_text"],
+        TAVERN_SEGMENT_BEATS,
+        location_id=location_id,
+        llm_request=mock.Mock(return_value={
+            "subject": "Amy",
+            "status": "present",
+            "initial_state": "Amy wipes a polished table",
+        }),
+    )
+    return state, location_id
+
+
+def prepare_tavern_segment(state, segment_number):
+    subject_reply = {"subjects": []}
+    wardrobe_reply = None
+    if segment_number == 3:
+        subject_reply = {"subjects": [{
+            "name": "Elf1",
+            "physical_form": "unknown",
+            "gender": "female",
+            "source_description": "female elf",
+            "evidence": "A beautiful female elf steps in, silver hair streaming down its shoulders",
+        }]}
+        wardrobe_reply = {"clothing": "a wool tunic, a travel cloak, and leather shoes"}
+    elif segment_number == 4:
+        subject_reply = {"subjects": [{
+            "name": "Dragon1",
+            "physical_form": "unknown",
+            "gender": "unknown",
+            "source_description": "dragon-shaped creature",
+            "evidence": "a dragon-shaped creature slides onto a high bar stool",
+        }]}
+        wardrobe_reply = {"clothing": "N/A"}
+    replies = [subject_reply]
+    if wardrobe_reply is not None:
+        replies.append(wardrobe_reply)
+    replies.append(tavern_segment_prop_results(segment_number))
+    llm = mock.Mock(side_effect=replies)
+    state, added_names = minimax.prepare_segment_world_state_for_director(
+        state,
+        segment_number,
+        TAVERN_SEGMENT_BEATS[segment_number - 1],
+        TAVERN_SEGMENT_SOURCES[segment_number - 1],
+        TAVERN_BENCHMARK["story_text"],
+        llm_request=llm,
+    )
+    included_names = [
+        subject["name"] for subject in state["subjects"].values()
+        if subject["presence"] == "present"
+    ] + added_names
+    return state, added_names, list(dict.fromkeys(included_names))
 
 
 def formatter_response(description):
@@ -33,12 +244,10 @@ def formatter_response(description):
 
 
 def director_response(raw_scene, beat_complete=True):
-    """A structurally valid Request 1 reply for unit tests."""
+    """A legacy-shaped RAW fixture without synthetic action padding."""
     scene = str(raw_scene).strip()
     if not scene.startswith("At "):
         scene = "At 00:00.000, " + scene
-    if not re.search(r"At 00:0[4-9]\.\d{1,3},", scene):
-        scene += "\nAt 00:04.500, The action settles into its final visible state."
     if "End continuity state:" not in scene:
         scene += "\nEnd continuity state: The described action has reached its final visible state."
     return {
@@ -56,11 +265,67 @@ def pipeline_llm_side_effect(
     soundscape="Room tone.",
     music="N/A",
 ):
-    """Return current Director pipeline responses without coupling unrelated tests."""
+    """Adapt legacy scenario fixtures to the sequential RAW refiner stages.
+
+    The supplied non-audio responses describe the same historical scenarios,
+    but are routed through the current creative -> timed-format contract.
+    """
     queued = iter(non_audio_responses)
+    pending_format_response = None
+    pending_creative_scene = ""
+    pending_timed_scene = ""
+
+    def untimed_scene(response):
+        if isinstance(response, dict):
+            scene = response.get("raw_scene", "")
+        else:
+            scene = response
+        scene = str(scene or "").strip()
+        scene = re.sub(r"(?m)^At\s+\d{2}:\d{2}\.\d{1,3},\s*", "", scene)
+        scene = re.sub(r"(?m)^End continuity state:.*$", "", scene)
+        return scene.strip()
 
     def respond(*args, **kwargs):
+        nonlocal pending_format_response, pending_creative_scene, pending_timed_scene
         purpose = str((kwargs.get("history_metadata") or {}).get("purpose", ""))
+        metadata = kwargs.get("history_metadata") or {}
+        if purpose == "director_raw_scene_creative":
+            pending_format_response = next(queued)
+            pending_creative_scene = untimed_scene(pending_format_response)
+            return pending_creative_scene
+        if purpose == "add_scene_timing_refiner":
+            original_scene = (
+                pending_format_response.get("raw_scene", "")
+                if isinstance(pending_format_response, dict)
+                else ""
+            )
+            original_scene = re.sub(
+                r"(?m)^End continuity state:.*$", "", str(original_scene)
+            ).strip()
+            action_lines = minimax._normalize_timing_refiner_action_lines(
+                pending_creative_scene
+            )
+            timestamps = [
+                f"{int(match.group('minutes')):02d}:{int(match.group('seconds')):02d}."
+                f"{int((match.group('fraction') or '0').ljust(3, '0')):03d}"
+                for match in minimax._DIRECTOR_TIMESTAMP_RE.finditer(original_scene)
+            ]
+            if len(timestamps) != len(action_lines) or (timestamps and timestamps[0] != "00:00.000"):
+                timestamps = [f"00:00.{index * 100:03d}" for index in range(len(action_lines))]
+            pending_timed_scene = minimax._assemble_timed_scene(action_lines, timestamps)
+            return {"status": "ok", "timestamps": timestamps}
+        if purpose == "add_camera_refiner":
+            return pending_timed_scene
+        if purpose == "director_raw_scene_repair":
+            try:
+                repaired = next(queued)
+            except StopIteration as error:
+                raise AssertionError(
+                    f"Unscripted {purpose} call metadata={metadata!r}"
+                ) from error
+            if metadata.get("stage") == "untimed_creative":
+                pending_format_response = director_response(untimed_scene(repaired))
+            return repaired
         if purpose == "director_h3_soundscape":
             return {"overall_soundscape": soundscape}
         if purpose == "director_h3_music":
@@ -74,13 +339,8 @@ def pipeline_llm_side_effect(
                 "\n\nReturn {", 1
             )[0].strip()
             return {"raw_scene": raw}
-        if purpose == "director_raw_scene_subject_resolution":
-            messages = args[0] if args else []
-            user_text = str(messages[-1].get("content", "")) if messages else ""
-            raw = user_text.split("RAW SCENE\n", 1)[-1].split(
-                "\n\nReturn raw_scene", 1
-            )[0].strip()
-            return {"raw_scene": raw, "subject_names": []}
+        if purpose == "director_raw_scene_visible_subject_resolution":
+            return {"subjects": []}
         return next(queued)
 
     return respond
@@ -97,6 +357,686 @@ def non_audio_llm_calls(request):
 
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
+
+    def test_continuation_raw_uses_extended_timeline_after_guide_shift(self):
+        bundle = segment_bundle()
+        bundle.update({
+            "segment": 2,
+            "current_duration": 8.0,
+            "conditioning_mode": "continuation",
+            "current_beat_text": "Amy completes the task and steps back.",
+            "subject_definitions": "<Subject 1> is Amy.",
+            "messages": [{"role": "user", "content": "Direct segment 2."}],
+        })
+        response = director_response(
+            "At 00:00.000, Amy continues the task.\n"
+            "At 00:07.900, Amy finishes and steps back."
+        )
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([response]))
+        pronoun_resolver = mock.Mock(side_effect=lambda raw_scene, **kwargs: raw_scene)
+        validators = (
+            mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.resolve_director_raw_scene_pronouns", pronoun_resolver),
+        )
+        with (
+            mock.patch("minimax.ask_llm", request),
+            validators[0],
+            validators[1],
+            validators[2],
+            validators[3],
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-continuation-time", {"source_sha256": "source"}
+            )
+
+        self.assertIn("At 00:08.817, Amy finishes", payload["raw_scene"])
+        pronoun_resolver.assert_called_once()
+        self.assertIn("At 00:08.817, Amy finishes", pronoun_resolver.call_args.args[0])
+        self.assertAlmostEqual(
+            pronoun_resolver.call_args.kwargs["segment_seconds"],
+            8.0 + 22 / 24,
+        )
+        self.assertTrue(
+            minimax._director_timestamp_range_errors(
+                payload["raw_scene"],
+                segment_seconds=minimax._director_raw_scene_timeline_duration(
+                    8.0, "continuation"
+                ),
+            ) == []
+        )
+
+    def test_action_only_extractor_repairs_actions_without_changing_raw(self):
+        world_state, _location_id, mug_id = goblin_mug_world_state()
+        opening = copy.deepcopy(world_state)
+        raw_scene = (
+            "At 00:01.000, Goblin1 picks up the mug.\n"
+            "At 00:04.500, Goblin1 hands the same mug to Elf1."
+        )
+        rejected = {"state_actions": [{
+            "action_id": "bad-pickup",
+            "op": "pickup",
+            "actor_subject_id": "Unknown Subject",
+            "prop_id": "mug",
+        }]}
+        repaired = {"state_actions": [
+            {
+                "action_id": "pickup-mug",
+                "op": "pickup",
+                "actor_subject_id": "Goblin1",
+                "prop_id": "mug",
+            },
+            {
+                "action_id": "handoff-mug",
+                "op": "handoff",
+                "from_subject_id": "Goblin1",
+                "to_subject_id": "Elf1",
+                "prop_id": "mug",
+            },
+        ]}
+        request = mock.Mock(side_effect=[rejected, repaired])
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state,
+                raw_scene,
+                segment_number=1,
+                run_id="run-id",
+                run_config={"source_sha256": "source-hash"},
+            )
+
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["raw_scene"], raw_scene)
+        self.assertEqual(result["state_actions"][-1]["prop_id"], mug_id)
+        self.assertEqual(
+            result["state_actions"][-1]["to_subject_id"], "subject_2"
+        )
+        self.assertEqual(world_state, opening)
+        self.assertEqual(request.call_count, 2)
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["director_state_actions"],
+            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
+        )
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["director_state_actions_repair"],
+            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
+        )
+        initial_user = request.call_args_list[0].args[0][-1]["content"]
+        repair_user = request.call_args_list[1].args[0][-1]["content"]
+        self.assertIn(raw_scene, initial_user)
+        self.assertIn(raw_scene, repair_user)
+        self.assertIn("FIRST REDUCER FAILURE", repair_user)
+        self.assertIn("Unknown Subject", repair_user)
+        initial_system = request.call_args_list[0].args[0][0]["content"]
+        repair_system = request.call_args_list[1].args[0][0]["content"]
+        action_contract = build_state_action_only_contract(
+            world_state,
+            current_segment_text=raw_scene,
+            current_segment_subject_names=["Goblin1", "Elf1"],
+        )
+        operation_shapes = json.dumps(
+            action_contract["prompt_operation_shapes"],
+            ensure_ascii=False,
+            indent=2,
+        )
+        for system_prompt in (initial_system, repair_system):
+            self.assertIn('"state_actions": []', system_prompt)
+            self.assertIn("Omit transient actions and changes that WorldState cannot represent.", system_prompt)
+            self.assertIn("Do not infer or invent a transfer, pour, consumption", system_prompt)
+            self.assertIn("Treat the opening WorldState as the baseline.", system_prompt)
+            self.assertIn("A clothing or accessory description alone does not establish a clothing change", system_prompt)
+            self.assertIn("Review the entire RAW from beginning to end", system_prompt)
+            self.assertIn("include every explicit persistent change", system_prompt)
+            self.assertIn("PERMITTED STATEACTION OBJECT STRUCTURES", system_prompt)
+            self.assertIn(operation_shapes, system_prompt)
+            self.assertIn('"op": "pickup"', system_prompt)
+            self.assertIn('"actor_subject_id": "<registered Subject name>"', system_prompt)
+            self.assertNotIn('"subject_1"', system_prompt)
+        self.assertIn("entire corrected state_actions batch", repair_system)
+        self.assertIn("do not return only the failing action", repair_system)
+        self.assertEqual(
+            request.call_args_list[0].kwargs["response_format"]["json_schema"]["schema"]["required"],
+            ["state_actions"],
+        )
+        self.assertEqual(
+            request.call_args_list[1].kwargs["history_metadata"]["purpose"],
+            "director_state_actions_repair",
+        )
+
+    def test_transient_surface_wiping_accepts_empty_state_action_batch(self):
+        world_state, _location_id, _mug_id = goblin_mug_world_state()
+        opening = copy.deepcopy(world_state)
+        accepted_raw = (
+            "At 00:00.000, [CAMERA: slow pan] Amy wipes the counter with a cloth."
+        )
+        raw_scene = minimax._director_strip_camera_instructions(accepted_raw)
+        request = mock.Mock(return_value={"state_actions": []})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state,
+                raw_scene,
+                segment_number=1,
+            )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["state_actions"], [])
+        self.assertEqual(result["raw_scene"], raw_scene)
+        minimax._assert_state_action_raw_unchanged(raw_scene, result, 1)
+        self.assertEqual(world_state, opening)
+        self.assertEqual(request.call_count, 1)
+        system_prompt = request.call_args.args[0][0]["content"]
+        self.assertIn("Omit transient actions and changes that WorldState cannot represent.", system_prompt)
+
+    def test_existing_clothing_description_does_not_create_state_action(self):
+        world_state, _location_id, _mug_id = goblin_mug_world_state()
+        raw_scene = (
+            "At 00:00.000, Amy stands in her established tunic and belt."
+        )
+        request = mock.Mock(return_value={"state_actions": []})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state,
+                raw_scene,
+                segment_number=1,
+            )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["state_actions"], [])
+        prompt = request.call_args.args[0][0]["content"]
+        self.assertIn("opening wardrobe is unknown", prompt)
+        self.assertIn("explicit event that changes clothing", prompt)
+
+    def test_registered_prop_pickup_and_pour_are_preserved_as_state_actions(self):
+        world_state, location_id, mug_id = goblin_mug_world_state()
+        world_state["props"][mug_id]["kind"] = "container"
+        world_state["props"][mug_id]["capabilities"]["container"] = True
+        world_state = register_explicit_persistent_props(world_state, [{
+            "name": "source vessel",
+            "kind": "container",
+            "mobility": "movable",
+            "needed_for_state": True,
+            "reason": "Its contents can be transferred to a registered container.",
+            "location_id": location_id,
+            "contents": [{
+                "substance": "ale",
+                "amount": "some",
+                "consumable": "unknown",
+            }],
+            "capabilities": {"container": True},
+        }])
+        source_id = next(
+            prop_id for prop_id, prop in world_state["props"].items()
+            if prop["name"] == "source vessel"
+        )
+        raw_scene = (
+            "At 00:00.000, Amy picks up the source vessel.\n"
+            "At 00:03.000, Amy pours ale from the source vessel into the mug."
+        )
+        request = mock.Mock(return_value={"state_actions": [
+            {
+                "action_id": "pickup-vessel",
+                "op": "pickup",
+                "actor_subject_id": "Amy",
+                "prop_id": "source vessel",
+            },
+            {
+                "action_id": "pour-ale",
+                "op": "pour",
+                "actor_subject_id": "Amy",
+                "source_prop_id": "source vessel",
+                "target_prop_id": "mug",
+                "substance": "ale",
+                "amount": "all",
+            },
+        ]})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state,
+                raw_scene,
+                segment_number=1,
+            )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(
+            [action["op"] for action in result["state_actions"]],
+            ["pickup", "pour"],
+        )
+        self.assertTrue(all(outcome.accepted for outcome in result["outcomes"]))
+        self.assertEqual(result["state_actions"][1]["source_prop_id"], source_id)
+
+    def test_state_action_extractor_registers_retrieved_prop_for_later_use(self):
+        world_state, location_id, mug_id = goblin_mug_world_state()
+        world_state["props"][mug_id]["kind"] = "container"
+        world_state["props"][mug_id]["capabilities"]["container"] = True
+        world_state = register_explicit_persistent_props(world_state, [
+            {
+                "name": "shelf",
+                "kind": "support",
+                "mobility": "fixed",
+                "needed_for_state": True,
+                "reason": "A movable vessel is retrieved from this support.",
+                "location_id": location_id,
+            },
+            {
+                "name": "barrel",
+                "kind": "container",
+                "mobility": "fixed",
+                "needed_for_state": True,
+                "reason": "Its contents are poured into a retrieved vessel.",
+                "location_id": location_id,
+                "contents": [{
+                    "substance": "ale",
+                    "amount": "some",
+                    "consumable": "unknown",
+                }],
+                "capabilities": {"container": True},
+            },
+        ])
+        opening = copy.deepcopy(world_state)
+        pitcher_id = stable_world_state_id(
+            "prop", "container|serving pitcher", scope=location_id
+        )
+        raw_scene = (
+            "At 00:00.000, Amy retrieves the serving pitcher from the shelf.\n"
+            "At 00:03.000, Amy pours ale from the barrel into the serving pitcher."
+        )
+        request = mock.Mock(return_value={"state_actions": [
+            {
+                "action_id": "retrieve-pitcher",
+                "op": "retrieve_prop",
+                "actor_subject_id": "Amy",
+                "prop_name": "serving pitcher",
+                "kind": "container",
+                "support_id": "shelf",
+            },
+            {
+                "action_id": "pour-ale",
+                "op": "pour",
+                "actor_subject_id": "Amy",
+                "source_prop_id": "barrel",
+                "target_prop_id": "serving pitcher",
+                "substance": "ale",
+                "amount": "partial",
+            },
+        ]})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state, raw_scene, segment_number=1,
+            )
+
+        self.assertTrue(result["accepted"])
+        self.assertEqual(
+            [action["op"] for action in result["state_actions"]],
+            ["retrieve_prop", "pour"],
+        )
+        self.assertEqual(
+            result["state_actions"][1]["target_prop_id"], pitcher_id,
+        )
+        self.assertEqual(result["raw_scene"], raw_scene)
+        self.assertEqual(world_state, opening)
+        self.assertEqual(request.call_count, 1)
+        system_prompt = request.call_args.args[0][0]["content"]
+        self.assertIn(
+            "A `retrieve_prop` action may introduce a prop only when validated RAW explicitly shows a Subject retrieving it from a registered support accessible to that Subject. Do not introduce a prop without that origin and retrieval action. Later actions in the same batch may refer to the exact name introduced earlier. Reuse existing registered props whenever available.",
+            system_prompt,
+        )
+        self.assertIn('"op": "retrieve_prop"', system_prompt)
+
+    def test_unknown_contents_and_existing_holder_do_not_block_valid_pour(self):
+        world_state, location_id, mug_id = goblin_mug_world_state()
+        mug = world_state["props"][mug_id]
+        mug["placement"] = {"kind": "held", "subject_id": "subject_1"}
+        mug["kind"] = "container"
+        mug["contents"] = [{
+            "substance": "ale", "amount": "unknown", "consumable": "unknown",
+        }]
+        mug["capabilities"]["container"] = "unknown"
+        world_state = register_explicit_persistent_props(world_state, [{
+            "name": "barrel",
+            "kind": "container",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "Its contents are poured into a registered container.",
+            "location_id": location_id,
+            "contents": [],
+        }])
+        barrel_id = next(
+            prop_id for prop_id, prop in world_state["props"].items()
+            if prop["name"] == "barrel"
+        )
+        mug["placement"] = {"kind": "held", "subject_id": "subject_1"}
+        raw_scene = "Amy pours liquid from the barrel into Goblin1's mug."
+        request = mock.Mock(return_value={"state_actions": [{
+            "action_id": "pour-liquid",
+            "op": "pour",
+            "actor_subject_id": "Amy",
+            "source_prop_id": "barrel",
+            "target_prop_id": "mug",
+            "substance": "liquid",
+            "amount": "all",
+        }]})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state, raw_scene, segment_number=1,
+            )
+
+        self.assertTrue(result["accepted"])
+        self.assertEqual(request.call_count, 1)
+        self.assertEqual(
+            result["state_actions"][0]["source_prop_id"], barrel_id,
+        )
+        reduced = minimax.reduce_world_state(
+            world_state, result["state_actions"], segment_number=1,
+        )
+        self.assertTrue(reduced.committed)
+        self.assertEqual(
+            reduced.world_state["props"][barrel_id]["contents"],
+            [{"substance": "liquid", "amount": "none", "consumable": "unknown"}],
+        )
+        mug_end = reduced.world_state["props"][mug_id]
+        self.assertEqual(mug_end["placement"], {
+            "kind": "held", "subject_id": "subject_1",
+        })
+        self.assertTrue(mug_end["capabilities"]["container"])
+        self.assertEqual(
+            mug_end["contents"],
+            [
+                {"substance": "ale", "amount": "unknown", "consumable": "unknown"},
+                {"substance": "liquid", "amount": "some", "consumable": "unknown"},
+            ],
+        )
+
+    def test_action_only_extractor_fails_closed_after_five_repairs(self):
+        world_state, _location_id, _mug_id = goblin_mug_world_state()
+        opening = copy.deepcopy(world_state)
+        raw_scene = "At 00:01.000, Goblin1 moves within the tavern."
+        invalid = {"state_actions": [{
+            "action_id": "invalid-move",
+            "op": "move",
+            "subject_id": "Goblin1",
+            "destination_location_id": "Tavern",
+        }]}
+        request = mock.Mock(return_value=invalid)
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            with self.assertRaisesRegex(
+                minimax.StateActionExtractionError,
+                "after 5 action-only repairs",
+            ):
+                minimax.extract_and_dry_run_director_state_actions(
+                    world_state,
+                    raw_scene,
+                    segment_number=1,
+                )
+        self.assertEqual(request.call_count, 6)
+        self.assertEqual(
+            [
+                call.kwargs["history_metadata"]["purpose"]
+                for call in request.call_args_list
+            ],
+            ["director_state_actions"]
+            + ["director_state_actions_repair"] * 5,
+        )
+        self.assertEqual(world_state, opening)
+
+    def test_tavern_segment_one_vocabulary_uses_authoritative_seed_paths(self):
+        state, _location_id = tavern_world_state_from_authorities()
+        state, added, subject_names = prepare_tavern_segment(state, 1)
+        self.assertEqual(added, [])
+        subject_by_name = {s["name"]: s for s in state["subjects"].values()}
+        self.assertEqual(subject_by_name["Amy"]["presence"], "present")
+        self.assertEqual(subject_by_name["Goblin1"]["presence"], "present")
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text=TAVERN_SEGMENT_BEATS[0] + TAVERN_SEGMENT_SOURCES[0],
+            current_segment_subject_names=subject_names,
+        )
+        vocabulary = contract["vocabulary"]
+        self.assertEqual(
+            {subject["name"] for subject in vocabulary["subjects"]},
+            {"Amy", "Goblin1"},
+        )
+        self.assertEqual(
+            {prop["name"] for prop in vocabulary["props"]},
+            {"mug", "barrel", "counter", "hearth"},
+        )
+        mug = next(prop for prop in state["props"].values() if prop["name"] == "mug")
+        self.assertEqual(
+            mug["placement"],
+            {"kind": "held", "subject_id": "subject_goblin1_34aa4679d81b"},
+        )
+
+    def test_tavern_segment_three_registers_elf_before_raw_and_allows_enter(self):
+        state, location_id = tavern_world_state_from_authorities()
+        state, _, _ = prepare_tavern_segment(state, 1)
+        state, added, subject_names = prepare_tavern_segment(state, 3)
+        self.assertEqual(added, ["Elf1"])
+        elf_id, elf = next(
+            (subject_id, subject)
+            for subject_id, subject in state["subjects"].items()
+            if subject["name"] == "Elf1"
+        )
+        self.assertEqual(elf["presence"], "unknown")
+        self.assertEqual(elf["location_id"], "unknown")
+        self.assertEqual(elf["identity"]["physical_form"], "unknown")
+        self.assertEqual(elf["wardrobe"]["upper"][0]["garment"], "wool tunic")
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text=TAVERN_SEGMENT_BEATS[2] + TAVERN_SEGMENT_SOURCES[2],
+            current_segment_subject_names=subject_names,
+        )
+        vocabulary_subject_names = {
+            subject["name"] for subject in contract["vocabulary"]["subjects"]
+        }
+        self.assertIn("Elf1", vocabulary_subject_names)
+        schema = contract["response_format"]["json_schema"]["schema"]
+        action_schemas = schema["properties"]["state_actions"]["items"]["oneOf"]
+        enter_schema = next(
+            item for item in action_schemas
+            if item["properties"]["op"]["const"] == "enter"
+        )
+        self.assertIn("Elf1", enter_schema["properties"]["subject_id"]["enum"])
+        outcome = validate_state_actions(state, [{
+            "action_id": "elf-enters",
+            "op": "enter",
+            "subject_id": elf_id,
+            "location_id": location_id,
+        }], segment_number=3)
+        self.assertTrue(outcome[0].accepted)
+
+    def test_tavern_segment_four_registers_dragon_and_distinguishes_vessels(self):
+        state, location_id = tavern_world_state_from_authorities()
+        state, _, _ = prepare_tavern_segment(state, 1)
+        state, _, _ = prepare_tavern_segment(state, 3)
+        state, added, subject_names = prepare_tavern_segment(state, 4)
+        self.assertEqual(added, ["Dragon1"])
+        dragon_id, dragon = next(
+            (subject_id, subject)
+            for subject_id, subject in state["subjects"].items()
+            if subject["name"] == "Dragon1"
+        )
+        self.assertEqual(dragon["presence"], "unknown")
+        self.assertEqual(dragon["identity"]["physical_form"], "unknown")
+        cup_id, cup = next(
+            (prop_id, prop) for prop_id, prop in state["props"].items()
+            if prop["name"] == "crystal cup"
+        )
+        shelf_id = next(
+            prop_id for prop_id, prop in state["props"].items()
+            if prop["name"] == "shelf"
+        )
+        self.assertEqual(cup["placement"], {
+            "kind": "located", "location_id": location_id, "support_id": shelf_id,
+        })
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text=TAVERN_SEGMENT_BEATS[3] + TAVERN_SEGMENT_SOURCES[3],
+            current_segment_subject_names=subject_names,
+        )
+        self.assertEqual(
+            {prop["name"] for prop in contract["vocabulary"]["props"]},
+            {"mug", "crystal cup", "shelf", "high bar stool"},
+        )
+        schema = contract["response_format"]["json_schema"]["schema"]
+        action_schemas = schema["properties"]["state_actions"]["items"]["oneOf"]
+        available_ops = {
+            item["properties"]["op"]["const"] for item in action_schemas
+        }
+        self.assertTrue({"enter", "handoff", "pour"}.issubset(available_ops))
+        enter_schema = next(
+            item for item in action_schemas
+            if item["properties"]["op"]["const"] == "enter"
+        )
+        self.assertIn("Dragon1", enter_schema["properties"]["subject_id"]["enum"])
+
+    def test_reducer_operation_contract_does_not_depend_on_verb_spelling(self):
+        state, _location_id = tavern_world_state_from_authorities()
+        state, _, _ = prepare_tavern_segment(state, 1)
+        state, _, _ = prepare_tavern_segment(state, 3)
+        state, _, subject_names = prepare_tavern_segment(state, 4)
+        shared_entities = (
+            "Amy Goblin1 Elf1 Dragon1 mug barrel crystal chalice cup "
+            "bar counter Tavern"
+        )
+        variants = (
+            f"{shared_entities}. Amy refills the cup.",
+            f"{shared_entities}. Elf1 is handing the chalice to Dragon1.",
+            f"{shared_entities}. Amy is locking the barrel.",
+            f"{shared_entities}. Goblin1 steps outside.",
+            f"{shared_entities}. Elf1 slides onto the stool.",
+        )
+        operation_sets = []
+        for text in variants:
+            contract = build_state_action_only_contract(
+                state,
+                current_segment_text=text,
+                current_segment_subject_names=subject_names,
+            )
+            schemas = contract["response_format"]["json_schema"]["schema"][
+                "properties"]["state_actions"]["items"]["oneOf"]
+            operation_sets.append({
+                item["properties"]["op"]["const"] for item in schemas
+            })
+        self.assertTrue(operation_sets)
+        self.assertTrue(all(operations == operation_sets[0] for operations in operation_sets))
+        self.assertEqual(
+            operation_sets[0],
+            {
+                "retrieve_prop", "pickup", "place", "handoff", "pour", "consume", "enter",
+                "exit", "move", "set_support", "change_clothing", "open",
+                "close", "lock", "unlock",
+            },
+        )
+
+    def test_request_one_uses_action_free_contract_and_readable_world_state(self):
+        bundle = goblin_mug_bundle()
+        opening_world_state = copy.deepcopy(bundle["world_state_opening"])
+        goblin_id = next(
+            subject_id for subject_id, subject
+            in opening_world_state["subjects"].items()
+            if subject["name"] == "Goblin1"
+        )
+        mug_id = next(
+            prop_id for prop_id, prop
+            in opening_world_state["props"].items()
+            if prop["name"] == "mug"
+        )
+        opening_world_state["props"][mug_id]["placement"] = {
+            "kind": "held", "subject_id": goblin_id,
+        }
+        bundle["world_state_opening"] = copy.deepcopy(opening_world_state)
+        bundle["messages"], _token_estimate, _recent_count = (
+            minimax.build_generation_messages(
+                director_rules=minimax.build_director_rules(
+                    6, 6, 1, "", 1,
+                    conditioning_mode="initial",
+                    is_final_story_segment=True,
+                ),
+                story="",
+                beats=["Goblin1 waits behind the counter."],
+                completed_beat_ids=set(),
+                recent_results=[],
+                current_segment=1,
+                total_segments=1,
+                segment_length=6,
+                total_length=6,
+                subject_definitions=minimax.world_state_subject_definitions(
+                    "", opening_world_state,
+                ),
+                conditioning_mode="initial",
+                world_state=opening_world_state,
+            )
+        )
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            director_response("At 00:01.000, Goblin1 waits beside the counter."),
+        ]))
+        validators = (
+            mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+        )
+        with (
+            mock.patch("minimax.ask_llm", request),
+            validators[0],
+            validators[1],
+            validators[2],
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-raw-only", {"source_sha256": "source"}
+            )
+
+        self.assertNotIn("state_actions", payload["request1_result"])
+        self.assertNotIn("state_actions_dry_run_accepted", payload["request1_result"])
+        self.assertEqual(bundle["world_state_opening"], opening_world_state)
+        self.assertEqual(
+            bundle["world_state_opening"]["props"][mug_id]["placement"],
+            {"kind": "held", "subject_id": goblin_id},
+        )
+        request1 = next(
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene_creative"
+        )
+        prompt = "\n".join(
+            str(message.get("content") or "")
+            for message in request1.args[0]
+        )
+        self.assertIn("SUBJECT LOCATIONS (WorldState)", prompt)
+        self.assertIn("PROPS:\nWorldState placement", prompt)
+        self.assertIn("Goblin1: in Room", prompt)
+        self.assertIn("mug: held by Goblin1", prompt)
+        self.assertIn("held props are exclusive", prompt)
+        self.assertNotIn("REGISTERED WORLDSTATE VOCABULARY", prompt)
+        self.assertNotIn("STATE ACTION CONTRACT", prompt)
+        self.assertNotIn("state_actions", prompt)
+        self.assertIsNone(request1.kwargs["response_format"])
+        self.assertIn("CURRENT BEAT", prompt)
+
+    def test_director_system_prompt_has_no_state_action_contract(self):
+        for prompt in (
+            minimax.ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE,
+            minimax.ADD_CAMERA_REFINER_SYSTEM,
+        ):
+            self.assertNotIn("state_actions", prompt)
+            self.assertNotIn("registered entity names", prompt)
 
     def test_h3_soundscape_prompt_is_extraction_only(self):
         messages = minimax.build_h3_soundscape_messages(
@@ -167,7 +1107,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     @mock.patch("minimax.ask_llm")
     def test_audio_contract_retries_malformed_soundscape(self, ask_llm):
         ask_llm.side_effect = [
-            director_response("Mark closes a door with a thud."),
+            "Mark closes a door with a thud.",
+            {"status": "ok", "timestamps": ["00:00.000"]},
+            "At 00:00.000, Mark closes a door with a thud.",
             {"overall_soundscape": ":["},
             {"overall_soundscape": "door thud"},
             {"non_diegetic_music": "Sparse piano."},
@@ -238,165 +1180,238 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "non_diegetic_music": "Low strings.",
             })
 
-    def test_raw_subject_resolution_prompt_is_post_raw_and_narrow(self):
-        messages = minimax.build_director_raw_subject_resolution_messages(
-            (
-                "At 00:01.000, a guard enters.\n"
-                "At 00:04.000, another guard blocks the door."
-            ),
-            "<Subject 1> is Mara.\n<Subject 2> is Guard1, continued from <Video 1>.",
-        )
-        text = messages[0]["content"] + "\n" + messages[1]["content"]
-        self.assertIn("unnamed foreground animate identities", text)
-        self.assertIn("finalized timed RAW scene", text)
-        self.assertIn("Keep already-named Subjects unchanged", text)
-        self.assertIn("Guard1 or Creature1", text)
-        self.assertIn("Reuse a KNOWN SUBJECT name", text)
-        self.assertIn("Do not label interchangeable background crowds/groups", text)
-        self.assertIn("KNOWN SUBJECTS", text)
+    def test_raw_subject_resolution_prompt_is_identity_only_and_data_only(self):
+        raw = "At 00:01.000, Amy enters.\nEnd continuity state: Amy remains inside."
+        known = [{"subject_id": "<Subject 1>", "name": "Amy"}]
+        messages = minimax.build_director_raw_subject_resolution_messages(raw, known)
+        system = messages[0]["content"]
+        user = messages[1]["content"]
+        self.assertIn('"subjects"', system)
+        self.assertIn('"raw_name"', system)
+        self.assertIn('"subject_id"', system)
+        self.assertIn('"is_new"', system)
+        self.assertIn("Match Subjects appearing in RAW SCENE", system)
+        self.assertNotIn("raw_scene", user)
+        self.assertNotIn("wardrobe", user.casefold())
+        self.assertIn('"subject_id":"<Subject 1>"', user)
+        self.assertIn(raw, user)
 
-    def test_raw_subject_resolution_accepts_only_identity_labeling(self):
+    @staticmethod
+    def _complete_amy_resolution_world_state():
+        state = new_world_state({
+            "source_sha256": "subject-resolution-bypass",
+            "subjects": {
+                "1": {
+                    "subject_id": 1,
+                    "name": "Amy",
+                    "gender": "female",
+                    "physical_form": "humanoid",
+                    "source_description": "A human tavern keeper.",
+                    "picture_ids": [1],
+                },
+                "2": {
+                    "subject_id": 2,
+                    "name": "Beautiful Female Elf",
+                    "gender": "female",
+                    "physical_form": "humanoid",
+                    "source_description": "A silver-haired elf.",
+                    "picture_ids": [2],
+                },
+            },
+        })
+        state["subjects"]["subject_1"]["identity"]["canonical_description"] = "A human tavern keeper."
+        state["subjects"]["subject_2"]["identity"]["canonical_description"] = "A silver-haired elf."
+        return state
+
+    def test_raw_subject_resolution_bypasses_named_registered_subjects_exactly(self):
         original = (
-            "At 00:01.000, a guard enters the room.\n"
-            "At 00:05.000, another guard blocks the door.\n"
-            "End continuity state: both guards remain in the room."
+            "  At 00:00.000, [CAMERA: slow pan] Amy wipes the counter with a cloth.\n"
+            "At 00:05.000, Amy sets the cloth beside the counter.\n"
+            "End continuity state: Amy remains behind the counter.\n"
         )
-        resolved_timed = (
-            "At 00:01.000, Guard1 enters the room.\n"
-            "At 00:05.000, Guard2 blocks the door."
+        request = mock.Mock(side_effect=AssertionError("resolver should be bypassed"))
+        result, subjects = minimax.resolve_director_raw_scene_subjects(
+            original,
+            world_state=self._complete_amy_resolution_world_state(),
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(result, original)
+        self.assertEqual(subjects, [])
+        request.assert_not_called()
+
+    def test_raw_subject_resolution_maps_known_alias_to_canonical_worldstate_id(self):
+        original = (
+            "At 00:00.000, the elf enters the room.\n"
+            "At 00:04.000, the elf sits by Amy.\n"
+            "End continuity state: the elf remains seated by Amy."
         )
         request = mock.Mock(return_value={
-            "raw_scene": resolved_timed,
-            "subject_names": ["Guard1", "Guard2"],
+            "subjects": [{
+                "raw_name": "elf",
+                "subject_id": "<Subject 2>",
+                "is_new": False,
+            }],
         })
-        result, names = minimax.resolve_director_raw_scene_subjects(
+        result, subjects = minimax.resolve_director_raw_scene_subjects(
             original,
-            "<Subject 1> is Mara.",
+            world_state=self._complete_amy_resolution_world_state(),
             llm_request=request,
             segment_seconds=6.0,
         )
         self.assertEqual(
             result,
-            resolved_timed
-            + "\nEnd continuity state: both guards remain in the room.",
+            original.replace("the elf", "the Beautiful Female Elf"),
         )
-        self.assertEqual(names, ["Guard1", "Guard2"])
+        self.assertEqual(subjects, [{
+            "raw_name": "elf",
+            "name": "Beautiful Female Elf",
+            "subject_id": "subject_2",
+            "is_new": False,
+        }])
         self.assertEqual(
-            request.call_args.kwargs["history_metadata"]["purpose"],
-            "director_raw_scene_subject_resolution",
+            minimax._director_timestamp_lexemes(result),
+            minimax._director_timestamp_lexemes(original),
         )
+        request.assert_called_once()
 
-    def test_raw_subject_resolution_bootstraps_identity_and_wardrobe_once(self):
+    def test_raw_subject_resolution_returns_new_subject_without_rewriting_raw(self):
         original = (
-            "At 00:01.000, a beautiful female elf with long silver hair enters.\n"
-            "At 00:05.000, the elf sits at the back table.\n"
-            "End continuity state: the elf remains seated."
-        )
-        resolved_timed = (
-            "At 00:01.000, Elf1, a beautiful female elf with long silver hair, enters.\n"
-            "At 00:05.000, Elf1 sits at the back table."
+            "At 00:00.000, a luminous being enters the room.\n"
+            "At 00:04.000, the luminous being waves.\n"
+            "End continuity state: the being remains in the room."
         )
         request = mock.Mock(return_value={
-            "raw_scene": resolved_timed,
-            "subject_names": ["Elf1"],
-            "subject_descriptions": {
-                "Elf1": "Elf1 is a beautiful female elf with long silver hair."
-            },
-            "subject_wardrobes": {
-                "Elf1": {
-                    "upper": "forest-green fitted tunic",
-                    "lower": "brown trousers",
-                    "footwear": "soft leather boots",
-                    "other": "N/A",
-                }
-            },
+            "subjects": [{
+                "raw_name": "luminous being",
+                "subject_id": None,
+                "is_new": True,
+            }],
         })
-
-        result, names, descriptions, wardrobes = (
-            minimax.resolve_director_raw_scene_subjects(
-                original,
-                "<Subject 1> is Amy.",
-                llm_request=request,
-                segment_seconds=6.0,
-                return_subject_bootstrap=True,
-                story_context=(
-                    "Amy serves fantasy patrons in a refined medieval tavern where "
-                    "humanoid guests wear practical period clothing."
-                ),
-            )
-        )
-
-        self.assertIn("Elf1 sits at the back table", result)
-        self.assertEqual(names, ["Elf1"])
-        self.assertEqual(
-            descriptions,
-            {"Elf1": "Elf1 is a beautiful female elf with long silver hair."},
-        )
-        self.assertEqual(
-            wardrobes["Elf1"],
-            {
-                "upper": "forest-green fitted tunic",
-                "lower": "brown trousers",
-                "footwear": "soft leather boots",
-                "other": "N/A",
-            },
-        )
-        prompt = request.call_args.args[0]
-        self.assertIn("explicit non-clothing appearance facts", prompt[0]["content"])
-        self.assertIn("choose one simple setting-appropriate outfit now", prompt[0]["content"])
-        self.assertIn("Use STORY CONTEXT only when RAW does not specify clothing", prompt[0]["content"])
-        self.assertIn("humanoid guests wear practical period clothing", prompt[1]["content"])
-        self.assertIn("subject_wardrobes", prompt[1]["content"])
-
-    def test_raw_subject_resolution_preserves_existing_identifiers(self):
-        original = (
-            "At 00:01.000, Will and Amber watch Zombie2 enter.\n"
-            "At 00:05.000, Zombie2 falls beside Amy.\n"
-            "End continuity state: Will and Amber remain nearby; Zombie2 is down."
-        )
-        request = mock.Mock(return_value={
-            "raw_scene": (
-                "At 00:01.000, Will1 and Amber1 watch Zombie2_1 enter.\n"
-                "At 00:05.000, Zombie2_1 falls beside Amy."
-            ),
-            "subject_names": ["Will1", "Amber1", "Zombie2_1"],
-        })
-        result, names = minimax.resolve_director_raw_scene_subjects(
+        result, subjects = minimax.resolve_director_raw_scene_subjects(
             original,
-            (
-                "<Subject 1> is Amy.\n"
-                "<Subject 2> is Will.\n"
-                "<Subject 3> is Amber."
-            ),
+            world_state=self._complete_amy_resolution_world_state(),
             llm_request=request,
             segment_seconds=6.0,
         )
-        self.assertIn("Will and Amber watch Zombie2 enter.", result)
-        self.assertIn("Zombie2 falls beside Amy.", result)
-        self.assertNotIn("Will1", result)
-        self.assertNotIn("Amber1", result)
-        self.assertNotIn("Zombie2_1", result)
-        self.assertEqual(names, ["Zombie2"])
+        self.assertEqual(result, original)
+        self.assertEqual(subjects, [{
+            "raw_name": "luminous being",
+            "name": "luminous being",
+            "subject_id": None,
+            "is_new": True,
+        }])
+        continuity, added = minimax.register_named_subject_hints(
+            minimax.new_continuity_state(),
+            "",
+            result,
+            [subjects[0]["name"]],
+            origin_segment=1,
+        )
+        self.assertEqual(added, ["luminous being"])
+        self.assertIn("luminous being", continuity["subjects"])
 
-    def test_raw_subject_resolution_rejects_timestamp_drift(self):
+    def test_raw_subject_resolution_deduplicates_repeated_identity_rows(self):
         original = (
-            "At 00:01.000, a guard enters.\n"
-            "At 00:04.000, another guard blocks the door.\n"
-            "End continuity state: both guards remain in the room."
+            "At 00:00.000, the elf enters.\n"
+            "At 00:04.000, the elf sits.\n"
+            "End continuity state: the elf sits by the door."
         )
         request = mock.Mock(return_value={
-            "raw_scene": (
-                "At 00:01.000, Guard1 enters.\n"
-                "At 00:05.000, Guard2 blocks the door."
-            ),
-            "subject_names": ["Guard1", "Guard2"],
+            "subjects": [
+                {"raw_name": "elf", "subject_id": "<Subject 2>", "is_new": False},
+                {"raw_name": "elf", "subject_id": "<Subject 2>", "is_new": False},
+            ],
         })
-        with self.assertRaisesRegex(ValueError, "changed timestamps"):
+        _result, subjects = minimax.resolve_director_raw_scene_subjects(
+            original,
+            world_state=self._complete_amy_resolution_world_state(),
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(len(subjects), 1)
+        self.assertEqual(subjects[0]["subject_id"], "subject_2")
+
+    def test_raw_subject_resolution_rejects_unregistered_reference(self):
+        raw = "At 00:00.000, the elf enters.\nEnd continuity state: the elf remains inside."
+        request = mock.Mock(return_value={
+            "subjects": [{
+                "raw_name": "elf",
+                "subject_id": "<Subject 99>",
+                "is_new": False,
+            }],
+        })
+        with self.assertRaisesRegex(ValueError, "not in the supplied vocabulary"):
             minimax.resolve_director_raw_scene_subjects(
-                original,
-                "",
+                raw,
+                world_state=self._complete_amy_resolution_world_state(),
                 llm_request=request,
                 segment_seconds=6.0,
+            )
+
+    def test_raw_subject_resolution_rejects_duplicate_new_identity(self):
+        raw = "At 00:00.000, Elf enters.\nEnd continuity state: Elf remains inside."
+        request = mock.Mock(return_value={
+            "subjects": [{"raw_name": "Elf", "subject_id": None, "is_new": True}],
+        })
+        with self.assertRaisesRegex(ValueError, "aliases registered Subject"):
+            minimax.resolve_director_raw_scene_subjects(
+                raw,
+                world_state=self._complete_amy_resolution_world_state(),
+                llm_request=request,
+                segment_seconds=6.0,
+            )
+
+    def test_raw_subject_resolution_rejects_ambiguous_registered_alias(self):
+        state = self._complete_amy_resolution_world_state()
+        state["subjects"]["subject_3"] = copy.deepcopy(
+            state["subjects"]["subject_2"]
+        )
+        state["subjects"]["subject_3"]["id"] = "subject_3"
+        state["subjects"]["subject_3"]["subject_id"] = 3
+        state["subjects"]["subject_3"]["name"] = "Tall Male Elf"
+        raw = "At 00:00.000, the elf enters.\\nEnd continuity state: the elf remains inside."
+        request = mock.Mock(return_value={
+            "subjects": [{
+                "raw_name": "elf",
+                "subject_id": "<Subject 2>",
+                "is_new": False,
+            }],
+        })
+        with self.assertRaisesRegex(ValueError, "ambiguously matches multiple"):
+            minimax.resolve_director_raw_scene_subjects(
+                raw,
+                world_state=state,
+                llm_request=request,
+                segment_seconds=6.0,
+            )
+
+    def test_raw_subject_resolution_preserves_timestamps_and_rejects_bad_structure(self):
+        raw = (
+            "At 00:00.000, the elf enters.\n"
+            "At 00:04.000, the elf blocks the door.\n"
+            "End continuity state: the elf remains in the room."
+        )
+        request = mock.Mock(return_value={
+            "subjects": [{"raw_name": "elf", "subject_id": "<Subject 2>", "is_new": False}],
+        })
+        result, _subjects = minimax.resolve_director_raw_scene_subjects(
+            raw,
+            world_state=self._complete_amy_resolution_world_state(),
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(
+            minimax._director_timestamp_lexemes(result),
+            ["00:00.000", "00:04.000"],
+        )
+        outside = raw.replace("00:04.000", "00:08.917")
+        with self.assertRaisesRegex(ValueError, "timestamp must be before"):
+            minimax.resolve_director_raw_scene_subjects(
+                outside,
+                world_state=self._complete_amy_resolution_world_state(),
+                llm_request=request,
+                segment_seconds=8.0 + 22 / 24,
             )
 
     def test_raw_pronoun_resolution_prompt_is_narrow(self):
@@ -419,15 +1434,22 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("Prefer names for standalone they/them", text)
         self.assertIn("keep 'her hand', 'his collar', and 'their bowls' as written", text)
         self.assertIn("Do not add, remove, combine, split, or reinterpret actions", text)
+        self.assertIn("- Do not alter timestamps.", messages[0]["content"])
+        self.assertTrue(
+            all(
+                line.startswith("- ")
+                for line in messages[0]["content"].splitlines()
+            )
+        )
 
     def test_raw_pronoun_resolution_accepts_name_only_rewrite(self):
         original = (
-            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:00.000, Amy grabs Will and Amber.\n"
             "At 00:04.500, she pushes them into the closet.\n"
             "End continuity state: they are inside the closet."
         )
         resolved_timed = (
-            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:00.000, Amy grabs Will and Amber.\n"
             "At 00:04.500, Amy pushes Will and Amber into the closet."
         )
         request = mock.Mock(return_value={"raw_scene": resolved_timed})
@@ -446,14 +1468,30 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "director_raw_scene_pronoun_resolution",
         )
 
+    def test_raw_pronoun_resolution_accepts_unchanged_valid_timestamps(self):
+        original = (
+            "At 00:00.000, Amy opens the door.\n"
+            "At 00:05.500, Amy closes it.\n"
+            "End continuity state: Amy stands by the closed door."
+        )
+        timed_scene = original.split("\nEnd continuity state:", 1)[0]
+        request = mock.Mock(return_value={"raw_scene": timed_scene})
+        result = minimax.resolve_director_raw_scene_pronouns(
+            original,
+            "<Subject 1> is Amy.",
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(result, original)
+
     def test_raw_pronoun_resolution_preserves_clear_local_possessives(self):
         original = (
-            "At 00:01.000, she looks at Will and touches her palm.\n"
+            "At 00:00.000, she looks at Will and touches her palm.\n"
             "At 00:04.500, Will gives her their bowls.\n"
             "End continuity state: Amy stands beside Will."
         )
         resolved_timed = (
-            "At 00:01.000, Amy looks at Will and touches her palm.\n"
+            "At 00:00.000, Amy looks at Will and touches her palm.\n"
             "At 00:04.500, Will gives Amy their bowls."
         )
         request = mock.Mock(return_value={"raw_scene": resolved_timed})
@@ -470,12 +1508,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_raw_pronoun_resolution_logs_replacements(self):
         original = (
-            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:00.000, Amy grabs Will and Amber.\n"
             "At 00:04.500, she pushes them into the closet.\n"
             "End continuity state: they are inside the closet."
         )
         resolved_timed = (
-            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:00.000, Amy grabs Will and Amber.\n"
             "At 00:04.500, Amy pushes Will and Amber into the closet."
         )
         request = mock.Mock(return_value={"raw_scene": resolved_timed})
@@ -495,13 +1533,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_raw_pronoun_resolution_preserves_end_state_exactly(self):
         original = (
-            "At 00:01.000, Amy looks at Will.\n"
+            "At 00:00.000, Amy looks at Will.\n"
             "At 00:04.500, she waves to him.\n"
             "End continuity state: she stands beside him."
         )
         request = mock.Mock(return_value={
             "raw_scene": (
-                "At 00:01.000, Amy looks at Will.\n"
+                "At 00:00.000, Amy looks at Will.\n"
                 "At 00:04.500, Amy waves to Will."
             )
         })
@@ -537,6 +1575,75 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 segment_seconds=6.0,
             )
 
+    def test_raw_pronoun_resolution_rejects_job35_timestamp_change(self):
+        original = (
+            "At 00:00.000, Amy opens the door.\n"
+            "At 00:07.250, Amy closes it.\n"
+            "End continuity state: Amy stands by the closed door."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": (
+                "At 00:00.000, Amy opens the door.\n"
+                "At 00:08.167, Amy closes it."
+            )
+        })
+        with self.assertRaisesRegex(ValueError, "changed timestamps"):
+            minimax.resolve_director_raw_scene_pronouns(
+                original,
+                "<Subject 1> is Amy.",
+                llm_request=request,
+                segment_seconds=8.0,
+            )
+
+    def test_raw_pronoun_resolution_rejects_timestamp_order_and_count_changes(self):
+        original = (
+            "At 00:00.000, Amy enters.\n"
+            "At 00:03.000, Amy waves.\n"
+            "At 00:07.000, Amy sits.\n"
+            "End continuity state: Amy sits by the door."
+        )
+        altered_scenes = (
+            (
+                "At 00:00.000, Amy enters.\n"
+                "At 00:07.000, Amy waves.\n"
+                "At 00:03.000, Amy sits."
+            ),
+            (
+                "At 00:00.000, Amy enters.\n"
+                "At 00:07.000, Amy sits."
+            ),
+        )
+        for altered_scene in altered_scenes:
+            with self.subTest(altered_scene=altered_scene):
+                request = mock.Mock(return_value={"raw_scene": altered_scene})
+                with self.assertRaisesRegex(ValueError, "changed timestamps"):
+                    minimax.resolve_director_raw_scene_pronouns(
+                        original,
+                        "<Subject 1> is Amy.",
+                        llm_request=request,
+                        segment_seconds=8.0,
+                    )
+
+    def test_raw_pronoun_resolution_rejects_timestamp_outside_duration(self):
+        original = (
+            "At 00:00.000, Amy enters.\n"
+            "At 00:08.167, Amy sits.\n"
+            "End continuity state: Amy sits by the door."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": (
+                "At 00:00.000, Amy enters.\n"
+                "At 00:08.167, Amy sits."
+            )
+        })
+        with self.assertRaisesRegex(ValueError, "out-of-range timestamps"):
+            minimax.resolve_director_raw_scene_pronouns(
+                original,
+                "<Subject 1> is Amy.",
+                llm_request=request,
+                segment_seconds=8.0,
+            )
+
     def test_raw_scene_physical_prompt_is_narrow_and_checks_order(self):
         messages = minimax.build_director_raw_scene_physical_messages(
             "Amy pushes Will into the closet and closes the door.",
@@ -546,13 +1653,173 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             ),
         )
         text = messages[0]["content"] + "\n" + messages[1]["content"]
-        self.assertIn("SUBJECT MOVEMENT AND PHYSICAL ACTION ORDER", text)
-        self.assertIn("doors, barriers, seats, supports", text)
-        self.assertIn("Harmless invented staging is allowed", text)
-        self.assertIn("Do not judge prop sources", text)
+        self.assertEqual(
+            messages[0]["content"],
+            "Validate only subject movement in the RAW SCENE.  Update subject "
+            "positions after each sentence internally and determine if the "
+            "following sentence's actions, whether movement or not, can occur "
+            "spatially.\n"
+            "Reject only actual changes of support or elevation that are not required "
+            "by CURRENT BEAT or established by the previous state. Do not treat ordinary "
+            "movement across an already-occupied surface, or wording such as stepping "
+            "onto a floor the subject already occupies, as a support change. Continue "
+            "to reject unsupported climbing or stepping onto furniture; ordinary "
+            "interaction with furniture does not imply climbing onto it. When rejecting "
+            "an actual unsupported change, identify the movement itself as the error, "
+            "not merely a later contradiction.\n\n"
+            "Return only one JSON object with boolean valid and "
+            "string issue. Report only the first concrete problem.",
+        )
+        self.assertIn("KNOWN SUBJECT STATE", text)
+        self.assertIn("CURRENT BEAT", text)
+        self.assertIn("STATIC SETTING AUTHORITY", text)
+        self.assertIn("RAW SCENE", text)
+        self.assertIn('{"valid": true, "issue": ""}', text)
+
+    def test_physical_validator_rejects_unsupported_furniture_climbing(self):
+        raw = "The subject climbs onto the table without a story reason."
+        request = mock.Mock(return_value={
+            "valid": False,
+            "issue": "The subject unnecessarily climbs onto the table.",
+        })
+        result = minimax.validate_director_raw_scene_physical(
+            "The subject waits beside the table.",
+            raw,
+            llm_request=request,
+        )
+        self.assertFalse(result["valid"])
+        prompt = request.call_args.args[0][0]["content"]
+        self.assertIn("not required by CURRENT BEAT", prompt)
+        self.assertIn("identify the movement itself", prompt)
+        self.assertIn("unnecessarily climbs onto the table", result["issue"])
+
+    def test_physical_validator_allows_ordinary_leaning_and_reaching(self):
+        raw = "The subject leans against the counter and reaches for a cup."
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+        result = minimax.validate_director_raw_scene_physical(
+            "The subject reaches for a cup at the counter.",
+            raw,
+            llm_request=request,
+        )
+        self.assertTrue(result["valid"])
+        self.assertIn("ordinary interaction with furniture", request.call_args.args[0][0]["content"].casefold())
+
+    def test_physical_validator_rejects_tilting_registered_fixed_prop_deterministically(self):
+        raw = "Amy tilts the eight-foot barrel to pour liquid into a mug."
+        world_state, location_id, _ = goblin_mug_world_state()
+        world_state = register_explicit_persistent_props(world_state, [{
+            "name": "barrel",
+            "kind": "support",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "The barrel is a fixed fixture.",
+            "location_id": location_id,
+        }])
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+
+        result = minimax.validate_director_raw_scene_physical(
+            "Amy refills the mug from the barrel.",
+            raw,
+            known_subject_state=world_state,
+            llm_request=request,
+        )
+
+        self.assertFalse(result["valid"])
+        self.assertIn("registered fixed prop 'barrel'", result["issue"])
+        request.assert_not_called()
+
+    def test_physical_validator_does_not_reject_fixed_prop_mention_or_movable_prop(self):
+        raw = "Amy tilts her head beside the barrel. Amy lifts cloth near barrel."
+        world_state, location_id, _ = goblin_mug_world_state()
+        world_state = register_explicit_persistent_props(world_state, [
+            {
+                "name": "barrel",
+                "kind": "support",
+                "mobility": "fixed",
+                "needed_for_state": True,
+                "reason": "The barrel is a fixed fixture.",
+                "location_id": location_id,
+            },
+            {
+                "name": "cloth",
+                "kind": "object",
+                "mobility": "movable",
+                "needed_for_state": True,
+                "reason": "The cloth is movable.",
+                "location_id": location_id,
+            },
+        ])
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+
+        result = minimax.validate_director_raw_scene_physical(
+            "Amy wipes the table near the barrel.",
+            raw,
+            known_subject_state=world_state,
+            llm_request=request,
+        )
+
+        self.assertTrue(result["valid"])
+        request.assert_called_once()
+
+    def test_prop_state_rejects_bare_hand_fluid_transfer_before_llm(self):
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+
+        result = minimax.validate_director_raw_scene_prop_state(
+            "Amy refills the goblin's mug from the fixed vessel.",
+            "Amy lifts a handful of liquid from the barrel and tilts it toward the mug.",
+            llm_request=request,
+        )
+
+        self.assertFalse(result["valid"])
+        self.assertIn("bare hand", result["issue"])
+        request.assert_not_called()
+
+    def test_prop_state_allows_explicit_transfer_tools_and_handled_granular_material(self):
+        valid_scenes = (
+            "Amy carries a handful of liquid using a ladle and pours it into the mug.",
+            "Amy turns the tap and water flows into the mug.",
+            "Amy scoops a handful of grain from the bin and tips it into the bowl.",
+        )
+        for raw_scene in valid_scenes:
+            with self.subTest(raw_scene=raw_scene):
+                request = mock.Mock(return_value={"valid": True, "issue": ""})
+                result = minimax.validate_director_raw_scene_prop_state(
+                    "Amy transfers material into a container.",
+                    raw_scene,
+                    llm_request=request,
+                )
+
+                self.assertTrue(result["valid"])
+                request.assert_called_once()
+
+    def test_physical_validator_distinguishes_floor_movement_from_support_change(self):
+        raw = "Subject A steps onto the floor and continues walking."
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+        result = minimax.validate_director_raw_scene_physical(
+            "Subject A is already standing on the floor.",
+            raw,
+            known_subject_state="Subject A is already standing on the floor.",
+            llm_request=request,
+        )
+        self.assertTrue(result["valid"])
+        system_prompt = request.call_args.args[0][0]["content"].casefold()
+        self.assertIn("actual changes of support or elevation", system_prompt)
+        self.assertIn("already-occupied surface", system_prompt)
+        self.assertIn("unsupported climbing or stepping onto furniture", system_prompt)
+
+    def test_physical_validator_allows_climbing_when_current_beat_requires_it(self):
+        raw = "The subject climbs onto the table to reach the high window."
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+        result = minimax.validate_director_raw_scene_physical(
+            "The subject climbs onto the table to reach the high window.",
+            raw,
+            llm_request=request,
+        )
+        self.assertTrue(result["valid"])
+        self.assertIn("not required by CURRENT BEAT", request.call_args.args[0][0]["content"])
 
 
-    def test_request_one_retries_physically_incoherent_raw_scene(self):
+    def test_request_one_repairs_physically_incoherent_raw_scene(self):
         bundle = segment_bundle()
         bundle["current_beat_text"] = (
             "Amy pushes Will into the closet and closes the door behind him."
@@ -561,13 +1828,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:01.000, Amy closes the closet door.\n"
             "At 00:04.500, Will steps into the closet."
         )
-        good = director_response(
-            "At 00:01.000, Will steps into the closet.\n"
-            "At 00:04.500, Amy closes the closet door behind him."
+        good_raw = (
+            "Will steps into the closet.\n"
+            "Amy closes the closet door behind him."
         )
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             bad,
-            good,
+            good_raw,
         ]))
         physical = mock.Mock(side_effect=[
             {"valid": False, "issue": "The door closes before Will enters."},
@@ -589,28 +1856,149 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "minimax.validate_director_raw_scene_timing",
                 timing,
             ),
+            mock.patch("minimax.console_log") as console_log,
             mock.patch("builtins.print"),
         ):
             payload = minimax.request_segment_llm(
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 2)
+        self.assertEqual(len(semantic_calls), 6)  # creative, repair, timing/camera, Subject resolution
         self.assertEqual(physical.call_count, 2)
         self.assertEqual(prop_state.call_count, 1)
         self.assertEqual(timing.call_count, 1)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
-        request_prompts = [
-            call.args[0][-1]["content"]
-            for call in semantic_calls
-            if call.args and isinstance(call.args[0], list) and call.args[0]
-            and isinstance(call.args[0][-1], dict)
+        log_messages = [
+            str(call.args[0]) for call in console_log.call_args_list if call.args
         ]
+        physical_verdicts = [
+            json.loads(message.removeprefix("DIRECTOR RAW VALIDATOR RESULT "))
+            for message in log_messages
+            if message.startswith("DIRECTOR RAW VALIDATOR RESULT ")
+        ]
+        self.assertEqual(
+            [item["valid"] for item in physical_verdicts if item["validator"] == "physical/spatial creative"],
+            [False, True],
+        )
         self.assertTrue(any(
-            "Fix this physical/spatial problem" in prompt
-            and "door closes before Will enters" in prompt
-            for prompt in request_prompts
+            message.startswith("DIRECTOR RAW REPAIR DISPATCH ")
+            and "director_raw_scene_repair" in message
+            and "door closes before Will enters" in message
+            for message in log_messages
         ))
+        repair_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene_repair"
+        ]
+        self.assertEqual(len(repair_calls), 1)
+        repair_call = repair_calls[0]
+        self.assertIsNone(repair_call.kwargs["response_format"])
+        self.assertFalse(repair_call.kwargs["parse_json_response"])
+        self.assertEqual(repair_call.kwargs["history_metadata"]["attempt"], 1)
+        self.assertIn(
+            "Fix the RAW PROMPT based on the VALIDATOR ERRORS.",
+            repair_call.args[0][0]["content"],
+        )
+        self.assertEqual(
+            repair_call.args[0][-1]["content"],
+            "RAW PROMPT\n"
+            + "Amy closes the closet door.\n"
+            + "Will steps into the closet."
+            + "\n\nVALIDATOR ERRORS:\n"
+            "- The door closes before Will enters.",
+        )
+        self.assertEqual(
+            physical.call_args_list[1].args[1],
+            good_raw,
+        )
+
+    def test_five_failed_raw_repairs_regenerate_director_raw(self):
+        bundle = segment_bundle()
+        bundle["current_beat_text"] = "Amy pushes Will into the closet and closes the door."
+        bad = director_response(
+            "At 00:01.000, Amy closes the closet door.\n"
+            "At 00:04.500, Will steps into the closet."
+        )
+        good = director_response(
+            "At 00:00.000, Will enters the closet.\n"
+            "At 00:04.500, Amy closes the closet door behind him."
+        )
+        bad_creative = (
+            "Amy closes the closet door.\n"
+            "Will steps into the closet."
+        )
+        good_creative = (
+            "Will enters the closet.\n"
+            "Amy closes the closet door behind him."
+        )
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            bad,
+            *([bad_creative] * minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS),
+            good_creative,
+        ]))
+        def physical_result(*args, **kwargs):
+            attempt = (kwargs.get("history_metadata") or {}).get("attempt", 1)
+            if attempt > 1:
+                return {"valid": True, "issue": ""}
+            return {
+                "valid": False,
+                "issue": "The door closes before Will enters.",
+            }
+
+        physical = mock.Mock(side_effect=physical_result)
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            mock.patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-id", {"source_sha256": "source-hash"}
+            )
+        director_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose") == "add_scene_timing_refiner"
+        ]
+        repair_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose") == "director_raw_scene_repair"
+        ]
+        creative_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene_creative"
+        ]
+        self.assertEqual(len(creative_calls), 2)
+        self.assertEqual(len(director_calls), 1)
+        self.assertEqual(len(repair_calls), 5)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["attempt"] for call in repair_calls],
+            [1, 2, 3, 4, 5],
+        )
+        self.assertIn("Will enters the closet", payload["raw_scene"])
+
+    def test_director_raw_repair_prompt_matches_requested_contract(self):
+        raw = "At 00:00.000, Mira remains at the doorway."
+        messages = minimax.build_director_raw_scene_repair_messages(
+            raw,
+            ["Mira crosses the room without visible movement.", "The support changes."],
+        )
+        self.assertEqual(
+            messages[0]["content"],
+            "Fix the RAW PROMPT based on the VALIDATOR ERRORS.\n"
+            "Only alter what is needed to fix the error(s).\n"
+            "Return the altered RAW PROMPT.",
+        )
+        self.assertEqual(
+            messages[1]["content"],
+            "RAW PROMPT\n"
+            "At 00:00.000, Mira remains at the doorway.\n\n"
+            "VALIDATOR ERRORS:\n"
+            "- Mira crosses the room without visible movement.\n"
+            "- The support changes.",
+        )
 
     def test_request_one_retries_prop_state_failure_separately(self):
         bundle = segment_bundle()
@@ -622,10 +2010,14 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:04.500, Amy hands the empty cup to Will."
         )
         good = director_response(
-            "At 00:01.000, Amy pours brew into the cup.\n"
+            "At 00:00.000, Amy pours brew into the cup.\n"
             "At 00:04.500, Amy hands the filled cup to Will."
         )
-        request = mock.Mock(side_effect=pipeline_llm_side_effect([bad, good]))
+        good_creative = "Amy pours brew into the cup.\nAmy hands the filled cup to Will."
+        request = mock.Mock(side_effect=pipeline_llm_side_effect([
+            bad,
+            good_creative,
+        ]))
         physical = mock.Mock(return_value={"valid": True, "issue": ""})
         prop_state = mock.Mock(side_effect=[
             {"valid": False, "issue": "The brew is redirected onto the table."},
@@ -637,13 +2029,14 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             mock.patch("minimax.validate_director_raw_scene_physical", physical),
             mock.patch("minimax.validate_director_raw_scene_prop_state", prop_state),
             mock.patch("minimax.validate_director_raw_scene_timing", timing),
+            mock.patch("minimax.console_log") as console_log,
             mock.patch("builtins.print"),
         ):
             payload = minimax.request_segment_llm(
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 2)
+        self.assertEqual(len(semantic_calls), 6)  # creative, repair, timing/camera, Subject resolution
         self.assertEqual(physical.call_count, 2)
         self.assertEqual(prop_state.call_count, 2)
         self.assertEqual(timing.call_count, 1)
@@ -655,10 +2048,96 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             and isinstance(call.args[0][-1], dict)
         ]
         self.assertTrue(any(
-            "Fix this prop/state problem" in prompt
-            and "redirected onto the table" in prompt
+            "VALIDATOR ERRORS:\n- The brew is redirected onto the table." in prompt
             for prompt in request_prompts
         ))
+        log_messages = [
+            str(call.args[0]) for call in console_log.call_args_list if call.args
+        ]
+        prop_verdicts = [
+            json.loads(message.removeprefix("DIRECTOR RAW VALIDATOR RESULT "))
+            for message in log_messages
+            if message.startswith("DIRECTOR RAW VALIDATOR RESULT ")
+            and '"validator": "prop/state creative"' in message
+        ]
+        self.assertEqual(
+            [item["valid"] for item in prop_verdicts],
+            [False, True],
+        )
+        repair_calls = [
+            call for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene_repair"
+        ]
+        self.assertEqual(len(repair_calls), 1)
+        self.assertEqual(
+            repair_calls[0].kwargs["history_metadata"]["validator"],
+            "PROP/STATE",
+        )
+
+    def test_final_structure_dialogue_and_timing_failures_regenerate_creative(self):
+        cases = ["SHOT SCRIPT", "DIALOGUE", "TIMING"]
+        for expected_validator in cases:
+            with self.subTest(validator=expected_validator):
+                bundle = segment_bundle()
+                bundle["current_beat_text"] = "Mira crosses the room and reaches the door."
+                first = director_response(
+                    "Mira remains beside the table.\nMira reaches the door."
+                )
+                second = director_response(
+                    "Mira leaves the table.\nMira reaches the door."
+                )
+                request = mock.Mock(side_effect=pipeline_llm_side_effect([first, second]))
+                structure = mock.Mock(side_effect=(
+                    [["A required shot-script field is missing."], []]
+                    if expected_validator == "SHOT SCRIPT"
+                    else [[], []]
+                ))
+                dialogue = mock.Mock(side_effect=(
+                    ["Required direct dialogue is missing.", ""]
+                    if expected_validator == "DIALOGUE"
+                    else ["", ""]
+                ))
+                timing = mock.Mock(side_effect=(
+                    [
+                        {"valid": False, "issue": "The movement is compressed."},
+                        {"valid": True, "issue": ""},
+                    ]
+                    if expected_validator == "TIMING"
+                    else [
+                        {"valid": True, "issue": ""},
+                        {"valid": True, "issue": ""},
+                    ]
+                ))
+                with (
+                    mock.patch("minimax.ask_llm", request),
+                    mock.patch("minimax._director_raw_scene_structure_errors", structure),
+                    mock.patch("minimax.director_required_dialogue_issue", dialogue),
+                    mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+                    mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+                    mock.patch("minimax.validate_director_raw_scene_timing", timing),
+                    mock.patch("minimax.console_log"),
+                    mock.patch("builtins.print"),
+                ):
+                    payload = minimax.request_segment_llm(
+                        bundle, [], "run-id", {"source_sha256": "source-hash"}
+                    )
+
+                purposes = [
+                    call.kwargs.get("history_metadata", {}).get("purpose")
+                    for call in request.call_args_list
+                ]
+                self.assertEqual(purposes.count("director_raw_scene_creative"), 2)
+                self.assertEqual(purposes.count("add_scene_timing_refiner"), 2)
+                self.assertEqual(purposes.count("director_raw_scene_repair"), 0)
+                self.assertIn("Mira reaches the door", payload["raw_scene"])
+                creative_calls = [
+                    call for call in request.call_args_list
+                    if call.kwargs.get("history_metadata", {}).get("purpose")
+                    == "director_raw_scene_creative"
+                ]
+                retry_content = creative_calls[1].args[0][-1]["content"]
+                self.assertIn(expected_validator, retry_content)
 
     def test_python_structure_normalization_leaves_only_semantic_retry_blockers(self):
         bundle = segment_bundle()
@@ -678,9 +2157,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:00.000, Amy begins the exchange.\n"
             "At 00:04.500, Amy visibly transfers the mug to Will."
         )
+        good_creative = "Amy begins the exchange.\nAmy visibly transfers the mug to Will."
         request = mock.Mock(side_effect=pipeline_llm_side_effect([
             early,
-            good,
+            good_creative,
         ]))
         physical = mock.Mock(return_value={"valid": True, "issue": ""})
         prop_state = mock.Mock(side_effect=[
@@ -704,14 +2184,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
 
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 2)
-        second_prompt = semantic_calls[1].args[0][-1]["content"]
-        self.assertIn("RETRY REQUIREMENTS", second_prompt)
-        self.assertNotIn(
-            "final timed micro-beat must land in the final quarter",
-            second_prompt,
+        self.assertEqual(len(semantic_calls), 6)  # creative, repair, timing/camera, Subject resolution
+        repair_prompt = next(
+            call.args[0][-1]["content"]
+            for call in request.call_args_list
+            if call.kwargs.get("history_metadata", {}).get("purpose")
+            == "director_raw_scene_repair"
         )
-        self.assertIn("mug_1 is still listed as held by Amy", second_prompt)
+        self.assertIn("VALIDATOR ERRORS:", repair_prompt)
+        self.assertIn("mug_1 is still listed as held by Amy", repair_prompt)
         self.assertIn("visibly transfers the mug", payload["raw_scene"])
 
     def test_request_one_completion_self_report_is_non_blocking(self):
@@ -722,8 +2203,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 1)
-        self.assertFalse(payload["request1_result"]["beat_complete"])
+        self.assertEqual(len(non_audio_llm_calls(request)), 3)
+        self.assertTrue(payload["request1_result"]["beat_complete"])
+        self.assertEqual(
+            payload["request1_result"]["completion_metadata_source"],
+            "validated_split_raw_pipeline",
+        )
         self.assertIn("Mark starts the action.", payload["raw_scene"])
 
 
@@ -736,7 +2221,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 2)
+        self.assertEqual(len(non_audio_llm_calls(request)), 4)
         self.assertIn("Mark completes the action.", payload["raw_scene"])
 
     def test_request_one_python_normalizes_missing_end_state_marker_without_retry(self):
@@ -757,7 +2242,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 1)
+        self.assertEqual(len(non_audio_llm_calls(request)), 3)
         self.assertEqual(payload["raw_scene"].count("End continuity state:"), 1)
         self.assertTrue(
             payload["raw_scene"].endswith(
@@ -782,7 +2267,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             payload = minimax.request_segment_llm(
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(len(non_audio_llm_calls(request)), 1)
+        self.assertEqual(len(non_audio_llm_calls(request)), 3)
         self.assertIn("only two tools", payload["raw_scene"])
 
     def test_request_two_result_does_not_contain_completion_metadata(self):
@@ -990,13 +2475,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "\n\noverall_soundscape:",
             1,
         )[0]
-        self.assertTrue(
-            description.startswith(
-                "[Shot 1] Live-Action cinematic, seamless continuation."
-                " Mark opens the door."
-            )
-        )
-        self.assertEqual(description.count("Live-Action cinematic"), 1)
+        self.assertIn("[Shot 1] Live-action cinematic, seamless continuation. Mark opens the door.", description)
+        self.assertEqual(description.count("Live-action cinematic"), 1)
         self.assertNotIn("camera pushes in", description.lower())
         self.assertIn("camera pans right", description.lower())
 
@@ -1121,7 +2601,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
         self.assertNotIn("```", prompt)
         self.assertIn("Reference alignment: Amy's identity and the cabin remain consistent.", prompt)
-        self.assertIn("[Shot 1] Amy enters the cabin.", prompt)
+        self.assertIn("[Shot 1] Live-action cinematic, Amy enters the cabin.", prompt)
         self.assertIn("Footsteps on the wooden floor.", prompt)
         self.assertIn("non_diegetic_music: Soft piano undercurrent.", prompt)
 
@@ -1174,23 +2654,19 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
 
     def test_director_prompt_is_compact_creative_contract(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            segment_min_beats=4,
-            final_quarter_start=6,
-            beat_number=1,
-            story_segment_ending_rules="",
+        prompt = minimax.DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+            segment_length="8"
         )
-        self.assertIn("You are the creative director", prompt)
-        self.assertIn("ASSIGNED SOURCE is the story authority", prompt)
-        self.assertIn("CURRENT BEAT is the scene to stage", prompt)
-        self.assertIn("Harmless local route or prop details are allowed", prompt)
-        self.assertIn("Python will normalize minor timestamp formatting differences", prompt)
-        self.assertNotIn("AUTHORITATIVE FINAL STATE CONTRACT", prompt)
-        self.assertIn("finite_activity_complete", prompt)
-        self.assertIn("beat_complete", prompt)
-        self.assertLess(len(prompt), 3500)
-    def test_director_raw_scene_rejects_early_timeline_completion(self):
+        self.assertIn("expand on a single BEAT", prompt)
+        self.assertIn("CURRENT BEAT is the story authority", prompt)
+        self.assertIn("ASSIGNED SOURCE", prompt)
+        self.assertNotIn("camera", prompt.casefold())
+        self.assertIn("- do not include timestamps.", prompt)
+        self.assertNotIn("End continuity state", prompt)
+        self.assertNotIn("beat_complete", prompt)
+        self.assertEqual(minimax.build_director_rules(8, 8, 1, "", 1), "")
+
+    def test_director_raw_scene_allows_action_to_finish_before_segment_end(self):
         raw_scene = (
             "At 00:00.000, Alex reaches for the latch.\n"
             "At 00:01.300, Alex closes the hatch.\n"
@@ -1200,9 +2676,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             raw_scene,
             segment_seconds=8,
         )
-        self.assertTrue(errors)
-        self.assertIn("too early", errors[0])
-        self.assertIn("at or after 6s", errors[0])
+        self.assertEqual(errors, [])
 
     def test_director_raw_scene_accepts_final_quarter_timeline(self):
         raw_scene = (
@@ -1348,7 +2822,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             {"source_sha256": "source-hash"},
         )
 
-        self.assertEqual(ask_llm.call_count, 3)
+        self.assertEqual(ask_llm.call_count, 5)
         legacy_director.assert_not_called()
         formatter.assert_not_called()
         validator.assert_not_called()
@@ -1360,17 +2834,23 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(
             purposes,
             [
-                "director_raw_scene",
+                "director_raw_scene_creative",
+                "add_scene_timing_refiner",
+                "add_camera_refiner",
                 "director_h3_soundscape",
                 "director_h3_music",
             ],
         )
         self.assertEqual(
-            ask_llm.call_args_list[1].kwargs["response_format"],
+            ask_llm.call_args_list[2].kwargs["response_format"],
+            None,
+        )
+        self.assertEqual(
+            ask_llm.call_args_list[3].kwargs["response_format"],
             minimax.H3_SOUNDSCAPE_RESPONSE_FORMAT,
         )
         self.assertEqual(
-            ask_llm.call_args_list[2].kwargs["response_format"],
+            ask_llm.call_args_list[4].kwargs["response_format"],
             minimax.H3_MUSIC_RESPONSE_FORMAT,
         )
         self.assertIn(
@@ -1431,7 +2911,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 return {"unexpected": "bad field"}
             if purpose == "director_h3_music":
                 return {"non_diegetic_music": "Soft low strings."}
-            return director_response(raw_scene)
+            if purpose == "director_raw_scene_creative":
+                return raw_scene
+            if purpose == "add_scene_timing_refiner":
+                return {"status": "ok", "timestamps": ["00:00.000"]}
+            if purpose == "add_camera_refiner":
+                return "At 00:00.000, " + raw_scene
+            raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
 
         ask_llm.side_effect = respond
         with mock.patch("builtins.print"):
@@ -1456,7 +2942,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_python_h3_copy_uses_canonical_raw_timestamps(self, ask_llm):
         raw_scene = (
-            "At 00:00.0, Mark enters the room.\n"
+            "At 00:00.000, Mark enters the room.\n"
             "At 00:04.500, Mark looks toward the window."
         )
         ask_llm.side_effect = pipeline_llm_side_effect([
@@ -1518,7 +3004,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 return ""
             if purpose == "director_h3_music":
                 return {"non_diegetic_music": "Sparse piano."}
-            return director_response(raw_scene)
+            if purpose == "director_raw_scene_creative":
+                return raw_scene
+            if purpose == "add_scene_timing_refiner":
+                return {"status": "ok", "timestamps": ["00:00.000"]}
+            if purpose == "add_camera_refiner":
+                return "At 00:00.000, " + raw_scene
+            raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
 
         ask_llm.side_effect = respond
         with mock.patch("builtins.print"):
@@ -1565,7 +3057,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 return {"overall_soundscape": "Quiet room tone."}
             if purpose == "director_h3_music":
                 return ""
-            return director_response(raw_scene)
+            if purpose == "director_raw_scene_creative":
+                return raw_scene
+            if purpose == "add_scene_timing_refiner":
+                return {"status": "ok", "timestamps": ["00:00.000"]}
+            if purpose == "add_camera_refiner":
+                return "At 00:00.000, " + raw_scene
+            raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
 
         ask_llm.side_effect = respond
         with mock.patch("builtins.print"):
@@ -2037,16 +3535,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
 
     def test_director_prompt_allows_small_route_details(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            segment_min_beats=4,
-            final_quarter_start=6,
-            beat_number=1,
-            story_segment_ending_rules="",
+        prompt = minimax.DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+            segment_length="8"
         )
-        self.assertIn("Harmless local route or prop details are allowed", prompt)
-        self.assertIn("natural physical staging", prompt)
-        self.assertNotIn("Do not invent structural geography", prompt)
+        self.assertIn("Add only details needed to physically connect", prompt)
+        self.assertIn("- do not include timestamps.", prompt)
+        self.assertNotIn("camera choreography", prompt.casefold())
     def test_completion_prompt_allows_small_route_details(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Amy gets Will and Amber into the basement and locks the door.",
@@ -2098,15 +3592,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
 
     def test_director_prompt_keeps_source_and_current_beat_as_authority(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            segment_min_beats=4,
-            final_quarter_start=6,
-            beat_number=1,
-            story_segment_ending_rules="",
+        prompt = minimax.DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+            segment_length="8"
         )
-        self.assertIn("ASSIGNED SOURCE is the story authority", prompt)
-        self.assertIn("CURRENT BEAT is the scene to stage", prompt)
+        self.assertIn("CURRENT BEAT is the story authority", prompt)
+        self.assertIn("the scene to stage in this clip", prompt)
     def test_completion_prompt_rejects_concrete_action_substitution(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "A parent grabs two children and rushes them into the shelter.",
@@ -2131,12 +3621,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
 
     def test_director_prompt_does_not_encode_terminal_target_rules(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            segment_min_beats=4,
-            final_quarter_start=6,
-            beat_number=1,
-            story_segment_ending_rules="",
+        prompt = minimax.DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+            segment_length="8"
         )
         self.assertNotIn("already terminal target", prompt)
         self.assertNotIn("new, another, or incoming target", prompt)

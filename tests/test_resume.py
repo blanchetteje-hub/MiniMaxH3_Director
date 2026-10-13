@@ -20,6 +20,105 @@ def formatted_result(shot):
 
 
 class ResumeTests(unittest.TestCase):
+    def test_checkpoint_recovery_fallback_seeds_canonical_subject_wardrobes(self):
+        definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+        config = minimax.build_run_config(
+            5,
+            10,
+            0.5,
+            2,
+            subject_definitions=definitions,
+            world_state_seed=(
+                minimax.authoritative_world_state_seed_from_subject_definitions(
+                    definitions
+                )
+            ),
+            test_prompt_generation=True,
+        )
+        character_canon = {"characters": [
+            {
+                "name": "Amy",
+                "gender": "female",
+                "clothing": "blue linen tunic, dark trousers, and leather boots",
+            },
+            {
+                "name": "Traveler",
+                "gender": "unknown",
+                "clothing": "a layered travel coat and sturdy shoes",
+            },
+        ]}
+
+        fallback_state, subject_definitions = minimax.new_checkpoint_recovery_state(
+            config,
+            definitions,
+            character_canon,
+        )
+
+        self.assertIn("Traveler", subject_definitions)
+        subjects = fallback_state["world_state"]["subjects"]
+        amy = next(subject for subject in subjects.values() if subject["name"] == "Amy")
+        traveler = next(
+            subject for subject in subjects.values()
+            if subject["name"] == "Traveler"
+        )
+        self.assertEqual(amy["identity"]["picture_ids"], [1])
+        self.assertEqual(amy["wardrobe"]["upper"][0]["garment"], "blue linen tunic")
+        self.assertTrue(traveler["wardrobe"]["upper"])
+        self.assertEqual(amy["presence"], "unknown")
+        self.assertEqual(traveler["presence"], "unknown")
+
+    def test_normal_resume_preserves_canonical_world_state_wardrobe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+            config = minimax.build_run_config(
+                5,
+                10,
+                0.5,
+                2,
+                subject_definitions=definitions,
+                world_state_seed=(
+                    minimax.authoritative_world_state_seed_from_subject_definitions(
+                        definitions
+                    )
+                ),
+                test_prompt_generation=True,
+            )
+            state = minimax.new_generation_state(config)
+            state["world_state"] = minimax.seed_generation_world_state_subjects(
+                state["world_state"],
+                config["world_state_seed"],
+                {"characters": [{
+                    "name": "Amy",
+                    "gender": "female",
+                    "clothing": "blue linen tunic, dark trousers, and leather boots",
+                }]},
+            )
+            expected_wardrobe = state["world_state"]["subjects"]["subject_1"][
+                "wardrobe"
+            ]
+            minimax.record_completed_segment(
+                state,
+                1,
+                None,
+                formatted_result(1),
+                [1],
+            )
+            checkpoint = os.path.join(directory, "generation_state.json")
+            minimax.save_generation_state(state, checkpoint)
+
+            restored = minimax.restore_generation_state(
+                2,
+                ["First", "Second"],
+                checkpoint,
+            )
+
+            self.assertEqual(
+                restored["state"]["world_state"]["subjects"]["subject_1"][
+                    "wardrobe"
+                ],
+                expected_wardrobe,
+            )
+
     def test_resume_waits_for_an_in_flight_final_checkpoint_commit(self):
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = os.path.join(directory, "generation_state.json")
@@ -175,6 +274,64 @@ class ResumeTests(unittest.TestCase):
                 formatted_result(1),
                 [],
                 subject_registry_state=registry,
+            )
+
+    def test_prompt_only_segment_identity_survives_later_subject_registration(self):
+        definitions = "<Subject 1> is Amy, a woman referenced in <Picture 1>."
+        state = minimax.new_generation_state({"subject_definitions": definitions})
+
+        # Prompt-only completion keeps legacy continuity empty while recording
+        # the canonical identity registry for the finished Segment.
+        segment_one_registry = minimax.continuity_state_for_registry(
+            definitions,
+            minimax.new_continuity_state(),
+        )
+        minimax.record_completed_segment(
+            state,
+            1,
+            None,
+            formatted_result(1),
+            [],
+            subject_registry_state=segment_one_registry,
+        )
+        self.assertEqual(
+            set(state["segments"][0]["subject_identity_snapshot"]),
+            {"1"},
+        )
+
+        later_definitions = minimax.combine_subject_definitions(
+            definitions,
+            ["<Subject 2> is Visitor (S2), continued from <Video 1>."],
+        )
+        segment_two_registry = minimax.continuity_state_for_registry(
+            later_definitions,
+            minimax.new_continuity_state(),
+        )
+        minimax.record_completed_segment(
+            state,
+            2,
+            None,
+            formatted_result(2),
+            [],
+            subject_registry_state=segment_two_registry,
+        )
+
+        minimax.validate_subject_identity_state(state, definitions)
+        self.assertEqual(
+            set(state["segments"][1]["subject_identity_snapshot"]),
+            {"1", "2"},
+        )
+
+        changed_registry = minimax.continuity_state_for_registry(
+            later_definitions,
+            minimax.new_continuity_state(),
+        )
+        changed_registry["subjects"]["Amy"]["name"] = "Different Person"
+        with self.assertRaisesRegex(RuntimeError, "Subject ID 1 field 'name'"):
+            minimax.validate_subject_identity_state(
+                state,
+                definitions,
+                candidate_registry_state=changed_registry,
             )
 
     def test_na_gender_keeps_locked_value_and_only_warns(self):

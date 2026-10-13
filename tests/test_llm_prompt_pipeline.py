@@ -53,9 +53,8 @@ class ContinuityCallContractTests(unittest.TestCase):
         self.assertIn("Return JSON only", messages[0]["content"])
         self.assertIn("FINAL H3 PROMPT", messages[1]["content"])
         self.assertIsNone(request.call_args.kwargs["response_format"])
-        self.assertEqual(request.call_args.kwargs["temperature"], 0.10)
-        self.assertEqual(request.call_args.kwargs["top_p"], 0.90)
-        self.assertEqual(request.call_args.kwargs["max_tokens"], 6000)
+        for setting in ("temperature", "top_p", "max_tokens", "context_token_budget"):
+            self.assertNotIn(setting, request.call_args.kwargs)
         self.assertEqual(
             request.call_args.kwargs["history_metadata"],
             {
@@ -87,9 +86,8 @@ class ContinuityCallContractTests(unittest.TestCase):
         self.assertIn('"bedroom"', phase2_messages[1]["content"])
         self.assertNotIn(json.dumps(phase, ensure_ascii=False, indent=2), phase2_messages[1]["content"])
         self.assertEqual(request.call_args_list[1].kwargs["response_format"], None)
-        self.assertEqual(request.call_args_list[1].kwargs["temperature"], 0.10)
-        self.assertEqual(request.call_args_list[1].kwargs["top_p"], 0.90)
-        self.assertEqual(request.call_args_list[1].kwargs["max_tokens"], 2000)
+        for setting in ("temperature", "top_p", "max_tokens", "context_token_budget"):
+            self.assertNotIn(setting, request.call_args_list[1].kwargs)
         self.assertEqual(
             request.call_args_list[1].kwargs["history_metadata"],
             {
@@ -177,9 +175,8 @@ class ContinuityCallContractTests(unittest.TestCase):
         self.assertEqual(result, "A concise opening.")
         kwargs = request.call_args.kwargs
         self.assertEqual(kwargs["response_format"], None)
-        self.assertEqual(kwargs["temperature"], 0.10)
-        self.assertEqual(kwargs["top_p"], 0.90)
-        self.assertEqual(kwargs["max_tokens"], 2000)
+        for setting in ("temperature", "top_p", "max_tokens", "context_token_budget"):
+            self.assertNotIn(setting, kwargs)
         self.assertEqual(
             kwargs["history_metadata"],
             {
@@ -274,7 +271,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         ):
             self.assertEqual(
                 request_json[name],
-                minimax.MUSIC_GENERATION_LLM_SETTINGS[name],
+                minimax.CREATIVE_LLM_SETTINGS[name],
             )
         self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["reasoning_effort"], "medium")
@@ -283,7 +280,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
-    def test_h3_soundscape_remains_deterministic(
+    def test_h3_soundscape_uses_creative_profile(
         self,
         post,
         random_seed,
@@ -311,19 +308,19 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
         self.assertEqual(result, {"overall_soundscape": "door slam"})
         request_json = post.call_args.kwargs["json"]
-        self.assertEqual(request_json["temperature"], 0)
-        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertEqual(request_json["temperature"], 0.6)
+        self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["repeat_penalty"], 1.15)
-        self.assertNotIn("top_p", request_json)
-        self.assertNotIn("top_k", request_json)
-        self.assertNotIn("min_p", request_json)
-        self.assertEqual(request_json["reasoning_effort"], "low")
-        self.assertEqual(request_json["thinking_budget_tokens"], 128)
-        random_seed.assert_not_called()
+        self.assertEqual(request_json["top_p"], 0.95)
+        self.assertEqual(request_json["top_k"], 0)
+        self.assertEqual(request_json["min_p"], 0.05)
+        self.assertEqual(request_json["reasoning_effort"], "medium")
+        self.assertEqual(request_json["thinking_budget_tokens"], 256)
+        random_seed.assert_called_once_with()
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
-    def test_beat_generation_uses_temperature_zero_with_large_reasoning_budget(
+    def test_beat_generation_uses_smart_creative_profile(
         self,
         post,
         _random_seed,
@@ -345,21 +342,16 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             [{"role": "user", "content": "test"}],
             response_format=None,
             history_metadata={"purpose": "beat_generation"},
-            temperature=0.8,
-            top_p=0.95,
-            top_k=40,
-            min_p=0.05,
-            repeat_penalty=1.0,
         )
 
         self.assertEqual(result, {"ok": True})
         request_json = post.call_args.kwargs["json"]
-        self.assertEqual(request_json["temperature"], 0)
-        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertEqual(request_json["temperature"], 0.6)
+        self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["repeat_penalty"], 1.15)
-        self.assertNotIn("top_p", request_json)
-        self.assertNotIn("top_k", request_json)
-        self.assertNotIn("min_p", request_json)
+        self.assertEqual(request_json["top_p"], 0.95)
+        self.assertEqual(request_json["top_k"], 0)
+        self.assertEqual(request_json["min_p"], 0.05)
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         self.assertEqual(
@@ -370,11 +362,11 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             request_json["chat_template_kwargs"],
             {"enable_thinking": True},
         )
-        _random_seed.assert_not_called()
+        _random_seed.assert_called_once_with()
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
-    def test_beat_repair_uses_same_temperature_zero_writing_profile(
+    def test_beat_repair_uses_smart_creative_profile(
         self,
         post,
         _random_seed,
@@ -400,11 +392,11 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
         self.assertEqual(result, {"ok": True})
         request_json = post.call_args.kwargs["json"]
-        self.assertEqual(request_json["temperature"], 0)
-        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertEqual(request_json["temperature"], 0.6)
+        self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
-        _random_seed.assert_not_called()
+        _random_seed.assert_called_once_with()
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
@@ -445,15 +437,16 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         ):
             self.assertEqual(
                 request_json[name],
-                minimax.CREATIVE_GENERATION_LLM_SETTINGS[name],
+                minimax.SMART_CREATIVE_LLM_SETTINGS[name],
             )
+        self.assertEqual(request_json["temperature"], 0.6)
         self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         _random_seed.assert_called_once_with()
 
     @patch("minimax.requests.post")
-    def test_extractor_forces_temperature_zero_even_if_caller_passes_creative_profile(
+    def test_source_unit_state_effects_uses_smart_extractor_profile(
         self,
         post,
     ):
@@ -480,8 +473,8 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         request_json = post.call_args.kwargs["json"]
         self.assertEqual(request_json["temperature"], 0)
         self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
-        self.assertEqual(request_json["reasoning_effort"], "low")
-        self.assertEqual(request_json["thinking_budget_tokens"], 128)
+        self.assertEqual(request_json["reasoning_effort"], "high")
+        self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         self.assertEqual(
             request_json["reasoning_budget_message"],
             ". Enough thinking, now answer.",
@@ -494,7 +487,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
     @patch("minimax.generate_random_llm_seed", return_value=42)
     @patch("minimax.requests.post")
-    def test_ask_llm_respects_requested_completion_when_it_fits_context(
+    def test_ask_llm_uses_profile_output_limit_when_it_fits_context(
         self, post, _random_seed
     ):
         response = Mock()
@@ -505,9 +498,17 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         }
         post.return_value = response
         messages = [{"role": "user", "content": "short request"}]
-        minimax.ask_llm(messages, response_format=None, max_tokens=8000)
+        minimax.ask_llm(messages, response_format=None)
         request_json = post.call_args.kwargs["json"]
-        self.assertEqual(request_json["max_tokens"], 8000)
+        self.assertEqual(
+            request_json["max_tokens"],
+            min(
+                minimax.LLM_DEFAULT_MAX_OUTPUT_TOKENS,
+                minimax.LLM_DEFAULT_CONTEXT_TOKEN_BUDGET
+                - minimax.LLM_CONTEXT_SAFETY_TOKENS
+                - minimax.estimate_message_tokens(messages),
+            ),
+        )
     @patch("minimax.requests.post")
     def test_ask_llm_rejects_input_that_leaves_no_completion_room(self, post):
         oversized = "x" * (
@@ -601,41 +602,40 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         }
         post.return_value = response
 
-        minimax.ask_llm(
-            [{"role": "user", "content": "validate"}],
-            response_format=None,
-            history_metadata={"purpose": "beat_validation"},
-            temperature=0.99,
-            repeat_penalty=0.5,
-        )
+        for purpose in ("beat_story_validation", "beat_state_validation"):
+            minimax.ask_llm(
+                [{"role": "user", "content": "validate"}],
+                response_format=None,
+                history_metadata={"purpose": purpose},
+            )
 
-        request_json = post.call_args.kwargs["json"]
-        self.assertEqual(
-            request_json["temperature"],
-            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["temperature"],
-        )
-        self.assertEqual(
-            request_json["repeat_penalty"],
-            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["repeat_penalty"],
-        )
-        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
-        self.assertNotIn("thinking", request_json)
-        self.assertNotIn("chat_template", request_json)
-        self.assertNotIn("jinja", request_json)
-        self.assertEqual(
-            request_json["chat_template_kwargs"],
-            {"enable_thinking": True},
-        )
-        self.assertEqual(request_json["reasoning_effort"], "low")
-        self.assertEqual(request_json["thinking_budget_tokens"], 128)
-        self.assertEqual(
-            request_json["reasoning_budget_message"],
-            ". Enough thinking, now answer.",
-        )
+            request_json = post.call_args.kwargs["json"]
+            self.assertEqual(
+                request_json["temperature"],
+                minimax.SMART_EXTRACTOR_LLM_SETTINGS["temperature"],
+            )
+            self.assertEqual(
+                request_json["repeat_penalty"],
+                minimax.SMART_EXTRACTOR_LLM_SETTINGS["repeat_penalty"],
+            )
+            self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+            self.assertNotIn("thinking", request_json)
+            self.assertNotIn("chat_template", request_json)
+            self.assertNotIn("jinja", request_json)
+            self.assertEqual(
+                request_json["chat_template_kwargs"],
+                {"enable_thinking": True},
+            )
+            self.assertEqual(request_json["reasoning_effort"], "high")
+            self.assertEqual(request_json["thinking_budget_tokens"], 1024)
+            self.assertEqual(
+                request_json["reasoning_budget_message"],
+                ". Enough thinking, now answer.",
+            )
 
 
     @patch("minimax.requests.post")
-    def test_beat_validation_transport_does_not_follow_active_formatter(self, post):
+    def test_split_beat_validators_transport_does_not_follow_active_formatter(self, post):
         response = Mock()
         response.status_code = 200
         response.raise_for_status = Mock()
@@ -651,26 +651,27 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         original = minimax.ACTIVE_FORMATTER
         try:
             minimax.configure_formatter("qwen")
-            result = minimax.ask_llm(
-                [{"role": "user", "content": "validate"}],
-                response_format=None,
-                history_metadata={"purpose": "beat_validation"},
-            )
-            self.assertEqual(result, {"valid": True, "issue": ""})
-            request_json = post.call_args.kwargs["json"]
-            self.assertEqual(
-                request_json["chat_template_kwargs"],
-                {"enable_thinking": True},
-            )
-            self.assertEqual(request_json["reasoning_effort"], "low")
-            self.assertEqual(request_json["thinking_budget_tokens"], 128)
-            self.assertEqual(
-                request_json["reasoning_budget_message"],
-                ". Enough thinking, now answer.",
-            )
-            self.assertNotIn("thinking", request_json)
-            self.assertNotIn("chat_template", request_json)
-            self.assertNotIn("jinja", request_json)
+            for purpose in ("beat_story_validation", "beat_state_validation"):
+                result = minimax.ask_llm(
+                    [{"role": "user", "content": "validate"}],
+                    response_format=None,
+                    history_metadata={"purpose": purpose},
+                )
+                self.assertEqual(result, {"valid": True, "issue": ""})
+                request_json = post.call_args.kwargs["json"]
+                self.assertEqual(
+                    request_json["chat_template_kwargs"],
+                    {"enable_thinking": True},
+                )
+                self.assertEqual(request_json["reasoning_effort"], "high")
+                self.assertEqual(request_json["thinking_budget_tokens"], 1024)
+                self.assertEqual(
+                    request_json["reasoning_budget_message"],
+                    ". Enough thinking, now answer.",
+                )
+                self.assertNotIn("thinking", request_json)
+                self.assertNotIn("chat_template", request_json)
+                self.assertNotIn("jinja", request_json)
         finally:
             if isinstance(original, minimax.QwenFormatter):
                 minimax.configure_formatter("qwen")
@@ -684,7 +685,16 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         original = minimax.ACTIVE_FORMATTER
         try:
             minimax.configure_formatter("mistral")
-            mistral_messages = minimax.build_beat_validation_messages(
+            mistral_messages = minimax.build_beat_story_validation_messages(
+                previous_final_beat="Amy equips her weapons.",
+                current_state=minimax.new_beat_canonical_state(),
+                beat_job="Amy kills attacking zombies.",
+                next_beat_job="Amy kills more attacking zombies.",
+                candidate_beat=(
+                    "Amy kills attacking zombies until the last zombie falls dead."
+                ),
+            )
+            mistral_state_messages = minimax.build_beat_state_validation_messages(
                 previous_final_beat="Amy equips her weapons.",
                 current_state=minimax.new_beat_canonical_state(),
                 beat_job="Amy kills attacking zombies.",
@@ -695,7 +705,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             )
 
             minimax.configure_formatter("qwen")
-            qwen_messages = minimax.build_beat_validation_messages(
+            qwen_messages = minimax.build_beat_story_validation_messages(
                 previous_final_beat="Amy equips her weapons.",
                 current_state=minimax.new_beat_canonical_state(),
                 beat_job="Amy kills attacking zombies.",
@@ -709,6 +719,18 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             self.assertIn(
                 "You validate one candidate story beat.",
                 qwen_messages[0]["content"],
+            )
+            self.assertEqual(
+                mistral_state_messages,
+                minimax.build_beat_state_validation_messages(
+                    previous_final_beat="Amy equips her weapons.",
+                    current_state=minimax.new_beat_canonical_state(),
+                    beat_job="Amy kills attacking zombies.",
+                    next_beat_job="Amy kills more attacking zombies.",
+                    candidate_beat=(
+                        "Amy kills attacking zombies until the last zombie falls dead."
+                    ),
+                ),
             )
         finally:
             if isinstance(original, minimax.QwenFormatter):
@@ -762,17 +784,19 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("basement", state_text)
 
 
-    def test_director_prompt_keeps_state_advisory_and_beat_authoritative(self):
-        rules = minimax.build_director_rules(
-            64, 8, 8, "", 2,
+    def test_creative_director_keeps_current_beat_authoritative(self):
+        messages, _, _ = minimax.build_generation_messages(
+            "timed formatting rules", "unused", ["Door opens", "Room revealed"],
+            set(), [], 2, 2, 8, 16,
             conditioning_mode="continuation",
-            is_final_story_segment=False,
+            current_phase={"phase_number": 1, "beat_start": 1, "beat_end": 2},
         )
-        normalized = " ".join(rules.split())
-        self.assertIn("CURRENT BEAT is the scene to stage", normalized)
-        self.assertIn("broad or generic continuity summary conflicts", normalized)
-        self.assertIn("CURRENT BEAT wins", normalized)
-        self.assertNotIn("Only explicitly authorized subjects may cross a barrier", normalized)
+        creative = minimax.build_director_raw_scene_creative_messages(messages, 8)
+        prompt = creative[0]["content"]
+        self.assertIn("CURRENT BEAT is the story authority", prompt)
+        self.assertIn("if it conflicts with CURRENT BEAT, CURRENT BEAT wins", prompt)
+        self.assertNotIn("broad or generic continuity summary", prompt)
+        self.assertIn("CURRENT BEAT — EXECUTE ONLY THIS:\n2. Room revealed", creative[1]["content"])
     def test_completion_prompt_protects_authoritative_persistent_state(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Amy defeats one attacker with the katana.",
@@ -791,51 +815,35 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
 
 
     def test_director_prompt_is_minimal_scene_contract(self):
-        rules = minimax.build_director_rules(
-            64, 8, 8, "", 3,
-            conditioning_mode="continuation",
-            is_final_story_segment=False,
+        messages, _, _ = minimax.build_generation_messages(
+            "timed formatting rules", "unused", ["Current beat", "Next beat"],
+            set(), [], 1, 2, 8, 16,
         )
-        normalized = " ".join(rules.split())
-        self.assertIn("concrete visible/audible action", normalized)
-        self.assertIn("Complete every finite action explicitly assigned by CURRENT BEAT", normalized)
-        self.assertIn("every named person or target", normalized)
-        self.assertIn("natural physical staging", normalized)
-        self.assertIn("one continuous camera take", normalized)
-        self.assertIn("move the camera instead of cutting", normalized)
-        self.assertIn("tracks with a moving subject", normalized)
-        self.assertIn("CONTINUATION AIRLOCK", normalized)
-        self.assertIn("Start CURRENT BEAT at or after 00:01.000", normalized)
-        self.assertIn("Explicitly locate every named subject whose final position matters", normalized)
-        self.assertIn("NEXT BEAT is boundary context only", normalized)
-        self.assertNotIn("Do not invent persistent changes", normalized)
-    def test_director_camera_choreography_periodically_reframes_without_cuts(self):
-        segment_3 = " ".join(minimax.build_director_rules(
-            80, 8, 10, "", 3,
-            conditioning_mode="continuation",
-            is_final_story_segment=False,
-        ).split())
-        segment_4 = " ".join(minimax.build_director_rules(
-            80, 8, 10, "", 4,
-            conditioning_mode="continuation",
-            is_final_story_segment=False,
-        ).split())
-        segment_7 = " ".join(minimax.build_director_rules(
-            80, 8, 10, "", 7,
-            conditioning_mode="continuation",
-            is_final_story_segment=False,
-        ).split())
-
-        self.assertIn("one continuous camera take", segment_4)
-        self.assertIn("cuts, cutaways, insert shots", segment_4)
-        self.assertIn("pushes in, pulls out, pans left/right", segment_4)
-        self.assertIn("REFRAME THIS SEGMENT", segment_4)
-        self.assertIn("After about 1 second", segment_4)
-        self.assertIn("materially different composition", segment_4)
-        self.assertIn("Do not cut", segment_4)
-        self.assertIn("REFRAME THIS SEGMENT", segment_7)
-        self.assertNotIn("REFRAME THIS SEGMENT", segment_3)
-        self.assertIn("Do not force a new composition", segment_3)
+        creative = minimax.build_director_raw_scene_creative_messages(messages, 8)
+        creative_system = creative[0]["content"]
+        self.assertIn("concrete visible/audible action", creative_system)
+        self.assertIn("Complete every finite action explicitly assigned by CURRENT BEAT", creative_system)
+        self.assertIn("every named person or target", creative_system)
+        self.assertIn("- do not include timestamps.", creative_system)
+        self.assertNotIn("RETURN JSON", creative_system)
+        timing = minimax.build_add_scene_timing_refiner_messages(
+            "Mark enters the room.", 8
+        )
+        camera = minimax.build_add_camera_refiner_messages(
+            "Mark enters the room.", "At 00:00.000, Mark enters the room."
+        )
+        self.assertIn("Assign a start timestamp to each numbered action", timing[0]["content"])
+        self.assertIn("not_enough_time", timing[0]["content"])
+        self.assertIn("Add only camera instructions", camera[0]["content"])
+        self.assertIn("unless CURRENT BEAT explicitly requires a cut", camera[0]["content"])
+    def test_timed_director_preserves_camera_movement_without_forced_reframes(self):
+        messages = minimax.build_add_camera_refiner_messages(
+            "Amy pours the tea.", "At 00:00.000, Amy pours the tea."
+        )
+        camera_prompt = messages[0]["content"]
+        self.assertIn("continuous shot unless CURRENT BEAT explicitly requires a cut", camera_prompt)
+        self.assertIn("follow, reveal, or frame the existing action", camera_prompt)
+        self.assertNotIn("REFRAME THIS SEGMENT", camera_prompt)
 
     def test_continuation_structure_rejects_action_inside_native_guide_airlock(self):
         raw = (
@@ -852,15 +860,12 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertTrue(errors)
         self.assertIn("Continuation airlock", errors[0])
 
-    def test_director_camera_choreography_segment_one_establishes_composition(self):
-        rules = " ".join(minimax.build_director_rules(
-            8, 8, 1, "", 1,
-            conditioning_mode="initial",
-            is_final_story_segment=True,
-        ).split())
-        self.assertIn("Establish a useful opening composition", rules)
-        self.assertNotIn("inherited opening composition", rules)
-        self.assertNotIn("REFRAME THIS SEGMENT", rules)
+    def test_timed_director_initial_scene_does_not_inherit_continuation_frame(self):
+        messages = minimax.build_add_camera_refiner_messages(
+            "Mark waits.", "At 00:00.000, Mark waits."
+        )
+        self.assertIn("If no camera movement is needed, leave the scene unchanged.", messages[0]["content"])
+        self.assertNotIn("inherited opening composition", messages[0]["content"])
 
     def test_completion_prompt_disallows_implicit_mover_barrier_crossing(self):
         messages = minimax.build_director_raw_scene_completion_messages(
@@ -909,8 +914,8 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("movement between rooms, hallways, or subareas", prompt)
         self.assertIn("does NOT require another set_location effect", prompt)
 
-    def test_beat_validator_does_not_require_effect_for_new_incidental_target(self):
-        messages = minimax.build_beat_validation_messages(
+    def test_beat_story_validator_uses_job_and_participants_without_effect_rule(self):
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy is armed and ready.",
             current_state=minimax.new_beat_canonical_state(),
             beat_job="Amy kills a zombie that attacks her.",
@@ -919,14 +924,9 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_state_effects=[],
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn(
-            "For entities already in CURRENT STATE or STATE EFFECTS IF VALID, new persistent changes require a matching assigned effect",
-            prompt,
-        )
-        self.assertIn(
-            "Do not require effects for new incidental entities",
-            prompt,
-        )
+        self.assertIn("CURRENT JOB is the only required work", prompt)
+        self.assertIn("candidate must preserve each listed identity", prompt)
+        self.assertNotIn("new incidental entities", prompt)
 
     def test_beat_closed_boundary_contract_lists_contained_occupants(self):
         state = minimax.new_beat_canonical_state()
@@ -1050,7 +1050,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             ],
         )
 
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy waits outside.",
             current_state=state,
             beat_job="Amy fights zombies.",
@@ -1084,7 +1084,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             [],
         )
 
-    def test_beat_validator_forbids_retrieving_interior_prop_across_closed_boundary(self):
+    def test_beat_story_validator_does_not_claim_boundary_state_authority(self):
         state = minimax.new_beat_canonical_state()
         state["characters"] = {
             "Amy": {"location": "home"},
@@ -1098,7 +1098,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         state["environment"]["barriers"] = {
             "door": {"status": "locked"}
         }
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy locks Will in the basement.",
             current_state=state,
             beat_job="Amy retrieves and equips her hidden weapons.",
@@ -1107,9 +1107,11 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_state_effects=[],
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertNotIn("retrieve/use an object located inside", prompt)
-        self.assertNotIn("protected destination", prompt)
-        self.assertIn("Boundary, barrier, door/window, and containment changes are intentionally outside this validation phase.", prompt)
+        current_state = prompt.split("CURRENT STATE", 1)[1].split("CURRENT JOB", 1)[0]
+        self.assertIn("Amy retrieves and equips her hidden weapons", prompt)
+        self.assertNotIn("locked", current_state)
+        self.assertNotIn("accessible", current_state)
+        self.assertNotIn("Boundary, barrier, door/window, and containment changes", prompt)
 
     def test_beat_validator_forbids_cross_boundary_contact_with_contained_occupant(self):
         state = minimax.new_beat_canonical_state()
@@ -1124,7 +1126,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         state["environment"]["barriers"] = {
             "door": {"status": "locked"}
         }
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Will is secured in the basement.",
             current_state=state,
             beat_job="Amy defeats another attacker.",
@@ -1150,7 +1152,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         state["environment"]["barriers"] = {
             "door": {"status": "locked"}
         }
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Will is secured in the basement.",
             current_state=state,
             beat_job="Amy defeats another attacker.",
@@ -1196,7 +1198,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
             {"op": "set_barrier_state", "entity": "door", "value": "locked"},
         ]
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="Amy is in the kitchen.",
             current_state=minimax.new_beat_canonical_state(),
             beat_job="Amy gets Will and Amber into the basement and locks the door.",
@@ -1456,7 +1458,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("COMPLETE", prompt)
         self.assertIn("ONGOING", prompt)
         self.assertIn("NOT_APPLICABLE", prompt)
-        self.assertIn("Progressive source wording", prompt)
+        self.assertIn("ongoing/repeated wording", prompt)
 
     def test_finite_endpoint_parser_is_strict(self):
         self.assertEqual(
@@ -1509,14 +1511,11 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Reapplying an already-complete irreversible result", prompt)
         self.assertIn("does not satisfy the source action", prompt)
     def test_director_prompt_does_not_encode_terminal_state_machine(self):
-        rules = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            story_segment_ending_rules="",
-        )
+        rules = minimax.build_director_rules(8, 8, 1, "", 1)
         normalized = " ".join(rules.split())
         self.assertNotIn("already-dead corpse", normalized)
         self.assertNotIn("terminal target", normalized.casefold())
-        self.assertIn("CURRENT BEAT wins", normalized)
+        self.assertEqual(normalized, "")
     def test_completion_prompt_requires_assigned_action_to_happen_now(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Mara cooks breakfast for Eli.",
@@ -1621,26 +1620,29 @@ class H3AudioNormalizationTests(unittest.TestCase):
 class DirectorPromptCallContractTests(unittest.TestCase):
 
     def test_director_uses_baseline_creation_contract(self):
-        rules = minimax.build_director_rules(
-            8, 4, 1, SUBJECTS, 2,
+        normalized = " ".join(
+            minimax.DIRECTOR_RAW_SCENE_CREATIVE_SYSTEM_TEMPLATE.format(
+                segment_length="8"
+            ).split()
         )
-        normalized = " ".join(rules.split())
-        self.assertIn("ASSIGNED SOURCE is the story authority", normalized)
-        self.assertIn("CURRENT BEAT is the scene to stage", normalized)
-        self.assertIn("Harmless local route or prop details are allowed", normalized)
-        self.assertIn('RETURN JSON ONLY {"raw_scene":"..."}', normalized)
+        self.assertIn("CURRENT BEAT is the story authority", normalized)
+        self.assertIn("CURRENT BEAT wins", normalized)
+        self.assertNotIn("STATE ACTIONS", normalized)
+        self.assertNotIn("state_actions", normalized)
         self.assertNotIn("finite_activity_complete", normalized)
-        self.assertNotIn("final quarter", normalized)
 
-    def test_director_response_schema_contains_raw_scene_only(self):
-        schema = minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT[
+    def test_timing_refiner_schema_contains_only_status_and_timestamps(self):
+        schema = minimax.ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT[
             "json_schema"
         ]["schema"]
-        self.assertEqual(set(schema["properties"]), {"raw_scene"})
-        self.assertEqual(schema["required"], ["raw_scene"])
-        self.assertIn(
-            "CURRENT BEAT",
-            schema["properties"]["raw_scene"]["description"],
+        self.assertEqual(
+            set(schema["properties"]),
+            {"status", "timestamps"},
+        )
+        self.assertEqual(schema["required"], ["status", "timestamps"])
+        self.assertEqual(
+            schema["properties"]["status"]["enum"],
+            ["ok", "not_enough_time"],
         )
     def test_formatter_music_rule_matches_locked_gold_modes(self):
         initial = minimax.build_h3_formatter_messages(
@@ -1671,8 +1673,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "finishing choice",
             initial[0]["content"],
         )
-        self.assertIn("every materially audible sound", initial[0]["content"])
-        self.assertIn("identifier-style labels with underscores", initial[0]["content"])
+        self.assertIn("overall_soundscape may contain only sounds supported by RAW SCENE", initial[0]["content"])
+        normalized_system = " ".join(initial[0]["content"].split())
+        self.assertIn("choose a minimal scene-appropriate non-diegetic underscore", normalized_system)
+        self.assertNotIn("every materially audible sound", initial[0]["content"])
 
     def test_previous_visible_subjects_resolve_plain_names_for_video_origin(self):
         definitions = (
@@ -1700,11 +1704,12 @@ class DirectorPromptCallContractTests(unittest.TestCase):
 
 
     def test_director_dialogue_rule_is_minimal_and_detector_handles_quotes(self):
-        rules = minimax.build_director_rules(
-            8, 4, 1, "<Subject 1> is Amy, a woman.", 2,
+        messages, _, _ = minimax.build_generation_messages(
+            "unused", "unused", ["Amy speaks."], set(), [], 1, 1, 4, 4,
         )
-        self.assertIn("write a brief direct spoken line using <d>...</d>", rules)
-        self.assertIn("Do not add intelligible dialogue", rules)
+        creative = minimax.build_director_raw_scene_creative_messages(messages, 4)
+        self.assertIn("Sentences of actions that occur in the scene", creative[0]["content"])
+        self.assertNotIn("<d>...</d>", creative[0]["content"])
         self.assertTrue(minimax._h3_contains_spoken_dialogue(
             "Amy asks, 'Who wants eggs?'"
         ))
@@ -1741,6 +1746,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "Director rules.", "Story context.",
             ["Mira makes tea while Oren watches.", "Oren departs."],
             set(), [], 1, 2, 8, 16, current_phase=phase,
+            assigned_source=source,
         )
         assignment = messages[1]["content"].split(
             "ASSIGNED SOURCE — authoritative work for this segment:\n", 1
@@ -1785,10 +1791,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "3. Room revealed",
             user_content,
         )
-        self.assertNotIn("1. Opening", user_content)
+        self.assertIn(
+            "PREVIOUS BEAT - BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n1. Opening",
+            user_content,
+        )
         self.assertNotIn("BEATS:", user_content)
         self.assertIn("PREVIOUS SHOT END — START HERE, DO NOT REPLAY:", user_content)
-        self.assertIn("Mark is at the door.", user_content)
+        self.assertIn("PREVIOUS SHOT END — START HERE, DO NOT REPLAY:\nN/A", user_content)
 
     def test_generation_messages_include_only_current_and_next_beat(self):
         phase = {"phase_number": 1, "beat_start": 1, "beat_end": 4}
@@ -1818,7 +1827,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "3. Room revealed",
             user_content,
         )
-        self.assertNotIn("1. Opening", user_content)
+        self.assertIn(
+            "PREVIOUS BEAT - BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n1. Opening",
+            user_content,
+        )
         self.assertNotIn("4. Leaves room", user_content)
         self.assertNotIn("BEATS:", user_content)
 
@@ -1854,7 +1866,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             ("1. Only beat", "N/A"),
         )
 
-    def test_recent_dialogue_exclusions_are_added_to_generation_prompt(self):
+    def test_recent_dialogue_exclusions_are_added_to_h3_formatter_prompt(self):
         rules = minimax.build_director_rules(30, 6, 5, SUBJECTS, 5)
 
         messages, _, _ = minimax.build_generation_messages(
@@ -1872,11 +1884,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
 
         user_content = messages[1]["content"]
-        self.assertIn(
-            "RECENT SPOKEN SENTENCE EXCLUSIONS (previous 5 segments)",
-            user_content,
-        )
-        self.assertIn("- We must leave now!", user_content)
+        self.assertNotIn("RECENT SPOKEN SENTENCE EXCLUSIONS", user_content)
 
         formatter_messages = minimax.build_h3_formatter_messages(
             "Mark crosses the room.",
@@ -2046,23 +2054,30 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("WORDS AND PHRASES NOT ALLOWED IN DIRECTOR OUTPUT", user_content)
         self.assertIn('- "forbidden phrase"', user_content)
 
-    def test_request_segment_llm_passes_bundle_context_to_h3_formatter(self):
-        request = Mock(side_effect=[
-            {
-                "raw_scene": (
-                    "At 00:00.000, Mark crosses the room.\n"
-                    "End continuity state: Mark stands across the room."
-                ),
-                "beat_complete": True,
-            },
-            {
-                "detailed_description": (
-                    "[Shot 1] At 00:00.000, Mark crosses the room."
-                ),
-                "overall_soundscape": "Footsteps.",
-                "non_diegetic_music": "N/A",
-            },
-        ])
+    def test_request_segment_llm_preserves_raw_for_post_raw_audio(self):
+        scene = (
+            "At 00:00.000, Mark crosses the room.\n"
+            "End continuity state: Mark stands across the room."
+        )
+
+        def respond(*_args, **kwargs):
+            purpose = kwargs["history_metadata"]["purpose"]
+            if purpose == "director_raw_scene_creative":
+                return "Mark crosses the room."
+            if purpose == "add_scene_timing_refiner":
+                return {
+                    "status": "ok",
+                    "timestamps": ["00:00.000"],
+                }
+            if purpose == "add_camera_refiner":
+                return scene.split("\nEnd continuity state:", 1)[0]
+            if purpose == "director_h3_soundscape":
+                return {"overall_soundscape": "Footsteps."}
+            if purpose == "director_h3_music":
+                return {"non_diegetic_music": "N/A"}
+            raise AssertionError(f"Unexpected LLM purpose: {purpose}")
+
+        request = Mock(side_effect=respond)
         bundle = {
             "segment": 2,
             "active_beat_id": 2,
@@ -2084,52 +2099,33 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             )
 
         self.assertEqual(payload["h3_mode"], "I2VA")
-        formatter_user = request.call_args_list[1].args[0][1]["content"]
-        self.assertIn("MODE: I2VA", formatter_user)
-        self.assertIn("DURATION: 4.5 seconds", formatter_user)
-        self.assertIn("Mark starts beside the window.", formatter_user)
-        self.assertIn("Mark crosses the room.", formatter_user)
-        self.assertIn("We must leave now!", formatter_user)
-        self.assertIn('"forbidden phrase"', formatter_user)
-        self.assertIn(
-            "AUTHORITATIVE OPENING STATE:\nMark starts beside the window.",
-            formatter_user,
-        )
-        minimax._verify_authoritative_opening_state_handoff(
-            request.call_args_list[1].args[0],
-            "Mark starts beside the window.",
-            2,
+        self.assertIn("Mark crosses the room", payload["llm_result"]["detailed_description"])
+        self.assertEqual(payload["llm_result"]["overall_soundscape"], "Footsteps.")
+        self.assertEqual(payload["llm_result"]["non_diegetic_music"], "N/A")
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
+            ["director_raw_scene_creative", "add_scene_timing_refiner", "add_camera_refiner", "director_h3_soundscape", "director_h3_music"],
         )
         self.assertEqual(
             request.call_args_list[0].kwargs["response_format"],
-            minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
+            None,
         )
         self.assertEqual(
             request.call_args_list[1].kwargs["response_format"],
-            minimax.H3_FORMATTER_RESPONSE_FORMAT,
+            minimax.ADD_SCENE_TIMING_REFINER_RESPONSE_FORMAT,
         )
         self.assertEqual(
-            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
-            ["director_raw_scene", "director_h3_formatter"],
-        )
-        self.assertEqual(
-            request.call_args_list[0].kwargs["history_metadata"]["conditioning_mode"],
+            request.call_args_list[1].kwargs["history_metadata"]["conditioning_mode"],
             "clean_refresh",
         )
-        self.assertEqual(
-            request.call_args_list[1].kwargs["history_metadata"]["h3_mode"],
-            "I2VA",
-        )
-
 
     def test_request_segment_llm_accepts_missing_end_continuity_state(self):
         request = Mock(side_effect=[
-            {"raw_scene": "At 00:00.000, Mark crosses the room."},
-            {
-                "detailed_description": "[Shot 1] At 00:00.000, Mark crosses the room.",
-                "overall_soundscape": "Footsteps.",
-                "non_diegetic_music": "N/A",
-            },
+            "Mark crosses the room.",
+            {"status": "ok", "timestamps": ["00:00.000"]},
+            "At 00:00.000, Mark crosses the room.",
+            {"overall_soundscape": "Footsteps."},
+            {"non_diegetic_music": "N/A"},
         ])
         bundle = {
             "segment": 1,
@@ -2148,28 +2144,17 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                 bundle, [], "run-1", {"source_sha256": "source-1"}
             )
 
-        self.assertEqual(request.call_count, 2)
-        self.assertEqual(payload["raw_scene"], "At 00:00.000, Mark crosses the room.")
+        self.assertEqual(request.call_count, 5)
+        self.assertIn("Mark crosses the room", payload["raw_scene"])
+        self.assertIn("End continuity state: Mark crosses the room.", payload["raw_scene"])
 
-    def test_request_segment_llm_ignores_request1_completion_self_report(self):
-        scene = (
-            "At 00:00.000, Amy cooks breakfast.\n"
-            "End continuity state: Amy remains at the stove."
-        )
+    def test_request_segment_llm_completion_metadata_comes_from_validated_pipeline(self):
         request = Mock(side_effect=[
-            {
-                "raw_scene": scene,
-                "finite_activity_complete": False,
-                "named_beneficiaries_complete": False,
-                "activity_tools_settled": False,
-                "beat_complete": False,
-            },
-            {
-                "subject_genders": {},
-                "detailed_description": "[Shot 1] At 00:00.000, Amy cooks breakfast.",
-                "overall_soundscape": "Kitchen sounds.",
-                "non_diegetic_music": "Quiet underscore.",
-            },
+            "Amy cooks breakfast.",
+            {"status": "ok", "timestamps": ["00:00.000"]},
+            "At 00:00.000, Amy cooks breakfast.",
+            {"overall_soundscape": "Kitchen sounds."},
+            {"non_diegetic_music": "Quiet underscore."},
         ])
         bundle = {
             "segment": 1,
@@ -2181,22 +2166,31 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "messages": [{"role": "user", "content": "Director input."}],
         }
 
-        with patch("minimax.ask_llm", request), patch("builtins.print"):
+        with (
+            patch("minimax.ask_llm", request),
+            patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            patch("builtins.print"),
+        ):
             payload = minimax.request_segment_llm(bundle, [], "run-1", {})
 
-        self.assertEqual(request.call_count, 2)
-        self.assertEqual(payload["raw_scene"], scene)
+        self.assertEqual(request.call_count, 5)
+        self.assertIn("Amy cooks breakfast", payload["raw_scene"])
+        self.assertTrue(payload["request1_result"]["beat_complete"])
+        self.assertEqual(
+            payload["request1_result"]["completion_metadata_source"],
+            "validated_split_raw_pipeline",
+        )
 
     def test_independent_completion_validator_is_not_in_generation_path(self):
         scene = "At 00:00.000, Mira serves tea.\nEnd continuity state: Tea is served."
         request = Mock(side_effect=[
-            {"raw_scene": scene},
-            {
-                "subject_genders": {},
-                "detailed_description": "[Shot 1] At 00:00.000, Mira serves tea.",
-                "overall_soundscape": "Cups clink.",
-                "non_diegetic_music": "N/A",
-            },
+            "Mira serves tea.",
+            {"status": "ok", "timestamps": ["00:00.000"]},
+            "At 00:00.000, Mira serves tea.",
+            {"overall_soundscape": "Cups clink."},
+            {"non_diegetic_music": "N/A"},
         ])
         bundle = {
             "segment": 1,
@@ -2208,7 +2202,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "opening_state": "",
             "messages": [{"role": "user", "content": "Direct the current beat."}],
         }
-        with patch("minimax.ask_llm", request), patch("builtins.print"):
+        with (
+            patch("minimax.ask_llm", request),
+            patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            patch("builtins.print"),
+        ):
             minimax.request_segment_llm(bundle, [], "test", {})
         purposes = [
             call.kwargs["history_metadata"]["purpose"]
@@ -2216,7 +2216,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         ]
         self.assertEqual(
             purposes,
-            ["director_raw_scene", "director_h3_formatter"],
+            ["director_raw_scene_creative", "add_scene_timing_refiner", "add_camera_refiner", "director_h3_soundscape", "director_h3_music"],
         )
 
     def test_request_segment_llm_reports_dropped_subjects_without_retrying(self):
@@ -2226,18 +2226,14 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "<Subject 3> is Amber, a 14-year-old girl."
         )
         request = Mock(side_effect=[
+            "Amy opens the basement door.",
             {
-                "raw_scene": (
-                    "At 00:00.000, Amy opens the basement door.\n"
-                    "End continuity state: Amy stands beside the open basement door."
-                )
+                "status": "ok",
+                "timestamps": ["00:00.000"],
             },
-            {
-                "subject_genders": {},
-                "detailed_description": "[Shot 1] At 00:00.000, Amy opens the basement door.",
-                "overall_soundscape": "Door opening.",
-                "non_diegetic_music": "N/A",
-            },
+            "At 00:00.000, Amy opens the basement door.",
+            {"overall_soundscape": "Door opening."},
+            {"non_diegetic_music": "N/A"},
         ])
         bundle = {
             "segment": 8,
@@ -2250,10 +2246,16 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "messages": [{"role": "user", "content": "Director input."}],
         }
 
-        with patch("minimax.ask_llm", request), patch("builtins.print") as printed:
+        with (
+            patch("minimax.ask_llm", request),
+            patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
+            patch("minimax.validate_director_raw_scene_timing", return_value={"valid": True, "issue": ""}),
+            patch("builtins.print") as printed,
+        ):
             payload = minimax.request_segment_llm(bundle, [], "run-8", {})
 
-        self.assertEqual(request.call_count, 2)
+        self.assertEqual(request.call_count, 5)
         self.assertIn("Amy opens the basement door", payload["raw_scene"])
         output = "\n".join(
             " ".join(str(arg) for arg in call.args)
@@ -2324,10 +2326,12 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("Do not copy unrelated continuity facts", system_prompt)
         self.assertIn("overall_soundscape", system_prompt)
         self.assertIn("non_diegetic_music", system_prompt)
+        self.assertIn("Python inserts the configured run-level visual style", system_prompt)
+        self.assertIn("Do not add a global visual style phrase", system_prompt)
         self.assertNotIn("Video Prompt Writing Guide", system_prompt)
         self.assertNotIn("Motion type", system_prompt)
         self.assertNotIn("Construction Example", system_prompt)
-        self.assertEqual(system_prompt.count("Live-action, cinematic"), 1)
+        self.assertNotIn("Live-action, cinematic", system_prompt)
 
         user_prompt = messages[1]["content"]
         self.assertIn("AUTHORITATIVE OPENING STATE:", user_prompt)
@@ -2360,29 +2364,19 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             conditioning_mode="initial",
         )[1]["content"]
 
-        self.assertIn("<Video 1>", continuation)
         self.assertIn(
             "Preserve every camera movement explicitly present in RAW SCENE",
             continuation,
         )
         self.assertIn(
-            "including camera movement beginning at 00:00.000",
-            continuation,
-        )
-        self.assertIn(
-            "Keep it at its original timestamp and do not move it later",
+            "The pinned guide owns the opening airlock",
             continuation,
         )
         self.assertIn(raw_scene, continuation)
-        self.assertNotIn("not a camera movement", continuation)
-        self.assertNotIn("Camera movement may occur later", continuation)
+        self.assertNotIn("Do not use N/A for an ordinary scored continuation", clean_refresh)
         self.assertIn("supplied first frame", clean_refresh)
         self.assertIn("CLEAN-REFRESH OPENING RULE", clean_refresh)
-        self.assertNotIn(
-            "<Video 1> already establish the opening composition",
-            clean_refresh,
-        )
-        self.assertNotIn("<Video 1>", initial)
+        self.assertNotIn("CONTINUATION OPENING RULE", clean_refresh)
         self.assertNotIn("OPENING RULE", initial)
 
         opening = minimax.format_authoritative_opening_state(
@@ -2406,7 +2400,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
         self.assertTrue(
             final_prompt.split("detailed_description: ", 1)[1].startswith(
-                "[Shot 1] The opening composition is established by "
+                "[Shot 1] Live-action cinematic, The opening composition is established by "
                 "the supplied first frame."
             )
         )
@@ -2440,14 +2434,6 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("Do not advance the", system_prompt)
 
     def test_nonfinal_story_segment_protects_the_handoff_frame(self):
-        rules = minimax.build_director_rules(
-            12,
-            6,
-            2,
-            SUBJECTS,
-            1,
-            is_final_story_segment=False,
-        )
         formatter_messages = minimax.build_h3_formatter_messages(
             "Mark walks onward.",
             "T2VA",
@@ -2455,7 +2441,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             is_final_story_segment=False,
         )
 
-        for prompt in (rules, formatter_messages[0]["content"]):
+        for prompt in (formatter_messages[0]["content"],):
             self.assertIn("NONFINAL STORY SEGMENT", prompt)
             self.assertIn("cut to black", prompt)
             self.assertIn("cut to white", prompt)
@@ -2474,14 +2460,6 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             )
 
     def test_final_story_segment_has_no_handoff_frame_prohibition(self):
-        rules = minimax.build_director_rules(
-            12,
-            6,
-            2,
-            SUBJECTS,
-            2,
-            is_final_story_segment=True,
-        )
         formatter_system = minimax.build_h3_formatter_messages(
             "The assigned beat ends in a blackout.",
             "T2VA",
@@ -2489,7 +2467,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             is_final_story_segment=True,
         )[0]["content"]
 
-        for prompt in (rules, formatter_system):
+        for prompt in (formatter_system,):
             self.assertIn("This is the final story segment", prompt)
             self.assertNotIn("NONFINAL STORY SEGMENT", prompt)
             self.assertNotIn("do not invent or use a cut to black", prompt)
@@ -2513,8 +2491,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         prompt = minimax.build_h3_prompt(
             {
                 "detailed_description": (
-                    "[Shot 1] Live-action, cinematic, seamless continuation. "
-                    "Mark crosses the room."
+                    "[Shot 1] Mark crosses the room."
                 ),
                 "overall_soundscape": "Footsteps.",
                 "non_diegetic_music": (
@@ -2565,10 +2542,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn("Mark remains at the door.", continuation)
         self.assertTrue(
             continuation.split("detailed_description: ", 1)[1].startswith(
-                "[Shot 1] Live-action, cinematic, seamless continuation."
+                "[Shot 1] Live-action cinematic, seamless continuation."
             )
         )
-        self.assertIn("SPOKEN DIALOGUE: None.", continuation)
+        self.assertIn("No intelligible spoken dialogue is heard", continuation)
 
 
 if __name__ == "__main__":
@@ -2639,3 +2616,23 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
         ):
             with self.assertRaises(minimax.ComfyUIConnectionError):
                 minimax.main()
+
+    def test_main_fails_closed_on_state_action_extraction_failure(self):
+        with (
+            patch.object(minimax.sys, "argv", ["minimax.py", "8", "64", "0.5"]),
+            patch(
+                "minimax._run_main",
+                side_effect=minimax.StateActionExtractionError(
+                    "all action-only repairs failed"
+                ),
+            ) as run_main,
+            patch("minimax.time.sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(
+                minimax.StateActionExtractionError,
+                "all action-only repairs failed",
+            ):
+                minimax.main()
+
+        self.assertEqual(run_main.call_count, 1)
+        sleep.assert_not_called()

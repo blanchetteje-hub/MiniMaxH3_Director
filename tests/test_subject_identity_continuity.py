@@ -38,7 +38,8 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         self.assertIn("complete current physical appearance", prompt)
         self.assertIn("body/anatomy, species traits", prompt)
         self.assertIn("Clothing in the supplied description is authoritative", prompt)
-        self.assertIn("If no clothing is described, do not invent clothing", prompt)
+        self.assertIn("FIXED CLOTHING RULE", prompt)
+        self.assertIn("humanoid must wear clothes regardless of species", prompt)
         self.assertNotIn("complete current outfit", prompt)
 
     def test_dynamic_subject_registration_persists_bootstrap_wardrobe(self):
@@ -598,7 +599,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertEqual(minimax.normalize_subject_gender(value), "unknown")
 
-    def test_two_distinct_subjects_keep_independent_wardrobes(self):
+    def test_two_distinct_subjects_keep_independent_canonical_wardrobes(self):
         prompt = {
             "subjects": {
                 "Elias": {"name": "Elias", "wardrobe": wardrobe(upper="requested shirt")},
@@ -613,8 +614,8 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             ]},
         )
 
-        self.assertEqual(merged["subjects"]["Elias"]["wardrobe"]["upper"], "red shirt")
-        self.assertEqual(merged["subjects"]["Werewolf"]["wardrobe"]["upper"], "black fur")
+        self.assertEqual(merged["subjects"]["Elias"]["wardrobe"]["upper"], "requested shirt")
+        self.assertEqual(merged["subjects"]["Werewolf"]["wardrobe"]["upper"], "requested fur")
 
     def test_wardrobe_updates_follow_canonical_subject_after_alias_reappears(self):
         prompt = {
@@ -635,7 +636,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             {"subjects": [visual_subject("<Werewolf>", {"upper": "new coat"})]},
         )
 
-        self.assertEqual(updated["subjects"]["Werewolf"]["wardrobe"]["upper"], "new coat")
+        self.assertEqual(updated["subjects"]["Werewolf"]["wardrobe"]["upper"], "old coat")
         self.assertEqual(list(updated["subjects"]), ["Werewolf"])
 
     def test_wardrobe_is_preserved_by_missing_visual_observation(self):
@@ -656,7 +657,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             {"subjects": []},
         )
 
-        self.assertNotIn("wardrobe", merged["subjects"]["Werewolf"])
+        self.assertEqual(merged["subjects"]["Werewolf"]["wardrobe"]["upper"], "old coat")
 
     def test_phase_derived_definitions_preserve_dynamic_subject_mapping(self):
         state = minimax.continuity_state_for_registry(SUBJECTS)
@@ -804,7 +805,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             prompt,
         )
 
-    def test_feature_two_rendered_wardrobe_updates_only_observed_slots(self):
+    def test_feature_two_rendered_wardrobe_does_not_update_canonical_slots(self):
         prompt = {
             "subjects": {
                 "Werewolf": {
@@ -820,7 +821,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
 
         self.assertEqual(
             merged["subjects"]["Werewolf"]["wardrobe"],
-            wardrobe(upper="torn black coat", lower="requested jeans"),
+            wardrobe(upper="requested red shirt", lower="requested jeans"),
         )
         self.assertNotIn("clothing", merged["subjects"]["Werewolf"])
 
@@ -843,7 +844,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         )
 
         self.assertNotIn("clothing_condition", merged["subjects"]["Werewolf"])
-        self.assertNotIn("wardrobe", merged["subjects"]["Werewolf"])
+        self.assertEqual(merged["subjects"]["Werewolf"]["wardrobe"], wardrobe())
 
     def test_checkpoint_canonicalizes_array_aliases_to_frozen_subject_identity(self):
         definitions = (

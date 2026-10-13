@@ -378,13 +378,17 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
     }
 
 
-def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
-    """Copy the newest acceptance report/log into the mailbox result."""
+def copy_acceptance_artifacts(
+    exec_root: Path,
+    result_dir: Path,
+    benchmark_stem: str = "amy_zombie_house",
+) -> dict:
+    """Copy the newest acceptance report/log for the requested benchmark."""
 
     results_root = exec_root / "tests" / "acceptance" / "results"
     candidates = sorted(
         (
-            path for path in results_root.glob("amy_zombie_house-*")
+            path for path in results_root.glob(f"{benchmark_stem}-*")
             if path.is_dir()
             and (
                 (path / "acceptance_run.json").is_file()
@@ -395,7 +399,10 @@ def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
         reverse=True,
     )
     if not candidates:
-        raise RuntimeError("Acceptance runner produced no result directory or run.log.")
+        raise RuntimeError(
+            f"Acceptance runner produced no result directory or run.log for "
+            f"{benchmark_stem!r}."
+        )
     latest = candidates[0]
     artifacts_dir = result_dir / "files"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -407,7 +414,16 @@ def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
             shutil.copy2(source, target)
             copied[filename] = str(target.relative_to(result_dir))
     generated_dir = latest / "generated"
-    for filename in ("story_arc.json", "beats.txt", "character_canon.json"):
+    for filename in (
+        "story_arc.json",
+        "beats.txt",
+        "expanded_story.txt",
+        "character_canon.json",
+        "generation_state.json",
+        "prompt_history.txt",
+        "subjects.txt",
+        "story.txt",
+    ):
         source = generated_dir / filename
         if source.is_file():
             target = artifacts_dir / filename
@@ -816,11 +832,6 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     """Run the fixed prompt-generation acceptance suite on one code branch."""
 
     code_branch = str(job.get("code_branch") or ACCEPTANCE_CODE_BRANCH).strip()
-    if code_branch != ACCEPTANCE_CODE_BRANCH:
-        raise ValueError(
-            f"Acceptance jobs must run on {ACCEPTANCE_CODE_BRANCH!r}; "
-            f"got {code_branch!r}."
-        )
     model = str(job.get("model") or ACCEPTANCE_MODEL).strip()
     if model not in ACCEPTANCE_MODELS:
         raise ValueError(
@@ -835,6 +846,24 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     if not image1.is_file():
         raise FileNotFoundError(f"Acceptance image not found: {image1}")
 
+    benchmark_raw = str(job.get("benchmark") or "").strip()
+    benchmark_stem = "amy_zombie_house"
+    benchmark = None
+    if benchmark_raw:
+        benchmark = safe_source_path(exec_root, benchmark_raw)
+        gold_root = (exec_root / "tests" / "acceptance" / "gold").resolve()
+        try:
+            benchmark.relative_to(gold_root)
+        except ValueError as error:
+            raise ValueError(
+                "Acceptance benchmark must be under tests/acceptance/gold/."
+            ) from error
+        if not benchmark.is_file() or benchmark.suffix.lower() != ".json":
+            raise FileNotFoundError(
+                f"Acceptance benchmark not found or not JSON: {benchmark}"
+            )
+        benchmark_stem = benchmark.stem
+
     command = [
         python,
         "tests/acceptance/run_acceptance.py",
@@ -843,11 +872,47 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
         "--model",
         model,
     ]
+    if benchmark is not None:
+        command.extend(["--benchmark", str(benchmark)])
     if bool(job.get("planning_only")):
         command.append("--planning-only")
     director_plan_job = str(job.get("director_plan_job") or "").strip()
+    director_plan_dir_raw = str(job.get("director_plan_dir") or "").strip()
+    if director_plan_job and director_plan_dir_raw:
+        raise ValueError(
+            "Specify either director_plan_job or director_plan_dir, not both."
+        )
     materialized_plan_dir = None
-    if director_plan_job:
+    if director_plan_dir_raw:
+        plan_dir = safe_source_path(exec_root, director_plan_dir_raw)
+        fixtures_root = (exec_root / "tests" / "acceptance" / "fixtures").resolve()
+        try:
+            plan_dir.relative_to(fixtures_root)
+        except ValueError as error:
+            raise ValueError(
+                "Director plan directory must be under "
+                "tests/acceptance/fixtures/."
+            ) from error
+        if not plan_dir.is_dir():
+            raise FileNotFoundError(
+                f"Director plan directory not found: {plan_dir}"
+            )
+        required_plan_files = (
+            "story_arc.json",
+            "beats.txt",
+            "expanded_story.txt",
+        )
+        missing_plan_files = [
+            filename for filename in required_plan_files
+            if not (plan_dir / filename).is_file()
+        ]
+        if missing_plan_files:
+            raise FileNotFoundError(
+                f"Director plan directory is missing required files: "
+                f"{', '.join(missing_plan_files)}"
+            )
+        command.extend(["--director-plan-dir", str(plan_dir)])
+    elif director_plan_job:
         source_files = result_dir.parent / director_plan_job / "files"
         plan_dir = source_files
         if not (
@@ -889,6 +954,29 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
             plan_dir = materialized_plan_dir
         command.extend(["--director-plan-dir", str(plan_dir.resolve())])
 
+    replay_fixture_raw = str(job.get("pre_director_replay_fixture") or "").strip()
+    if replay_fixture_raw:
+        if director_plan_dir_raw or director_plan_job or bool(job.get("planning_only")):
+            raise ValueError(
+                "Pre-Director replay cannot be combined with Director plans or planning-only."
+            )
+        replay_fixture = safe_source_path(exec_root, replay_fixture_raw)
+        fixtures_root = (exec_root / "tests" / "acceptance" / "fixtures").resolve()
+        try:
+            replay_fixture.relative_to(fixtures_root)
+        except ValueError as error:
+            raise ValueError(
+                "Pre-Director replay fixture must be under tests/acceptance/fixtures/."
+            ) from error
+        if not replay_fixture.is_file() or replay_fixture.suffix.lower() != ".json":
+            raise FileNotFoundError(
+                f"Pre-Director replay fixture not found or not JSON: {replay_fixture}"
+            )
+        command.extend([
+            "--extra-minimax-arg=--pre-director-replay-fixture",
+            "--extra-minimax-arg=" + str(replay_fixture.relative_to(exec_root)),
+        ])
+
     developer_capture = start_lmstudio_developer_log(result_dir)
     try:
         process = run_local_process(
@@ -906,7 +994,13 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
 
     artifacts = dict(developer_artifacts)
     try:
-        artifacts.update(copy_acceptance_artifacts(exec_root, result_dir))
+        artifacts.update(
+            copy_acceptance_artifacts(
+                exec_root,
+                result_dir,
+                benchmark_stem=benchmark_stem,
+            )
+        )
     except Exception as error:
         if not _GRACEFUL_STOP_REQUESTED.is_set():
             raise
@@ -1028,7 +1122,10 @@ def commit_result(worktree: Path, branch: str, result_dir: Path, job_id: str) ->
 
     relative = result_dir.relative_to(worktree)
     result_json = relative / "result.json"
-    run_git(["add", str(relative)], worktree)
+    # Result artifacts may reuse ignored runtime filenames such as
+    # generation_state.json and prompt_history.txt. Force-add only this job's
+    # result directory so the artifact manifest and published files agree.
+    run_git(["add", "-f", str(relative)], worktree)
     status = run_git(["status", "--porcelain"], worktree).stdout.strip()
     if not status:
         return

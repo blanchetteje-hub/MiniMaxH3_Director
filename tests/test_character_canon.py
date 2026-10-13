@@ -193,6 +193,65 @@ class CharacterCanonTests(unittest.TestCase):
             self.assertEqual(result["characters"][0]["gender"], "female")
             self.assertEqual(request.call_count, 1)
 
+    def test_canonical_wardrobe_extraction_covers_every_character_canon_subject(self):
+        canon = {
+            "fields": ["age", "clothing", "gender"],
+            "characters": [
+                {"name": "Subject Alpha", "age": "adult", "gender": "female", "clothing": "N/A"},
+                {"name": "Subject Beta", "age": "adult", "gender": "male", "clothing": "N/A"},
+                {"name": "Subject Gamma", "age": "adult", "gender": "unknown", "clothing": "N/A"},
+            ],
+        }
+
+        def wardrobe_request(messages, **kwargs):
+            name = messages[-1]["content"].split("SUBJECT\n", 1)[1].split("\n", 1)[0]
+            return {"clothing": f"{name} simple clothes"}
+
+        request = Mock(side_effect=wardrobe_request)
+        with tempfile.TemporaryDirectory() as directory:
+            result = minimax.canonicalize_defined_subject_wardrobes(
+                canon,
+                "A generic story with three Subjects.",
+                "<Subject 1> is Subject Alpha.\n<Subject 2> is Subject Beta.",
+                path=str(Path(directory) / "character_canon.json"),
+                llm_request=request,
+            )
+
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["subject"] for call in request.call_args_list],
+            ["Subject Alpha", "Subject Beta", "Subject Gamma"],
+        )
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["subject_id"] for call in request.call_args_list],
+            [1, 2, None],
+        )
+        self.assertEqual(
+            [record["clothing"] for record in result["characters"]],
+            ["Subject Alpha simple clothes", "Subject Beta simple clothes", "Subject Gamma simple clothes"],
+        )
+        prompt = minimax.build_story_subject_wardrobe_messages(
+            "story", "Subject Gamma"
+        )[0]["content"]
+        self.assertIn("any subject with a humanoid physical form must wear clothing", prompt)
+
+    def test_subject_name_returned_as_clothing_retries_narrowly(self):
+        request = Mock(side_effect=[
+            {"clothing": "Subject Alpha"},
+            {"clothing": "linen shirt and wool trousers"},
+        ])
+        clothing = minimax.extract_subject_canonical_wardrobe(
+            "A generic story.",
+            "Subject Alpha",
+            llm_request=request,
+        )
+        self.assertEqual(clothing, "linen shirt and wool trousers")
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["attempt"] for call in request.call_args_list],
+            [1, 2],
+        )
+
     def test_file_facts_become_json_and_only_missing_core_facts_are_invented(self):
         response = {"characters": [
             {"name": "Amy", "age": "30", "clothing": "tight black tank top and denim jeans",

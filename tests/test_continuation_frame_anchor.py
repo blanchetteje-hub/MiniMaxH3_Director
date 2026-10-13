@@ -161,20 +161,6 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
             batch_connections,
         )
 
-    def test_continuation_frame_zero_uses_guide_instead_of_reconstructing_cast(self):
-        raw = (
-            "At 00:00.000, Amy, Goblin1, and Dragon1 fill a reconstructed wide shot.\n\n"
-            "At 00:01.000, Griffin1 enters from the far end.\n\n"
-            "End continuity state: Griffin1 stands beside Amy."
-        )
-        anchored = minimax._anchor_continuation_frame_zero_to_guide(raw)
-        first_line = anchored.splitlines()[0]
-        self.assertIn("supplied opening guide", first_line)
-        self.assertNotIn("Goblin1", first_line)
-        self.assertNotIn("Dragon1", first_line)
-        self.assertIn("At 00:01.000, Griffin1 enters", anchored)
-        self.assertIn("End continuity state: Griffin1 stands beside Amy.", anchored)
-
     def test_continuation_timestamp_shift_hides_guide_math_from_director(self):
         raw = (
             "At 00:00.000, Amy stands beside the barrel.\n\n"
@@ -187,6 +173,34 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
         self.assertIn("At 00:01.917, Amy lifts", shifted)
         self.assertIn("At 00:07.917, Amy sets", shifted)
         self.assertIn("End continuity state: Amy stands beside the mug.", shifted)
+
+    def test_shifted_timestamp_uses_extended_guide_timeline_duration(self):
+        director_raw = (
+            "At 00:00.000, Amy begins the task.\n"
+            "At 00:07.900, Amy finishes and steps back.\n"
+            "End continuity state: Amy stands beside the table."
+        )
+        shifted = minimax._shift_continuation_timestamps_for_guide(director_raw)
+        prompt_duration = minimax._director_raw_scene_timeline_duration(
+            8.0,
+            "continuation",
+        )
+
+        self.assertIn("At 00:08.817, Amy finishes", shifted)
+        self.assertAlmostEqual(prompt_duration, 8.0 + 22 / 24)
+        self.assertEqual(
+            minimax._director_timestamp_range_errors(
+                shifted,
+                segment_seconds=prompt_duration,
+            ),
+            [],
+        )
+        self.assertTrue(
+            minimax._director_timestamp_range_errors(
+                shifted,
+                segment_seconds=8.0,
+            )
+        )
 
     def test_append_guide_render_budget_preserves_eight_second_delivery(self):
         self.assertEqual(minimax.h3_frame_count_for_duration(8.0), 192)

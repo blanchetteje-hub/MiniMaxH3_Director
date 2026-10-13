@@ -79,6 +79,98 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             )
             self.assertIn("bridge_log_capture_error", payload)
 
+    def test_acceptance_artifacts_are_copied_and_ignored_files_are_published(self):
+        with tempfile.TemporaryDirectory() as temp:
+            repo = Path(temp) / "repo"
+            repo.mkdir()
+            bare_remote = Path(temp) / "remote.git"
+            bridge.run_git(["init", "--bare", str(bare_remote)], repo)
+            bridge.run_git(["init", "-b", "main"], repo)
+            bridge.run_git(["config", "user.name", "Bridge Test"], repo)
+            bridge.run_git(
+                ["config", "user.email", "bridge-test@example.invalid"], repo
+            )
+            (repo / ".gitignore").write_text(
+                "generation_state.json\nprompt_history.txt\nsubjects.txt\n"
+                "story.txt\nexpanded_story.txt\nbeats.txt\nstory_arc.json\n",
+                encoding="utf-8",
+            )
+            bridge.run_git(["add", ".gitignore"], repo)
+            bridge.run_git(["commit", "-m", "Initialize test repository"], repo)
+            bridge.run_git(
+                ["remote", "add", "origin", str(bare_remote)], repo
+            )
+            bridge.run_git(
+                ["push", "--set-upstream", "origin", "main"], repo
+            )
+
+            acceptance_dir = (
+                repo / "tests" / "acceptance" / "results" / "sample-run"
+            )
+            generated_dir = acceptance_dir / "generated"
+            generated_dir.mkdir(parents=True)
+            (acceptance_dir / "acceptance_run.json").write_text(
+                "{}\n", encoding="utf-8"
+            )
+            (acceptance_dir / "run.log").write_text("run log\n", encoding="utf-8")
+            generated_names = (
+                "story_arc.json",
+                "beats.txt",
+                "expanded_story.txt",
+                "character_canon.json",
+                "generation_state.json",
+                "prompt_history.txt",
+                "subjects.txt",
+                "story.txt",
+            )
+            for filename in generated_names:
+                (generated_dir / filename).write_text(
+                    f"{filename}\n", encoding="utf-8"
+                )
+
+            result_dir = repo / "bridge" / "results" / "sample-job"
+            artifacts = bridge.copy_acceptance_artifacts(
+                repo, result_dir, benchmark_stem="sample"
+            )
+            result_dir.mkdir(parents=True, exist_ok=True)
+            (result_dir / "result.json").write_text(
+                json.dumps({"process": {"artifacts": artifacts}}) + "\n",
+                encoding="utf-8",
+            )
+            copied_paths = {
+                value for value in artifacts.values()
+                if value.startswith("files/")
+            }
+            self.assertEqual(
+                {Path(path).name for path in copied_paths},
+                {
+                    "acceptance_run.json",
+                    "run.log",
+                    *generated_names,
+                },
+            )
+            self.assertTrue(
+                all((result_dir / path).is_file() for path in copied_paths)
+            )
+
+            bridge.commit_result(repo, "main", result_dir, "sample-job")
+            committed_paths = set(
+                bridge.run_git(
+                    ["ls-tree", "-r", "--name-only", "HEAD"], repo
+                ).stdout.splitlines()
+            )
+            self.assertTrue(
+                all(
+                    (result_dir / path).relative_to(repo).as_posix()
+                    in committed_paths
+                    for path in copied_paths
+                )
+            )
+            self.assertIn(
+                (result_dir / "result.json").relative_to(repo).as_posix(),
+                committed_paths,
+            )
+
 
     def test_acceptance_rejects_unsupported_model(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -99,7 +191,7 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
     @mock.patch.object(bridge, "run_local_process")
     @mock.patch.object(bridge, "ensure_exec_worktree")
     @mock.patch.object(bridge, "safe_source_path")
-    def test_acceptance_allows_qwen_model(
+    def test_acceptance_allows_qwen_model_on_auto_pilot_branch(
         self, safe_source_path, ensure_worktree, run_process, _copy, _stop, _start
     ):
         with tempfile.TemporaryDirectory() as temp:
@@ -120,7 +212,7 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             bridge.execute_acceptance(
                 {
                     "job_id": "qwen-model",
-                    "code_branch": "gpt-arc-refresh",
+                    "code_branch": "world-state-rebuild-auto-pilot",
                     "model": "qwen",
                 },
                 root,
@@ -129,10 +221,83 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             command = run_process.call_args.args[0]
             self.assertIn("--model", command)
             self.assertEqual(command[command.index("--model") + 1], "qwen")
+            self.assertEqual(
+                bridge.ACCEPTANCE_EXPERIMENT_BRANCHES,
+                frozenset(
+                    {"world-state-rebuild", "world-state-rebuild-auto-pilot"}
+                ),
+            )
+
+    @mock.patch.object(bridge, "start_lmstudio_developer_log", return_value={})
+    @mock.patch.object(bridge, "stop_lmstudio_developer_log", return_value={})
+    @mock.patch.object(bridge, "copy_acceptance_artifacts", return_value={})
+    @mock.patch.object(bridge, "run_local_process")
+    @mock.patch.object(bridge, "ensure_exec_worktree")
+    def test_acceptance_director_plan_dir_requires_fixture_and_forwards_path(
+        self, ensure_worktree, run_process, _copy, _stop, _start
+    ):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "amy.jpg").write_bytes(b"image")
+            ensure_worktree.return_value = root
+            run_process.return_value = {"returncode": 0}
+
+            plan_dir = (
+                root / "tests" / "acceptance" / "fixtures" / "tavern_run21_plan"
+            )
+            plan_dir.mkdir(parents=True)
+            (plan_dir / "story_arc.json").write_text("{}\n", encoding="utf-8")
+            (plan_dir / "beats.txt").write_text("Beat 1\n", encoding="utf-8")
+            (plan_dir / "expanded_story.txt").write_text(
+                "The saved expanded story.\n", encoding="utf-8"
+            )
+
+            job = {
+                "job_id": "director-plan-fixture",
+                "code_branch": bridge.ACCEPTANCE_CODE_BRANCH,
+                "model": "gpt",
+                "director_plan_dir": "tests/acceptance/fixtures/tavern_run21_plan",
+            }
+            bridge.execute_acceptance(job, root, root / "result")
+            command = run_process.call_args.args[0]
+            self.assertIn("--director-plan-dir", command)
+            self.assertEqual(
+                command[command.index("--director-plan-dir") + 1],
+                str(plan_dir.resolve()),
+            )
+
+            outside_dir = root / "tests" / "acceptance" / "gold" / "plan"
+            outside_dir.mkdir(parents=True)
+            (outside_dir / "story_arc.json").write_text("{}\n", encoding="utf-8")
+            (outside_dir / "beats.txt").write_text("Beat 1\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "under tests/acceptance/fixtures"):
+                bridge.execute_acceptance(
+                    {**job, "director_plan_dir": "tests/acceptance/gold/plan"},
+                    root,
+                    root / "result",
+                )
+
+            incomplete_dir = (
+                root / "tests" / "acceptance" / "fixtures" / "incomplete_plan"
+            )
+            incomplete_dir.mkdir()
+            (incomplete_dir / "story_arc.json").write_text("{}\n", encoding="utf-8")
+            (incomplete_dir / "beats.txt").write_text("Beat 1\n", encoding="utf-8")
+            with self.assertRaisesRegex(FileNotFoundError, "expanded_story.txt"):
+                bridge.execute_acceptance(
+                    {
+                        **job,
+                        "director_plan_dir": (
+                            "tests/acceptance/fixtures/incomplete_plan"
+                        ),
+                    },
+                    root,
+                    root / "result",
+                )
 
     def test_acceptance_rejects_nonbaseline_branch(self):
         with tempfile.TemporaryDirectory() as temp:
-            with self.assertRaisesRegex(ValueError, "must run on 'gpt-arc-refresh'"):
+            with self.assertRaisesRegex(ValueError, "approved code branch"):
                 bridge.execute_acceptance(
                     {
                         "job_id": "bad-branch",

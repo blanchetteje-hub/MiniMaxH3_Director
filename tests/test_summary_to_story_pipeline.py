@@ -7,24 +7,22 @@ import minimax
 
 
 class SummaryToStoryPipelineTests(unittest.TestCase):
-    def test_story_pipeline_profiles_match_tuned_settings(self):
-        self.assertEqual(
-            minimax.STORY_EXPANSION_LLM_PARAMETERS["temperature"],
-            0.4,
+    def test_story_pipeline_uses_standard_profiles_and_large_request_budgets(self):
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["story_expansion"],
+            minimax.SMART_CREATIVE_LLM_SETTINGS,
         )
-        self.assertEqual(minimax.STORY_EXPANSION_REASONING_EFFORT, "high")
-        self.assertEqual(
-            minimax.STORY_EXPANSION_REASONING_BUDGET_TOKENS,
-            1024,
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["story_to_beats"],
+            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
         )
         self.assertEqual(
-            minimax.STORY_TO_BEATS_LLM_PARAMETERS["temperature"],
-            0,
+            minimax.LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS["story_expansion"],
+            minimax.STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
         )
-        self.assertEqual(minimax.STORY_TO_BEATS_REASONING_EFFORT, "medium")
         self.assertEqual(
-            minimax.STORY_TO_BEATS_REASONING_BUDGET_TOKENS,
-            1024,
+            minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["story_expansion"],
+            12000,
         )
 
     def test_story_expansion_prompt_uses_target_runtime_and_source_summary(self):
@@ -93,9 +91,10 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             calls[0][1]["history_metadata"]["purpose"],
             "story_location_extract",
         )
+        self.assertNotIn("context_token_budget", calls[0][1])
         self.assertEqual(
-            calls[0][1]["context_token_budget"],
-            minimax.STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+            minimax.LLM_DEFAULT_CONTEXT_TOKEN_BUDGET,
+            minimax.LLM_CONTEXT_TOKEN_BUDGET,
         )
 
     def test_story_location_parser_strips_sentence_wrapper(self):
@@ -261,10 +260,8 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
                 ["story_expansion", "story_to_beats"],
             )
             for _purpose, kwargs in calls:
-                self.assertEqual(
-                    kwargs["context_token_budget"],
-                    minimax.STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
-                )
+                self.assertNotIn("context_token_budget", kwargs)
+                self.assertNotIn("max_tokens", kwargs)
 
 
 if __name__ == "__main__":

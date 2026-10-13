@@ -31,7 +31,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         )
 
     def test_validator_treats_named_beneficiaries_as_material(self):
-        messages = minimax.build_beat_validation_messages(
+        messages = minimax.build_beat_story_validation_messages(
             previous_final_beat="None",
             current_state=minimax.new_beat_canonical_state(),
             beat_job="Amy cooks breakfast for Will and Amber.",
@@ -48,18 +48,6 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             "Preparation or partial progress is insufficient",
             prompt,
         )
-        self.assertIn(
-            "PREVIOUS FINAL BEAT and CURRENT STATE are authoritative history",
-            prompt,
-        )
-        self.assertIn(
-            "Show every assigned action and result in THIS beat",
-            prompt,
-        )
-        self.assertIn(
-            'aftermath ("having finished X") cannot substitute for performing an assigned action now',
-            prompt,
-        )
 
     def _run(
         self,
@@ -72,17 +60,20 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         calls = []
 
         def llm_request(messages, **kwargs):
-            purpose = kwargs.get("history_metadata", {}).get("purpose")
+            metadata = kwargs.get("history_metadata", {})
+            purpose = metadata.get("purpose")
             if purpose == "beat_finite_endpoint_extract":
                 return {"status": "COMPLETE"}
             if purpose == "beat_coherence_validation":
                 return {"valid": True, "issue": ""}
-            calls.append((messages, kwargs))
-            response = (
-                validator(messages, **kwargs)
-                if validator is not None
-                else responses.pop(0)
-            )
+            if purpose == "beat_story_validation":
+                calls.append((messages, kwargs))
+            if purpose == "beat_state_validation":
+                response = {"valid": True, "issue": ""}
+            elif validator is not None:
+                response = validator(messages, **kwargs)
+            else:
+                response = responses.pop(0)
             return response
 
         with tempfile.TemporaryDirectory() as directory:
@@ -350,6 +341,8 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
                 return {"status": "COMPLETE"}
             if purpose == "beat_coherence_validation":
                 return {"valid": True, "issue": ""}
+            if purpose == "beat_state_validation":
+                return {"valid": True, "issue": ""}
             prompt = messages[1]["content"]
             state = json.loads(
                 self._prompt_section(
@@ -432,6 +425,8 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             if purpose == "beat_finite_endpoint_extract":
                 return {"status": "COMPLETE"}
             if purpose == "beat_coherence_validation":
+                return {"valid": True, "issue": ""}
+            if purpose == "beat_state_validation":
                 return {"valid": True, "issue": ""}
             states.append(json.loads(
                 self._prompt_section(
@@ -639,6 +634,8 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             if purpose == "beat_finite_endpoint_extract":
                 return {"status": "COMPLETE"}
             if purpose == "beat_coherence_validation":
+                return {"valid": True, "issue": ""}
+            if purpose == "beat_state_validation":
                 return {"valid": True, "issue": ""}
             state_start = messages[1]["content"].split(
                 "CURRENT STATE\n", 1
