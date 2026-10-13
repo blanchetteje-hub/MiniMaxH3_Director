@@ -206,6 +206,47 @@ def test_director_raw_scene_retry_budget_is_five():
     assert minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS == 5
 
 
+def test_state_action_integrity_accepts_unchanged_camera_stripped_raw_and_empty_batch():
+    accepted_raw = (
+        "At 00:00.000, [CAMERA: slow pan] Amy moves toward the counter.\n"
+        "End continuity state: Amy stands by the counter."
+    )
+    state_action_input = minimax._director_strip_camera_instructions(accepted_raw)
+    result = {
+        "accepted": True,
+        "raw_scene": state_action_input,
+        "state_actions": [],
+    }
+
+    assert state_action_input == (
+        "At 00:00.000, Amy moves toward the counter.\n"
+        "End continuity state: Amy stands by the counter."
+    )
+    minimax._assert_state_action_raw_unchanged(state_action_input, result, 1)
+
+
+@pytest.mark.parametrize(
+    "changed_raw",
+    [
+        "At 00:01.000, Amy moves toward the counter.\nEnd continuity state: Amy stands by the counter.",
+        "At 00:00.000, Amy waits at the counter.\nEnd continuity state: Amy stands by the counter.",
+    ],
+    ids=["changed-timestamp", "changed-action"],
+)
+def test_state_action_integrity_rejects_actual_raw_mutations(changed_raw):
+    expected_raw = (
+        "At 00:00.000, Amy moves toward the counter.\n"
+        "End continuity state: Amy stands by the counter."
+    )
+    result = {"accepted": True, "raw_scene": changed_raw, "state_actions": []}
+
+    with pytest.raises(
+        minimax.StateActionExtractionError,
+        match="StateAction extraction changed the accepted RAW",
+    ):
+        minimax._assert_state_action_raw_unchanged(expected_raw, result, 1)
+
+
 @pytest.mark.parametrize("count, render_enabled", [(1, False), (5, False), (1, True)])
 def test_prompts_are_saved_automatically_before_rendering(count, render_enabled):
     args = _args(segment_length=8.0, total_segments=count, total_length=999.0,

@@ -22329,6 +22329,21 @@ def _director_strip_camera_instructions(raw_scene):
     return "\n".join(result)
 
 
+def _assert_state_action_raw_unchanged(
+    expected_raw_scene,
+    state_action_result,
+    segment,
+):
+    """Require StateAction extraction to echo its exact immutable RAW input."""
+    if (
+        not isinstance(state_action_result, dict)
+        or state_action_result.get("raw_scene") != expected_raw_scene
+    ):
+        raise StateActionExtractionError(
+            f"Segment {segment} StateAction extraction changed the accepted RAW."
+        )
+
+
 def _director_timestamp_range_errors(value, segment_seconds=None):
     """Return malformed/out-of-range Director timestamp errors."""
     errors = []
@@ -41462,10 +41477,13 @@ def _run_main(
                 f"Segment {segment} has no immutable opening WorldState for "
                 "StateAction extraction."
             )
+        state_action_raw_scene = _director_strip_camera_instructions(
+            resolved_raw_scene
+        )
         try:
             state_action_result = extract_and_dry_run_director_state_actions(
                 opening_world_state,
-                _director_strip_camera_instructions(resolved_raw_scene),
+                state_action_raw_scene,
                 segment_number=segment,
                 run_id=run_id,
                 run_config=run_config,
@@ -41482,10 +41500,11 @@ def _run_main(
                 f"Director StateAction extraction failed for Segment {segment}: "
                 f"{error}"
             ) from error
-        if state_action_result.get("raw_scene") != resolved_raw_scene:
-            raise StateActionExtractionError(
-                f"Segment {segment} StateAction extraction changed the accepted RAW."
-            )
+        _assert_state_action_raw_unchanged(
+            state_action_raw_scene,
+            state_action_result,
+            segment,
+        )
         request1_result["state_actions"] = copy.deepcopy(
             state_action_result["state_actions"]
         )

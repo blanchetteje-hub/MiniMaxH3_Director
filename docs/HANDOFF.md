@@ -1,5 +1,29 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — StateAction RAW integrity representation match
+
+- Job #46 reached StateAction extraction with a camera-refined accepted RAW.
+  The caller correctly removed `[CAMERA: ...]` annotations before passing RAW
+  to `director_state_actions`, whose result preserves its exact input. The
+  integrity guard then incorrectly compared that camera-stripped value with
+  the camera-tagged Subject-resolver output, causing a false failure even for
+  `{"state_actions": []}`. No StateAction-stage RAW mutation occurred. Job #46
+  artifacts were not available in this checkout, so the failure was reproduced
+  with a focused camera-tagged fixture.
+- The caller now names the exact camera-stripped StateAction input and verifies
+  the extractor's returned RAW against that same value. The check remains exact:
+  changing action text or timestamps still raises `StateActionExtractionError`.
+  Empty StateAction batches remain valid. No prompt, schema, or extraction
+  behavior changed.
+- Added focused regressions for unchanged camera-stripped RAW with an empty
+  batch, changed timestamp, and changed action text.
+- Verification: StateAction-focused regressions — 5 passed; split RAW pipeline —
+  12 passed; `python -m py_compile minimax.py
+  tests/test_prompt_generation_mode.py tests/test_director_retry.py` and
+  `git diff --check` passed. A broader combined run was interrupted during a
+  slow prompt-generation test after 11 tests had passed; the focused affected
+  tests completed successfully.
+
 ## 2026-10-12 — RAW validation before timing and camera refinement
 
 - Reordered RAW content validation so `director_raw_scene_physical` and

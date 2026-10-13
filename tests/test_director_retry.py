@@ -510,7 +510,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_transient_surface_wiping_accepts_empty_state_action_batch(self):
         world_state, _location_id, _mug_id = goblin_mug_world_state()
         opening = copy.deepcopy(world_state)
-        raw_scene = "At 00:00.000, Amy wipes the counter with a cloth."
+        accepted_raw = (
+            "At 00:00.000, [CAMERA: slow pan] Amy wipes the counter with a cloth."
+        )
+        raw_scene = minimax._director_strip_camera_instructions(accepted_raw)
         request = mock.Mock(return_value={"state_actions": []})
         with (
             mock.patch("minimax.ask_llm", request),
@@ -523,6 +526,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
         self.assertTrue(result["accepted"])
         self.assertEqual(result["state_actions"], [])
+        self.assertEqual(result["raw_scene"], raw_scene)
+        minimax._assert_state_action_raw_unchanged(raw_scene, result, 1)
         self.assertEqual(world_state, opening)
         self.assertEqual(request.call_count, 1)
         system_prompt = request.call_args.args[0][0]["content"]
