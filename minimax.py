@@ -1229,13 +1229,19 @@ RETURN
 Sentences of actions that occur in the scene separated by new lines.
 """
 
-ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE = """Assign a start timestamp to each numbered action in RAW SCENE for a {segment_length}-second video.
+ADD_SCENE_TIMING_REFINER_SYSTEM_TEMPLATE = """Assign a start timestamp to each numbered action in RAW SCENE for a 8-second video.
 
 Use realistic timing based on the actions. Preserve action order. Do not assign physically impossible durations.
 
 If all actions cannot reasonably fit, return not_enough_time.
 
-Return only JSON with status and timestamps.
+Return the following JSON:
+{{
+  "status": "ok|not_enough_time",
+  "timestamps": ["00:00.000", "00:01.000", "00:03.000"]
+}}
+- timestamps: Array of start times in MM:SS.mmm format, one per numbered action, in the same order. Include only timestamps, not action numbers or labels.
+- If status is "not_enough_time", return an empty timestamps array.
 """
 
 ADD_CAMERA_REFINER_SYSTEM = """Add camera movements to TIMED SCENE.

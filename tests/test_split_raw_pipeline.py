@@ -58,6 +58,28 @@ def _timing_response_from_scene(timed_scene):
 
 
 class SplitRawDirectorPipelineTests(unittest.TestCase):
+    def test_timing_refiner_system_prompt_uses_requested_eight_second_contract(self):
+        messages = minimax.build_add_scene_timing_refiner_messages(
+            "Amy opens the door.", 8
+        )
+        self.assertEqual(
+            messages[0]["content"],
+            """Assign a start timestamp to each numbered action in RAW SCENE for a 8-second video.
+
+Use realistic timing based on the actions. Preserve action order. Do not assign physically impossible durations.
+
+If all actions cannot reasonably fit, return not_enough_time.
+
+Return the following JSON:
+{
+  \"status\": \"ok|not_enough_time\",
+  \"timestamps\": [\"00:00.000\", \"00:01.000\", \"00:03.000\"]
+}
+- timestamps: Array of start times in MM:SS.mmm format, one per numbered action, in the same order. Include only timestamps, not action numbers or labels.
+- If status is \"not_enough_time\", return an empty timestamps array.
+""",
+        )
+
     def _run_pipeline(
         self,
         beat,

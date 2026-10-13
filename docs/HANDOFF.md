@@ -1,5 +1,15 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — specify the timing-refiner 8-second JSON contract
+
+- Updated only the `add_scene_timing_refiner` system prompt to specify an
+  8-second video and the requested JSON shape, timestamp-array semantics, and
+  `not_enough_time` empty-array behavior. The Python response schema and timing
+  validation remain unchanged.
+- Added an exact rendered-prompt regression and updated the active prompt
+  catalog. Verification: `pytest -q tests/test_split_raw_pipeline.py` — 16
+  passed, 3 subtests passed; `py_compile` and `git diff --check` passed.
+
 ## 2026-10-12 — allow supported pours through unknown WorldState details
 
 - The Job 50 result artifacts were not present in this checkout; the latest
