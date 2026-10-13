@@ -1801,6 +1801,38 @@ class WorldStateReducerTests(unittest.TestCase):
         self.assertEqual(subject["presence"], "present")
         self.assertEqual(subject["support_id"], "prop_support_b")
 
+    def test_same_location_move_is_accepted_without_inventing_position(self):
+        state = make_reducer_state()
+        state["subjects"]["subject_1"]["support_id"] = "prop_support_a"
+        validate_world_state(state)
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "within-room", "move", subject_id="subject_1",
+                destination_location_id="location_a",
+            )],
+            segment_number=2,
+        )
+        self.assertTrue(result.committed)
+        self.assertEqual(result.outcomes[0].code, "no_change")
+        self.assertEqual(result.world_state, state)
+
+    def test_same_location_move_can_record_explicit_support_change(self):
+        state = make_reducer_state()
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "same-room-support", "move", subject_id="subject_1",
+                destination_location_id="location_a", support_id="prop_support_a",
+            )],
+            segment_number=2,
+        )
+        self.assertTrue(result.committed)
+        self.assertEqual(
+            result.world_state["subjects"]["subject_1"]["support_id"],
+            "prop_support_a",
+        )
+
     def test_set_support_null_leaves_support(self):
         state = make_reducer_state()
         state["subjects"]["subject_1"]["support_id"] = "prop_support_a"

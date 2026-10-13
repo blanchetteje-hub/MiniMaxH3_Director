@@ -1532,16 +1532,22 @@ def _apply_state_action(
         subject = _require_present_subject(state, subject_id)
         destination_id = action["destination_location_id"]
         _require_record(state["locations"], destination_id, "location")
-        if destination_id == subject["location_id"]:
-            _reject("movement_not_representable", "Movement within one registered location has no distinct position field.")
         new_support = action.get("support_id")
         if new_support is not None:
             _require_support(state, new_support, destination_id)
-        subject["location_id"] = destination_id
-        # A move never changes presence. Support is cleared unless the action
-        # explicitly names a registered support at the destination.
-        subject["support_id"] = new_support
-        changed.extend(((subject, "location_id"), (subject, "support_id")))
+        if destination_id == subject["location_id"]:
+            # Intra-location choreography has no finer position field. Accept
+            # it as a no-op unless RAW explicitly establishes a support change.
+            if "support_id" not in action:
+                return
+            subject["support_id"] = new_support
+            changed.append((subject, "support_id"))
+        else:
+            subject["location_id"] = destination_id
+            # A location-changing move clears support unless the action
+            # explicitly establishes a new support at the destination.
+            subject["support_id"] = new_support
+            changed.extend(((subject, "location_id"), (subject, "support_id")))
 
     elif op == "set_support":
         subject_id = action["subject_id"]

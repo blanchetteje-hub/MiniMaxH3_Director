@@ -15,17 +15,19 @@
 - Explicitly empty matching source contents, an explicitly non-container
   destination, and a known location mismatch still reject the batch atomically.
   Other known source contents are preserved while the RAW-established substance
-  is added. No validator, retry, state
-  representation, or runtime prompt changed. The existing StateAction prompt
+  is added. Same-location movement is accepted as a no-op when it provides no
+  persistent position change; an explicitly supplied support change is still
+  reduced. No validators, retries, state representation, or runtime prompts
+  changed. The existing StateAction prompt
   could be clarified to say that unknown opening facts are missing information
   and explicit validated RAW actions may establish them; that prompt edit needs
   separate approval.
 - Verification: `tests/test_director_retry.py` — 128 passed, 7 subtests;
   `tests/test_world_state_foundation.py` excluding two unrelated stale
-  story-start expectations — 73 passed, 11 subtests. The full foundation file
+  story-start expectations — 75 passed, 11 subtests. The full foundation file
   still reports those two pre-existing failures (`classification`/`evidence`
-  fixture shape and obsolete prompt wording). Focused pour regressions — 7
-  passed. `py_compile` and `git diff --check` passed.
+  fixture shape and obsolete prompt wording). Focused pour/movement reducer
+  regressions — 9 passed. `py_compile` and `git diff --check` passed.
 
 ## 2026-10-12 — rename timing-validator prompt purpose
 
