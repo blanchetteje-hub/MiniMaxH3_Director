@@ -542,7 +542,7 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "director_state_actions_repair": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_physical": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_prop_state": SMART_EXTRACTOR_LLM_SETTINGS,
-    "director_raw_scene_timing": SMART_EXTRACTOR_LLM_SETTINGS,
+    "validate_timing_valid": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_pronoun_resolution": EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_visible_subject_resolution": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_h3_soundscape": CREATIVE_LLM_SETTINGS,
@@ -611,7 +611,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "director_raw_scene_coherence": 2048,
     "director_raw_scene_physical": 3072,
     "director_raw_scene_prop_state": 2048,
-    "director_raw_scene_timing": 2048,
+    "validate_timing_valid": 2048,
     "director_raw_scene_pronoun_resolution": 2048,
     "director_raw_scene_visible_subject_resolution": 3172,
     "final_h3_action_preservation": 2048,
@@ -10796,7 +10796,7 @@ def ask_llm(
         "director_raw_scene_repair",
         "director_raw_scene_physical",
         "director_raw_scene_prop_state",
-        "director_raw_scene_timing",
+        "validate_timing_valid",
         "director_h3_formatter",
         "director_raw_scene_subject_resolution",
         "continuity_combined_reduced_state",
@@ -38201,7 +38201,7 @@ def validate_director_raw_scene_timing(
         parse_json_response=False,
         history_metadata={
             **dict(history_metadata or {}),
-            "purpose": "director_raw_scene_timing",
+            "purpose": "validate_timing_valid",
         },
     )
     return parse_beat_validation_result(result)

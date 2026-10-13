@@ -1,5 +1,15 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — rename timing-validator prompt purpose
+
+- Renamed the `director_raw_scene_timing` LLM purpose to
+  `validate_timing_valid` in purpose routing, output-token routing, response
+  history selection, and request metadata. The validator/helper function names,
+  prompt text, schema, profile, and 2048-token output limit are unchanged.
+- Updated the active prompt catalog and purpose-routing regression. Verification:
+  `pytest -q tests/test_dynamic_temperature.py` — 65 passed; `py_compile` and
+  `git diff --check` passed.
+
 ## 2026-10-12 — increase physical-validator output budget
 
 - Raised the per-purpose maximum output tokens for
@@ -131,9 +141,9 @@
 - Reordered RAW content validation so `director_raw_scene_physical` and
   `director_raw_scene_prop_state` each validate/repair/revalidate the untimed
   creative scene before `add_scene_timing_refiner`. Timestamp assignment is
-  followed by `director_raw_scene_timing`; an infeasible result regenerates
-  creative RAW with its issue as feedback under the existing Director attempt
-  bound. It does not rewrite the accepted actions.
+  followed by the `validate_timing_valid` purpose; an infeasible result
+  regenerates creative RAW with its issue as feedback under the existing
+  Director attempt bound. It does not rewrite the accepted actions.
 - The final camera-refined scene runs deterministic shot-script and dialogue
   checks. Physical and prop/state LLM validators are not repeated because the
   timing and camera refiners already have deterministic action-preservation

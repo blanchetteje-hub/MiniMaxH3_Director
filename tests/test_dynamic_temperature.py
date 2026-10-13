@@ -60,7 +60,7 @@ EXPECTED_PROFILE_PURPOSES = {
         "beat_instruction_review",
         "director_raw_scene_physical",
         "director_raw_scene_prop_state",
-        "director_raw_scene_timing",
+        "validate_timing_valid",
         "add_scene_timing_refiner",
         "director_raw_scene_visible_subject_resolution",
         "director_raw_scene_coherence",
@@ -200,11 +200,29 @@ def test_request_context_and_output_budgets_are_independent_of_profiles():
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_h3_music"] == 512
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["source_unit_state_effects"] == 2048
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_raw_scene_physical"] == 3072
+    assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["validate_timing_valid"] == 2048
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS[
         "director_raw_scene_visible_subject_resolution"
     ] == 3172
     assert minimax.LLM_DEFAULT_MAX_OUTPUT_TOKENS == 2048
     assert 1024 not in minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS.values()
+
+
+def test_timing_validator_uses_renamed_purpose():
+    captured = {}
+
+    def fake_request(messages, **kwargs):
+        captured["messages"] = messages
+        captured["kwargs"] = kwargs
+        return '{"valid":true,"issue":""}'
+
+    result = minimax.validate_director_raw_scene_timing(
+        "At 00:00.000, Subject One moves.",
+        llm_request=fake_request,
+    )
+
+    assert result == {"valid": True, "issue": ""}
+    assert captured["kwargs"]["history_metadata"]["purpose"] == "validate_timing_valid"
 
     response = mock.Mock()
     response.raise_for_status.return_value = None
