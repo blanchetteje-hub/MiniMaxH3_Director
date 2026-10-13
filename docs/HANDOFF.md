@@ -1,5 +1,23 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Approved StateAction prompt simplification
+
+- Updated the shared `director_state_actions` / `director_state_actions_repair`
+  system-prompt contract to record explicit persistent changes that affect
+  visual continuity or later actions, including handoffs, entrances, exits,
+  and mechanism changes. It now asks for RAW-grounded transfer/retrieval
+  sources and destinations, prohibits invented changes, and explicitly allows
+  an empty batch when no persistent change is established. The existing
+  opening-state, clothing-change, retrieval-origin, exact-entity, and reducer
+  constraints remain in place.
+- Left `director_raw_scene_physical` unchanged as requested; no new support
+  wording was added.
+- Updated the prompt inventory and regressions for both extraction and repair
+  system prompts. Verification: focused StateAction prompt/empty-batch tests,
+  WorldState reducer tests, `py_compile`, and `git diff --check` passed.
+- Committed and pushed only to `director-split-refine`; no additional push to
+  `main` was made.
+
 ## 2026-10-13 — Job 57 support staging and StateAction grounding
 
 - No Job 57 result bundle was available in this checkout, so the specific RAW

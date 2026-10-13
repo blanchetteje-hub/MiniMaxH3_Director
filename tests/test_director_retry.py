@@ -489,8 +489,17 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             self.assertIn("Do not infer or invent a transfer, pour, consumption", system_prompt)
             self.assertIn("Treat the opening WorldState as the baseline.", system_prompt)
             self.assertIn("A clothing or accessory description alone does not establish a clothing change", system_prompt)
-            self.assertIn("Review the entire RAW from beginning to end", system_prompt)
-            self.assertIn("include every explicit persistent change", system_prompt)
+            self.assertIn(
+                "Record explicit persistent changes that affect visual continuity or later actions, "
+                "including handoffs, entrances, exits, and mechanism changes.",
+                system_prompt,
+            )
+            self.assertIn(
+                "Use the actual source and destination of transfers and retrievals shown in RAW.",
+                system_prompt,
+            )
+            self.assertIn("Return an empty array when no persistent changes are established.", system_prompt)
+            self.assertNotIn("include every explicit persistent change", system_prompt)
             self.assertIn("PERMITTED STATEACTION OBJECT STRUCTURES", system_prompt)
             self.assertIn(operation_shapes, system_prompt)
             self.assertIn('"op": "pickup"', system_prompt)
