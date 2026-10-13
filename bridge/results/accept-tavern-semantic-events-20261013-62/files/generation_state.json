@@ -1,0 +1,1690 @@
+{
+  "version": 1,
+  "config": {
+    "segment_length": 8.0,
+    "total_length": 48.0,
+    "megapixels": 0.5,
+    "total_segments": 6,
+    "refresh_interval": 999999,
+    "vision_continuity": 0,
+    "trim_frames": 2,
+    "retention": false,
+    "test_prompt_generation": true,
+    "no_music": false,
+    "disable_subject_removal": false,
+    "visual_style": "Live-action cinematic",
+    "source_sha256": "9e51296d027a367ddc30d0432cea2b8abdb7f113e17195b5eb1a1dc13d4c820b",
+    "world_state_seed": {
+      "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-msy13tx7\\repo\\subjects.txt",
+      "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+      "subjects": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null,
+          "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+          "physical_form": "unknown"
+        }
+      }
+    }
+  },
+  "segments": [],
+  "recent_dialogues": [],
+  "recent_dialogue_exclusions": [],
+  "continuity_prompt_state": {},
+  "continuity_state": {},
+  "continuity_summary": "",
+  "visual_raw_end_state": {},
+  "visual_end_state": {},
+  "visual_end_frame_paths": [],
+  "prop_ledger": {},
+  "location_state": {
+    "location": {
+      "name": "Medieval Tavern"
+    },
+    "anchors": [
+      {
+        "name": "back door",
+        "type": "door",
+        "wall": "south",
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      }
+    ],
+    "objects": [
+      {
+        "name": "central hearth",
+        "type": "stone fireplace",
+        "near": [
+          "counter"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "counter adjacent to the hearth",
+        "type": "wooden counter",
+        "near": [
+          "central hearth",
+          "bar area table"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "high bar stool for larger patrons",
+        "type": "bar stool",
+        "position": {
+          "x": "5 ft",
+          "y": "35 ft"
+        },
+        "near": [
+          "counter adjacent to the hearth"
+        ],
+        "world_state_role": "fixture",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table behind bar area",
+        "type": "wooden table",
+        "position": {
+          "x": "5 ft",
+          "y": "33 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "4 ft"
+        },
+        "near": [
+          "counter adjacent to the hearth"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "barrel beside the hearth on its east side",
+        "type": "wooden barrel",
+        "position": {
+          "x": "26–29 ft",
+          "y": "30 ft"
+        },
+        "size": {
+          "height": "8 ft",
+          "diameter": "3 ft"
+        },
+        "near": [
+          "central hearth"
+        ],
+        "world_state_role": "untracked",
+        "mobility": "unknown"
+      },
+      {
+        "name": "polished table along east wall at y=10 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "32–38 ft",
+          "y": "10 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "east wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along east wall at y=20 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "32–38 ft",
+          "y": "20 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "east wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along east wall at y=30 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "32–38 ft",
+          "y": "30 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "east wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along east wall at y=40 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "32–38 ft",
+          "y": "40 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "east wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along east wall at y=50 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "32–38 ft",
+          "y": "50 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "east wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along west wall at y=12 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "4–10 ft",
+          "y": "12 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "west wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along west wall at y=24 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "4–10 ft",
+          "y": "24 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "west wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along west wall at y=36 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "4–10 ft",
+          "y": "36 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "west wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along west wall at y=48 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "4–10 ft",
+          "y": "48 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "west wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along west wall at y=60 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "4–10 ft",
+          "y": "60 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "west wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "polished table along north wall at y=58 ft",
+        "type": "wooden table",
+        "position": {
+          "x": "15–25 ft",
+          "y": "58 ft"
+        },
+        "size": {
+          "length": "6 ft",
+          "width": "2 ft"
+        },
+        "near": [
+          "north wall"
+        ],
+        "world_state_role": "support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above east wall table at y=10 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "35 ft",
+          "y": "17 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along east wall at y=10 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above east wall table at y=20 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "35 ft",
+          "y": "27 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along east wall at y=20 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above east wall table at y=30 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "35 ft",
+          "y": "37 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along east wall at y=30 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above east wall table at y=40 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "35 ft",
+          "y": "47 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along east wall at y=40 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above east wall table at y=50 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "35 ft",
+          "y": "57 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along east wall at y=50 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above west wall table at y=12 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "7 ft",
+          "y": "19 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along west wall at y=12 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above west wall table at y=24 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "7 ft",
+          "y": "31 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along west wall at y=24 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above west wall table at y=36 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "7 ft",
+          "y": "43 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along west wall at y=36 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above west wall table at y=48 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "7 ft",
+          "y": "55 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along west wall at y=48 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above west wall table at y=60 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "7 ft",
+          "y": "67 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along west wall at y=60 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      },
+      {
+        "name": "lantern above north wall table at y=58 ft",
+        "type": "wooden lantern",
+        "position": {
+          "x": "20 ft",
+          "y": "65 ft"
+        },
+        "height_above_floor": "7 ft",
+        "near": [
+          "polished table along north wall at y=58 ft"
+        ],
+        "world_state_role": "fixture_support",
+        "mobility": "fixed"
+      }
+    ]
+  },
+  "subject_state_ledger": {},
+  "character_reference_images": {},
+  "base_reference_image_count": 1,
+  "reference_binding_state": {
+    "version": 1,
+    "disable_subject_removal": false,
+    "subject_removal_window_segments": 3,
+    "current_segment_number": null,
+    "current_bindings": [],
+    "current_active_subject_ids": [],
+    "current_explicit_subject_ids": [],
+    "current_removed_subject_ids": [],
+    "current_excluded_configured_picture_ids": [],
+    "subjects": {}
+  },
+  "subject_registry_state": {
+    "version": 5,
+    "environment": {
+      "location": "N/A",
+      "persistent_state": "N/A"
+    },
+    "camera": "N/A",
+    "ongoing_action": "N/A",
+    "ongoing_audio": "N/A",
+    "subjects": {
+      "Amy": {
+        "name": "Amy",
+        "id": "Subject 1",
+        "speaker_id": "(S1)",
+        "subject_id": 1,
+        "gender": "female",
+        "picture_ids": [
+          1
+        ],
+        "picture_id": 1,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "canonical_description": "",
+        "position": "N/A",
+        "pose_action": "N/A",
+        "wardrobe": {
+          "upper": "N/A",
+          "lower": "N/A",
+          "footwear": "N/A",
+          "other": "N/A"
+        },
+        "topology": "N/A",
+        "body_state": "N/A",
+        "physical_condition": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "spatial_relationships": [],
+        "persistent_effects": [],
+        "held_props": []
+      },
+      "Dragon-shaped creature": {
+        "name": "Dragon-shaped creature",
+        "id": "Subject 75843344593765",
+        "speaker_id": "(S75843344593765)",
+        "subject_id": 75843344593765,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "canonical_description": "",
+        "position": "N/A",
+        "pose_action": "N/A",
+        "wardrobe": {
+          "upper": "N/A",
+          "lower": "N/A",
+          "footwear": "N/A",
+          "other": "N/A"
+        },
+        "topology": "N/A",
+        "body_state": "N/A",
+        "physical_condition": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "spatial_relationships": [],
+        "persistent_effects": [],
+        "held_props": []
+      },
+      "Elf": {
+        "name": "Elf",
+        "id": "Subject 243430124958720",
+        "speaker_id": "(S243430124958720)",
+        "subject_id": 243430124958720,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "canonical_description": "",
+        "position": "N/A",
+        "pose_action": "N/A",
+        "wardrobe": {
+          "upper": "N/A",
+          "lower": "N/A",
+          "footwear": "N/A",
+          "other": "N/A"
+        },
+        "topology": "N/A",
+        "body_state": "N/A",
+        "physical_condition": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "spatial_relationships": [],
+        "persistent_effects": [],
+        "held_props": []
+      },
+      "Goblin": {
+        "name": "Goblin",
+        "id": "Subject 267280715056018",
+        "speaker_id": "(S267280715056018)",
+        "subject_id": 267280715056018,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null,
+        "persistent_structural_change": false,
+        "canonical_description": "",
+        "position": "N/A",
+        "pose_action": "N/A",
+        "wardrobe": {
+          "upper": "N/A",
+          "lower": "N/A",
+          "footwear": "N/A",
+          "other": "N/A"
+        },
+        "topology": "N/A",
+        "body_state": "N/A",
+        "physical_condition": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "spatial_relationships": [],
+        "persistent_effects": [],
+        "held_props": []
+      }
+    }
+  },
+  "world_state": {
+    "schema_version": 1,
+    "revision": 6,
+    "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31",
+    "seed_status": "authoritative_source_seeded",
+    "subjects": {
+      "subject_1": {
+        "id": "subject_1",
+        "subject_id": 1,
+        "name": "Amy",
+        "identity": {
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "canonical_description": "unknown",
+          "source_description": "<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "present",
+        "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314",
+        "support_id": null,
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "Amy wears a rough‑spun brown wool tunic that falls to her knees",
+              "condition": "unknown"
+            },
+            {
+              "garment": "her medieval trade. Tucked under the tunic is a plain white linen undershirt",
+              "condition": "unknown"
+            }
+          ],
+          "lower": [],
+          "footwear": [],
+          "other": [
+            {
+              "garment": "over it she has a dark leather apron scuffed",
+              "condition": "unknown"
+            }
+          ]
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "user_authored_subject_definitions",
+            "source_path": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-msy13tx7\\repo\\subjects.txt",
+            "source_sha256": "a8b39282907b9a385b7b178b68115773a850055d7d9ccd05e74e413b346ead31"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "presence": {
+            "authority": "registered_subject_story_start_classifier",
+            "initial_state": "Amy wipes a polished table with a cloth soaked in ale‑scented oil"
+          }
+        }
+      },
+      "subject_goblin_a0f199af52d0": {
+        "id": "subject_goblin_a0f199af52d0",
+        "subject_id": "subject_goblin_a0f199af52d0",
+        "name": "Goblin",
+        "identity": {
+          "gender": "unknown",
+          "picture_ids": [],
+          "canonical_description": "unknown",
+          "source_description": "unknown",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "present",
+        "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314",
+        "support_id": null,
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "slightly tattered hemp tunic reaching mid‑thigh",
+              "condition": "unknown"
+            }
+          ],
+          "lower": [],
+          "footwear": [
+            {
+              "garment": "ankle‑high brown leather boots",
+              "condition": "unknown"
+            }
+          ],
+          "other": [
+            {
+              "garment": "cinched by a leather belt with an iron buckle",
+              "condition": "worn"
+            },
+            {
+              "garment": "ragged hooded cloak draped over its shoulders. The goblin's tiny hands grasp the chipped mug without gloves",
+              "condition": "unknown"
+            }
+          ]
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "character_canon"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "presence": {
+            "authority": "initial_location_subject_extractor",
+            "initial_state": "present in the opening scene"
+          }
+        }
+      },
+      "subject_elf_a7b4191901e4": {
+        "id": "subject_elf_a7b4191901e4",
+        "subject_id": "subject_elf_a7b4191901e4",
+        "name": "Elf",
+        "identity": {
+          "gender": "female",
+          "picture_ids": [],
+          "canonical_description": "unknown",
+          "source_description": "unknown",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "unknown",
+        "location_id": "unknown",
+        "support_id": "unknown",
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "cream‑colored linen tunic",
+              "condition": "unknown"
+            }
+          ],
+          "lower": [],
+          "footwear": [],
+          "other": []
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "character_canon"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          }
+        }
+      },
+      "subject_dragon_shaped_creature_91990debafe1": {
+        "id": "subject_dragon_shaped_creature_91990debafe1",
+        "subject_id": "subject_dragon_shaped_creature_91990debafe1",
+        "name": "Dragon-shaped creature",
+        "identity": {
+          "gender": "unknown",
+          "picture_ids": [],
+          "canonical_description": "unknown",
+          "source_description": "unknown",
+          "physical_form": "unknown",
+          "clothing_applicability": "unknown"
+        },
+        "presence": "unknown",
+        "location_id": "unknown",
+        "support_id": "unknown",
+        "posture": "unknown",
+        "wardrobe": {
+          "upper": [
+            {
+              "garment": "dragon wears a weather‑ leather tunic that clings to its scaled chest",
+              "condition": "worn"
+            }
+          ],
+          "lower": [],
+          "footwear": [
+            {
+              "garment": "fastened by a bronze brooch shaped like a dragon’s head. On its hind legs are fitted leather boots with soft soles for quiet",
+              "condition": "unknown"
+            }
+          ],
+          "other": [
+            {
+              "garment": "trinkets. Its massive tail is wrapped in a simple forest‑green wool scarf that keeps it warm on the tavern’s wooden floor. Draped over its shoulders is a flowing midnight blue velvet cloak embroidered with silver thread flame motifs",
+              "condition": "unknown"
+            }
+          ]
+        },
+        "persistent_condition": "unknown",
+        "status": "unknown",
+        "provenance": {
+          "identity": {
+            "authority": "character_canon"
+          },
+          "wardrobe.upper": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.lower": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.footwear": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          },
+          "wardrobe.other": {
+            "authority": "dedicated_subject_wardrobe_extractor"
+          }
+        }
+      }
+    },
+    "props": {
+      "prop_location_inside_a_wooden_topped__f4537a2490c7": {
+        "id": "prop_location_inside_a_wooden_topped__f4537a2490c7",
+        "name": "back door",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "anchors",
+            "source_type": "door"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__dd318e475a9e": {
+        "id": "prop_location_inside_a_wooden_topped__dd318e475a9e",
+        "name": "central hearth",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "stone fireplace"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__c4cc2846114a": {
+        "id": "prop_location_inside_a_wooden_topped__c4cc2846114a",
+        "name": "counter adjacent to the hearth",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden counter"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__a06c253489e2": {
+        "id": "prop_location_inside_a_wooden_topped__a06c253489e2",
+        "name": "high bar stool for larger patrons",
+        "kind": "fixture",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "bar stool"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__110c01eeeed1": {
+        "id": "prop_location_inside_a_wooden_topped__110c01eeeed1",
+        "name": "polished table behind bar area",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__94129db9db1f": {
+        "id": "prop_location_inside_a_wooden_topped__94129db9db1f",
+        "name": "polished table along east wall at y=10 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__3bef649039db": {
+        "id": "prop_location_inside_a_wooden_topped__3bef649039db",
+        "name": "polished table along east wall at y=20 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__b92b8999942c": {
+        "id": "prop_location_inside_a_wooden_topped__b92b8999942c",
+        "name": "polished table along east wall at y=30 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__059753d15b39": {
+        "id": "prop_location_inside_a_wooden_topped__059753d15b39",
+        "name": "polished table along east wall at y=40 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__bface44458d5": {
+        "id": "prop_location_inside_a_wooden_topped__bface44458d5",
+        "name": "polished table along east wall at y=50 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__7195dff73305": {
+        "id": "prop_location_inside_a_wooden_topped__7195dff73305",
+        "name": "polished table along west wall at y=12 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__10056197799f": {
+        "id": "prop_location_inside_a_wooden_topped__10056197799f",
+        "name": "polished table along west wall at y=24 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__326dce5f3a62": {
+        "id": "prop_location_inside_a_wooden_topped__326dce5f3a62",
+        "name": "polished table along west wall at y=36 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__21130378d051": {
+        "id": "prop_location_inside_a_wooden_topped__21130378d051",
+        "name": "polished table along west wall at y=48 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__145fd227bf3d": {
+        "id": "prop_location_inside_a_wooden_topped__145fd227bf3d",
+        "name": "polished table along west wall at y=60 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__db09933e7c4e": {
+        "id": "prop_location_inside_a_wooden_topped__db09933e7c4e",
+        "name": "polished table along north wall at y=58 ft",
+        "kind": "support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden table"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__cab75848805d": {
+        "id": "prop_location_inside_a_wooden_topped__cab75848805d",
+        "name": "lantern above east wall table at y=10 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__fc6e7e41af9d": {
+        "id": "prop_location_inside_a_wooden_topped__fc6e7e41af9d",
+        "name": "lantern above east wall table at y=20 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__920e66296f25": {
+        "id": "prop_location_inside_a_wooden_topped__920e66296f25",
+        "name": "lantern above east wall table at y=30 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__a1961b4464f6": {
+        "id": "prop_location_inside_a_wooden_topped__a1961b4464f6",
+        "name": "lantern above east wall table at y=40 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__b60fb6ca8434": {
+        "id": "prop_location_inside_a_wooden_topped__b60fb6ca8434",
+        "name": "lantern above east wall table at y=50 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__72e86dfb24a9": {
+        "id": "prop_location_inside_a_wooden_topped__72e86dfb24a9",
+        "name": "lantern above west wall table at y=12 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__2eb389844694": {
+        "id": "prop_location_inside_a_wooden_topped__2eb389844694",
+        "name": "lantern above west wall table at y=24 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__ea7f43fd49f0": {
+        "id": "prop_location_inside_a_wooden_topped__ea7f43fd49f0",
+        "name": "lantern above west wall table at y=36 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__b2614fc8ad6e": {
+        "id": "prop_location_inside_a_wooden_topped__b2614fc8ad6e",
+        "name": "lantern above west wall table at y=48 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__c20586de169d": {
+        "id": "prop_location_inside_a_wooden_topped__c20586de169d",
+        "name": "lantern above west wall table at y=60 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_location_inside_a_wooden_topped__d4b7954343c7": {
+        "id": "prop_location_inside_a_wooden_topped__d4b7954343c7",
+        "name": "lantern above north wall table at y=58 ft",
+        "kind": "fixture_support",
+        "mobility": "fixed",
+        "status": "present",
+        "placement": {
+          "kind": "located",
+          "location_id": "location_inside_a_wooden_topped_tavern_2aec553a6314"
+        },
+        "contents": [],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "canonical_location_state",
+            "source_field": "objects",
+            "source_type": "wooden lantern"
+          }
+        }
+      },
+      "prop_object_cloth_6d297ee15094": {
+        "id": "prop_object_cloth_6d297ee15094",
+        "name": "cloth",
+        "kind": "object",
+        "mobility": "movable",
+        "status": "present",
+        "placement": {
+          "kind": "held",
+          "subject_id": "subject_1"
+        },
+        "contents": [
+          {
+            "substance": "ale‑scented oil",
+            "amount": "unknown",
+            "consumable": "unknown"
+          }
+        ],
+        "capabilities": {
+          "openable": "unknown",
+          "consumable": "unknown",
+          "container": "unknown",
+          "lockable": "unknown"
+        },
+        "mechanism_state": "unknown",
+        "condition": "unknown",
+        "provenance": {
+          "registration": {
+            "authority": "explicit_persistent_prop_registry"
+          }
+        }
+      }
+    },
+    "locations": {
+      "location_inside_a_wooden_topped_tavern_2aec553a6314": {
+        "id": "location_inside_a_wooden_topped_tavern_2aec553a6314",
+        "name": "inside a wooden‑topped tavern"
+      }
+    }
+  },
+  "subject_identity_lock": {
+    "subjects": {
+      "1": {
+        "name": "Amy",
+        "id": "Subject 1",
+        "speaker_id": "(S1)",
+        "subject_id": 1,
+        "gender": "female",
+        "picture_ids": [
+          1
+        ],
+        "picture_id": 1,
+        "origin_segment": null
+      },
+      "75843344593765": {
+        "name": "Dragon-shaped creature",
+        "id": "Subject 75843344593765",
+        "speaker_id": "(S75843344593765)",
+        "subject_id": 75843344593765,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null
+      },
+      "243430124958720": {
+        "name": "Elf",
+        "id": "Subject 243430124958720",
+        "speaker_id": "(S243430124958720)",
+        "subject_id": 243430124958720,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null
+      },
+      "267280715056018": {
+        "name": "Goblin",
+        "id": "Subject 267280715056018",
+        "speaker_id": "(S267280715056018)",
+        "subject_id": 267280715056018,
+        "gender": "N/A",
+        "picture_ids": [],
+        "picture_id": null,
+        "origin_segment": null
+      }
+    }
+  },
+  "continuity_summary_pending": false,
+  "beat_progress": {
+    "completed_beat_ids": [],
+    "last_segment_number": null,
+    "newly_completed_beat_ids": []
+  },
+  "metadata": {
+    "overall_location": "a medieval tavern",
+    "starting_location": "inside a wooden‑topped tavern",
+    "setting_description": "The medieval tavern is a rectangular room measuring sixty feet from north to south and forty feet from east to west, surrounded by thick stone walls. The wooden floor creaks underfoot. At the center of the south wall sits the back door, spanning ten feet wide; it has a wooden latch that secures entry.\n\nIn the middle of the room stands a central hearth—a stone fireplace—12 feet across and 6 feet deep, centered on both axes. Adjacent to its north side runs an eight‑foot long counter made of wood, extending four feet westward from the hearth’s edge. The counter is fixed in place and supports the bar area.\n\nAlong the west wall just east of the counter lies a high bar stool for larger patrons; it sits at five feet from the west wall and thirty‑five feet north of the south wall. Behind this stool, directly behind the counter, is a polished wooden table that backs the bar area: six feet long by four feet wide.\n\nBeside the hearth on its east side rests an eight‑foot tall barrel with a three‑foot diameter; it sits between twenty‑six and twenty‑nine feet from the west wall at thirty feet north of the south wall.\n\nPolished tables line each wall. East‑wall tables are six feet long by two feet wide, positioned at ten, twenty, thirty, forty, and fifty feet north of the south wall, spanning from thirty‑two to thirty‑eight feet east of the west wall. West‑wall tables share the same dimensions and sit at twelve, twenty‑four, thirty‑six, forty‑eight, and sixty feet north of the south wall, ranging from four to ten feet east of the west wall. A single table sits on the north wall: six by two feet, centered between fifteen and twenty‑five feet east of the west wall at fifty‑eight feet north.\n\nAbove each polished table hangs a wooden lantern suspended seven feet above floor level; its light radius covers the corresponding table area. The lanterns are fixed fixtures that support illumination for their tables.",
+    "spatial_location_description": "**Tavern layout (north‑south and east‑west coordinates)**  \n\n- **Overall space:** 60 ft long (north–south) × 40 ft wide (east–west). Stone walls surround the perimeter with a 3‑ft thick stone frame; the interior floor is wooden planks that creak underfoot.  \n- **South wall:** The back door sits at the center of this wall, spanning from x = 15 ft to x = 25 ft (10 ft wide). A wooden latch on the door secures entry.  \n\n**Anchor objects**\n\n1. **Central hearth** – a stone fireplace centered in the room:  \n   - Width 12 ft along east–west, depth 6 ft north–south.  \n   - Located at x = 20 ft (center), y = 30 ft (center). The hearth extends from y = 27 ft to y = 33 ft and from x = 14 ft to x = 26 ft.  \n\n2. **Counter adjacent to the hearth** – runs along the north side of the hearth:  \n   - Length 8 ft east–west, depth 4 ft west‑southward.  \n   - Extends from y = 33 ft to y = 37 ft and from x = 14 ft to x = 22 ft (centered on the hearth).  \n\n3. **Bar area** – located along the west wall, just east of the counter:  \n   - Bar stool for larger patrons sits at x = 5 ft, y = 35 ft; seat radius 1.5 ft, height 3 ft from floor to backrest.  \n   - A polished table backs this bar area, positioned behind the counter at x = 5 ft, y = 33 ft (6 ft long × 4 ft wide).  \n\n4. **Barrel** – beside the hearth on its east side:  \n   - 8 ft tall, diameter 3 ft. Placed at x = 26–29 ft, y = 30 ft.  \n\n5. **Polished tables lining the room** – several rectangular tables (6 ft long × 2 ft wide) set along each wall:  \n   - East wall tables at x = 32–38 ft, y = 10, 20, 30, 40, and 50 ft.  \n   - West wall tables at x = 4–10 ft, y = 12, 24, 36, 48, and 60 ft.  \n   - North wall table at x = 15–25 ft, y = 58 ft (6 ft long × 2 ft wide).  \n\n**Lighting**\n\n- Lanterns hang above each polished table:  \n  - Suspended from the ceiling 7 ft above floor level.  \n  - Each lantern’s light radius covers its corresponding table area.\n\nAll objects are placed so that no two overlap, and every door or seating area is accessible from at least one side of the room. The stone walls frame a medieval tavern interior with wooden floors creaking underfoot, central hearth with adjacent counter, polished tables lining each wall including a bar‑area back table, a barrel beside the hearth, high bar stool for larger patrons, and lanterns providing ambient light—all anchored to their respective directions (north, south, east, west)."
+  },
+  "initial_location_subjects": [
+    {
+      "name": "Goblin",
+      "initial_state": "present in the opening scene",
+      "reason": "The green‑skinned goblin clutches a chipped mug and watches her draw ale, showing he is performing an action while present."
+    }
+  ]
+}

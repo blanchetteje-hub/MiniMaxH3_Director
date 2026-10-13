@@ -1,0 +1,416 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).
+LLM request finished: character_canon (20.7s, finish_reason=stop).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\beats.txt); regenerating the beat plan.
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\beats.txt with 6 creative story beats.
+LLM request started: story_expansion (attempt 1/10, ~758 input tokens, max 12000 output tokens).
+LLM request finished: story_expansion (18.2s, finish_reason=stop).
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\expanded_story.txt.
+Expanded story:
+Wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil. She wears a rough‑spun tunic and a leather apron that show scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth. An elf steps in, silver hair streaming down its shoulders, and takes seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, sets it gently on the wood with a nod of thanks. From the doorway, a dragon‑shaped creature slides onto a high bar stool; scales glitter like polished obsidian. Its wings unfurl to reveal amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over. The dragon licks its lips then takes a slow sip, letting liquid swirl across its tongue. Amy watches the creature exhale contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood. Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+LLM request started: story_to_beats (attempt 1/10, ~1202 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats (16.8s, finish_reason=stop).
+Story-derived Beat framework created with 6 beats.
+Beat 1 created: The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil, wearing her rough‑spun tunic and leather apron scuffed from medieval trade.
+Beat 2 created: A goblin with green skin leans over the counter clutching a chipped mug while Amy refills it from a barrel beside the hearth.
+Beat 3 created: An elf steps in, silver hair streaming down its shoulders, takes seat at the back table, and Amy pours steaming cup into crystal chalice for the elf before setting it gently on wood with a nod of thanks.
+Beat 4 created: From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian, wings unfurl revealing amber eyes that scan the room.
+Beat 5 created: Amy greets newcomer with warm smile and lifts crystal cup from shelf pouring special brew into it before handing over; the dragon licks its lips then takes slow sip letting liquid swirl across tongue while Amy watches creature exhale contentedly, wiping bar with fresh cloth smoothing drips of ale on wood.
+Beat 6 created: Finally, Amy turns off lanterns at each table and pulls wooden latch on back door; she steps outside to close it, locking tavern for night as moon rises over medieval town.
+Beat 1 jobs: current=E1 - The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil, wearing her rough‑spun tunic and leather apron scuffed from medieval trade.; next=E2 - A goblin with green skin leans over the counter clutching a chipped mug while Amy refills it from a barrel beside the hearth.; completed before=none; pending before=E1, E2, E3, E4, E5, E6
+Validating Beat 1 (attempt 1/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~864 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~756 input tokens, max 2048 output tokens).
+LLM request finished: beat_state_validation (15.4s, finish_reason=stop).
+LLM request finished: beat_story_validation (17.1s, finish_reason=stop).
+Beat 1 story validator attempt 1/10: VALID; issue: none
+Beat 1 state validator attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~362 input tokens, max 2048 output tokens).
+LLM request finished: beat_finite_endpoint_extract (3.9s, finish_reason=stop).
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~590 input tokens, max 2048 output tokens).
+LLM request finished: beat_coherence_validation (6.8s, finish_reason=stop).
+Beat 1 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1043 input tokens, max 2048 output tokens).
+LLM request finished: accepted_beat_state_extract (4.7s, finish_reason=stop).
+Beat 1 accepted-state observation ignored: State effects cannot nest canonical state root 'characters.environment'; roots must remain top-level.
+Beat 1 accepted: The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil, wearing her rough‑spun tunic and leather apron scuffed from medieval trade.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - A goblin with green skin leans over the counter clutching a chipped mug while Amy refills it from a barrel beside the hearth.; next=E3 - An elf steps in, silver hair streaming down its shoulders, takes seat at the back table, and Amy pours steaming cup into crystal chalice for the elf before setting it gently on wood with a nod of thanks.; completed before=E1; pending before=E2, E3, E4, E5, E6
+Validating Beat 2 (attempt 1/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~901 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~793 input tokens, max 2048 output tokens).
+LLM request finished: beat_story_validation (10.1s, finish_reason=stop).
+LLM request finished: beat_state_validation (16.4s, finish_reason=stop).
+Beat 2 story validator attempt 1/10: VALID; issue: none
+Beat 2 state validator attempt 1/10: INVALID; issue: Amy’s leather apron was described as scuffed in the previous beat but current state lists no upper‑clothing damage
+LLM request started: story_to_beats_repair (attempt 1/10, ~827 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats_repair (14.7s, finish_reason=stop).
+Validating Beat 2 (attempt 2/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~914 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~806 input tokens, max 2048 output tokens).
+LLM request finished: beat_state_validation (18.8s, finish_reason=stop).
+LLM request finished: beat_story_validation (18.9s, finish_reason=stop).
+Beat 2 story validator attempt 2/10: INVALID; issue: Goblin’s required action (leaning over the counter) is missing; only watching is shown.
+Beat 2 state validator attempt 2/10: INVALID; issue: scuffed leather apron contradicts current state’s upper clothing damage of none
+LLM request started: story_to_beats_repair (attempt 1/10, ~860 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats_repair (29.0s, finish_reason=stop).
+Validating Beat 2 (attempt 3/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~935 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~826 input tokens, max 2048 output tokens).
+LLM request finished: beat_story_validation (18.7s, finish_reason=stop).
+LLM request finished: beat_state_validation (31.1s, finish_reason=length).
+LLM response/content was unusable (attempt 1/10); retrying: LLM host truncated the response at the configured max_tokens=2048 before completion.
+LLM request started: beat_state_validation (attempt 2/10, ~826 input tokens, max 2048 output tokens).
+LLM request finished: beat_state_validation (16.0s, finish_reason=stop).
+Beat 2 story validator attempt 3/10: INVALID; issue: Goblin’s position not explicitly stated as leaning over the counter
+Beat 2 state validator attempt 3/10: VALID; issue: none
+LLM request started: story_to_beats_repair (attempt 1/10, ~847 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats_repair (12.2s, finish_reason=stop).
+Validating Beat 2 (attempt 4/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~930 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~822 input tokens, max 2048 output tokens).
+LLM request finished: beat_state_validation (18.5s, finish_reason=stop).
+LLM request finished: beat_story_validation (18.8s, finish_reason=stop).
+Beat 2 story validator attempt 4/10: INVALID; issue: Goblin must be described as clutching a chipped mug; current beat only says he leans over the counter watching Amy.
+Beat 2 state validator attempt 4/10: VALID; issue: none
+LLM request started: story_to_beats_repair (attempt 1/10, ~856 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats_repair (15.9s, finish_reason=stop).
+Validating Beat 2 (attempt 5/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~924 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~816 input tokens, max 2048 output tokens).
+LLM request finished: beat_story_validation (18.7s, finish_reason=stop).
+LLM request finished: beat_state_validation (18.7s, finish_reason=stop).
+Beat 2 story validator attempt 5/10: VALID; issue: none
+Beat 2 state validator attempt 5/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~360 input tokens, max 2048 output tokens).
+LLM request finished: beat_finite_endpoint_extract (5.2s, finish_reason=stop).
+Checking Beat 2 within-beat physical coherence (attempt 5/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~641 input tokens, max 2048 output tokens).
+LLM request finished: beat_coherence_validation (9.6s, finish_reason=stop).
+Beat 2 coherence attempt 5/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1053 input tokens, max 2048 output tokens).
+LLM request finished: accepted_beat_state_extract (4.8s, finish_reason=stop).
+Beat 2 observed persistent state: {"characters": {"Amy": {"clothing": {"upper": {"item": "rough‑spun tunic"}, "lower": {"item": "scuffed leather apron"}}}}, "threats": {"threat_1": {"name": "green‑skinned goblin", "location": "counter area", "held_objects": ["chipped mug"]}, "threat_2": {"persistent_facts": {"mug_status": "chipped", "ale_source": "barrel beside hearth"}}}}
+Beat 2 accepted: Amy, wearing a rough‑spun tunic and scuffed leather apron, leans over the counter to refill a chipped mug that the green‑skinned goblin clutches as he watches her draw ale from the barrel beside the hearth.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - An elf steps in, silver hair streaming down its shoulders, takes seat at the back table, and Amy pours steaming cup into crystal chalice for the elf before setting it gently on wood with a nod of thanks.; next=E4 - From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian, wings unfurl revealing amber eyes that scan the room.; completed before=E1, E2; pending before=E3, E4, E5, E6
+Validating Beat 3 (attempt 1/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~1056 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~947 input tokens, max 2048 output tokens).
+LLM request finished: beat_state_validation (18.5s, finish_reason=stop).
+LLM request finished: beat_story_validation (18.5s, finish_reason=stop).
+Beat 3 story validator attempt 1/10: VALID; issue: none
+Beat 3 state validator attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~382 input tokens, max 2048 output tokens).
+LLM request finished: beat_finite_endpoint_extract (4.7s, finish_reason=stop).
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~782 input tokens, max 2048 output tokens).
+LLM request finished: beat_coherence_validation (13.1s, finish_reason=stop).
+Beat 3 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1297 input tokens, max 2048 output tokens).
+LLM request finished: accepted_beat_state_extract (4.2s, finish_reason=stop).
+Beat 3 observed persistent state: {"characters": {"Elf": {"location": "back table", "held_objects": ["crystal chalice"], "equipped_objects": [], "stored_objects": []}}}
+Beat 3 accepted: An elf steps in, silver hair streaming down its shoulders, takes seat at the back table, and Amy pours steaming cup into crystal chalice for the elf before setting it gently on wood with a nod of thanks.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian, wings unfurl revealing amber eyes that scan the room.; next=E5 - Amy greets newcomer with warm smile and lifts crystal cup from shelf pouring special brew into it before handing over; the dragon licks its lips then takes slow sip letting liquid swirl across tongue while Amy watches creature exhale contentedly, wiping bar with fresh cloth smoothing drips of ale on wood.; completed before=E1, E2, E3; pending before=E4, E5, E6
+Validating Beat 4 (attempt 1/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~1126 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~1018 input tokens, max 2048 output tokens).
+LLM request finished: beat_state_validation (18.5s, finish_reason=stop).
+LLM request finished: beat_story_validation (18.5s, finish_reason=stop).
+Beat 4 story validator attempt 1/10: VALID; issue: none
+Beat 4 state validator attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~362 input tokens, max 2048 output tokens).
+LLM request finished: beat_finite_endpoint_extract (4.3s, finish_reason=stop).
+Beat 4 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+LLM request started: story_to_beats_repair (attempt 1/10, ~865 input tokens, max 4096 output tokens).
+LLM request finished: story_to_beats_repair (13.7s, finish_reason=stop).
+Validating Beat 4 (attempt 2/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~1134 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~1025 input tokens, max 2048 output tokens).
+LLM request finished: beat_state_validation (16.7s, finish_reason=stop).
+LLM request finished: beat_story_validation (18.1s, finish_reason=stop).
+Beat 4 story validator attempt 2/10: VALID; issue: none
+Beat 4 state validator attempt 2/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~369 input tokens, max 2048 output tokens).
+LLM request finished: beat_finite_endpoint_extract (5.4s, finish_reason=stop).
+Checking Beat 4 within-beat physical coherence (attempt 2/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~826 input tokens, max 2048 output tokens).
+LLM request finished: beat_coherence_validation (5.1s, finish_reason=stop).
+Beat 4 coherence attempt 2/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1475 input tokens, max 2048 output tokens).
+LLM request finished: accepted_beat_state_extract (4.7s, finish_reason=stop).
+Beat 4 observed persistent state: {"threats": {"threat_3": {"name": "dragon‑shaped creature", "location": "high bar stool", "held_objects": [], "equipped_objects": [], "stored_objects": [], "status": "alive unless stated otherwise", "injuries": [], "body_topology": "scales glittering like polished obsidian, wings unfurl revealing amber eyes"}}}
+Beat 4 accepted: From the doorway, a dragon‑shaped creature slides onto a high bar stool, scales glittering like polished obsidian, wings unfurl revealing amber eyes that scan the room as it settles into place.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - Amy greets newcomer with warm smile and lifts crystal cup from shelf pouring special brew into it before handing over; the dragon licks its lips then takes slow sip letting liquid swirl across tongue while Amy watches creature exhale contentedly, wiping bar with fresh cloth smoothing drips of ale on wood.; next=E6 - Finally, Amy turns off lanterns at each table and pulls wooden latch on back door; she steps outside to close it, locking tavern for night as moon rises over medieval town.; completed before=E1, E2, E3, E4; pending before=E5, E6
+Validating Beat 5 (attempt 1/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~1229 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~1120 input tokens, max 2048 output tokens).
+LLM request finished: beat_state_validation (18.7s, finish_reason=stop).
+LLM request finished: beat_story_validation (39.5s, finish_reason=stop).
+Beat 5 story validator attempt 1/10: VALID; issue: none
+Beat 5 state validator attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~440 input tokens, max 2048 output tokens).
+LLM request finished: beat_finite_endpoint_extract (5.7s, finish_reason=stop).
+Checking Beat 5 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~960 input tokens, max 2048 output tokens).
+LLM request finished: beat_coherence_validation (13.1s, finish_reason=stop).
+Beat 5 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1716 input tokens, max 2048 output tokens).
+LLM request finished: accepted_beat_state_extract (4.8s, finish_reason=stop).
+Beat 5 observed persistent state: {"characters": {"Amy": {"held_objects": ["crystal cup"], "location": "bar"}, "Elf": {"held_objects": []}}, "environment": {"objects": {"bar": {"surface_cleaned_by": "fresh cloth"}}}, "threats": {"threat_3": {"held_objects": ["crystal cup"]}}}
+Beat 5 accepted: Amy greets newcomer with warm smile and lifts crystal cup from shelf pouring special brew into it before handing over; the dragon licks its lips then takes slow sip letting liquid swirl across tongue while Amy watches creature exhale contentedly, wiping bar with fresh cloth smoothing drips of ale on wood.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - Finally, Amy turns off lanterns at each table and pulls wooden latch on back door; she steps outside to close it, locking tavern for night as moon rises over medieval town.; next=none; completed before=E1, E2, E3, E4, E5; pending before=E6
+Validating Beat 6 (attempt 1/10) with concurrent Story and State validators.
+LLM request started: beat_story_validation (attempt 1/10, ~1177 input tokens, max 4096 output tokens).
+LLM request started: beat_state_validation (attempt 1/10, ~1068 input tokens, max 2048 output tokens).
+LLM request finished: beat_state_validation (18.6s, finish_reason=stop).
+LLM request finished: beat_story_validation (18.6s, finish_reason=stop).
+Beat 6 story validator attempt 1/10: VALID; issue: none
+Beat 6 state validator attempt 1/10: VALID; issue: none
+LLM request started: beat_finite_endpoint_extract (attempt 1/10, ~364 input tokens, max 2048 output tokens).
+LLM request finished: beat_finite_endpoint_extract (4.8s, finish_reason=stop).
+Checking Beat 6 within-beat physical coherence (attempt 1/10).
+LLM request started: beat_coherence_validation (attempt 1/10, ~948 input tokens, max 2048 output tokens).
+LLM request finished: beat_coherence_validation (13.2s, finish_reason=stop).
+Beat 6 coherence attempt 1/10: VALID.
+LLM request started: accepted_beat_state_extract (attempt 1/10, ~1730 input tokens, max 2048 output tokens).
+LLM request finished: accepted_beat_state_extract (4.6s, finish_reason=stop).
+Beat 6 observed persistent state: {"characters": {"Amy": {"location": "outside"}}, "environment": {"doors": {"back_door": {"status": "closed and latched", "locked": true}}}, "story": {"persistent_facts": {"lanterns_at_tables_status": "off"}}}
+Beat 6 accepted: Finally, Amy turns off lanterns at each table and pulls wooden latch on back door; she steps outside to close it, locking tavern for night as moon rises over medieval town.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~771 input tokens, max 7293 output tokens).
+LLM request finished: story_subject_wardrobe_extract (10.3s, finish_reason=stop).
+Canonical appropriate attire for Amy: Amy wears a rough‑spun brown wool tunic that falls to her knees, its coarse texture showing the wear of daily use; over it she has a dark leather apron scuffed and stained from ale and her medieval trade. Tucked under the tunic is a plain white linen undershirt; she pairs them with gray wool breeches tucked into sturdy black leather boots
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~675 input tokens, max 7389 output tokens).
+LLM request finished: story_subject_wardrobe_extract (10.6s, finish_reason=stop).
+Canonical appropriate attire for Goblin: A greenish, slightly tattered hemp tunic reaching mid‑thigh, cinched by a worn leather belt with an iron buckle; ankle‑high brown leather boots; and a ragged hooded cloak draped over its shoulders. The goblin's tiny hands grasp the chipped mug without gloves
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~680 input tokens, max 7384 output tokens).
+LLM request finished: story_subject_wardrobe_extract (14.8s, finish_reason=stop).
+Canonical appropriate attire for Elf: A cream‑colored linen tunic reaches mid‑thigh, its hem and cuffs embroidered in delicate silver thread; it is belted at the waist by a forest‑green leather sash. Beneath this, fitted dark‑wool breeches tuck neatly into polished knee‑high leather boots that gleam with each step. Over her shoulders drapes an emerald‑velvet cloak, light enough to shift gently as she sits. Her silver hair streams freely down to her shoulders, flowing over the back of the tunic
+LLM request started: story_subject_wardrobe_extract (attempt 1/10, ~694 input tokens, max 7370 output tokens).
+LLM request finished: story_subject_wardrobe_extract (13.7s, finish_reason=stop).
+Canonical appropriate attire for Dragon-shaped creature: The dragon wears a weather‑worn leather tunic that clings to its scaled chest and belly, the hide dyed deep amber to echo its wings’ amber eyes; over this, a polished steel chainmail shirt gleams like tiny obsidian shards. A wide leather belt cinches at its waist, holding small brass pouches for coins and trinkets. Its massive tail is wrapped in a simple forest‑green wool scarf that keeps it warm on the tavern’s wooden floor. Draped over its shoulders is a flowing midnight blue velvet cloak embroidered with silver thread flame motifs, fastened by a bronze brooch shaped like a dragon’s head. On its hind legs are fitted leather boots with soft soles for quiet steps across the creaking boards
+LLM request started: story_location_extract (attempt 1/10, ~569 input tokens, max 7495 output tokens).
+LLM request finished: story_location_extract (3.8s, finish_reason=stop).
+LLM request started: static_setting_extract (attempt 1/10, ~827 input tokens, max 7237 output tokens).
+LLM request finished: static_setting_extract (4.6s, finish_reason=stop).
+LLM request started: story_setting_spatial_refine (attempt 1/10, ~307 input tokens, max 3072 output tokens).
+LLM request finished: story_setting_spatial_refine (24.8s, finish_reason=stop).
+LLM request started: story_setting_extract (attempt 1/10, ~1370 input tokens, max 4096 output tokens).
+LLM request finished: story_setting_extract (47.9s, finish_reason=stop).
+Story location metadata: overall='a medieval tavern'; starting='inside a wooden‑topped tavern'; setting='The medieval tavern is a rectangular room measuring sixty feet from north to south and forty feet from east to west, surrounded by thick stone walls. The wooden floor creaks underfoot. At the center of the south wall sits the back door, spanning ten feet wide; it has a wooden latch that secures entry.\n\nIn the middle of the room stands a central hearth—a stone fireplace—12 feet across and 6 feet deep, centered on both axes. Adjacent to its north side runs an eight‑foot long counter made of wood, extending four feet westward from the hearth’s edge. The counter is fixed in place and supports the bar area.\n\nAlong the west wall just east of the counter lies a high bar stool for larger patrons; it sits at five feet from the west wall and thirty‑five feet north of the south wall. Behind this stool, directly behind the counter, is a polished wooden table that backs the bar area: six feet long by four feet wide.\n\nBeside the hearth on its east side rests an eight‑foot tall barrel with a three‑foot diameter; it sits between twenty‑six and twenty‑nine feet from the west wall at thirty feet north of the south wall.\n\nPolished tables line each wall. East‑wall tables are six feet long by two feet wide, positioned at ten, twenty, thirty, forty, and fifty feet north of the south wall, spanning from thirty‑two to thirty‑eight feet east of the west wall. West‑wall tables share the same dimensions and sit at twelve, twenty‑four, thirty‑six, forty‑eight, and sixty feet north of the south wall, ranging from four to ten feet east of the west wall. A single table sits on the north wall: six by two feet, centered between fifteen and twenty‑five feet east of the west wall at fifty‑eight feet north.\n\nAbove each polished table hangs a wooden lantern suspended seven feet above floor level; its light radius covers the corresponding table area. The lanterns are fixed fixtures that support illumination for their tables.'; location_state={'location': {'name': 'Medieval Tavern'}, 'anchors': [{'name': 'back door', 'type': 'door', 'wall': 'south', 'world_state_role': 'fixture', 'mobility': 'fixed'}], 'objects': [{'name': 'central hearth', 'type': 'stone fireplace', 'near': ['counter'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'counter adjacent to the hearth', 'type': 'wooden counter', 'near': ['central hearth', 'bar area table'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'high bar stool for larger patrons', 'type': 'bar stool', 'position': {'x': '5 ft', 'y': '35 ft'}, 'near': ['counter adjacent to the hearth'], 'world_state_role': 'fixture', 'mobility': 'fixed'}, {'name': 'polished table behind bar area', 'type': 'wooden table', 'position': {'x': '5 ft', 'y': '33 ft'}, 'size': {'length': '6 ft', 'width': '4 ft'}, 'near': ['counter adjacent to the hearth'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'barrel beside the hearth on its east side', 'type': 'wooden barrel', 'position': {'x': '26–29 ft', 'y': '30 ft'}, 'size': {'height': '8 ft', 'diameter': '3 ft'}, 'near': ['central hearth'], 'world_state_role': 'untracked', 'mobility': 'unknown'}, {'name': 'polished table along east wall at y=10 ft', 'type': 'wooden table', 'position': {'x': '32–38 ft', 'y': '10 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['east wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along east wall at y=20 ft', 'type': 'wooden table', 'position': {'x': '32–38 ft', 'y': '20 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['east wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along east wall at y=30 ft', 'type': 'wooden table', 'position': {'x': '32–38 ft', 'y': '30 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['east wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along east wall at y=40 ft', 'type': 'wooden table', 'position': {'x': '32–38 ft', 'y': '40 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['east wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along east wall at y=50 ft', 'type': 'wooden table', 'position': {'x': '32–38 ft', 'y': '50 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['east wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along west wall at y=12 ft', 'type': 'wooden table', 'position': {'x': '4–10 ft', 'y': '12 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['west wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along west wall at y=24 ft', 'type': 'wooden table', 'position': {'x': '4–10 ft', 'y': '24 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['west wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along west wall at y=36 ft', 'type': 'wooden table', 'position': {'x': '4–10 ft', 'y': '36 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['west wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along west wall at y=48 ft', 'type': 'wooden table', 'position': {'x': '4–10 ft', 'y': '48 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['west wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along west wall at y=60 ft', 'type': 'wooden table', 'position': {'x': '4–10 ft', 'y': '60 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['west wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'polished table along north wall at y=58 ft', 'type': 'wooden table', 'position': {'x': '15–25 ft', 'y': '58 ft'}, 'size': {'length': '6 ft', 'width': '2 ft'}, 'near': ['north wall'], 'world_state_role': 'support', 'mobility': 'fixed'}, {'name': 'lantern above east wall table at y=10 ft', 'type': 'wooden lantern', 'position': {'x': '35 ft', 'y': '17 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along east wall at y=10 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above east wall table at y=20 ft', 'type': 'wooden lantern', 'position': {'x': '35 ft', 'y': '27 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along east wall at y=20 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above east wall table at y=30 ft', 'type': 'wooden lantern', 'position': {'x': '35 ft', 'y': '37 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along east wall at y=30 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above east wall table at y=40 ft', 'type': 'wooden lantern', 'position': {'x': '35 ft', 'y': '47 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along east wall at y=40 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above east wall table at y=50 ft', 'type': 'wooden lantern', 'position': {'x': '35 ft', 'y': '57 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along east wall at y=50 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above west wall table at y=12 ft', 'type': 'wooden lantern', 'position': {'x': '7 ft', 'y': '19 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along west wall at y=12 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above west wall table at y=24 ft', 'type': 'wooden lantern', 'position': {'x': '7 ft', 'y': '31 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along west wall at y=24 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above west wall table at y=36 ft', 'type': 'wooden lantern', 'position': {'x': '7 ft', 'y': '43 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along west wall at y=36 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above west wall table at y=48 ft', 'type': 'wooden lantern', 'position': {'x': '7 ft', 'y': '55 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along west wall at y=48 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above west wall table at y=60 ft', 'type': 'wooden lantern', 'position': {'x': '7 ft', 'y': '67 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along west wall at y=60 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}, {'name': 'lantern above north wall table at y=58 ft', 'type': 'wooden lantern', 'position': {'x': '20 ft', 'y': '65 ft'}, 'height_above_floor': '7 ft', 'near': ['polished table along north wall at y=58 ft'], 'world_state_role': 'fixture_support', 'mobility': 'fixed'}]}
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~276 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (4.2s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 1, attempt 1/3):
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She is wiping the table, indicating she was already in the scene before this beat."
+  }
+]
+First story-start Subject classification: Amy in Beat 1 present=True; reason=She is wiping the table, indicating she was already in the scene before this beat.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~287 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (6.4s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 2, attempt 1/3):
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She leans over the counter to refill a mug, indicating she is already in the scene."
+  },
+  {
+    "subject": "Goblin",
+    "present": true,
+    "reason": "The green‑skinned goblin clutches a chipped mug and watches her draw ale, showing he is performing an action while present."
+  }
+]
+Ignoring later story-start Subject classification for Amy in Beat 2; first classified in Beat 1 as present=True.
+First story-start Subject classification: Goblin in Beat 2 present=True; reason=The green‑skinned goblin clutches a chipped mug and watches her draw ale, showing he is performing an action while present.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~286 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (7.3s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 3, attempt 1/3):
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She pours a cup, an action indicating she was already in the scene."
+  },
+  {
+    "subject": "Elf",
+    "present": false,
+    "reason": "The elf steps into the room during this beat, so it wasn't present before."
+  }
+]
+Ignoring later story-start Subject classification for Amy in Beat 3; first classified in Beat 1 as present=True.
+First story-start Subject classification: Elf in Beat 3 present=False; reason=The elf steps into the room during this beat, so it wasn't present before.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~283 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (10.8s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 4, attempt 1/3):
+[
+  {
+    "subject": "Creature",
+    "present": false,
+    "reason": "It slides onto a high bar stool from the doorway, indicating entry into the scene."
+  }
+]
+First story-start Subject classification: Dragon-shaped creature in Beat 4 present=False; reason=It slides onto a high bar stool from the doorway, indicating entry into the scene.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~315 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (14.0s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 5, attempt 1/3):
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She lifts a crystal cup from the shelf and pours brew into it before handing it over, indicating she was already in the scene."
+  },
+  {
+    "subject": "Creature",
+    "present": true,
+    "reason": "The dragon (creature) licks its lips and takes a slow sip, performing actions while present in the scene."
+  }
+]
+Ignoring later story-start Subject classification for Amy in Beat 5; first classified in Beat 1 as present=True.
+Ignoring later story-start Subject classification for Dragon-shaped creature in Beat 5; first classified in Beat 4 as present=False.
+LLM request started: director_raw_scene_subject_resolution (attempt 1/10, ~277 input tokens, max 4096 output tokens).
+LLM request finished: director_raw_scene_subject_resolution (6.5s, finish_reason=stop).
+director_raw_scene_subject_resolution LLM result (Beat 6, attempt 1/3):
+[
+  {
+    "subject": "Amy",
+    "present": true,
+    "reason": "She turns off lanterns at tables and pulls the latch inside the tavern before stepping outside."
+  }
+]
+Ignoring later story-start Subject classification for Amy in Beat 6; first classified in Beat 1 as present=True.
+Story-start Subject classification omitted from dynamic seed because Amy is already defined in subjects.txt.
+Subjects inferred as already present at story start: Goblin (present in the opening scene)
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+LLM request started: registered_subject_story_start_presence (attempt 1/10, ~1122 input tokens, max 2048 output tokens).
+LLM request finished: registered_subject_story_start_presence (6.2s, finish_reason=stop).
+Registered Subject story-start classification: Amy status=present; initial_state=Amy wipes a polished table with a cloth soaked in ale‑scented oil
+Prompt-only mode planned the persistent location reference for the later ComfyUI pass.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   48 seconds
+Total segments:       6
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          6
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+Active base Picture references: 1
+Subject reference removal: enabled after 3 segment(s) without explicit visual appearance
+Prompt-only setup validation passed.
+LLM request started: world_state_current_segment_subjects (attempt 1/10, ~392 input tokens, max 4096 output tokens).
+LLM request finished: world_state_current_segment_subjects (4.4s, finish_reason=stop).
+WORLDSTATE PROP EXTRACTION REQUEST {"purpose": "world_state_current_segment_props", "attempt": 1, "messages": [{"role": "system", "content": "Identify only new physical props whose distinct identity and placement are needed to represent an explicit persistent state-changing action in CURRENT BEAT. Existing props are listed and must be reused by identity; never duplicate or rename them.\n\n- Each new prop must be directly involved in a transfer, placement, pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.\n- Return exactly one explicit initial_location or initial_holder, using only the registered names below.\n- A support_name may name only a registered support/fixture.\n- Do not guess a placement: omit any prop whose initial placement is not supported by the current sources.\n- Evidence must be an exact quotation from CURRENT BEAT or ASSIGNED SOURCE.\n- Record contents/capabilities when explicit or strongly implied by the setting and actions. Infer opening contents only when supported by the opening state; do not treat the result of CURRENT BEAT as already true. Otherwise use unknown or an empty contents list.\n-Infer capabilities from common-sense object properties and intended actions. Infer initial contents only from evidence of the state before CURRENT BEAT, never from the outcome of CURRENT BEAT.\n- Return JSON in this format (true/false are to be JSON booleans, not strings):\n{\n  \"props\": [\n    {\n      \"name\": \"object_name\",\n      \"kind\": \"object\",\n      \"mobility\": \"movable\",\n      \"initial_location\": null,\n      \"initial_holder\": \"registered_subject_name\",\n      \"support_name\": null,\n      \"contents\": [\n        {\n          \"substance\": \"substance_name\",\n          \"amount\": \"unknown\",\n          \"consumable\": \"unknown\"\n        }\n      ],\n      \"capabilities\": {\n        \"container\": \"unknown\",\n        \"consumable\": \"unknown\",\n        \"openable\": \"unknown\",\n        \"lockable\": \"unknown\"\n      },\n      \"reason\": \"Why this object needs persistent tracking.\",\n      \"evidence\": \"Exact quotation from CURRENT BEAT or ASSIGNED SOURCE\"\n    }\n  ]\n}\n\n- Notes: All fields are required. Use null for either initial_location or initial_holder—exactly one must have a registered name. The props array can be empty ([]), and contents can also be empty. Capability values can be true, false, or \"unknown\"."}, {"role": "user", "content": "CURRENT BEAT\nThe wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale‑scented oil, wearing her rough‑spun tunic and leather apron scuffed from medieval trade.\n\nASSIGNED SOURCE\nN/A\n\nREGISTERED SUBJECTS\n[{\"name\":\"Amy\",\"presence\":\"present\"},{\"name\":\"Dragon-shaped creature\",\"presence\":\"unknown\"},{\"name\":\"Elf\",\"presence\":\"unknown\"},{\"name\":\"Goblin\",\"presence\":\"present\"}]\n\nCURRENT WORLDSTATE PROPS\n[{\"name\":\"back door\",\"kind\":\"fixture\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"central hearth\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"counter adjacent to the hearth\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"high bar stool for larger patrons\",\"kind\":\"fixture\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above east wall table at y=10 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above east wall table at y=20 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above east wall table at y=30 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above east wall table at y=40 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above east wall table at y=50 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above north wall table at y=58 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above west wall table at y=12 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above west wall table at y=24 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above west wall table at y=36 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above west wall table at y=48 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"lantern above west wall table at y=60 ft\",\"kind\":\"fixture_support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along east wall at y=10 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along east wall at y=20 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along east wall at y=30 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along east wall at y=40 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along east wall at y=50 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along north wall at y=58 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along west wall at y=12 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along west wall at y=24 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along west wall at y=36 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along west wall at y=48 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table along west wall at y=60 ft\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}},{\"name\":\"polished table behind bar area\",\"kind\":\"support\",\"placement\":{\"kind\":\"located\",\"location\":\"inside a wooden‑topped tavern\"}}]\n\nCANONICAL LOCATIONS\n[{\"name\":\"inside a wooden‑topped tavern\"}]\n\nCANONICAL SUPPORTS / FIXTURES\n[{\"name\":\"central hearth\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"counter adjacent to the hearth\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above east wall table at y=10 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above east wall table at y=20 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above east wall table at y=30 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above east wall table at y=40 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above east wall table at y=50 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above north wall table at y=58 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above west wall table at y=12 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above west wall table at y=24 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above west wall table at y=36 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above west wall table at y=48 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"lantern above west wall table at y=60 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along east wall at y=10 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along east wall at y=20 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along east wall at y=30 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along east wall at y=40 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along east wall at y=50 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along north wall at y=58 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along west wall at y=12 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along west wall at y=24 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along west wall at y=36 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along west wall at y=48 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table along west wall at y=60 ft\",\"location\":\"inside a wooden‑topped tavern\"},{\"name\":\"polished table behind bar area\",\"location\":\"inside a wooden‑topped tavern\"}]\n\nReturn only props needed for a persistent state action in this Segment."}], "registered_subjects": [{"id": "subject_1", "name": "Amy", "presence": "present"}, {"id": "subject_goblin_a0f199af52d0", "name": "Goblin", "presence": "present"}, {"id": "subject_elf_a7b4191901e4", "name": "Elf", "presence": "unknown"}, {"id": "subject_dragon_shaped_creature_91990debafe1", "name": "Dragon-shaped creature", "presence": "unknown"}], "registered_locations": [{"id": "location_inside_a_wooden_topped_tavern_2aec553a6314", "name": "inside a wooden‑topped tavern"}], "registered_props": [{"id": "prop_location_inside_a_wooden_topped__f4537a2490c7", "name": "back door", "kind": "fixture"}, {"id": "prop_location_inside_a_wooden_topped__dd318e475a9e", "name": "central hearth", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__c4cc2846114a", "name": "counter adjacent to the hearth", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__a06c253489e2", "name": "high bar stool for larger patrons", "kind": "fixture"}, {"id": "prop_location_inside_a_wooden_topped__110c01eeeed1", "name": "polished table behind bar area", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__94129db9db1f", "name": "polished table along east wall at y=10 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__3bef649039db", "name": "polished table along east wall at y=20 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__b92b8999942c", "name": "polished table along east wall at y=30 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__059753d15b39", "name": "polished table along east wall at y=40 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__bface44458d5", "name": "polished table along east wall at y=50 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__7195dff73305", "name": "polished table along west wall at y=12 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__10056197799f", "name": "polished table along west wall at y=24 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__326dce5f3a62", "name": "polished table along west wall at y=36 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__21130378d051", "name": "polished table along west wall at y=48 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__145fd227bf3d", "name": "polished table along west wall at y=60 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__db09933e7c4e", "name": "polished table along north wall at y=58 ft", "kind": "support"}, {"id": "prop_location_inside_a_wooden_topped__cab75848805d", "name": "lantern above east wall table at y=10 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__fc6e7e41af9d", "name": "lantern above east wall table at y=20 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__920e66296f25", "name": "lantern above east wall table at y=30 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__a1961b4464f6", "name": "lantern above east wall table at y=40 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__b60fb6ca8434", "name": "lantern above east wall table at y=50 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__72e86dfb24a9", "name": "lantern above west wall table at y=12 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__2eb389844694", "name": "lantern above west wall table at y=24 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__ea7f43fd49f0", "name": "lantern above west wall table at y=36 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__b2614fc8ad6e", "name": "lantern above west wall table at y=48 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__c20586de169d", "name": "lantern above west wall table at y=60 ft", "kind": "fixture_support"}, {"id": "prop_location_inside_a_wooden_topped__d4b7954343c7", "name": "lantern above north wall table at y=58 ft", "kind": "fixture_support"}]}
+LLM request started: world_state_current_segment_props (attempt 1/10, ~2600 input tokens, max 4096 output tokens).
+LLM request finished: world_state_current_segment_props (19.4s, finish_reason=stop).
+WORLDSTATE PROP EXTRACTION RESPONSE {"attempt": 1, "raw": {"props": [{"name": "cloth", "kind": "object", "mobility": "movable", "initial_location": null, "initial_holder": "Amy", "support_name": null, "contents": [{"substance": "ale‑scented oil", "amount": "unknown", "consumable": "unknown"}], "capabilities": {"consumable": "unknown", "container": "unknown", "lockable": "unknown", "openable": "unknown"}, "reason": "The cloth is the tool used to wipe the polished table, and its oil-soaked state changes the table’s surface.", "evidence": "\"Amy wipes a polished table with a cloth soaked in ale‑scented oil\""}, {"name": "tunic", "kind": "object", "mobility": "movable", "initial_location": null, "initial_holder": "Amy", "support_name": null, "contents": [], "capabilities": {"consumable": "unknown", "container": "unknown", "lockable": "unknown", "openable": "unknown"}, "reason": "The tunic is worn by Amy, representing a state change of her clothing.", "evidence": "\"wearing her rough‑spun tunic\""}, {"name": "leather apron", "kind": "object", "mobility": "movable", "initial_location": null, "initial_holder": "Amy", "support_name": null, "contents": [], "capabilities": {"consumable": "unknown", "container": "unknown", "lockable": "unknown", "openable": "unknown"}, "reason": "The apron is worn by Amy, indicating a state change of her attire.", "evidence": "\"leather apron scuffed from medieval trade\""}]}}
+Skipping pre-Director prop 'tunic': source evidence supports only a later/final placement or no opening placement.
+Skipping pre-Director prop 'leather apron': source evidence supports only a later/final placement or no opening placement.
+WORLDSTATE PROP EXTRACTION ACCEPTED {"attempt": 1, "props": [{"name": "cloth", "kind": "object", "mobility": "movable", "initial_location": null, "initial_holder": "Amy", "support_name": null, "contents": [{"substance": "ale‑scented oil", "amount": "unknown", "consumable": "unknown"}], "capabilities": {"consumable": "unknown", "container": "unknown", "lockable": "unknown", "openable": "unknown"}, "reason": "The cloth is the tool used to wipe the polished table, and its oil-soaked state changes the table’s surface.", "evidence": "\"Amy wipes a polished table with a cloth soaked in ale‑scented oil\""}]}
+
+================================================================
+SEGMENT 1/6 (8 seconds)
+================================================================
+Estimated LLM input context: 1754/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+LLM request started: director_raw_scene_creative (attempt 1/10, ~2047 input tokens, max 6017 output tokens).
+LLM request finished: director_raw_scene_creative (16.5s, finish_reason=stop).
+DIRECTOR CREATIVE RAW RESPONSE {"segment": 1, "attempt": 1, "opening_state_sha256": "a183c817c8531272b179924603e5b7dbf747f2c7295bb95aeb5454e564efcbd7", "response": "Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots.  \nShe holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes.  \nHer rough‑spun brown wool tunic falls to her knees, and the scuffed leather apron from medieval trade hangs loosely around her waist as she works."}
+LLM request started: director_raw_scene_physical (attempt 1/10, ~1927 input tokens, max 3072 output tokens).
+LLM request finished: director_raw_scene_physical (13.5s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "physical/spatial creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: director_raw_scene_prop_state (attempt 1/10, ~1857 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_prop_state (10.0s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "prop/state creative", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_scene_timing_refiner (attempt 1/10, ~320 input tokens, max 7744 output tokens).
+LLM request finished: add_scene_timing_refiner (13.2s, finish_reason=stop).
+DIRECTOR TIMING REFINER RESPONSE {"segment": 1, "director_attempt": 1, "timing_attempt": 1, "creative_scene": "Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots.  \nShe holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes.  \nHer rough‑spun brown wool tunic falls to her knees, and the scuffed leather apron from medieval trade hangs loosely around her waist as she works.", "response": {"status": "ok", "timestamps": ["00:00.000", "00:02.000", "00:05.000"]}, "accepted": true}
+LLM request started: validate_timing_valid (attempt 1/10, ~625 input tokens, max 4096 output tokens).
+LLM request finished: validate_timing_valid (12.9s, finish_reason=stop).
+DIRECTOR RAW VALIDATOR RESULT {"validator": "timing", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+LLM request started: add_camera_refiner (attempt 1/10, ~395 input tokens, max 7669 output tokens).
+LLM request finished: add_camera_refiner (16.7s, finish_reason=stop).
+DIRECTOR CAMERA REFINER RESPONSE {"segment": 1, "director_attempt": 1, "camera_attempt": 1, "timed_scene": "At 00:00.000, Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots.  \nAt 00:02.000, She holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes.  \nAt 00:05.000, Her rough‑spun brown wool tunic falls to her knees, and the scuffed leather apron from medieval trade hangs loosely around her waist as she works.", "response": "At 00:00.000, [CAMERA: wide shot tracking Amy’s stride from left to right] Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots.  \nAt 00:02.000, [CAMETER: medium close‑up on table following wiping motion] She holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes.  \nAt 00:05.000, [CAMERA: tight on Amy’s tunic and apron as she works] Her rough‑spun brown wool tunic falls to her knees, and the scuffed leather apron from medieval trade hangs loosely around her waist as she works.", "issue": "Camera output changed action text on line 2; only a [CAMERA: ...] annotation may be added."}
+LLM request started: add_camera_refiner (attempt 1/10, ~395 input tokens, max 7669 output tokens).
+LLM request finished: add_camera_refiner (16.5s, finish_reason=stop).
+DIRECTOR CAMERA REFINER RESPONSE {"segment": 1, "director_attempt": 1, "camera_attempt": 2, "timed_scene": "At 00:00.000, Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots.  \nAt 00:02.000, She holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes.  \nAt 00:05.000, Her rough‑spun brown wool tunic falls to her knees, and the scuffed leather apron from medieval trade hangs loosely around her waist as she works.", "response": "At 00:00.000, [CAMERA: pan left to right following Amy's stride] Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots.  \nAt 00:02.000, [CAMERA: zoom in on table as she wipes] She holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes.  \nAt 00:05.000, [CAMERA: tilt down to capture her tunic and apron details] Her rough‑spun brown wool tunic falls to her knees, and the scuffed leather apron from medieval trade hangs loosely around her waist as she works.", "accepted": true}
+DIRECTOR RAW VALIDATOR RESULT {"validator": "shot-script structure", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+DIRECTOR RAW VALIDATOR RESULT {"validator": "dialogue", "segment": 1, "director_attempt": 1, "repair_attempt": null, "valid": true, "issue": ""}
+Checking pronouns segment:
+LLM request started: director_raw_scene_pronoun_resolution (attempt 1/10, ~594 input tokens, max 2048 output tokens).
+LLM request finished: director_raw_scene_pronoun_resolution (5.5s, finish_reason=stop).
+Checking pronouns segment: LLM result=At 00:00.000, [CAMERA: pan left to right following Amy's stride] Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots.
+At 00:02.000, [CAMERA: zoom in on table as she wipes] Amy holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes.
+At 00:05.000, [CAMERA: tilt down to capture her tunic and apron details] Her rough‑spun brown wool tunic falls to her knees, and the scuffed leather apron from medieval trade hangs loosely around her waist as she works.
+Checking pronouns segment: replaced At 00:00.000, [CAMERA: pan left to right following Amy's stride] Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots. -> At 00:00.000, [CAMERA: pan left to right following Amy's stride] Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots.
+Checking pronouns segment: replaced At 00:02.000, [CAMERA: zoom in on table as she wipes] She holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes. -> At 00:02.000, [CAMERA: zoom in on table as she wipes] Amy holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes.
+Segment 1 RAW person pronouns resolved to explicit names before H3 formatting.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.000, [CAMERA: pan left to right following Amy's stride] Amy strides across the wooden floor, a faint squeak echoing as each board creaks beneath her boots.
+At 00:02.000, [CAMERA: zoom in on table as she wipes] Amy holds a cloth soaked in ale‑scented oil and wipes back and forth over a polished east‑wall table at y=20 ft, smoothing its surface with rhythmic strokes.
+At 00:05.000, [CAMERA: tilt down to capture her tunic and apron details] Her rough‑spun brown wool tunic falls to her knees, and the scuffed leather apron from medieval trade hangs loosely around her waist as she works.
+End continuity state: Her rough‑spun brown wool tunic falls to her knees, and the scuffed leather apron from medieval trade hangs loosely around her waist as she works.
+================================================================
+
+================================================================
+H3 SOUNDSCAPE REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_soundscape (attempt 1/10, ~627 input tokens, max 2048 output tokens).
+LLM request finished: director_h3_soundscape (4.3s, finish_reason=stop).
+H3 soundscape segment 1: "faint squeak echoing as each wooden board creaks beneath Amy's boots"
+H3 MUSIC REQUEST - SEGMENT 1
+================================================================
+LLM request started: director_h3_music (attempt 1/10, ~500 input tokens, max 512 output tokens).
+LLM request finished: director_h3_music (4.4s, finish_reason=stop).
+H3 music segment 1: 'Gentle acoustic lute plucks a steady rhythm, woodwinds echoing floor creaks, soft strings swell as she wipes the polished table.'
+LLM request started: director_raw_scene_visible_subject_resolution (attempt 1/10, ~526 input tokens, max 3172 output tokens).
+LLM request finished: director_raw_scene_visible_subject_resolution (5.7s, finish_reason=stop).
+RAW Subject identity matches: Amy -> Amy
+LLM request started: director_world_state_events (attempt 1/10, ~629 input tokens, max 4096 output tokens).
+LLM request finished: director_world_state_events (15.9s, finish_reason=stop).
+WORLDSTATE EVENTS {"segment": 1, "events": [{"action": "move", "actor": "Amy", "object": null, "source": null, "destination": null, "relation": null, "result": null}, {"action": "take", "actor": "Amy", "object": "cloth soaked in ale‑scented oil", "source": null, "destination": "hand", "relation": null, "result": null}, {"action": "modify", "actor": "Amy", "object": "polished east‑wall table at y=20 ft", "source": null, "destination": null, "relation": null, "result": "smooth"}, {"action": "release", "actor": "Amy", "object": "rough‑spun brown wool tunic", "source": null, "destination": "knees", "relation": "to", "result": null}]}
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\minimax.py", line 43149, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\minimax.py", line 43083, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\minimax.py", line 42053, in _run_main
+    state_action_result = extract_and_dry_run_world_state_events(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\minimax.py", line 37865, in extract_and_dry_run_world_state_events
+    result = translate_world_state_events(world_state, events, immutable_raw, segment_number=int(segment_number))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\minimax.py", line 37803, in translate_world_state_events
+    for action in _translate_world_state_event(current, event, raw_scene, segment_number, event_index):
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-msy13tx7\repo\minimax.py", line 37603, in _translate_world_state_event
+    raise WorldStateEventExtractionError(f"event {event_index}: move destination is not a registered location or explicit support.")
+WorldStateEventExtractionError: event 1: move destination is not a registered location or explicit support.

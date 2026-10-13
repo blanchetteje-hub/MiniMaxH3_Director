@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "source_sha256": "b21a9bf5473081671c2057057a9375b066f12349c3ff08fa79927648435ec8ed",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "wears_rough_spun_tunic_and_leather_apron_that_show_the_scuffs_of_her_medieval_trade",
+    "confident_woman_referenced_in_picture_1_defines_facial_identity_structure_hair_body_proportions_distinguishing_features",
+    "green_skin",
+    "tiny_hands_clutching_a_chipped_mug",
+    "beautiful_female_elf",
+    "silver_hair_streaming_down_its_shoulders",
+    "scales_glittering_like_polished_obsidian",
+    "wings_unfurl_revealing_amber_eyes_that_scan_the_room"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "34",
+      "clothing": "Amy wears a rough‑spun brown wool tunic that falls to her knees, its coarse texture showing the wear of daily use; over it she has a dark leather apron scuffed and stained from ale and her medieval trade. Tucked under the tunic is a plain white linen undershirt; she pairs them with gray wool breeches tucked into sturdy black leather boots",
+      "gender": "female",
+      "wears_rough_spun_tunic_and_leather_apron_that_show_the_scuffs_of_her_medieval_trade": "explicit",
+      "confident_woman_referenced_in_picture_1_defines_facial_identity_structure_hair_body_proportions_distinguishing_features": "explicit"
+    },
+    {
+      "name": "Goblin",
+      "age": "15",
+      "clothing": "A greenish, slightly tattered hemp tunic reaching mid‑thigh, cinched by a worn leather belt with an iron buckle; ankle‑high brown leather boots; and a ragged hooded cloak draped over its shoulders. The goblin's tiny hands grasp the chipped mug without gloves",
+      "gender": "N/A",
+      "green_skin": "explicit",
+      "tiny_hands_clutching_a_chipped_mug": "explicit"
+    },
+    {
+      "name": "Elf",
+      "age": "200",
+      "clothing": "A cream‑colored linen tunic reaches mid‑thigh, its hem and cuffs embroidered in delicate silver thread; it is belted at the waist by a forest‑green leather sash. Beneath this, fitted dark‑wool breeches tuck neatly into polished knee‑high leather boots that gleam with each step. Over her shoulders drapes an emerald‑velvet cloak, light enough to shift gently as she sits. Her silver hair streams freely down to her shoulders, flowing over the back of the tunic",
+      "gender": "female",
+      "beautiful_female_elf": "explicit",
+      "silver_hair_streaming_down_its_shoulders": "explicit"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "500",
+      "clothing": "The dragon wears a weather‑worn leather tunic that clings to its scaled chest and belly, the hide dyed deep amber to echo its wings’ amber eyes; over this, a polished steel chainmail shirt gleams like tiny obsidian shards. A wide leather belt cinches at its waist, holding small brass pouches for coins and trinkets. Its massive tail is wrapped in a simple forest‑green wool scarf that keeps it warm on the tavern’s wooden floor. Draped over its shoulders is a flowing midnight blue velvet cloak embroidered with silver thread flame motifs, fastened by a bronze brooch shaped like a dragon’s head. On its hind legs are fitted leather boots with soft soles for quiet steps across the creaking boards",
+      "gender": "N/A",
+      "scales_glittering_like_polished_obsidian": "explicit",
+      "wings_unfurl_revealing_amber_eyes_that_scan_the_room": "explicit"
+    }
+  ]
+}
