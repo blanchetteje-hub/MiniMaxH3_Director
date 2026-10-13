@@ -618,6 +618,73 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertTrue(all(outcome.accepted for outcome in result["outcomes"]))
         self.assertEqual(result["state_actions"][1]["source_prop_id"], source_id)
 
+    def test_unknown_contents_and_existing_holder_do_not_block_valid_pour(self):
+        world_state, location_id, mug_id = goblin_mug_world_state()
+        mug = world_state["props"][mug_id]
+        mug["placement"] = {"kind": "held", "subject_id": "subject_1"}
+        mug["kind"] = "container"
+        mug["contents"] = [{
+            "substance": "ale", "amount": "unknown", "consumable": "unknown",
+        }]
+        mug["capabilities"]["container"] = "unknown"
+        world_state = register_explicit_persistent_props(world_state, [{
+            "name": "barrel",
+            "kind": "container",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "Its contents are poured into a registered container.",
+            "location_id": location_id,
+            "contents": [],
+        }])
+        barrel_id = next(
+            prop_id for prop_id, prop in world_state["props"].items()
+            if prop["name"] == "barrel"
+        )
+        mug["placement"] = {"kind": "held", "subject_id": "subject_1"}
+        raw_scene = "Amy pours liquid from the barrel into Goblin1's mug."
+        request = mock.Mock(return_value={"state_actions": [{
+            "action_id": "pour-liquid",
+            "op": "pour",
+            "actor_subject_id": "Amy",
+            "source_prop_id": "barrel",
+            "target_prop_id": "mug",
+            "substance": "liquid",
+            "amount": "all",
+        }]})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state, raw_scene, segment_number=1,
+            )
+
+        self.assertTrue(result["accepted"])
+        self.assertEqual(request.call_count, 1)
+        self.assertEqual(
+            result["state_actions"][0]["source_prop_id"], barrel_id,
+        )
+        reduced = minimax.reduce_world_state(
+            world_state, result["state_actions"], segment_number=1,
+        )
+        self.assertTrue(reduced.committed)
+        self.assertEqual(
+            reduced.world_state["props"][barrel_id]["contents"],
+            [{"substance": "liquid", "amount": "none", "consumable": "unknown"}],
+        )
+        mug_end = reduced.world_state["props"][mug_id]
+        self.assertEqual(mug_end["placement"], {
+            "kind": "held", "subject_id": "subject_1",
+        })
+        self.assertTrue(mug_end["capabilities"]["container"])
+        self.assertEqual(
+            mug_end["contents"],
+            [
+                {"substance": "ale", "amount": "unknown", "consumable": "unknown"},
+                {"substance": "liquid", "amount": "some", "consumable": "unknown"},
+            ],
+        )
+
     def test_action_only_extractor_fails_closed_after_five_repairs(self):
         world_state, _location_id, _mug_id = goblin_mug_world_state()
         opening = copy.deepcopy(world_state)

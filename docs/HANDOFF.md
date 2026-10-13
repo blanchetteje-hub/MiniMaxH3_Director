@@ -1,5 +1,32 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — allow supported pours through unknown WorldState details
+
+- The Job 50 result artifacts were not present in this checkout; the latest
+  committed acceptance artifacts here are Job 49. The specified unknown-source
+  scenario was reproduced with a focused reducer and StateAction regression.
+- The `pour` reducer now treats an unregistered source substance, unknown
+  source/target placement, unknown source quantity, and unknown destination
+  container capability as missing information when the accepted RAW-derived
+  action explicitly establishes the transfer. It records only the named
+  substance and coarse `all`/`partial` result. Unknown container capability is
+  established as true by an explicit pour. A mug's recorded holder remains
+  unchanged during the pour.
+- Explicitly empty matching source contents, an explicitly non-container
+  destination, and a known location mismatch still reject the batch atomically.
+  Other known source contents are preserved while the RAW-established substance
+  is added. No validator, retry, state
+  representation, or runtime prompt changed. The existing StateAction prompt
+  could be clarified to say that unknown opening facts are missing information
+  and explicit validated RAW actions may establish them; that prompt edit needs
+  separate approval.
+- Verification: `tests/test_director_retry.py` — 128 passed, 7 subtests;
+  `tests/test_world_state_foundation.py` excluding two unrelated stale
+  story-start expectations — 73 passed, 11 subtests. The full foundation file
+  still reports those two pre-existing failures (`classification`/`evidence`
+  fixture shape and obsolete prompt wording). Focused pour regressions — 7
+  passed. `py_compile` and `git diff --check` passed.
+
 ## 2026-10-12 — rename timing-validator prompt purpose
 
 - Renamed the `director_raw_scene_timing` LLM purpose to

@@ -1563,6 +1563,66 @@ class WorldStateTransactionTests(unittest.TestCase):
                 recovered["state"]["world_state"], segment_two_end
             )
 
+    def test_unknown_source_contents_pour_commits_and_survives_checkpoint(self):
+        opening = make_reducer_state()
+        source = opening["props"]["prop_source"]
+        source["contents"] = []
+        target = opening["props"]["prop_target"]
+        target["placement"] = {"kind": "held", "subject_id": "subject_2"}
+        target["capabilities"]["container"] = UNKNOWN
+        validate_world_state(opening)
+        state = minimax.new_generation_state(
+            minimax.build_run_config(5, 10, 0.5, 2)
+        )
+        state["config"]["test_prompt_generation"] = True
+        state["world_state"] = copy.deepcopy(opening)
+        request1_result = {
+            "state_actions_dry_run_accepted": True,
+            "state_actions": [{
+                "action_id": "pour-liquid",
+                "op": "pour",
+                "actor_subject_id": "subject_1",
+                "source_prop_id": "prop_source",
+                "target_prop_id": "prop_target",
+                "substance": "liquid",
+                "amount": "all",
+            }],
+        }
+        committed = minimax.commit_accepted_director_world_state(
+            state, opening, request1_result, 1,
+        )
+        self.assertEqual(
+            committed["props"]["prop_target"]["placement"],
+            {"kind": "held", "subject_id": "subject_2"},
+        )
+        minimax.record_completed_segment(
+            state, 1, None, {"detailed_description": "accepted pour"}, [1],
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = str(Path(directory) / "generation_state.json")
+            minimax.save_generation_state(state, checkpoint)
+            loaded = minimax.load_generation_state(checkpoint)
+            restored = minimax.restore_generation_state(
+                2, ["Pour"], checkpoint,
+            )
+
+        expected_contents = [{
+            "substance": "liquid", "amount": "some", "consumable": UNKNOWN,
+        }]
+        self.assertEqual(
+            loaded["segments"][0]["world_state"]["props"]["prop_target"]["contents"],
+            expected_contents,
+        )
+        self.assertEqual(
+            restored["state"]["world_state"]["props"]["prop_target"]["contents"],
+            expected_contents,
+        )
+        self.assertEqual(
+            restored["state"]["world_state"]["props"]["prop_target"]["placement"],
+            {"kind": "held", "subject_id": "subject_2"},
+        )
+
     def test_rejected_action_batch_never_commits_partial_candidate(self):
         opening = make_reducer_state()
         generation_state = {"world_state": copy.deepcopy(opening)}
@@ -1809,11 +1869,11 @@ class WorldStateReducerTests(unittest.TestCase):
         self.assertEqual(all_poured.world_state["props"]["prop_source"]["contents"][0]["amount"], "none")
         self.assertEqual(all_poured.world_state["props"]["prop_target"]["contents"][0]["amount"], "some")
 
-    def test_partial_transfer_rejects_unknown_quantity(self):
+    def test_explicit_partial_transfer_establishes_unknown_source_quantity(self):
         state = make_reducer_state()
         state["props"]["prop_source"]["contents"][0]["amount"] = UNKNOWN
         validate_world_state(state)
-        outcomes = validate_state_actions(
+        result = reduce_world_state(
             state,
             [self.action(
                 "partial", "pour", actor_subject_id="subject_1",
@@ -1822,10 +1882,23 @@ class WorldStateReducerTests(unittest.TestCase):
             )],
             segment_number=1,
         )
-        self.assertEqual(outcomes[0].code, "partial_amount_unknown")
+        self.assertTrue(result.committed)
+        self.assertEqual(
+            result.world_state["props"]["prop_source"]["contents"][0]["amount"],
+            "some",
+        )
+        self.assertEqual(
+            result.world_state["props"]["prop_target"]["contents"][0]["amount"],
+            "some",
+        )
 
-    def test_pour_fails_closed_when_destination_container_capability_is_unknown(self):
+    def test_explicit_pour_establishes_unknown_source_and_destination_facts(self):
         state = make_reducer_state()
+        state["props"]["prop_source"]["contents"] = []
+        state["props"]["prop_source"]["placement"] = {"kind": "unknown"}
+        state["props"]["prop_target"]["placement"] = {
+            "kind": "held", "subject_id": "subject_2",
+        }
         state["props"]["prop_target"]["capabilities"]["container"] = UNKNOWN
         validate_world_state(state)
         result = reduce_world_state(
@@ -1837,9 +1910,98 @@ class WorldStateReducerTests(unittest.TestCase):
             )],
             segment_number=1,
         )
+        self.assertTrue(result.committed)
+        source = result.world_state["props"]["prop_source"]
+        target = result.world_state["props"]["prop_target"]
+        self.assertEqual(source["contents"], [{
+            "substance": "liquid", "amount": "some", "consumable": UNKNOWN,
+        }])
+        self.assertEqual(target["contents"], [{
+            "substance": "liquid", "amount": "some", "consumable": UNKNOWN,
+        }])
+        self.assertIs(target["capabilities"]["container"], True)
+        self.assertEqual(
+            target["placement"],
+            {"kind": "held", "subject_id": "subject_2"},
+        )
+
+    def test_explicitly_empty_source_still_rejects_pour_atomically(self):
+        state = make_reducer_state()
+        state["props"]["prop_source"]["contents"] = [{
+            "substance": "liquid", "amount": "none", "consumable": UNKNOWN,
+        }]
+        before = copy.deepcopy(state)
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "empty", "pour", actor_subject_id="subject_1",
+                source_prop_id="prop_source", target_prop_id="prop_target",
+                substance="liquid", amount="all",
+            )],
+            segment_number=1,
+        )
         self.assertFalse(result.committed)
-        self.assertEqual(result.outcomes[0].code, "container_capability_unknown")
-        self.assertEqual(result.world_state, state)
+        self.assertEqual(result.outcomes[0].code, "source_empty")
+        self.assertEqual(result.world_state, before)
+
+    def test_pour_adds_missing_substance_without_overwriting_known_contents(self):
+        state = make_reducer_state()
+        state["props"]["prop_source"]["contents"] = [{
+            "substance": "water", "amount": "some", "consumable": UNKNOWN,
+        }]
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "add-ale", "pour", actor_subject_id="subject_1",
+                source_prop_id="prop_source", target_prop_id="prop_target",
+                substance="ale", amount="all",
+            )],
+            segment_number=1,
+        )
+        self.assertTrue(result.committed)
+        self.assertEqual(
+            result.world_state["props"]["prop_source"]["contents"],
+            [
+                {"substance": "water", "amount": "some", "consumable": UNKNOWN},
+                {"substance": "ale", "amount": "none", "consumable": UNKNOWN},
+            ],
+        )
+
+    def test_explicitly_non_container_destination_still_rejects_pour(self):
+        state = make_reducer_state()
+        state["props"]["prop_target"]["capabilities"]["container"] = False
+        before = copy.deepcopy(state)
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "not-container", "pour", actor_subject_id="subject_1",
+                source_prop_id="prop_source", target_prop_id="prop_target",
+                substance="liquid", amount="all",
+            )],
+            segment_number=1,
+        )
+        self.assertFalse(result.committed)
+        self.assertEqual(result.outcomes[0].code, "not_a_container")
+        self.assertEqual(result.world_state, before)
+
+    def test_known_different_location_still_rejects_pour(self):
+        state = make_reducer_state()
+        state["props"]["prop_source"]["placement"] = {
+            "kind": "located", "location_id": "location_b",
+        }
+        before = copy.deepcopy(state)
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "wrong-location", "pour", actor_subject_id="subject_1",
+                source_prop_id="prop_source", target_prop_id="prop_target",
+                substance="liquid", amount="all",
+            )],
+            segment_number=1,
+        )
+        self.assertFalse(result.committed)
+        self.assertEqual(result.outcomes[0].code, "prop_location_mismatch")
+        self.assertEqual(result.world_state, before)
 
     def test_consume_requires_explicitly_consumable_content(self):
         state = make_reducer_state()

@@ -1409,23 +1409,46 @@ def _apply_state_action(
         if amount not in {"all", "partial"}:
             _reject("invalid_transfer_amount", "Pour amount must be 'all' or 'partial'.")
         for prop in (source, target):
-            if _prop_location(state, prop) != actor["location_id"]:
+            prop_location = _prop_location(state, prop)
+            # Unknown placement is incomplete bookkeeping. The validated RAW
+            # establishes the transfer; a known different location remains a
+            # physical contradiction and is rejected.
+            if prop_location is not None and prop_location != actor["location_id"]:
                 _reject("prop_location_mismatch", "Actor and pour props must share a registered location.")
+        if target["capabilities"]["container"] is False:
+            _reject("not_a_container", "The destination is explicitly recorded as non-container.")
+        if target["capabilities"]["container"] == UNKNOWN:
+            # A validated RAW pour into this object is direct evidence that it
+            # functions as a container in this action. Unknown capability is
+            # missing information; an explicit false value remains a conflict.
+            target["capabilities"]["container"] = True
+            changed.append((target, "capabilities"))
         if target["capabilities"]["container"] is not True:
             _reject("container_capability_unknown", "Destination is not known to be a container.")
         substance = action["substance"].strip().casefold() if isinstance(action["substance"], str) else ""
         if not substance:
             _reject("invalid_substance", "Pour requires a non-empty substance label.")
+        substance_label = action["substance"].strip()
         content = next(
             (item for item in source["contents"] if item["substance"].casefold().strip() == substance),
             None,
         )
         if content is None:
-            _reject("substance_not_in_source", "The source has no recorded entry for that substance.")
+            # Missing substance records, even when other contents are known,
+            # are not evidence that the source lacks this substance. The
+            # accepted RAW action supplies the missing fact while retaining
+            # every established contents record.
+            content = {
+                "substance": substance_label,
+                "amount": UNKNOWN,
+                "consumable": UNKNOWN,
+            }
+            source["contents"].append(content)
         if content["amount"] == "none":
             _reject("source_empty", "The source is explicitly recorded as empty of that substance.")
-        if amount == "partial" and content["amount"] != "some":
-            _reject("partial_amount_unknown", "A partial pour needs a known non-empty source amount.")
+        # The action itself establishes that the source contains this
+        # substance. A coarse partial transfer also establishes that some
+        # remains, even when the opening amount was unknown.
         content["amount"] = "none" if amount == "all" else "some"
         target_content = next(
             (item for item in target["contents"] if item["substance"].casefold().strip() == substance),
@@ -1433,7 +1456,7 @@ def _apply_state_action(
         )
         if target_content is None:
             target["contents"].append({
-                "substance": action["substance"].strip(),
+                "substance": substance_label,
                 "amount": "some",
                 "consumable": UNKNOWN,
             })
