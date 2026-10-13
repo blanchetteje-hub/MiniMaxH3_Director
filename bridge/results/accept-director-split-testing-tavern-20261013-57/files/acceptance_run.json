@@ -1,0 +1,615 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_medieval_tavern_six",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_medieval_tavern_six.json",
+  "benchmark_sha256": "8a52b90dac4bcc6c0549b4d73c67187e3af092bf93eea5b9cbe6e88916d9f18b",
+  "repository_revision": "0c0c7180dccf986fb469453340c900b295c5f802",
+  "created_at_utc": "2026-10-13T15:17:00Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "8",
+    "6",
+    "0.5",
+    "--test-prompt-generation",
+    "--vision-continuity",
+    "0",
+    "--model",
+    "gpt",
+    "--image1",
+    "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+    "--refresh",
+    "999999",
+    "--pre-director-replay-fixture",
+    "tests\\acceptance\\fixtures\\tavern_job33_pre_director\\replay.json"
+  ],
+  "exit_code": 0,
+  "capture_status": {
+    "complete": true,
+    "mode": "full_prompt_generation",
+    "expected_segments": 6,
+    "captured_segments": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": null,
+  "generated_beats_text": null,
+  "segments": [
+    {
+      "segment_number": 1,
+      "gold_mode": "initial",
+      "pipeline_mode": "initial",
+      "gold_target": {
+        "beat": 1,
+        "mode": "initial",
+        "length_seconds": 8,
+        "must_happen": [
+          "Amy wipes a polished table with an ale-scented cloth.",
+          "Amy's medieval work clothing is visible.",
+          "Goblin may already be present because it has no entry point."
+        ],
+        "must_not_happen": [
+          "Elf must not already be present.",
+          "Dragon must not already be present.",
+          "No invented dialogue."
+        ],
+        "expected_end_state": [
+          "Amy remains inside the tavern near the wiped table.",
+          "Goblin is the only later-beat Subject eligible to have been present from story start."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.\n<Picture 2> references only the clothing that Amy is currently wearing.\n\nSubject Amy: present; at the tavern's wooden floor; wearing Amy wears a rough‑spun linen tunic in muted brown and thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips.\nSubject Elf: wearing flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap and she wears soft brown leather boots that reach just below the knee and.\nSubject Goblin: present; at the tavern's wooden floor; wearing 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips and brown belt around his waist holding a tiny pouch (frayed).\nProp back table: at the tavern's wooden floor.\nProp barrel: at the tavern's wooden floor.\nProp cloth soaked in ale-scented oil: held by Amy.\nProp counter: at the tavern's wooden floor.\nProp entrance: at the tavern's wooden floor.\nProp hearth: at the tavern's wooden floor.\nProp high bar stool: at the tavern's wooden floor.\nProp lantern (back table): at the tavern's wooden floor.\nProp lantern (counter tables): at the tavern's wooden floor.\nProp polished table: at the tavern's wooden floor.\nProp shelf of crystal cups: at the tavern's wooden floor.\nProp wooden latch: at the tavern's wooden floor.\nAmy is a 32-year-old female. Over the tunic she drapes a sturdy leather apron, darkened by oil and ale stains that mark the scuffs of daily service. Tucked into her waist are simple woolen hose in deep tan, tucked neatly under the tunic’s hem. Her feet are shod with worn brown leather boots, thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips, holding a small pouch of tools and a cloth for wiping tables.\nGoblin is a 20-year-old male.\nElf is a 240-year-old female. Her silver hair streams down her shoulders.\nDragon-shaped creature is a 500-year-old male.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, The scene starts in the tavern's wooden floor. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, [CAMERA: Wide shot of the stone hall moving to a close‑up as Amy steps onto the wooden floor.] Amy steps onto the wooden floor, Amy's tread echoing with a faint creak that rolls through the stone hall.\n\nAt 00:01.000, [CAMERA: Tracking shot following Amy along the counter toward the polished table.] Amy walks toward a polished table set along the east side of the counter and lifts a cloth soaked in ale‑scented oil from her apron pocket.\n\nAt 00:05.000, [CAMERA: Zoom in on the table surface as Amy wipes it until it gleams bright under the lantern hanging above.] Stepping onto the table’s surface, she wipes its four‑by‑four foot expanse until it gleams bright under the lantern hanging above.\n\noverall_soundscape: Amy steps onto wooden floor with footstep echoing; faint creak rolls through stone hall; wiping table produces rubbing of cloth on wood surface\n\nnon_diegetic_music: Soft acoustic guitar and gentle piano weave through low string textures, mirroring the stone hall’s calm before brightening as the table gleams.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, [CAMERA: Wide shot of the stone hall moving to a close‑up as Amy steps onto the wooden floor.] Amy steps onto the wooden floor, Amy's tread echoing with a faint creak that rolls through the stone hall. At 00:01.000, [CAMERA: Tracking shot following Amy along the counter toward the polished table.] Amy walks toward a polished table set along the east side of the counter and lifts a cloth soaked in ale‑scented oil from her apron pocket. At 00:05.000, [CAMERA: Zoom in on the table surface as Amy wipes it until it gleams bright under the lantern hanging above.] Stepping onto the table’s surface, she wipes its four‑by‑four foot expanse until it gleams bright under the lantern hanging above.",
+        "overall_soundscape": "Amy steps onto wooden floor with footstep echoing; faint creak rolls through stone hall; wiping table produces rubbing of cloth on wood surface",
+        "non_diegetic_music": "Soft acoustic guitar and gentle piano weave through low string textures, mirroring the stone hall’s calm before brightening as the table gleams.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Stepping onto the table’s surface, she wipes its four‑by‑four foot expanse until it gleams bright under the lantern hanging above. Amy remains present in the state established by the final timed action: [CAMERA: Zoom in on the table surface as Amy wipes it until it gleams bright under the lantern hanging above.] Stepping onto the table’s surface, she wipes its four‑by‑four foot expanse until it gleams bright under the lantern hanging above."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "75843344593765": {
+          "name": "Dragon-shaped creature",
+          "id": "Subject 75843344593765",
+          "speaker_id": "(S75843344593765)",
+          "subject_id": 75843344593765,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "243430124958720": {
+          "name": "Elf",
+          "id": "Subject 243430124958720",
+          "speaker_id": "(S243430124958720)",
+          "subject_id": 243430124958720,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "267280715056018": {
+          "name": "Goblin",
+          "id": "Subject 267280715056018",
+          "speaker_id": "(S267280715056018)",
+          "subject_id": 267280715056018,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1
+      ]
+    },
+    {
+      "segment_number": 2,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 2,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Goblin is already at the counter with one chipped mug.",
+          "Amy refills that mug from the barrel beside the hearth."
+        ],
+        "must_not_happen": [
+          "Goblin must not newly enter.",
+          "Mug must not change identity.",
+          "Elf and Dragon must not enter early."
+        ],
+        "expected_end_state": [
+          "Goblin remains in the tavern with the same mug.",
+          "Amy has completed the refill."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features. Amy's opening pose, position, and physical state are anchored by the supplied opening guide.\n<Subject 267280715056018> is Goblin (S267280715056018). unknown Goblin is referenced in <Picture 3> for identity and current appearance.\n<Picture 2> references only the clothing that Amy is currently wearing.\n<Picture 3> defines Goblin's identity, physical appearance, species/distinguishing traits, and current clothing.\n\nSubject Amy: present; at the tavern's wooden floor; supported by polished table; posture standing; wearing Amy wears a rough‑spun linen tunic in muted brown and thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips.\nSubject Elf: wearing flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap and she wears soft brown leather boots that reach just below the knee and.\nSubject Goblin: present; at the tavern's wooden floor; wearing 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips and brown belt around his waist holding a tiny pouch (frayed).\nProp back table: at the tavern's wooden floor.\nProp barrel: at the tavern's wooden floor.\nProp chipped mug: held by Goblin.\nProp cloth soaked in ale-scented oil: held by Amy.\nProp counter: at the tavern's wooden floor.\nProp entrance: at the tavern's wooden floor.\nProp hearth: at the tavern's wooden floor.\nProp high bar stool: at the tavern's wooden floor.\nProp lantern (back table): at the tavern's wooden floor.\nProp lantern (counter tables): at the tavern's wooden floor.\nProp polished table: at the tavern's wooden floor.\nProp shelf of crystal cups: at the tavern's wooden floor.\nProp wooden latch: at the tavern's wooden floor.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, seamless continuation. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, The goblin steps forward from the tavern floor, shuffling Goblin's feet until Goblin lands on a low wooden step—part of the counter’s raised edge—that leads up to a high bar stool near the back end of the counter. From there Goblin climbs up to a high bar stool near the back end of the counter. Goblin steadies himself and leans over the polished table on the east side of the hall, clutching a chipped mug in one hand.\n\nAt 00:04.417, Amy lifts her arm from wiping the tabletop and turns toward the hearth. She reaches for the barrel beside it, pulls out a ladle, tilts it into the ale-filled liquid, and pours slowly into Goblin’s mug as Goblin leans over the table. The liquid glistens on the chipped rim of the mug while the lantern overhead casts a warm glow across the scene.\n\noverall_soundscape: shuffling footstep on tavern floor; wooden step click as Goblin lands; ladle scraping from barrel; ladle tilting into ale with gentle splash\n\nnon_diegetic_music: Continue the established score seamlessly. Light acoustic strum with warm percussive taps, gentle strings swell when ale pours, adding a hopeful, cozy lift.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, The goblin steps forward from the tavern floor, shuffling Goblin's feet until Goblin lands on a low wooden step—part of the counter’s raised edge—that leads up to a high bar stool near the back end of the counter. From there Goblin climbs up to a high bar stool near the back end of the counter. Goblin steadies himself and leans over the polished table on the east side of the hall, clutching a chipped mug in one hand. At 00:04.417, Amy lifts her arm from wiping the tabletop and turns toward the hearth. She reaches for the barrel beside it, pulls out a ladle, tilts it into the ale-filled liquid, and pours slowly into Goblin’s mug as Goblin leans over the table. The liquid glistens on the chipped rim of the mug while the lantern overhead casts a warm glow across the scene.",
+        "overall_soundscape": "shuffling footstep on tavern floor; wooden step click as Goblin lands; ladle scraping from barrel; ladle tilting into ale with gentle splash",
+        "non_diegetic_music": "Continue the established score seamlessly. Light acoustic strum with warm percussive taps, gentle strings swell when ale pours, adding a hopeful, cozy lift.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy lifts her arm from wiping the tabletop and turns toward the hearth. She reaches for the barrel beside it, pulls out a ladle, tilts it into the ale-filled liquid, and pours slowly into the goblin’s mug as he leans over the table. The liquid glistens on the chipped rim of the mug while the lantern overhead casts a warm glow across the scene."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "75843344593765": {
+          "name": "Dragon-shaped creature",
+          "id": "Subject 75843344593765",
+          "speaker_id": "(S75843344593765)",
+          "subject_id": 75843344593765,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "243430124958720": {
+          "name": "Elf",
+          "id": "Subject 243430124958720",
+          "speaker_id": "(S243430124958720)",
+          "subject_id": 243430124958720,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "267280715056018": {
+          "name": "Goblin",
+          "id": "Subject 267280715056018",
+          "speaker_id": "(S267280715056018)",
+          "subject_id": 267280715056018,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2
+      ]
+    },
+    {
+      "segment_number": 3,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 3,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Elf visibly steps into the tavern.",
+          "Elf takes a seat at the back table.",
+          "Amy serves the elf in a crystal chalice."
+        ],
+        "must_not_happen": [
+          "Elf must not have been present from frame zero.",
+          "No modern athletic clothing for the elf.",
+          "No duplicated serving container."
+        ],
+        "expected_end_state": [
+          "Elf is seated at the back table with the served chalice."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features. Amy's opening pose, position, and physical state are anchored by the supplied opening guide.\n<Subject 267280715056018> is Goblin (S267280715056018). unknown Goblin is referenced in <Picture 3> for identity and current appearance. Goblin's opening pose, position, and physical state are anchored by the supplied opening guide.\n<Picture 2> references only the clothing that Amy is currently wearing.\n\nSubject Amy: present; at the tavern's wooden floor; supported by polished table; posture standing; wearing Amy wears a rough‑spun linen tunic in muted brown and thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips.\nSubject Elf: wearing flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap and she wears soft brown leather boots that reach just below the knee and.\nSubject Goblin: present; at the tavern's wooden floor; supported by high bar stool; wearing 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips and brown belt around his waist holding a tiny pouch (frayed).\nProp back table: at the tavern's wooden floor.\nProp barrel: at the tavern's wooden floor; contains some ale.\nProp chipped mug: held by Goblin; contains some ale.\nProp cloth soaked in ale-scented oil: held by Amy.\nProp counter: at the tavern's wooden floor.\nProp entrance: at the tavern's wooden floor.\nProp hearth: at the tavern's wooden floor.\nProp high bar stool: at the tavern's wooden floor.\nProp ladle: held by Amy.\nProp lantern (back table): at the tavern's wooden floor.\nProp lantern (counter tables): at the tavern's wooden floor.\nProp polished table: at the tavern's wooden floor.\nProp shelf of crystal cups: at the tavern's wooden floor.\nProp wooden latch: at the tavern's wooden floor.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, seamless continuation. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, [CAMERA: Tracking shot following the Elf as the Elf steps through the back door onto the aisle, glides forward across polished tables, turns left at the counter’s edge toward the northwest corner of the hall, sits on the back table, then continues to Amy who lifts her ladle from the ale barrel beside the hearth, tilts it into a steaming cup held in her hand, pours the liquid into a crystal chalice for the Elf, places the chalice gently onto the wood of the back table, nods to thank the Elf, and steps away toward the bar] \"The Elf steps through the back door onto the aisle, her hair streaming down her shoulders as she glides forward. The Elf strides across the twelve‑foot wide passage of polished tables and turns left at the counter’s edge, walking toward the northwest corner of the hall. Reaching the back table, the Elf sits on top of its 5‑by‑5‑ft wooden surface. Amy lifts her ladle from the ale barrel beside the hearth, tilts it into a steaming cup held in her hand, and pours the liquid into a crystal chalice for the Elf. Amy places the chalice gently onto the wood of the back table, nods to thank the Elf, and steps away toward the bar.\"\n\noverall_soundscape: footsteps on polished floor; door thud as elf steps through back door; gentle settling noise when elf sits on wooden table; metal ladle lifting from ale barrel; clink of ladle against wood or cup; steaming liquid pouring into crystal chalice; slight splash in chalice\n\nnon_diegetic_music: Continue the established score seamlessly. Light acoustic strum and warm percussive taps persist, while gentle strings swell softly as the elf settles, preserving the hopeful, cozy mood.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, [CAMERA: Tracking shot following the Elf as the Elf steps through the back door onto the aisle, glides forward across polished tables, turns left at the counter’s edge toward the northwest corner of the hall, sits on the back table, then continues to Amy who lifts her ladle from the ale barrel beside the hearth, tilts it into a steaming cup held in her hand, pours the liquid into a crystal chalice for the Elf, places the chalice gently onto the wood of the back table, nods to thank the Elf, and steps away toward the bar] \"The Elf steps through the back door onto the aisle, her hair streaming down her shoulders as she glides forward. The Elf strides across the twelve‑foot wide passage of polished tables and turns left at the counter’s edge, walking toward the northwest corner of the hall. Reaching the back table, the Elf sits on top of its 5‑by‑5‑ft wooden surface. Amy lifts her ladle from the ale barrel beside the hearth, tilts it into a steaming cup held in her hand, and pours the liquid into a crystal chalice for the Elf. Amy places the chalice gently onto the wood of the back table, nods to thank the Elf, and steps away toward the bar.\"",
+        "overall_soundscape": "footsteps on polished floor; door thud as elf steps through back door; gentle settling noise when elf sits on wooden table; metal ladle lifting from ale barrel; clink of ladle against wood or cup; steaming liquid pouring into crystal chalice; slight splash in chalice",
+        "non_diegetic_music": "Continue the established score seamlessly. Light acoustic strum and warm percussive taps persist, while gentle strings swell softly as the elf settles, preserving the hopeful, cozy mood.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "\"The Elf steps through the back door onto the aisle, her hair streaming down her shoulders as she glides forward.\\nShe strides across the twelve‑foot wide passage of polished tables and turns left at the counter’s edge, walking toward the northwest corner of the hall.\\nReaching the back table, she sits on top of its 5‑by‑5‑ft wooden surface.\\nAmy lifts her ladle from the ale barrel beside the hearth, tilts it into a steaming cup held in her hand, and pours the liquid into a crystal chalice for the Elf.\\nShe places the chalice gently onto the wood of the back table, nods to thank the Elf, and steps away toward the bar.\". Amy remains present in the state established by the final timed action: [CAMERA: Tracking shot following the Elf as the Elf steps through the back door onto the aisle, glides forward across polished tables, turns left at the counter’s edge toward the northwest corner of the hall, sits on the back table, then continues to Amy who lifts her ladle from the ale barrel beside the hearth, tilts it into a steaming cup held in her hand, pours the liquid into a crystal chalice for the Elf, places the chalice gently onto the wood of the back table, nods to thank the Elf, and steps away toward the bar] \"The Elf steps through the back door onto the aisle, her hair streaming down her shoulders as she glides forward. The Elf strides across the twelve‑foot wide passage of polished tables and turns left at the counter’s edge, walking toward the northwest corner of the hall. Reaching the back table, the Elf sits on top of its 5‑by‑5‑ft wooden surface. Amy lifts her ladle from the ale barrel beside the hearth, tilts it into a steaming cup held in her hand, and pours the liquid into a crystal chalice for the Elf. Amy places the chalice gently onto the wood of the back table, nods to thank the Elf, and steps away toward the bar.\"."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "75843344593765": {
+          "name": "Dragon-shaped creature",
+          "id": "Subject 75843344593765",
+          "speaker_id": "(S75843344593765)",
+          "subject_id": 75843344593765,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "243430124958720": {
+          "name": "Elf",
+          "id": "Subject 243430124958720",
+          "speaker_id": "(S243430124958720)",
+          "subject_id": 243430124958720,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "267280715056018": {
+          "name": "Goblin",
+          "id": "Subject 267280715056018",
+          "speaker_id": "(S267280715056018)",
+          "subject_id": 267280715056018,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "segment_number": 4,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 4,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Dragon visibly enters from the doorway.",
+          "Dragon moves onto the high bar stool.",
+          "Amy serves the dragon a special brew in one crystal cup."
+        ],
+        "must_not_happen": [
+          "Dragon must not have been present from story start.",
+          "Dragon must not teleport to the stool.",
+          "Do not invent clothing when appropriate attire is naturally unclothed."
+        ],
+        "expected_end_state": [
+          "Dragon is established at the high bar stool with its drink."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features. Amy's opening pose, position, and physical state are anchored by the supplied opening guide.\n<Subject 75843344593765> is Dragon-shaped creature (S75843344593765). unknown Dragon-shaped creature is referenced in <Picture 4> for identity and current appearance.\n<Subject 267280715056018> is Goblin (S267280715056018). unknown Goblin is referenced in <Picture 3> for identity and current appearance.\n<Picture 2> references only the clothing that Amy is currently wearing.\n<Picture 4> defines Dragon-shaped creature's identity, physical appearance, species/distinguishing traits, and current clothing.\n\nSubject Amy: present; at the tavern's wooden floor; supported by polished table; posture standing; wearing Amy wears a rough‑spun linen tunic in muted brown and thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips.\nSubject Elf: present; at the tavern's wooden floor; supported by back table; posture sitting; wearing flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap and she wears soft brown leather boots that reach just below the knee and.\nSubject Goblin: present; at the tavern's wooden floor; supported by high bar stool; wearing 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips and brown belt around his waist holding a tiny pouch (frayed).\nProp back table: at the tavern's wooden floor.\nProp barrel: at the tavern's wooden floor; contains some ale.\nProp chipped mug: held by Goblin; contains some ale.\nProp cloth soaked in ale-scented oil: held by Amy.\nProp counter: at the tavern's wooden floor.\nProp crystal chalice: held by Amy.\nProp entrance: at the tavern's wooden floor.\nProp hearth: at the tavern's wooden floor.\nProp high bar stool: at the tavern's wooden floor.\nProp ladle: held by Amy.\nProp lantern (back table): at the tavern's wooden floor.\nProp lantern (counter tables): at the tavern's wooden floor.\nProp polished table: at the tavern's wooden floor.\nProp shelf of crystal cups: at the tavern's wooden floor.\nProp wooden latch: at the tavern's wooden floor.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, seamless continuation. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, Dragon-shaped creature slides in through the south doorway and glides onto a high bar stool at the back end of the counter.\n\nAt 00:02.917, Its obsidian scales glitter as it settles on the stool.\n\nAt 00:03.417, The creature unfurls its wings, revealing amber eyes that scan the room.\n\nAt 00:04.417, Amy greets the dragon with a warm smile.\n\nAt 00:04.917, Amy lifts a crystal cup from the shelf adjacent to the bar stool.\n\nAt 00:05.917, Amy pours a special brew into the cup.\n\nAt 00:06.917, Amy hands the cup over to the dragon.\n\noverall_soundscape: dragon slides in through south doorway; glide onto bar stool with subtle sliding sound; creature settles onto stool producing a faint thud or creak; wings unfurl creating a soft flapping noise; Amy lifts crystal cup from shelf with light clink of the cup on its perch; Amy pours special brew into cup, generating liquid pouring sound; Amy hands cup to dragon, cup sets down with gentle thump.\n\nnon_diegetic_music: Continue the established score seamlessly. Add low cello rumble and soft woodwind flourish as the obsidian-scaled creature enters, then return to warm acoustic strum when Amy smiles.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, Dragon-shaped creature slides in through the south doorway and glides onto a high bar stool at the back end of the counter. At 00:02.917, Its obsidian scales glitter as it settles on the stool. At 00:03.417, The creature unfurls its wings, revealing amber eyes that scan the room. At 00:04.417, Amy greets the dragon with a warm smile. At 00:04.917, Amy lifts a crystal cup from the shelf adjacent to the bar stool. At 00:05.917, Amy pours a special brew into the cup. At 00:06.917, Amy hands the cup over to the dragon.",
+        "overall_soundscape": "dragon slides in through south doorway; glide onto bar stool with subtle sliding sound; creature settles onto stool producing a faint thud or creak; wings unfurl creating a soft flapping noise; Amy lifts crystal cup from shelf with light clink of the cup on its perch; Amy pours special brew into cup, generating liquid pouring sound; Amy hands cup to dragon, cup sets down with gentle thump.",
+        "non_diegetic_music": "Continue the established score seamlessly. Add low cello rumble and soft woodwind flourish as the obsidian-scaled creature enters, then return to warm acoustic strum when Amy smiles.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "She hands the cup over to the dragon. Amy remains present in the state established by the final timed action: Amy hands the cup over to the dragon."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "75843344593765": {
+          "name": "Dragon-shaped creature",
+          "id": "Subject 75843344593765",
+          "speaker_id": "(S75843344593765)",
+          "subject_id": 75843344593765,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "243430124958720": {
+          "name": "Elf",
+          "id": "Subject 243430124958720",
+          "speaker_id": "(S243430124958720)",
+          "subject_id": 243430124958720,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "267280715056018": {
+          "name": "Goblin",
+          "id": "Subject 267280715056018",
+          "speaker_id": "(S267280715056018)",
+          "subject_id": 267280715056018,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "segment_number": 5,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 5,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Dragon takes a slow sip and exhales contentedly.",
+          "Amy wipes the bar with a fresh cloth."
+        ],
+        "must_not_happen": [
+          "Drink container must not change identity.",
+          "No extra hands or duplicated glasses.",
+          "No invented dialogue."
+        ],
+        "expected_end_state": [
+          "Dragon remains with the same drink container.",
+          "Amy has wiped the bar."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features. Amy's opening pose, position, and physical state are anchored by the supplied opening guide.\n<Subject 75843344593765> is Dragon-shaped creature (S75843344593765). unknown Dragon-shaped creature is referenced in <Picture 3> for identity and current appearance. Dragon-shaped creature's opening pose, position, and physical state are anchored by the supplied opening guide.\n<Subject 267280715056018> is Goblin (S267280715056018). unknown\n<Picture 2> references only the clothing that Amy is currently wearing.\n<Picture 3> defines Dragon-shaped creature's identity, physical appearance, species/distinguishing traits, and current clothing.\n\nSubject Amy: present; at the tavern's wooden floor; supported by polished table; posture standing; wearing Amy wears a rough‑spun linen tunic in muted brown and thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips.\nSubject Elf: present; at the tavern's wooden floor; supported by back table; posture sitting; wearing flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap and she wears soft brown leather boots that reach just below the knee and.\nSubject Goblin: present; at the tavern's wooden floor; supported by high bar stool; wearing 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips and brown belt around his waist holding a tiny pouch (frayed).\nProp back table: at the tavern's wooden floor.\nProp barrel: at the tavern's wooden floor; contains some ale.\nProp chipped mug: held by Goblin; contains some ale.\nProp cloth soaked in ale-scented oil: held by Amy.\nProp counter: at the tavern's wooden floor.\nProp crystal chalice: held by Amy.\nProp entrance: at the tavern's wooden floor.\nProp hearth: at the tavern's wooden floor.\nProp high bar stool: at the tavern's wooden floor.\nProp ladle: held by Amy.\nProp lantern (back table): at the tavern's wooden floor.\nProp lantern (counter tables): at the tavern's wooden floor.\nProp polished table: at the tavern's wooden floor.\nProp shelf of crystal cups: at the tavern's wooden floor.\nProp wooden latch: at the tavern's wooden floor.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, seamless continuation. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, [CAMERA: medium close‑up on Dragon-shaped creature’s face following the lip flick] The Dragon-shaped creature perched on the fixed high bar stool licks its obsidian lip with a quick flick.\n\nAt 00:01.917, [CAMERA: dolly in as it lifts chalice to mouth] <Subject 75843344593765> lifts the crystal chalice to its mouth and takes a slow sip, liquid swirling across its tongue before swallowing.\n\nAt 00:04.917, [CAMERA: pan left to Amy then back to Dragon-shaped creature’s head with steam] Amy watches from beside the bar, seeing <Subject 75843344593765> exhale contentedly as amber steam curls above its head.\n\nAt 00:06.417, [CAMERA: close‑up on her hand wiping stool] She draws her fresh cloth soaked in ale‑scented oil and wipes the high bar stool’s wooden surface, smoothing out any drips of ale that have fallen onto the wood.\n\noverall_soundscape: quick flick of dragon’s lip licking; liquid swirling across tongue as it sips the crystal chalice; a soft swallow (gulp); steady exhale with contented breathing; gentle steam curl above head; cloth rubbing against wooden surface and smoothing dripped ale, producing faint wood‑cloth friction and splat sounds\n\nnon_diegetic_music: Continue the established score seamlessly. Add subtle violin pizzicato and gentle harp glissando to underscore the dragon's calm sip before a faint percussive shift as steam curls.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, [CAMERA: medium close‑up on Dragon-shaped creature’s face following the lip flick] The Dragon-shaped creature perched on the fixed high bar stool licks its obsidian lip with a quick flick. At 00:01.917, [CAMERA: dolly in as it lifts chalice to mouth] <Subject 75843344593765> lifts the crystal chalice to its mouth and takes a slow sip, liquid swirling across its tongue before swallowing. At 00:04.917, [CAMERA: pan left to Amy then back to Dragon-shaped creature’s head with steam] Amy watches from beside the bar, seeing <Subject 75843344593765> exhale contentedly as amber steam curls above its head. At 00:06.417, [CAMERA: close‑up on her hand wiping stool] She draws her fresh cloth soaked in ale‑scented oil and wipes the high bar stool’s wooden surface, smoothing out any drips of ale that have fallen onto the wood.",
+        "overall_soundscape": "quick flick of dragon’s lip licking; liquid swirling across tongue as it sips the crystal chalice; a soft swallow (gulp); steady exhale with contented breathing; gentle steam curl above head; cloth rubbing against wooden surface and smoothing dripped ale, producing faint wood‑cloth friction and splat sounds",
+        "non_diegetic_music": "Continue the established score seamlessly. Add subtle violin pizzicato and gentle harp glissando to underscore the dragon's calm sip before a faint percussive shift as steam curls.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "She draws her fresh cloth soaked in ale‑scented oil and wipes the high bar stool’s wooden surface, smoothing out any drips of ale that have fallen onto the wood."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "75843344593765": {
+          "name": "Dragon-shaped creature",
+          "id": "Subject 75843344593765",
+          "speaker_id": "(S75843344593765)",
+          "subject_id": 75843344593765,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "243430124958720": {
+          "name": "Elf",
+          "id": "Subject 243430124958720",
+          "speaker_id": "(S243430124958720)",
+          "subject_id": 243430124958720,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "267280715056018": {
+          "name": "Goblin",
+          "id": "Subject 267280715056018",
+          "speaker_id": "(S267280715056018)",
+          "subject_id": 267280715056018,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "segment_number": 6,
+      "gold_mode": "append",
+      "pipeline_mode": "continuation",
+      "gold_target": {
+        "beat": 6,
+        "mode": "append",
+        "length_seconds": 8,
+        "must_happen": [
+          "Amy turns off the lanterns.",
+          "Amy operates the back-door latch.",
+          "Amy steps outside and closes/locks the tavern for the night."
+        ],
+        "must_not_happen": [
+          "No teleportation.",
+          "No invented unseen room geometry.",
+          "No reverse-walking patrons caused by continuity drift."
+        ],
+        "expected_end_state": [
+          "Amy is outside after closing and locking the tavern.",
+          "The tavern is shut for the night."
+        ]
+      },
+      "generated_h3_prompt": "subject_definitions: <Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features. Amy's opening pose, position, and physical state are anchored by the supplied opening guide.\n<Subject 75843344593765> is Dragon-shaped creature (S75843344593765). unknown Dragon-shaped creature is referenced in <Picture 3> for identity and current appearance. Dragon-shaped creature's opening pose, position, and physical state are anchored by the supplied opening guide.\n<Subject 267280715056018> is Goblin (S267280715056018). unknown\n<Picture 2> references only the clothing that Amy is currently wearing.\n\nSubject Amy: present; at the tavern's wooden floor; supported by polished table; posture standing; wearing Amy wears a rough‑spun linen tunic in muted brown and thick‑topped for protection on the creaking wooden floor. A plain leather belt cinches the apron at her hips.\nSubject Dragon-shaped creature: present; at the tavern's wooden floor.\nSubject Elf: present; at the tavern's wooden floor; supported by back table; posture sitting; wearing flowing emerald‑green tunic of fine woven cloth belted at the waist with a simple leather strap and she wears soft brown leather boots that reach just below the knee and.\nSubject Goblin: present; at the tavern's wooden floor; supported by high bar stool; wearing 20‑year‑old male goblin in a rough‑spun patchy tunic of muted greens that falls to his hips and brown belt around his waist holding a tiny pouch (frayed).\nProp back table: at the tavern's wooden floor.\nProp barrel: at the tavern's wooden floor; contains some ale.\nProp chipped mug: held by Goblin; contains some ale.\nProp cloth soaked in ale-scented oil: held by Amy.\nProp counter: at the tavern's wooden floor.\nProp crystal chalice: held by Dragon-shaped creature.\nProp entrance: at the tavern's wooden floor.\nProp hearth: at the tavern's wooden floor.\nProp high bar stool: at the tavern's wooden floor.\nProp ladle: held by Amy.\nProp lantern (back table): at the tavern's wooden floor.\nProp lantern (counter tables): at the tavern's wooden floor.\nProp polished table: at the tavern's wooden floor.\nProp shelf of crystal cups: at the tavern's wooden floor.\nProp wooden latch: at the tavern's wooden floor.\n\ndetailed_description: <Video 1> is the persistent LOCATION REFERENCE for the static environment and spatial layout (The Stone Hearth Tavern is a rectangular stone hall measuring eighty feet east‑west and sixty feet north‑south, with thick stone walls that creak under the wooden floor. The south wall hosts the main entrance: a single back door centered on the wall, its wooden latch protruding from the rear to allow inward swing. A clear aisle at least twelve feet wide runs from this doorway straight north toward the hall’s northern edge. Along the east side of the hall sits the counter—a three‑foot‑wide bar that stretches twenty feet in length. Its centreline lies ten feet north of the south wall and fifteen feet west of the eastern wall, leaving ample space for patrons to move around. The polished tables are set along this counter; each is four by four feet and fixed at their positions. Near the back end of the counter a high bar stool stands beside a shelf of crystal cups that rises six feet tall and three feet deep. On the west wall sits the hearth, occupying a ten‑by‑twelve‑foot stone area centred fifteen feet northward from the south wall. Beside this hearth an upright barrel—eight feet high with a four‑foot diameter—is positioned on the floor. The rear northwest corner of the hall holds a single back table measuring five by five feet; it is placed three feet north‑west of the counter’s centreline, ensuring no overlap with other furniture or walls. Above each polished table and above the back table hangs a lantern suspended six feet from the floor, providing illumination for patrons. All objects are fixed in place except the wooden latch on the entrance door, which can be moved to open or close the hall. The layout preserves the medieval tavern’s authentic spatial arrangement with stone walls, creaking floors, and ample room for movement around the counter and hearth). Preserve its architecture, fixed fixtures, entrances, surfaces, persistent furniture, landmarks, and background placement when those areas enter frame. Do not use <Video 1> for characters or current camera framing.  [Shot 1] Live-action cinematic, seamless continuation. Stage this segment as one continuous camera take with no cuts or cutaways; reframe only through continuous camera movement. Preserve each established handheld or movable prop as one distinct physical object; interactions must not duplicate, merge, or substitute containers or other props.\n\nAt 00:00.000, [CAMERA: wide shot starts at tavern interior; following Amy swinging lanterns down onto polished table tops, tracking Amy movement onto stone floor and turning toward south entrance, panning across as Amy pulls latch to open door, then closing it with a smooth pan back toward the moonlit town] Amy swings each lantern down from its hanging chains, letting the oil lamps rest against the polished table tops along the counter. Amy steps down from the tables onto the stone floor of the hall and turns to the south entrance, grabs the wooden latch and pulls it inward with a quick tug. The door creaks open as Amy steps outside. Standing in the doorway on the stone floor, Amy pushes the back door closed, then slides the latch into its locked position. Behind her, the moon climbs high over the medieval town, casting silver light across the tavern’s empty halls.\n\noverall_soundscape: lanterns swing down from chains with a moderate clink against polished tables, stone floor footstep, quick tug of wooden latch pulling inward with a light click, door creaks open in a low sustained sound, stone floor footstep outside the doorway, back door pushes closed with a thud, latch slides into locked position with another click\n\nnon_diegetic_music: Continue the established score seamlessly, adding soft flutes and shimmering celesta to mirror lanterns' glow against silvered stone.\n\nNo intelligible spoken dialogue is heard in this segment.",
+      "generated_request2_result": {
+        "detailed_description": "At 00:00.000, [CAMERA: wide shot starts at tavern interior; following Amy swinging lanterns down onto polished table tops, tracking Amy movement onto stone floor and turning toward south entrance, panning across as Amy pulls latch to open door, then closing it with a smooth pan back toward the moonlit town] Amy swings each lantern down from its hanging chains, letting the oil lamps rest against the polished table tops along the counter. Amy steps down from the tables onto the stone floor of the hall and turns to the south entrance, grabs the wooden latch and pulls it inward with a quick tug. The door creaks open as Amy steps outside. Standing in the doorway on the stone floor, Amy pushes the back door closed, then slides the latch into its locked position. Behind her, the moon climbs high over the medieval town, casting silver light across the tavern’s empty halls.",
+        "overall_soundscape": "lanterns swing down from chains with a moderate clink against polished tables, stone floor footstep, quick tug of wooden latch pulling inward with a light click, door creaks open in a low sustained sound, stone floor footstep outside the doorway, back door pushes closed with a thud, latch slides into locked position with another click",
+        "non_diegetic_music": "Continue the established score seamlessly, adding soft flutes and shimmering celesta to mirror lanterns' glow against silvered stone.",
+        "reference_alignment": "",
+        "subject_genders": {},
+        "_director_end_state": "Amy swings each lantern down from its hanging chains, letting the oil lamps rest against the polished table tops along the counter. She steps down from the tables onto the stone floor of the hall and turns to the south entrance, grabs the wooden latch and pulls it inward with a quick tug. The door creaks open as she steps outside. Standing in the doorway on the stone floor, she pushes the back door closed, then slides the latch into its locked position. Behind her, the moon climbs high over the medieval town, casting silver light across the tavern’s empty halls."
+      },
+      "generated_continuity_state": {
+        "version": 5,
+        "environment": {
+          "location": "N/A",
+          "persistent_state": "N/A"
+        },
+        "camera": "N/A",
+        "ongoing_action": "N/A",
+        "ongoing_audio": "N/A",
+        "subjects": {}
+      },
+      "generated_subject_identity_snapshot": {
+        "1": {
+          "name": "Amy",
+          "id": "Subject 1",
+          "speaker_id": "(S1)",
+          "subject_id": 1,
+          "gender": "female",
+          "picture_ids": [
+            1
+          ],
+          "picture_id": 1,
+          "origin_segment": null
+        },
+        "75843344593765": {
+          "name": "Dragon-shaped creature",
+          "id": "Subject 75843344593765",
+          "speaker_id": "(S75843344593765)",
+          "subject_id": 75843344593765,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "243430124958720": {
+          "name": "Elf",
+          "id": "Subject 243430124958720",
+          "speaker_id": "(S243430124958720)",
+          "subject_id": 243430124958720,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        },
+        "267280715056018": {
+          "name": "Goblin",
+          "id": "Subject 267280715056018",
+          "speaker_id": "(S267280715056018)",
+          "subject_id": 267280715056018,
+          "gender": "N/A",
+          "picture_ids": [],
+          "picture_id": null,
+          "origin_segment": null
+        }
+      },
+      "completed_beat_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  ],
+  "artifacts": {
+    "generation_state.json": "generated\\generation_state.json",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
