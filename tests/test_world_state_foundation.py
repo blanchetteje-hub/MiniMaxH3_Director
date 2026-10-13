@@ -1163,7 +1163,7 @@ class WorldStateSeedTests(unittest.TestCase):
                 name_resolution=contract["name_resolution"],
             )
 
-    def test_pickup_schema_excludes_fixed_props_but_keeps_movable_props(self):
+    def test_pickup_names_are_python_validated_for_mobility(self):
         state = make_reducer_state()
         contract = build_state_action_only_contract(
             state,
@@ -1174,11 +1174,240 @@ class WorldStateSeedTests(unittest.TestCase):
             item for item in schema["properties"]["state_actions"]["items"]["oneOf"]
             if item["properties"]["op"]["const"] == "pickup"
         )
-        self.assertEqual(
-            pickup["properties"]["prop_id"]["enum"], ["Food", "Movable object"]
+        self.assertEqual(pickup["properties"]["prop_id"], {
+            "type": "string", "minLength": 1,
+        })
+        rejected = parse_and_dry_run_state_actions(
+            state,
+            {"state_actions": [{
+                "action_id": "pickup-fixed",
+                "op": "pickup",
+                "actor_subject_id": "Subject One",
+                "prop_id": "Fixed object",
+            }]},
+            segment_number=1,
+            name_resolution=contract["name_resolution"],
         )
-        # The broad vocabulary and name resolver remain intact for other
-        # operations; only pickup's operand choices reflect reducer mobility.
+        self.assertFalse(rejected["accepted"])
+        self.assertEqual(rejected["outcomes"][0].code, "fixed_object")
+
+    def test_retrieve_prop_stages_supported_new_object_then_applies_actions(self):
+        state = make_reducer_state()
+        retrieval = {
+            "action_id": "retrieve-pitcher", "op": "retrieve_prop",
+            "actor_subject_id": "subject_1", "prop_name": "Serving pitcher",
+            "kind": "container", "support_id": "prop_support_a",
+        }
+        use = {
+            "action_id": "pour-liquid", "op": "pour",
+            "actor_subject_id": "subject_1",
+            "source_prop_id": "prop_source",
+            "target_prop_id": stable_world_state_id(
+                "prop", "container|Serving pitcher", scope="location_a"
+            ),
+            "substance": "liquid", "amount": "partial",
+        }
+        result = reduce_world_state(
+            state, [retrieval, use], segment_number=1
+        )
+
+        self.assertTrue(result.committed)
+        pitcher_id = stable_world_state_id(
+            "prop", "container|Serving pitcher", scope="location_a"
+        )
+        pitcher = result.world_state["props"][pitcher_id]
+        self.assertEqual(pitcher["name"], "Serving pitcher")
+        self.assertEqual(pitcher["kind"], "container")
+        self.assertEqual(pitcher["mobility"], "movable")
+        self.assertEqual(pitcher["placement"], {
+            "kind": "held", "subject_id": "subject_1",
+        })
+        self.assertEqual(pitcher["contents"], [{
+            "substance": "liquid", "amount": "some", "consumable": UNKNOWN,
+        }])
+        self.assertTrue(pitcher["capabilities"]["container"])
+        self.assertEqual(
+            pitcher["provenance"]["registration"]["initial_placement"],
+            {
+                "kind": "located",
+                "location_id": "location_a",
+                "support_id": "prop_support_a",
+            },
+        )
+
+    def test_retrieve_prop_and_later_actions_resolve_only_after_introduction(self):
+        state = make_reducer_state()
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text=(
+                "Subject One retrieves a serving pitcher from Support A and pours "
+                "from Source vessel into the serving pitcher."
+            ),
+        )
+        response = {"state_actions": [
+            {
+                "action_id": "retrieve-pitcher",
+                "op": "retrieve_prop",
+                "actor_subject_id": "Subject One",
+                "prop_name": "Serving pitcher",
+                "kind": "container",
+                "support_id": "Support A",
+            },
+            {
+                "action_id": "pour-liquid",
+                "op": "pour",
+                "actor_subject_id": "Subject One",
+                "source_prop_id": "Source vessel",
+                "target_prop_id": "Serving pitcher",
+                "substance": "liquid",
+                "amount": "partial",
+            },
+        ]}
+        resolved = parse_and_dry_run_state_actions(
+            state,
+            response,
+            segment_number=1,
+            name_resolution=contract["name_resolution"],
+        )
+
+        self.assertTrue(resolved["accepted"])
+        pitcher_id = stable_world_state_id(
+            "prop", "container|Serving pitcher", scope="location_a"
+        )
+        self.assertEqual(
+            resolved["state_actions"][1]["target_prop_id"], pitcher_id
+        )
+        retrieve_schema = next(
+            item for item in contract["response_format"]["json_schema"]["schema"]
+            ["properties"]["state_actions"]["items"]["oneOf"]
+            if item["properties"]["op"]["const"] == "retrieve_prop"
+        )
+        self.assertEqual(
+            retrieve_schema["properties"]["support_id"]["enum"], ["Support A"]
+        )
+        self.assertEqual(
+            retrieve_schema["properties"]["prop_name"],
+            {"type": "string", "minLength": 1},
+        )
+        retrieve_shape = next(
+            shape for shape in contract["prompt_operation_shapes"]
+            if shape["op"] == "retrieve_prop"
+        )
+        self.assertEqual(retrieve_shape["prop_name"], "<new prop name>")
+        pour_shape = next(
+            shape for shape in contract["prompt_operation_shapes"]
+            if shape["op"] == "pour"
+        )
+        self.assertEqual(
+            pour_shape["target_prop_id"],
+            "<exact registered prop name or earlier retrieved prop name>",
+        )
+
+    def test_retrieve_prop_rejects_unintroduced_names_and_invalid_origins(self):
+        state = make_reducer_state()
+        contract = build_state_action_only_contract(
+            state, current_segment_text="Subject One uses a serving pitcher."
+        )
+        operation_schemas = contract["response_format"]["json_schema"]["schema"]
+        self.assertNotIn(
+            "retrieve_prop",
+            {
+                item["properties"]["op"]["const"]
+                for item in operation_schemas["properties"]["state_actions"]["items"]["oneOf"]
+            },
+        )
+        use_without_retrieval = {"state_actions": [{
+            "action_id": "use-unknown-pitcher",
+            "op": "pickup",
+            "actor_subject_id": "Subject One",
+            "prop_id": "Serving pitcher",
+        }]}
+        with self.assertRaisesRegex(ValueError, "unknown_registered_name"):
+            parse_and_dry_run_state_actions(
+                state,
+                use_without_retrieval,
+                segment_number=1,
+                name_resolution=contract["name_resolution"],
+            )
+
+        before = copy.deepcopy(state)
+        invalid_origin = reduce_world_state(state, [{
+            "action_id": "materialize-pitcher",
+            "op": "retrieve_prop",
+            "actor_subject_id": "subject_1",
+            "prop_name": "Serving pitcher",
+            "kind": "container",
+            "support_id": "not-a-registered-support",
+        }], segment_number=1)
+        self.assertFalse(invalid_origin.committed)
+        self.assertEqual(invalid_origin.outcomes[0].code, "unknown_entity_id")
+        self.assertEqual(invalid_origin.world_state, before)
+
+        duplicate_contract = build_state_action_only_contract(
+            state,
+            current_segment_text="Subject One retrieves the Movable object from Support A.",
+        )
+        duplicate = {"state_actions": [{
+            "action_id": "duplicate-movable-object",
+            "op": "retrieve_prop",
+            "actor_subject_id": "Subject One",
+            "prop_name": "Movable object",
+            "kind": "object",
+            "support_id": "Support A",
+        }]}
+        with self.assertRaisesRegex(ValueError, "prop_already_registered"):
+            parse_and_dry_run_state_actions(
+                state,
+                duplicate,
+                segment_number=1,
+                name_resolution=duplicate_contract["name_resolution"],
+            )
+
+    def test_retrieve_prop_rejects_support_in_another_location(self):
+        state = make_reducer_state()
+        before = copy.deepcopy(state)
+        result = reduce_world_state(state, [{
+            "action_id": "retrieve-from-other-location",
+            "op": "retrieve_prop",
+            "actor_subject_id": "subject_1",
+            "prop_name": "Serving vessel",
+            "kind": "container",
+            "support_id": "prop_support_b",
+        }], segment_number=1)
+        self.assertFalse(result.committed)
+        self.assertEqual(result.outcomes[0].code, "support_location_mismatch")
+        self.assertEqual(result.world_state, before)
+
+    def test_failed_batch_discards_retrieved_prop(self):
+        state = make_reducer_state()
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text="Subject One Fixed object Movable object Support A",
+        )
+        before = copy.deepcopy(state)
+        result = reduce_world_state(state, [
+            {
+                "action_id": "retrieve-tool", "op": "retrieve_prop",
+                "actor_subject_id": "subject_1", "prop_name": "Serving ladle",
+                "kind": "tool", "support_id": "prop_support_a",
+            },
+            {
+                "action_id": "pick-up-fixed", "op": "pickup",
+                "actor_subject_id": "subject_1",
+                "prop_id": "prop_fixed",
+            },
+        ], segment_number=1)
+        self.assertFalse(result.committed)
+        self.assertEqual(result.outcomes[-1].code, "fixed_object")
+        self.assertEqual(result.world_state, before)
+        self.assertNotIn(
+            stable_world_state_id(
+                "prop", "tool|Serving ladle", scope="location_a"
+            ),
+            result.world_state["props"],
+        )
+        # Prop names remain in the registered vocabulary; reducer rules, not
+        # extraction-schema filtering, reject pickup of a fixed object.
         self.assertIn(
             "Fixed object",
             {item["name"] for item in contract["vocabulary"]["props"]},
@@ -1193,7 +1422,7 @@ class WorldStateSeedTests(unittest.TestCase):
                     if shape["op"] == "pickup"
                 )
             ]["prop_id"],
-            "<registered prop name>",
+            "<exact registered prop name or earlier retrieved prop name>",
         )
         fixed_pickup = {"state_actions": [{
             "action_id": "pickup-fixed",
@@ -1464,6 +1693,109 @@ def make_reducer_state():
 
 
 class WorldStateTransactionTests(unittest.TestCase):
+    def test_retrieved_prop_use_checkpoint_reuse_and_failed_segment_rollback(self):
+        opening = make_reducer_state()
+        state = minimax.new_generation_state(
+            minimax.build_run_config(5, 10, 0.5, 3)
+        )
+        state["config"]["test_prompt_generation"] = True
+        state["world_state"] = copy.deepcopy(opening)
+        pitcher_id = stable_world_state_id(
+            "prop", "container|Serving pitcher", scope="location_a"
+        )
+        segment_one_result = {
+            "state_actions_dry_run_accepted": True,
+            "state_actions": [
+                {
+                    "action_id": "retrieve-pitcher",
+                    "op": "retrieve_prop",
+                    "actor_subject_id": "subject_1",
+                    "prop_name": "Serving pitcher",
+                    "kind": "container",
+                    "support_id": "prop_support_a",
+                },
+                {
+                    "action_id": "fill-pitcher",
+                    "op": "pour",
+                    "actor_subject_id": "subject_1",
+                    "source_prop_id": "prop_source",
+                    "target_prop_id": pitcher_id,
+                    "substance": "liquid",
+                    "amount": "partial",
+                },
+            ],
+        }
+        segment_one_end = minimax.commit_accepted_director_world_state(
+            state, opening, segment_one_result, 1,
+        )
+        self.assertEqual(
+            segment_one_end["props"][pitcher_id]["placement"],
+            {"kind": "held", "subject_id": "subject_1"},
+        )
+        self.assertEqual(
+            segment_one_end["props"][pitcher_id]["contents"][0]["amount"],
+            "some",
+        )
+        minimax.record_completed_segment(
+            state, 1, None, {"detailed_description": "retrieves and fills pitcher"}, [1],
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = str(Path(directory) / "generation_state.json")
+            minimax.save_generation_state(state, checkpoint)
+            restored = minimax.restore_generation_state(
+                2, ["First", "Second", "Third"], checkpoint,
+            )
+        segment_two_opening = restored["state"]["world_state"]
+        contract = build_state_action_only_contract(
+            segment_two_opening,
+            current_segment_text=(
+                "Subject One pours from the Serving pitcher into the Target vessel."
+            ),
+        )
+        self.assertEqual(
+            contract["name_resolution"]["prop"]["Serving pitcher"],
+            [pitcher_id],
+        )
+        self.assertEqual(
+            sum(prop["name"] == "Serving pitcher" for prop in contract["vocabulary"]["props"]),
+            1,
+        )
+
+        segment_two_result = {
+            "state_actions_dry_run_accepted": True,
+            "state_actions": [{
+                "action_id": "serve-liquid",
+                "op": "pour",
+                "actor_subject_id": "subject_1",
+                "source_prop_id": pitcher_id,
+                "target_prop_id": "prop_target",
+                "substance": "liquid",
+                "amount": "all",
+            }],
+        }
+        segment_two_end = minimax.commit_accepted_director_world_state(
+            restored["state"], segment_two_opening, segment_two_result, 2,
+        )
+        self.assertEqual(
+            segment_two_end["props"][pitcher_id]["contents"][0]["amount"],
+            "none",
+        )
+        self.assertEqual(
+            segment_two_end["props"]["prop_target"]["contents"][0]["substance"],
+            "liquid",
+        )
+
+        before_rejected_segment = copy.deepcopy(restored["state"]["world_state"])
+        with self.assertRaisesRegex(minimax.BeatGenerationError, "no accepted"):
+            minimax.commit_accepted_director_world_state(
+                restored["state"],
+                before_rejected_segment,
+                {"state_actions_dry_run_accepted": False, "state_actions": []},
+                3,
+            )
+        self.assertEqual(restored["state"]["world_state"], before_rejected_segment)
+
     def test_accepted_actions_commit_across_segments_and_checkpoint_recovery(self):
         opening = make_reducer_state()
         config = minimax.build_run_config(5, 10, 0.5, 2)

@@ -37294,7 +37294,12 @@ def _director_state_action_prompt_contract(operation_shapes):
         "Include every shown field and no others. Use exact registered entity "
         "names from the vocabulary, never Python-assigned IDs. Replace angle-"
         "bracketed placeholders with values of the shown type; use null only "
-        "where shown.\n"
+        "where shown. A `retrieve_prop` action may introduce a prop only when "
+        "validated RAW explicitly shows a Subject retrieving it from a registered "
+        "support accessible to that Subject. Do not introduce a prop without that "
+        "origin and retrieval action. Later actions in the same batch may refer to "
+        "the exact name introduced earlier. Reuse existing registered props "
+        "whenever available.\n"
     )
     if operation_shapes:
         prompt += "PERMITTED STATEACTION OBJECT STRUCTURES\n" + json.dumps(

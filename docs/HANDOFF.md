@@ -1,5 +1,43 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Transactional Director-introduced props
+
+- Added `retrieve_prop` to the existing ordered StateAction contract. It may
+  register an ordinary movable prop only from a named, registered support in
+  the present Subject's location. The prop's deterministic Python ID is based
+  on its canonical kind/name and registered location; provenance records its
+  initial support placement and retrieval action. A duplicate registered name
+  is rejected so later segments reuse the same WorldState record.
+- The request schema now allows prop-name strings for prop references because a
+  later action may reference a prop introduced earlier in the same batch.
+  Python resolves exact opening-vocabulary names or names introduced earlier in
+  that ordered batch; unknown, out-of-order, ambiguous, and duplicate names
+  fail closed. Subject, location, and support names remain restricted to the
+  request vocabulary.
+- The reducer stages registration and later possession/content changes in its
+  existing atomic candidate. A failed action returns the unchanged opening
+  state; the existing completed-segment commit remains the only canonical
+  write. No additional LLM call or state layer was added. The existing
+  `world_state_current_segment_props` pre-Director path is unchanged.
+- Added the approved contract instruction verbatim to the dynamically built
+  StateAction system prompt:
+  “A `retrieve_prop` action may introduce a prop only when validated RAW
+  explicitly shows a Subject retrieving it from a registered support
+  accessible to that Subject. Do not introduce a prop without that origin and
+  retrieval action. Later actions in the same batch may refer to the exact name
+  introduced earlier. Reuse existing registered props whenever available.”
+- Deterministic checks prove the actor and support are present in the same
+  registered location. WorldState does not model distance or reachability, so
+  exact physical accessibility still relies on the existing validated RAW and
+  StateAction interpretation. Retrieval from a location with no registered
+  support is not currently represented.
+- Verification: focused WorldState reducer/transaction and Director pipeline
+  tests passed (204 tests). The combined `test_world_state_foundation` and
+  `test_director_retry` run executed 218 tests and had two unrelated existing
+  story-start expectation failures: one supplies the retired
+  `classification`/`evidence` response shape, and one asserts retired prompt
+  wording. `py_compile` and `git diff --check` passed.
+
 ## 2026-10-13 — Explicitly prohibit timestamps in creative RAW
 
 - Added the requested `- do not include timestamps.` bullet to the

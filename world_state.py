@@ -1,10 +1,10 @@
 """Canonical Python-owned world-state schema and authoritative seed boundary.
 
 This module intentionally contains no continuity, prompt, beat, or visual-state
-migration. WorldState is seeded only through explicit authority-specific
-functions for authored identities, story-start presence, canonical wardrobe,
-canonical static locations, and registered persistent props. Director actions
-can be dry-run through the reducer contract but are not committed here.
+migration. Opening WorldState facts use explicit authority-specific seed
+functions. Ordered Director actions may transactionally register a prop
+retrieved from a registered support through the shared reducer; callers decide
+whether the successful candidate reaches the accepted-segment commit boundary.
 """
 
 from __future__ import annotations
@@ -110,9 +110,19 @@ PROP_RECORD_FIELDS = frozenset(WORLD_STATE_PROP_SCHEMA["properties"])
 WORLD_STATE_PROP_SCHEMA["required"] = sorted(PROP_RECORD_FIELDS)
 
 # One declarative operation contract drives reducer shape validation and the
-# dynamically vocabulary-restricted Director response schema. `ref` values
-# are resolved to the IDs registered in the current WorldState at request time.
+# dynamically vocabulary-restricted Director response schema. Registered names
+# resolve to Python IDs, and later prop references may resolve to an earlier
+# retrieval in the same ordered batch.
 ACTION_CONTRACT = {
+    "retrieve_prop": {
+        "fields": {
+            "actor_subject_id": {"ref": "subject"},
+            "prop_name": {"type": "string", "minLength": 1},
+            "kind": {"type": "string", "enum": list(CURRENT_SEGMENT_PROP_KINDS)},
+            "support_id": {"ref": "support"},
+        },
+        "required": {"actor_subject_id", "prop_name", "kind", "support_id"},
+    },
     "pickup": {
         # Keep deterministic reducer prerequisites visible in the structured
         # contract: a fixed or unknown-mobility prop cannot be picked up.
@@ -1341,7 +1351,56 @@ def _apply_state_action(
     op = action["op"]
     changed: list[tuple[dict[str, Any], str]] = []
 
-    if op == "pickup":
+    if op == "retrieve_prop":
+        actor_id = action["actor_subject_id"]
+        actor = _require_present_subject(state, actor_id)
+        support_id = action["support_id"]
+        support = _require_support(state, support_id, actor["location_id"])
+        name = " ".join(str(action.get("prop_name") or "").split()).strip()
+        kind = action.get("kind")
+        if not name:
+            _reject("invalid_prop_name", "A retrieved prop requires a non-empty name.")
+        if kind not in CURRENT_SEGMENT_PROP_KINDS:
+            _reject("invalid_prop_kind", "A retrieved prop must be an ordinary movable prop kind.")
+        name_key = _name_key(name)
+        if any(
+            _name_key(prop.get("name")) == name_key
+            for prop in state["props"].values()
+        ):
+            _reject(
+                "prop_already_registered",
+                "The prop name is already registered; reuse that prop instead of introducing a duplicate.",
+            )
+        location_id = support["placement"]["location_id"]
+        prop_id = _retrieved_prop_id(name, kind, location_id)
+        if prop_id in state["props"]:
+            _reject("stable_prop_id_collision", "The retrieved prop ID is already in use.")
+        initial_placement = {
+            "kind": "located",
+            "location_id": location_id,
+            "support_id": support_id,
+        }
+        prop = _seed_prop_record(
+            prop_id,
+            name,
+            kind,
+            "movable",
+            initial_placement,
+            provenance={"registration": {
+                "authority": "director_state_actions",
+                "segment_number": segment_number,
+                "action_index": action_index,
+                "action_id": action_id,
+                "initial_placement": deepcopy(initial_placement),
+            }},
+        )
+        # This operation represents the staged retrieval itself: the item is
+        # established at its registered origin, then held by the actor.
+        prop["placement"] = {"kind": "held", "subject_id": actor_id}
+        state["props"][prop_id] = prop
+        changed.append((prop, "placement"))
+
+    elif op == "pickup":
         actor_id = action["actor_subject_id"]
         subject = _require_present_subject(state, actor_id)
         prop = _require_prop(state, action["prop_id"])
@@ -1854,6 +1913,10 @@ def _action_field_schema(
     reference_kind = schema.pop("ref", None)
     if reference_kind is None:
         return schema
+    if reference_kind == "prop":
+        # A prop may be introduced earlier in this ordered batch. Python checks
+        # each name against the opening vocabulary or a prior retrieve_prop.
+        return {"type": "string", "minLength": 1}
     return _string_enum(
         entity_names[reference_kind],
         nullable=bool(schema.pop("nullable", False)),
@@ -1890,12 +1953,16 @@ def _state_action_prompt_shapes(
                 nullable = bool(field_contract.get("nullable"))
                 values = properties[field_name].get("enum", [])
                 has_registered_name = any(value is not None for value in values)
-                if nullable and not has_registered_name:
+                if reference_kind == "prop":
+                    value = "<exact registered prop name or earlier retrieved prop name>"
+                elif nullable and not has_registered_name:
                     value = None
                 elif nullable:
                     value = f"<registered {label} name or null>"
                 else:
                     value = f"<registered {label} name>"
+            elif field_name == "prop_name" and op == "retrieve_prop":
+                value = "<new prop name>"
             elif "enum" in field_contract:
                 value = "<" + "|".join(
                     str(item) for item in field_contract["enum"]
@@ -1925,13 +1992,20 @@ def _registered_name_is_referenced(name: str, segment_text: str) -> bool:
     return False
 
 
+def _retrieved_prop_id(name: str, kind: str, location_id: str) -> str:
+    """Generate the same stable Python ID for reducer and ordered name resolution."""
+    return stable_world_state_id(
+        "prop", f"{kind}|{name}", scope=location_id
+    )
+
+
 def build_state_action_only_contract(
     world_state: dict[str, Any],
     *,
     current_segment_text: str = "",
     current_segment_subject_names: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Return registered vocabulary and a strict StateAction-only schema."""
+    """Return registered vocabulary and the ordered StateAction response schema."""
     validate_world_state(world_state)
     all_subjects = [
         {
@@ -2196,6 +2270,10 @@ def _resolve_and_dry_run_state_actions(
     resolved_actions = deepcopy(response["state_actions"])
     if not isinstance(resolved_actions, list):
         raise ValueError("StateAction response requires a state_actions array.")
+    available_names = {
+        category: {name: list(ids) for name, ids in values.items()}
+        for category, values in name_resolution.items()
+    }
     for action in resolved_actions:
         if not isinstance(action, dict):
             continue
@@ -2214,12 +2292,13 @@ def _resolve_and_dry_run_state_actions(
                     f"StateAction {action.get('op')}.{field_name} must be an exact "
                     f"registered {reference_kind} name."
                 )
-            matches = name_resolution.get(reference_kind, {}).get(reference_name, [])
+            matches = available_names.get(reference_kind, {}).get(reference_name, [])
             if not matches:
                 raise ValueError(
                     f"unknown_registered_name: StateAction "
                     f"{action.get('op')}.{field_name} names an "
-                    f"unregistered {reference_kind}: {reference_name!r}."
+                    f"unregistered {reference_kind} or a prop not introduced "
+                    f"earlier in this batch: {reference_name!r}."
                 )
             if len(matches) != 1:
                 raise ValueError(
@@ -2228,6 +2307,43 @@ def _resolve_and_dry_run_state_actions(
                     f"registered {reference_kind} name: {reference_name!r}."
                 )
             action[field_name] = matches[0]
+        if action.get("op") == "retrieve_prop":
+            prop_name = " ".join(str(action.get("prop_name") or "").split()).strip()
+            kind = action.get("kind")
+            if not prop_name:
+                raise ValueError("retrieve_prop requires a non-empty prop_name.")
+            if kind not in CURRENT_SEGMENT_PROP_KINDS:
+                raise ValueError("retrieve_prop has an unsupported ordinary prop kind.")
+            if any(
+                _name_key(prop.get("name")) == _name_key(prop_name)
+                for prop in world_state["props"].values()
+            ):
+                raise ValueError(
+                    f"prop_already_registered: {prop_name!r} is already registered; "
+                    "reuse the registered prop instead of introducing a duplicate."
+                )
+            support_id = action.get("support_id")
+            support = world_state["props"].get(support_id)
+            placement = support.get("placement") if isinstance(support, dict) else None
+            location_id = (
+                placement.get("location_id")
+                if isinstance(placement, dict) and placement.get("kind") == "located"
+                else None
+            )
+            if not isinstance(location_id, str) or location_id not in world_state["locations"]:
+                raise ValueError(
+                    "retrieve_prop origin support must have a registered location."
+                )
+            prop_id = _retrieved_prop_id(prop_name, kind, location_id)
+            if prop_id in world_state["props"]:
+                raise ValueError("retrieve_prop would collide with a registered prop ID.")
+            if prop_name in available_names.setdefault("prop", {}):
+                raise ValueError(
+                    f"ambiguous_registered_name: retrieved prop name {prop_name!r} "
+                    "is already present in the request vocabulary."
+                )
+            action["prop_name"] = prop_name
+            available_names["prop"][prop_name] = [prop_id]
     outcomes = validate_state_actions(
         world_state,
         resolved_actions,

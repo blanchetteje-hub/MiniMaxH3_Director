@@ -13,6 +13,7 @@ from world_state import (
     register_explicit_persistent_props,
     seed_canonical_static_location_state,
     seed_story_start_presence,
+    stable_world_state_id,
     validate_state_actions,
 )
 
@@ -618,6 +619,87 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertTrue(all(outcome.accepted for outcome in result["outcomes"]))
         self.assertEqual(result["state_actions"][1]["source_prop_id"], source_id)
 
+    def test_state_action_extractor_registers_retrieved_prop_for_later_use(self):
+        world_state, location_id, mug_id = goblin_mug_world_state()
+        world_state["props"][mug_id]["kind"] = "container"
+        world_state["props"][mug_id]["capabilities"]["container"] = True
+        world_state = register_explicit_persistent_props(world_state, [
+            {
+                "name": "shelf",
+                "kind": "support",
+                "mobility": "fixed",
+                "needed_for_state": True,
+                "reason": "A movable vessel is retrieved from this support.",
+                "location_id": location_id,
+            },
+            {
+                "name": "barrel",
+                "kind": "container",
+                "mobility": "fixed",
+                "needed_for_state": True,
+                "reason": "Its contents are poured into a retrieved vessel.",
+                "location_id": location_id,
+                "contents": [{
+                    "substance": "ale",
+                    "amount": "some",
+                    "consumable": "unknown",
+                }],
+                "capabilities": {"container": True},
+            },
+        ])
+        opening = copy.deepcopy(world_state)
+        pitcher_id = stable_world_state_id(
+            "prop", "container|serving pitcher", scope=location_id
+        )
+        raw_scene = (
+            "At 00:00.000, Amy retrieves the serving pitcher from the shelf.\n"
+            "At 00:03.000, Amy pours ale from the barrel into the serving pitcher."
+        )
+        request = mock.Mock(return_value={"state_actions": [
+            {
+                "action_id": "retrieve-pitcher",
+                "op": "retrieve_prop",
+                "actor_subject_id": "Amy",
+                "prop_name": "serving pitcher",
+                "kind": "container",
+                "support_id": "shelf",
+            },
+            {
+                "action_id": "pour-ale",
+                "op": "pour",
+                "actor_subject_id": "Amy",
+                "source_prop_id": "barrel",
+                "target_prop_id": "serving pitcher",
+                "substance": "ale",
+                "amount": "partial",
+            },
+        ]})
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.console_log"),
+        ):
+            result = minimax.extract_and_dry_run_director_state_actions(
+                world_state, raw_scene, segment_number=1,
+            )
+
+        self.assertTrue(result["accepted"])
+        self.assertEqual(
+            [action["op"] for action in result["state_actions"]],
+            ["retrieve_prop", "pour"],
+        )
+        self.assertEqual(
+            result["state_actions"][1]["target_prop_id"], pitcher_id,
+        )
+        self.assertEqual(result["raw_scene"], raw_scene)
+        self.assertEqual(world_state, opening)
+        self.assertEqual(request.call_count, 1)
+        system_prompt = request.call_args.args[0][0]["content"]
+        self.assertIn(
+            "A `retrieve_prop` action may introduce a prop only when validated RAW explicitly shows a Subject retrieving it from a registered support accessible to that Subject. Do not introduce a prop without that origin and retrieval action. Later actions in the same batch may refer to the exact name introduced earlier. Reuse existing registered props whenever available.",
+            system_prompt,
+        )
+        self.assertIn('"op": "retrieve_prop"', system_prompt)
+
     def test_unknown_contents_and_existing_holder_do_not_block_valid_pour(self):
         world_state, location_id, mug_id = goblin_mug_world_state()
         mug = world_state["props"][mug_id]
@@ -863,7 +945,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(
             operation_sets[0],
             {
-                "pickup", "place", "handoff", "pour", "consume", "enter",
+                "retrieve_prop", "pickup", "place", "handoff", "pour", "consume", "enter",
                 "exit", "move", "set_support", "change_clothing", "open",
                 "close", "lock", "unlock",
             },
@@ -2533,7 +2615,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("CURRENT BEAT is the story authority", prompt)
         self.assertIn("ASSIGNED SOURCE", prompt)
         self.assertNotIn("camera", prompt.casefold())
-        self.assertNotIn("timestamp", prompt.casefold())
+        self.assertIn("- do not include timestamps.", prompt)
         self.assertNotIn("End continuity state", prompt)
         self.assertNotIn("beat_complete", prompt)
         self.assertEqual(minimax.build_director_rules(8, 8, 1, "", 1), "")
@@ -3411,7 +3493,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             segment_length="8"
         )
         self.assertIn("Add only details needed to physically connect", prompt)
-        self.assertNotIn("timestamps", prompt.casefold())
+        self.assertIn("- do not include timestamps.", prompt)
         self.assertNotIn("camera choreography", prompt.casefold())
     def test_completion_prompt_allows_small_route_details(self):
         messages = minimax.build_director_raw_scene_completion_messages(
