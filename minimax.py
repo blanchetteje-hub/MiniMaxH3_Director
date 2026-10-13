@@ -37059,10 +37059,99 @@ def _director_carry_forward_final_subjects(
     return repaired, carried
 
 
+def _director_raw_subject_resolution_can_be_skipped(raw_scene, world_state):
+    """Return whether RAW needs no identity or appearance bootstrap."""
+    if not isinstance(world_state, dict) or not isinstance(
+        world_state.get("subjects"), dict
+    ):
+        return False
+
+    raw_text = str(raw_scene or "")
+    visual_text = _director_strip_camera_instructions(raw_text)
+    registered = []
+    for subject in world_state["subjects"].values():
+        if not isinstance(subject, dict):
+            continue
+        name = " ".join(str(subject.get("name") or "").split()).strip()
+        if name:
+            registered.append((name, subject))
+
+    referenced = []
+    remaining = visual_text
+    for name, subject in sorted(registered, key=lambda item: len(item[0]), reverse=True):
+        pattern = re.compile(rf"(?i)(?<![\w]){re.escape(name)}(?![\w])")
+        if pattern.search(remaining) is None:
+            continue
+        referenced.append((name, subject))
+        remaining = pattern.sub(" ", remaining)
+
+    registered_names = [name for name, _subject in registered]
+    for line in visual_text.splitlines():
+        candidate = line.strip()
+        if not candidate or re.match(r"(?i)^End continuity state\s*:", candidate):
+            continue
+        timestamp = _DIRECTOR_CAMERA_PREFIX_RE.match(candidate)
+        if timestamp is not None:
+            candidate = timestamp.group("body")
+        camera_tag = _DIRECTOR_CAMERA_TAG_RE.match(candidate)
+        if camera_tag is not None:
+            candidate = camera_tag.group("action")
+        if re.match(r"(?i)^(?:the\s+)?camera\b", candidate):
+            continue
+        if any(
+            re.match(rf"(?i)^{re.escape(name)}(?![\w])", candidate)
+            for name in registered_names
+        ):
+            continue
+        if re.match(r"(?i)^(?:he|she|they|it|this subject|that subject)\b", candidate):
+            continue
+        # If an action line introduces a new grammatical subject, its noun
+        # need not be in a genre-specific vocabulary for us to retain the
+        # existing resolver.
+        return False
+
+    # Be conservative: a name or animate description that cannot be tied to a
+    # registered canonical name must continue through the existing resolver.
+    residual = _canonicalize_director_timestamps(remaining)
+    residual = re.sub(r"(?im)^\s*End continuity state\s*:", " ", residual)
+    residual = re.sub(r"(?i)\b(?:at|end|continuity|state)\b", " ", residual)
+    if re.search(r"\b[A-Z][a-z]+(?:[-'][A-Z]?[a-z]+)*\b", residual):
+        return False
+    if re.search(
+        r"(?i)\b(?:a|an|the)\s+(?:[a-z][a-z'-]*\s+){0,3}"
+        r"(?:person|individual|figure|stranger|visitor|guest|guard|soldier|"
+        r"woman|man|child|boy|girl|creature|animal|someone|somebody|"
+        r"elf|goblin|dragon|dwarf|orc|wizard|robot|alien|monster|dog|cat|horse)\b",
+        residual,
+    ):
+        return False
+    if re.search(r"(?i)\b(?:as|while|when|after|before|and|but)\s+(?:a|an|the)\b", residual):
+        return False
+
+    for _name, subject in referenced:
+        identity = subject.get("identity")
+        if not isinstance(identity, dict):
+            return False
+        has_identity = any(
+            _world_state_known(identity.get(field))
+            for field in ("canonical_description", "source_description")
+        ) or bool(identity.get("picture_ids"))
+        wardrobe = subject.get("wardrobe")
+        if not has_identity or not isinstance(wardrobe, dict):
+            return False
+        if any(
+            wardrobe.get(slot) in (None, "", "unknown")
+            for slot in _WARDROBE_FIELDS
+        ):
+            return False
+    return True
+
+
 def resolve_director_raw_scene_subjects(
     raw_scene,
     subject_definitions="",
     *,
+    world_state=None,
     llm_request=ask_llm,
     history_metadata=None,
     segment_seconds=None,
@@ -37072,13 +37161,35 @@ def resolve_director_raw_scene_subjects(
     current_beat="",
 ):
     """Name distinct unnamed foreground animate actors after RAW is finalized."""
-    original = _canonicalize_director_timestamps(raw_scene).strip()
+    raw_input = raw_scene if isinstance(raw_scene, str) else str(raw_scene or "")
+    original = _canonicalize_director_timestamps(raw_input).strip()
     if not original:
         if return_subject_bootstrap:
             return original, [], {}, {}
         if return_subject_descriptions:
             return original, [], {}
         return original, []
+
+    if _director_raw_subject_resolution_can_be_skipped(raw_input, world_state):
+        structure_errors = _director_raw_scene_structure_errors(
+            original,
+            segment_seconds,
+        )
+        if structure_errors:
+            raise ValueError(
+                "RAW Subject resolver bypass found invalid shot-script structure: "
+                + "; ".join(structure_errors)
+            )
+        console_log(
+            "Skipping RAW Subject resolution: all referenced Subjects are "
+            "registered with complete identity and wardrobe metadata.",
+            flush=True,
+        )
+        if return_subject_bootstrap:
+            return raw_input, [], {}, {}
+        if return_subject_descriptions:
+            return raw_input, [], {}
+        return raw_input, []
 
     end_match = _DIRECTOR_END_CONTINUITY_RE.search(original)
     if not end_match:
@@ -41770,6 +41881,7 @@ def _run_main(
                 ) = resolve_director_raw_scene_subjects(
                     accepted_raw_scene,
                     subject_definitions=subject_definitions,
+                    world_state=segment_bundle.get("world_state_opening"),
                     return_subject_bootstrap=True,
                     story_context=expanded_story_context,
                     current_beat=segment_bundle.get("current_beat_text", ""),

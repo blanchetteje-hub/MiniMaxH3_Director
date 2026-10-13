@@ -1,5 +1,30 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Job 56 unnecessary visible-Subject resolution
+
+- The post-RAW visible-Subject resolver always called the LLM, even when the
+  accepted scene named only registered Subjects with complete canonical
+  identity and wardrobe data. Job 56's resolver rewrote timestamps twice in
+  that no-discovery case.
+- Added a deterministic bypass at the existing resolver entry point. It uses
+  the opening WorldState and skips only when every action line is attributable
+  to a registered Subject or a clear pronoun reference, and the referenced
+  Subjects have established identity/reference and all wardrobe-slot data.
+  Unrecognized action-line Subjects, likely unnamed actors, or missing metadata
+  continue through the existing resolver. Existing shot-script structure
+  checks still run before returning.
+- On bypass, the resolver returns the original RAW string exactly, including
+  timestamp spelling/order, camera tags, action text, and surrounding
+  whitespace. No runtime prompt or downstream Subject/wardrobe precedence was
+  changed.
+- Added regressions for complete-metadata bypass, exact RAW preservation,
+  missing wardrobe metadata, missing identity metadata, and an unnamed actor
+  outside the bypass path. The bypass is deliberately conservative; unusual
+  sentence forms and ambiguous secondary references may still use the
+  resolver.
+- Verification: four focused resolver regressions passed; the complete
+  `tests.test_director_retry` module passed (137 tests).
+
 ## 2026-10-13 — Job 55 unsupported pre-Director prop placement
 
 - Fixed `parse_current_segment_persistent_prop_result()` so a registered

@@ -1203,6 +1203,119 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("Do not label interchangeable background crowds/groups", text)
         self.assertIn("KNOWN SUBJECTS", text)
 
+    @staticmethod
+    def _complete_amy_resolution_world_state():
+        state = new_world_state({
+            "source_sha256": "subject-resolution-bypass",
+            "subjects": {
+                "1": {
+                    "subject_id": 1,
+                    "name": "Amy",
+                    "gender": "female",
+                    "physical_form": "humanoid",
+                    "source_description": "A human tavern keeper.",
+                    "picture_ids": [1],
+                },
+            },
+        })
+        subject = state["subjects"]["subject_1"]
+        subject["identity"]["canonical_description"] = "A human tavern keeper."
+        subject["wardrobe"] = {
+            "upper": [{"garment": "linen tunic", "condition": "unknown"}],
+            "lower": [{"garment": "wool trousers", "condition": "unknown"}],
+            "footwear": [{"garment": "leather shoes", "condition": "unknown"}],
+            "other": "N/A",
+        }
+        return state
+
+    def test_raw_subject_resolution_bypasses_registered_complete_subjects(self):
+        original = (
+            "  At 00:00.000, [CAMERA: slow pan] Amy wipes the counter with a cloth.\n"
+            "At 00:05.000, Amy sets the cloth beside the counter.\n"
+            "End continuity state: Amy remains behind the counter.\n"
+        )
+        request = mock.Mock(side_effect=AssertionError("resolver should be bypassed"))
+        result, names, descriptions, wardrobes = (
+            minimax.resolve_director_raw_scene_subjects(
+                original,
+                "<Subject 1> is Amy.",
+                world_state=self._complete_amy_resolution_world_state(),
+                llm_request=request,
+                segment_seconds=6.0,
+                return_subject_bootstrap=True,
+            )
+        )
+        self.assertEqual(result, original)
+        self.assertEqual((names, descriptions, wardrobes), ([], {}, {}))
+        request.assert_not_called()
+
+    def test_raw_subject_resolution_uses_resolver_when_registered_metadata_is_missing(self):
+        original = (
+            "At 00:00.000, Amy wipes the counter with a cloth.\n"
+            "End continuity state: Amy remains behind the counter."
+        )
+        state = self._complete_amy_resolution_world_state()
+        state["subjects"]["subject_1"]["wardrobe"]["lower"] = "unknown"
+        request = mock.Mock(return_value={
+            "raw_scene": original.split("\nEnd continuity state:")[0],
+            "subject_names": [],
+        })
+        minimax.resolve_director_raw_scene_subjects(
+            original,
+            "<Subject 1> is Amy.",
+            world_state=state,
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        request.assert_called_once()
+
+    def test_raw_subject_resolution_uses_resolver_when_identity_metadata_is_missing(self):
+        original = (
+            "At 00:00.000, Amy wipes the counter with a cloth.\n"
+            "End continuity state: Amy remains behind the counter."
+        )
+        state = self._complete_amy_resolution_world_state()
+        identity = state["subjects"]["subject_1"]["identity"]
+        identity["canonical_description"] = "unknown"
+        identity["source_description"] = "unknown"
+        identity["picture_ids"] = []
+        request = mock.Mock(return_value={
+            "raw_scene": original.split("\nEnd continuity state:")[0],
+            "subject_names": [],
+        })
+        minimax.resolve_director_raw_scene_subjects(
+            original,
+            "<Subject 1> is Amy.",
+            world_state=state,
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        request.assert_called_once()
+
+    def test_raw_subject_resolution_uses_resolver_for_unnamed_actor(self):
+        original = (
+            "At 00:00.000, Amy looks toward a luminous being entering the room.\n"
+            "End continuity state: Amy and the being remain in the room."
+        )
+        resolved_raw = (
+            "At 00:00.000, Amy looks toward Figure1 entering the room.\n"
+            "End continuity state: Amy and Figure1 remain in the room."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": resolved_raw.split("\nEnd continuity state:")[0],
+            "subject_names": ["Figure1"],
+        })
+        result, names = minimax.resolve_director_raw_scene_subjects(
+            original,
+            "<Subject 1> is Amy.",
+            world_state=self._complete_amy_resolution_world_state(),
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        request.assert_called_once()
+        self.assertEqual(names, ["Figure1"])
+        self.assertIn("Figure1", result)
+
     def test_raw_subject_resolution_accepts_only_identity_labeling(self):
         original = (
             "At 00:00.000, a guard enters the room.\n"
