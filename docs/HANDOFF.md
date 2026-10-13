@@ -1,5 +1,46 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — Job #49 StateAction reducer failures
+
+- Job #49's Segment 2 opening WorldState and prompt history show the failure was
+  not a reducer defect. The barrel was registered from canonical location state
+  as a fixed support with empty contents. The chipped mug was registered as
+  held by Goblin with ale contents but `container="unknown"`. The StateAction
+  request received those exact facts and the validated RAW. RAW shows Amy
+  reaching toward the barrel, lifting a ladle, and pouring from the ladle into
+  Goblin's mug; it does not show a barrel pickup or Amy changing support.
+- The first extractor response nevertheless proposed `pickup(Amy, barrel)` and
+  `pour(barrel, mug)`. The reducer correctly rejected pickup because the barrel
+  is fixed. During action-only repair, the model added `set_support(Amy,
+  counter)` even though RAW only places her at the counter, then continued
+  proposing invalid pickup/pour actions. The support invention is not
+  mechanically decidable from registered state alone: `set_support` names a
+  real support and is otherwise a legal reducer operation. Preventing that
+  semantic mismatch needs an approved prompt change or RAW/action consistency
+  validation, neither of which was in scope.
+- The action schema now restricts `pickup.prop_id` to registered props whose
+  WorldState mobility is `movable`. Fixed and unknown-mobility props remain in
+  the full vocabulary for other operations and remain rejected by the reducer
+  if presented outside the structured schema. This deterministic eligibility
+  filter prevents the Job #49 fixed-barrel pickup from being offered as a
+  valid structured action without weakening reducer validation.
+- The mug capability failure originates upstream of the reducer: the current
+  Segment prop extractor returned `container="unknown"` despite the Beat saying
+  the mug is refilled, and Python preserved that unknown value. The reducer
+  correctly fails closed on a pour into an unconfirmed container. The ladle
+  was absent from the opening registered vocabulary, the barrel had no
+  recorded contents, and the reducer cannot substitute either as an established
+  source. No capability or source was inferred in Python. A generic extractor
+  prompt clarification is the smallest next step for that issue and needs
+  approval before any runtime prompt change.
+- Added regressions for fixed-prop exclusion from the pickup schema and for
+  pour rollback when destination container capability is unknown. Verification:
+  the focused pickup/container/name-resolution tests passed (4 passed). The combined
+  WorldState foundation and Director retry run reported 195 passed and 18
+  subtests passed, with two known unrelated story-start failures: an obsolete
+  `classification`/`evidence` fixture and an outdated prompt wording assertion.
+  `py_compile` and `git diff --check` passed.
+
 ## 2026-10-12 — Job #48 identity, StateAction, physical wording, and timestamps
 
 - Subject ID 1 was not being reassigned. Prompt-only completion recorded the

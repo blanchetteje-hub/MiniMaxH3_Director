@@ -114,6 +114,9 @@ WORLD_STATE_PROP_SCHEMA["required"] = sorted(PROP_RECORD_FIELDS)
 # are resolved to the IDs registered in the current WorldState at request time.
 ACTION_CONTRACT = {
     "pickup": {
+        # Keep deterministic reducer prerequisites visible in the structured
+        # contract: a fixed or unknown-mobility prop cannot be picked up.
+        "entity_filters": {"prop": {"mobility": "movable"}},
         "fields": {
             "actor_subject_id": {"ref": "subject"},
             "prop_id": {"ref": "prop"},
@@ -1984,18 +1987,31 @@ def build_state_action_only_contract(
         "prop": [item["name"] for item in props],
         "support": [item["name"] for item in supports],
     }
+    entity_records = {
+        "subject": subjects,
+        "location": locations,
+        "prop": props,
+        "support": supports,
+    }
     action_schemas: list[dict[str, Any]] = []
     for op, operation in ACTION_CONTRACT.items():
+        action_entity_names = dict(entity_names)
+        for category, constraints in operation.get("entity_filters", {}).items():
+            eligible_records = [
+                item for item in entity_records[category]
+                if all(item.get(field) == expected for field, expected in constraints.items())
+            ]
+            action_entity_names[category] = [item["name"] for item in eligible_records]
         required_vocabulary = {
             field_contract["ref"]
             for field_contract in operation["fields"].values()
             if field_contract.get("ref")
             and not field_contract.get("nullable", False)
         }
-        if not all(entity_names[category] for category in required_vocabulary):
+        if not all(action_entity_names[category] for category in required_vocabulary):
             continue
         fields = {
-            field_name: _action_field_schema(field_contract, entity_names)
+            field_name: _action_field_schema(field_contract, action_entity_names)
             for field_name, field_contract in operation["fields"].items()
         }
         action_schemas.append(

@@ -1140,6 +1140,53 @@ class WorldStateSeedTests(unittest.TestCase):
                 name_resolution=contract["name_resolution"],
             )
 
+    def test_pickup_schema_excludes_fixed_props_but_keeps_movable_props(self):
+        state = make_reducer_state()
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text="Subject One Fixed object Movable object",
+        )
+        schema = contract["response_format"]["json_schema"]["schema"]
+        pickup = next(
+            item for item in schema["properties"]["state_actions"]["items"]["oneOf"]
+            if item["properties"]["op"]["const"] == "pickup"
+        )
+        self.assertEqual(
+            pickup["properties"]["prop_id"]["enum"], ["Food", "Movable object"]
+        )
+        # The broad vocabulary and name resolver remain intact for other
+        # operations; only pickup's operand choices reflect reducer mobility.
+        self.assertIn(
+            "Fixed object",
+            {item["name"] for item in contract["vocabulary"]["props"]},
+        )
+        self.assertIn(
+            "Fixed object", contract["name_resolution"]["prop"]
+        )
+        self.assertEqual(
+            contract["prompt_operation_shapes"][
+                next(
+                    index for index, shape in enumerate(contract["prompt_operation_shapes"])
+                    if shape["op"] == "pickup"
+                )
+            ]["prop_id"],
+            "<registered prop name>",
+        )
+        fixed_pickup = {"state_actions": [{
+            "action_id": "pickup-fixed",
+            "op": "pickup",
+            "actor_subject_id": "Subject One",
+            "prop_id": "Fixed object",
+        }]}
+        rejected = parse_and_dry_run_state_actions(
+            state,
+            fixed_pickup,
+            segment_number=1,
+            name_resolution=contract["name_resolution"],
+        )
+        self.assertFalse(rejected["accepted"])
+        self.assertEqual(rejected["outcomes"][0].code, "fixed_object")
+
     def test_action_prompt_shapes_match_the_dynamic_response_schema(self):
         state = make_reducer_state()
         contract = build_state_action_only_contract(
@@ -1753,6 +1800,23 @@ class WorldStateReducerTests(unittest.TestCase):
             segment_number=1,
         )
         self.assertEqual(outcomes[0].code, "partial_amount_unknown")
+
+    def test_pour_fails_closed_when_destination_container_capability_is_unknown(self):
+        state = make_reducer_state()
+        state["props"]["prop_target"]["capabilities"]["container"] = UNKNOWN
+        validate_world_state(state)
+        result = reduce_world_state(
+            state,
+            [self.action(
+                "pour", "pour", actor_subject_id="subject_1",
+                source_prop_id="prop_source", target_prop_id="prop_target",
+                substance="liquid", amount="partial",
+            )],
+            segment_number=1,
+        )
+        self.assertFalse(result.committed)
+        self.assertEqual(result.outcomes[0].code, "container_capability_unknown")
+        self.assertEqual(result.world_state, state)
 
     def test_consume_requires_explicitly_consumable_content(self):
         state = make_reducer_state()
