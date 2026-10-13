@@ -609,7 +609,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "director_h3_soundscape": 2048,
     "director_h3_formatter": 2048,
     "director_raw_scene_coherence": 2048,
-    "director_raw_scene_physical": 2048,
+    "director_raw_scene_physical": 3072,
     "director_raw_scene_prop_state": 2048,
     "director_raw_scene_timing": 2048,
     "director_raw_scene_pronoun_resolution": 2048,

@@ -1,5 +1,14 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-12 — increase physical-validator output budget
+
+- Raised the per-purpose maximum output tokens for
+  `director_raw_scene_physical` from 2048 to 3072. Its Smart Extractor profile,
+  context budget, prompt, schema, and validation behavior are unchanged.
+- Added a routing regression asserting the 3072-token purpose limit.
+  Verification: `pytest -q tests/test_dynamic_temperature.py` — 64 passed;
+  `py_compile` and `git diff --check` passed.
+
 ## 2026-10-12 — clarify current-Segment prop capability extraction
 
 - Updated only the `world_state_current_segment_props` system prompt. It now
