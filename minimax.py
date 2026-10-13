@@ -1224,6 +1224,7 @@ WRITE THE SCENE
 - Show CURRENT BEAT clearly with concrete visible/audible action.
 - Complete every finite action explicitly assigned by CURRENT BEAT, including the required result for every named person or target, before the final continuity state.
 - Add only details needed to physically connect or clearly show CURRENT BEAT.
+- do not include timestamps.
 
 RETURN
 Sentences of actions that occur in the scene separated by new lines.

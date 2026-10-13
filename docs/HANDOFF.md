@@ -1,5 +1,14 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Explicitly prohibit timestamps in creative RAW
+
+- Added the requested `- do not include timestamps.` bullet to the
+  `director_raw_scene_creative` system prompt. The timing refiner remains the
+  timestamp authority; no other prompt wording changed.
+- Updated the creative prompt contract regression to assert the rule.
+- Verification: `python -m unittest discover -s tests -p
+  'test_llm_prompt_pipeline.py'` — 115 passed.
+
 ## 2026-10-13 — Job 53 timing budget, untimed RAW, and transfer staging
 
 - Job 53 (`gpt-runtime` revision `a60f19990357488738658a7fe6588518e4b4e03c`)

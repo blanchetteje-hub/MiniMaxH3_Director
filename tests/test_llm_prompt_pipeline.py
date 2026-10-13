@@ -824,7 +824,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("concrete visible/audible action", creative_system)
         self.assertIn("Complete every finite action explicitly assigned by CURRENT BEAT", creative_system)
         self.assertIn("every named person or target", creative_system)
-        self.assertNotIn("timestamp", creative_system.casefold())
+        self.assertIn("- do not include timestamps.", creative_system)
         self.assertNotIn("RETURN JSON", creative_system)
         timing = minimax.build_add_scene_timing_refiner_messages(
             "Mark enters the room.", 8
