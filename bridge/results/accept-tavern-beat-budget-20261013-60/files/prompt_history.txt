@@ -1,0 +1,61 @@
+========================================================================
+{
+  "metadata": {
+    "timestamp": "2026-10-13T19:43:00Z",
+    "response_format": true,
+    "run_id": "e597584d-2593-4450-9601-ec854b23df4a",
+    "purpose": "character_canon",
+    "seed": 750183585,
+    "sampling_parameters": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 0,
+      "min_p": 0.05,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "repeat_penalty": 1.15,
+      "reasoning_effort": "high",
+      "thinking_budget_tokens": 1024,
+      "reasoning_budget_message": ". Enough thinking, now answer."
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": {
+        "__prompt_history_content__": 0,
+        "length": 112
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "__prompt_history_content__": 1,
+        "length": 2220
+      }
+    }
+  ]
+}
+<<<PROMPT_HISTORY_CONTENT 0 LENGTH 112>>>
+Convert the supplied canonical character information to JSON. Preserve every explicit fact and return JSON only.
+<<<END_PROMPT_HISTORY_CONTENT 0>>>
+<<<PROMPT_HISTORY_CONTENT 1 LENGTH 2220>>>
+CANONICAL DATA is optional additional character information. When it is empty, establish character facts from STORY and SUBJECTS. Use STORY and SUBJECTS to identify the named characters and copy any explicit values for those fields. If age or gender is missing, invent one reasonable value once. For clothing, copy explicit source clothing when present; otherwise return N/A. Do not invent clothing in this call: the later per-Subject expanded-story appropriate attire extractor owns final canonical wardrobe. Return name, age, clothing, and gender for every named character. Do not invent characters. Put only additionally stated character facts in other_facts; never replace an explicit fact.
+
+CANONICAL DATA
+
+
+STORY
+The wooden floor creaks as Amy wipes a polished table with a cloth soaked in ale-scented oil. She wears a rough-spun tunic and leather apron that show the scuffs of her medieval trade. A goblin with green skin leans over the counter, its tiny hands clutching a chipped mug; Amy refills it from a barrel beside the hearth.
+
+A beautiful female elf steps in, silver hair streaming down its shoulders, and takes a seat at the back table. Amy pours a steaming cup into a crystal chalice for the elf, setting it gently on the wood with a nod of thanks.
+
+From the doorway, a dragon-shaped creature slides onto a high bar stool, scales glittering like polished obsidian. Its wings unfurl to reveal a pair of amber eyes that scan the room. Amy greets the newcomer with a warm smile and lifts a crystal cup from her shelf, pouring a special brew into it before handing it over.
+
+The dragon licks its lips, then takes a slow sip, letting the liquid swirl across its tongue. Amy watches as the creature exhales contentedly; she wipes the bar with a fresh cloth, smoothing out any drips of ale that have fallen onto the wood.
+
+Finally, Amy turns off the lanterns at each table and pulls a wooden latch on the back door. She steps outside to close it, locking the tavern for the night as the moon rises over the medieval town.
+
+SUBJECTS
+<Subject 1> is Amy, a confident woman referenced in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, body proportions, and distinguishing features.
+<<<END_PROMPT_HISTORY_CONTENT 1>>>

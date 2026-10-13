@@ -1,0 +1,34 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Run start: cleared files and folders in the video state directory.
+LLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).
+LLM request finished: character_canon (21.3s, finish_reason=stop).
+FATAL: prompt-generation run stopped at first real failure: ValueError: Canonical fact has an invalid or duplicate field.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4m86daf8\repo\minimax.py", line 43192, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4m86daf8\repo\minimax.py", line 40747, in _run_main
+    else load_or_generate_character_canon(
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4m86daf8\repo\minimax.py", line 7593, in load_or_generate_character_canon
+    canon = parse_character_canon_result(raw_result)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4m86daf8\repo\minimax.py", line 7512, in parse_character_canon_result
+    raise ValueError("Canonical fact has an invalid or duplicate field.")
+ValueError: Canonical fact has an invalid or duplicate field.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4m86daf8\repo\minimax.py", line 43258, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4m86daf8\repo\minimax.py", line 43192, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4m86daf8\repo\minimax.py", line 40747, in _run_main
+    else load_or_generate_character_canon(
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4m86daf8\repo\minimax.py", line 7593, in load_or_generate_character_canon
+    canon = parse_character_canon_result(raw_result)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-4m86daf8\repo\minimax.py", line 7512, in parse_character_canon_result
+    raise ValueError("Canonical fact has an invalid or duplicate field.")
+ValueError: Canonical fact has an invalid or duplicate field.

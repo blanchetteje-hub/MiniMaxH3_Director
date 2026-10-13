@@ -1,0 +1,38 @@
+{
+  "job_id": "accept-tavern-beat-budget-20261013-60",
+  "kind": "run_acceptance",
+  "started_at": 1791920577.8196137,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--benchmark",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\gold\\amy_medieval_tavern_six.json"
+    ],
+    "returncode": 1,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 6 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261013-154259\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nRun start: cleared files and folders in the video state directory.\nLLM request started: character_canon (attempt 1/10, ~691 input tokens, max 7373 output tokens).\nLLM request finished: character_canon (21.3s, finish_reason=stop).\nFATAL: prompt-generation run stopped at first real failure: ValueError: Canonical fact has an invalid or duplicate field.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\\minimax.py\", line 43192, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\\minimax.py\", line 40747, in _run_main\n    else load_or_generate_character_canon(\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\\minimax.py\", line 7593, in load_or_generate_character_canon\n    canon = parse_character_canon_result(raw_result)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\\minimax.py\", line 7512, in parse_character_canon_result\n    raise ValueError(\"Canonical fact has an invalid or duplicate field.\")\nValueError: Canonical fact has an invalid or duplicate field.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\\minimax.py\", line 43258, in <module>\n    main()\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\\minimax.py\", line 43192, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\\minimax.py\", line 40747, in _run_main\n    else load_or_generate_character_canon(\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\\minimax.py\", line 7593, in load_or_generate_character_canon\n    canon = parse_character_canon_result(raw_result)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-4m86daf8\\repo\\minimax.py\", line 7512, in parse_character_canon_result\n    raise ValueError(\"Canonical fact has an invalid or duplicate field.\")\nValueError: Canonical fact has an invalid or duplicate field.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_medieval_tavern_six-20261013-154259\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6]. Include run.log for diagnosis.\nMiniMax exited with code 1; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1791920579.0453806,
+    "finished_at": 1791920601.599913,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "prompt_history.txt": "files\\prompt_history.txt",
+      "subjects.txt": "files\\subjects.txt",
+      "story.txt": "files\\story.txt",
+      "source_result_dir": "tests\\acceptance\\results\\amy_medieval_tavern_six-20261013-154259"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1791920601.6311781,
+  "status": "ok"
+}
