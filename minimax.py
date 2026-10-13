@@ -37555,6 +37555,19 @@ def extract_and_dry_run_director_state_actions(
     accepted, failure = validate_response(response)
     for repair_attempt in range(1, DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS + 1):
         if accepted is not None:
+            if accepted.get("omitted_support_actions"):
+                console_log(
+                    "DIRECTOR STATE ACTIONS OMITTED WITHOUT RAW SUPPORT EVIDENCE "
+                    + json.dumps(
+                        {
+                            "segment": segment_number,
+                            "omitted": accepted["omitted_support_actions"],
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                    ),
+                    flush=True,
+                )
             return {
                 **accepted,
                 "raw_scene": immutable_raw_scene,
@@ -38360,13 +38373,6 @@ def validate_director_raw_scene_physical(
     if not str(current_beat or "").strip():
         return {"valid": True, "issue": ""}
     if isinstance(known_subject_state, dict) and "schema_version" in known_subject_state:
-        unsupported_support_issue = _unsupported_support_change_issue(
-            current_beat,
-            raw_scene,
-            known_subject_state,
-        )
-        if unsupported_support_issue:
-            return {"valid": False, "issue": unsupported_support_issue}
         fixed_prop_issue = _fixed_prop_motion_issue(
             raw_scene,
             known_subject_state.get("props", {}),
@@ -38397,91 +38403,6 @@ def validate_director_raw_scene_physical(
         },
     )
     return parse_beat_validation_result(result)
-
-
-def _subject_support_relation_present(text, subject_name, support_name):
-    """Match explicit climbing/standing/sitting on a named support."""
-    subject = r"\s+".join(re.escape(part) for part in subject_name.split())
-    support = r"\s+".join(re.escape(part) for part in support_name.split())
-    relation = re.compile(
-        rf"(?i)\b(?:climb(?:s|ed|ing)?\s+(?:up\s+)?(?:onto|on|atop)|"
-        rf"step(?:s|ped|ping)?\s+(?:up\s+)?(?:onto|on|atop)|"
-        rf"stand(?:s|ing)?\s+(?:on|atop)|sit(?:s|ting)?\s+(?:on(?:\s+top\s+of)?|atop|in))\s+"
-        rf"(?:(?:the|a|an)\s+)?(?:[\w’'-]+\s+)?{support}(?!\w)"
-    )
-    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", str(text or "")):
-        if (
-            re.search(r"(?i)(?<!\w)" + subject + r"(?!\w)", sentence)
-            and relation.search(sentence)
-        ):
-            return True
-    return False
-
-
-def _unsupported_support_change_issue(current_beat, raw_scene, world_state):
-    """Reject explicit new furniture support absent from the Beat/opening state.
-
-    This narrow check catches the common material distinction between being at
-    a furnishing and placing a Subject's body on it. It does not infer posture
-    from interaction verbs such as wiping, reaching, or leaning.
-    """
-    subjects = world_state.get("subjects", {})
-    props = world_state.get("props", {})
-    if not isinstance(subjects, dict) or not isinstance(props, dict):
-        return ""
-    beat_text = str(current_beat or "")
-    raw_text = str(raw_scene or "")
-    support_names = [
-        str(prop.get("name") or "").strip()
-        for prop in props.values()
-        if (
-            isinstance(prop, dict)
-            and prop.get("kind") in {"support", "fixture_support"}
-            and str(prop.get("name") or "").strip()
-        )
-    ]
-    for subject_id, subject in subjects.items():
-        if not isinstance(subject, dict):
-            continue
-        subject_name = str(subject.get("name") or "").strip()
-        if not subject_name:
-            continue
-        for support_id, support in props.items():
-            if (
-                not isinstance(support, dict)
-                or support.get("kind") not in {"support", "fixture_support"}
-            ):
-                continue
-            support_name = str(support.get("name") or "").strip()
-            if not support_name:
-                continue
-            if re.search(
-                r"(?i)\b(?:floor|ground|earth|road|path|street)\b",
-                support_name,
-            ):
-                continue
-            support_aliases = {support_name}
-            head = support_name.split()[-1]
-            if sum(name.casefold().split()[-1] == head.casefold() for name in support_names) == 1:
-                support_aliases.add(head)
-            if not any(
-                _subject_support_relation_present(raw_text, subject_name, alias)
-                for alias in support_aliases
-            ):
-                continue
-            if subject.get("support_id") == support_id:
-                continue
-            if any(
-                _subject_support_relation_present(beat_text, subject_name, alias)
-                for alias in support_aliases
-            ):
-                continue
-            return (
-                f"RAW newly places {subject_name} on {support_name}, but CURRENT BEAT "
-                "and opening WorldState do not establish that support change. "
-                "Ordinary interaction with the furnishing does not require climbing or sitting on it."
-            )
-    return ""
 
 
 def _fixed_prop_motion_issue(raw_scene, props):

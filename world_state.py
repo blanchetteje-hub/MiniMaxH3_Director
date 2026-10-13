@@ -2430,16 +2430,180 @@ def _resolve_and_dry_run_state_actions(
                 )
             action["prop_name"] = prop_name
             available_names["prop"][prop_name] = [prop_id]
+    omitted_support_actions = []
+    staged_actions = []
+    action_id_counts = {}
+    for action in resolved_actions:
+        if isinstance(action, dict) and isinstance(action.get("action_id"), str):
+            action_id = action["action_id"].strip()
+            action_id_counts[action_id] = action_id_counts.get(action_id, 0) + 1
+    for action in resolved_actions:
+        if not isinstance(action, dict):
+            staged_actions.append(action)
+            continue
+        try:
+            operation, action_id = _validate_action_shape(action)
+        except _ActionRejected:
+            staged_actions.append(action)
+            continue
+        if action_id_counts.get(action_id, 0) > 1:
+            # Keep duplicate IDs visible to the reducer's normal rejection path.
+            staged_actions.append(action)
+            continue
+        if operation == "set_support":
+            subject_id = action.get("subject_id")
+            support_id = action.get("support_id")
+            if support_id is None:
+                current_support_id = world_state.get("subjects", {}).get(
+                    subject_id, {}
+                ).get("support_id")
+                has_raw_evidence = _raw_subject_support_departure_is_explicit(
+                    raw_scene,
+                    world_state,
+                    subject_id,
+                    current_support_id,
+                )
+            else:
+                has_raw_evidence = _raw_subject_support_relation_is_explicit(
+                    raw_scene,
+                    world_state,
+                    subject_id,
+                    support_id,
+                )
+            if not has_raw_evidence:
+                omitted_support_actions.append({
+                    "action": deepcopy(action),
+                    "reason": "validated RAW does not explicitly establish this support change",
+                })
+                continue
+        elif operation == "move" and "support_id" in action:
+            support_id = action.get("support_id")
+            subject_id = action.get("subject_id")
+            if support_id is None:
+                current_support_id = world_state.get("subjects", {}).get(
+                    subject_id, {}
+                ).get("support_id")
+                has_raw_evidence = _raw_subject_support_departure_is_explicit(
+                    raw_scene,
+                    world_state,
+                    subject_id,
+                    current_support_id,
+                )
+            else:
+                has_raw_evidence = _raw_subject_support_relation_is_explicit(
+                    raw_scene,
+                    world_state,
+                    subject_id,
+                    support_id,
+                )
+            if not has_raw_evidence:
+                omitted_support_actions.append({
+                    "action": deepcopy(action),
+                    "reason": "validated RAW does not explicitly establish this support change",
+                })
+                action.pop("support_id", None)
+        staged_actions.append(action)
+
     outcomes = validate_state_actions(
         world_state,
-        resolved_actions,
+        staged_actions,
         segment_number=segment_number,
     )
     return {
-        "state_actions": resolved_actions,
+        "state_actions": staged_actions,
         "outcomes": outcomes,
         "accepted": all(outcome.accepted for outcome in outcomes),
+        "omitted_support_actions": omitted_support_actions,
     }
+
+
+def _raw_subject_support_relation_is_explicit(
+    raw_scene: str | None,
+    world_state: dict[str, Any],
+    subject_id: Any,
+    support_id: Any,
+) -> bool:
+    """Return whether RAW explicitly places this Subject's body on a support."""
+    if not isinstance(raw_scene, str) or not raw_scene.strip():
+        return False
+    subject = world_state.get("subjects", {}).get(subject_id)
+    support = world_state.get("props", {}).get(support_id)
+    if not isinstance(subject, dict) or not isinstance(support, dict):
+        return False
+    subject_name = str(subject.get("name") or "").strip()
+    support_name = str(support.get("name") or "").strip()
+    if not subject_name or not support_name:
+        return False
+
+    support_names = [
+        str(prop.get("name") or "").strip()
+        for prop in world_state.get("props", {}).values()
+        if isinstance(prop, dict)
+        and prop.get("kind") in {"support", "fixture_support"}
+        and str(prop.get("name") or "").strip()
+    ]
+    support_aliases = {support_name}
+    support_head = support_name.split()[-1]
+    if sum(name.casefold().split()[-1] == support_head.casefold() for name in support_names) == 1:
+        support_aliases.add(support_head)
+
+    subject_pattern = re.escape(subject_name)
+    for support_alias in support_aliases:
+        support_pattern = r"\s+".join(
+            re.escape(part) for part in support_alias.split()
+        )
+        relation = re.compile(
+            rf"(?i)(?<!\w){subject_pattern}(?!\w)"
+            rf"(?:\s+(?:is|was|now|then|already|still|finally))*\s+"
+            rf"(?:climb(?:s|ed|ing)?|step(?:s|ped|ping)?|"
+            rf"stand(?:s|ing)?|stood|sit(?:s|ting)?|sat|"
+            rf"seat(?:s|ed|ing)?|(?:take(?:s|n)?|took)\s+(?:a\s+)?seat)"
+            rf"(?:\s+(?:up|firmly|comfortably|securely))*\s+"
+            rf"(?:onto|on(?:\s+top\s+of)?|atop|in)\s+"
+            rf"(?:(?:the|a|an)\s+)?{support_pattern}(?!\w)"
+        )
+        if relation.search(raw_scene):
+            return True
+    return False
+
+
+def _raw_subject_support_departure_is_explicit(
+    raw_scene: str | None,
+    world_state: dict[str, Any],
+    subject_id: Any,
+    support_id: Any,
+) -> bool:
+    """Return whether RAW explicitly shows a Subject leaving its known support."""
+    if not isinstance(raw_scene, str) or not raw_scene.strip():
+        return False
+    subject = world_state.get("subjects", {}).get(subject_id)
+    support = world_state.get("props", {}).get(support_id)
+    if not isinstance(subject, dict) or not isinstance(support, dict):
+        return False
+    subject_name = str(subject.get("name") or "").strip()
+    support_name = str(support.get("name") or "").strip()
+    if not subject_name or not support_name:
+        return False
+    subject_pattern = re.escape(subject_name)
+    support_pattern = r"\s+".join(
+        re.escape(part) for part in support_name.split()
+    )
+    departure = re.compile(
+        rf"(?i)(?:"
+        rf"(?<!\w){subject_pattern}(?!\w)"
+        rf"(?:\s+(?:is|was|now|then|already|still|finally|carefully))*\s+"
+        rf"(?:step(?:s|ped|ping)?|climb(?:s|ed|ing)?|walk(?:s|ed|ing)?|"
+        rf"move(?:s|d|ing)?|get(?:s|ting)?|come(?:s|came|coming)?|"
+        rf"hop(?:s|ped|ping)?|jump(?:s|ed|ing)?|dismount(?:s|ed|ing)?)"
+        rf"(?:\s+(?:down|off|away|up))?\s+(?:(?:from|off)\s+)?"
+        rf"(?:(?:the|a|an)\s+)?{support_pattern}(?!\w)"
+        rf"|(?<!\w){subject_pattern}(?!\w)"
+        rf"(?:\s+(?:is|was|now|then|already|still|finally))*\s+"
+        rf"(?:no\s+longer|not\s+still)\s+(?:standing|sitting|on)\s+"
+        rf"(?:on\s+)?(?:(?:the|a|an)\s+)?{support_pattern}(?!\w)"
+        rf")"
+    )
+    return bool(departure.search(raw_scene))
 
 
 def parse_and_dry_run_state_actions(

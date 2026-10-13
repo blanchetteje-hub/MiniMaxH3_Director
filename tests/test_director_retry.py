@@ -1762,7 +1762,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("identify the movement itself", prompt)
         self.assertIn("unnecessarily climbs onto the table", result["issue"])
 
-    def test_physical_validator_deterministically_rejects_unsupported_table_support(self):
+    def test_physical_validator_defers_support_judgment_to_semantic_validator(self):
         state, location_id, _mug_id = goblin_mug_world_state()
         state = register_explicit_persistent_props(state, [{
             "name": "polished table",
@@ -1772,7 +1772,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "reason": "A fixed surface in the scene.",
             "location_id": location_id,
         }])
-        llm = mock.Mock(return_value={"valid": True, "issue": ""})
+        llm = mock.Mock(return_value={
+            "valid": False,
+            "issue": "The unnecessary climb onto the table is the physical problem.",
+        })
         result = minimax.validate_director_raw_scene_physical(
             "Amy wipes the polished table.",
             "Amy climbs onto the polished table to wipe it.",
@@ -1780,8 +1783,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             llm_request=llm,
         )
         self.assertFalse(result["valid"])
-        self.assertIn("newly places Amy on polished table", result["issue"])
-        llm.assert_not_called()
+        self.assertIn("unnecessary climb", result["issue"])
+        llm.assert_called_once()
 
     def test_physical_validator_rejects_sitting_on_table_when_beat_says_seat_at_it(self):
         state, location_id, _mug_id = goblin_mug_world_state()
@@ -1794,7 +1797,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "reason": "A fixed surface in the scene.",
             "location_id": location_id,
         }])
-        llm = mock.Mock(return_value={"valid": True, "issue": ""})
+        llm = mock.Mock(return_value={
+            "valid": False,
+            "issue": "Sitting on top of the table is not the seat at the table.",
+        })
         result = minimax.validate_director_raw_scene_physical(
             "Elf takes a seat at the back table.",
             "Elf sits on top of the back table.",
@@ -1802,10 +1808,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             llm_request=llm,
         )
         self.assertFalse(result["valid"])
-        self.assertIn("newly places Elf on back table", result["issue"])
-        llm.assert_not_called()
+        self.assertIn("not the seat at the table", result["issue"])
+        llm.assert_called_once()
 
-    def test_physical_validator_leaves_furniture_interaction_and_required_support_alone(self):
+    def test_physical_validator_leaves_interaction_and_scene_justified_climb_to_semantic_check(self):
         state, location_id, _mug_id = goblin_mug_world_state()
         state = register_explicit_persistent_props(state, [{
             "name": "polished table",
@@ -1823,6 +1829,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             (
                 "Amy climbs onto the polished table to clean it.",
                 "Amy climbs onto the polished table and cleans it.",
+            ),
+            (
+                "Amy reaches the high window.",
+                "Amy climbs onto the polished table to reach the high window.",
             ),
         ):
             with self.subTest(raw=raw):

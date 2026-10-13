@@ -1917,6 +1917,219 @@ def make_reducer_state():
     return state
 
 
+class StateActionSupportEvidenceTests(unittest.TestCase):
+    @staticmethod
+    def _parse_support_action(
+        state, raw_scene, support_name="Support A", subject_name="Subject One"
+    ):
+        contract = build_state_action_only_contract(
+            state,
+            current_segment_text=f"{subject_name} {support_name}",
+        )
+        return parse_and_dry_run_state_actions(
+            state,
+            {"state_actions": [{
+                "action_id": "support-change",
+                "op": "set_support",
+                "subject_id": subject_name,
+                "support_id": support_name,
+            }]},
+            segment_number=1,
+            name_resolution=contract["name_resolution"],
+            raw_scene=raw_scene,
+        )
+
+    def test_wiping_touching_reaching_and_leaning_do_not_establish_support(self):
+        state = make_reducer_state()
+        state["subjects"]["subject_1"]["name"] = "Amy"
+        state["props"]["prop_support_a"]["name"] = "polished table"
+        for raw in (
+            "Amy wipes the polished table.",
+            "Amy touches the polished table and reaches toward it.",
+            "Amy leans against the polished table.",
+        ):
+            with self.subTest(raw=raw):
+                result = self._parse_support_action(
+                    state, raw, "polished table", "Amy"
+                )
+                self.assertTrue(result["accepted"])
+                self.assertEqual(result["state_actions"], [])
+                self.assertEqual(len(result["omitted_support_actions"]), 1)
+                self.assertIsNone(state["subjects"]["subject_1"]["support_id"])
+
+    def test_sitting_at_is_not_support_but_sitting_on_is(self):
+        at_state = make_reducer_state()
+        at_state["subjects"]["subject_1"]["name"] = "Elf"
+        at_state["props"]["prop_support_a"]["name"] = "back table"
+        at_table = self._parse_support_action(
+            at_state, "Elf sits at the back table.", "back table", "Elf"
+        )
+        self.assertTrue(at_table["accepted"])
+        self.assertEqual(at_table["state_actions"], [])
+        self.assertIsNone(at_state["subjects"]["subject_1"]["support_id"])
+
+        on_state = make_reducer_state()
+        on_state["subjects"]["subject_1"]["name"] = "Elf"
+        on_state["props"]["prop_support_a"]["name"] = "back table"
+        on_table = self._parse_support_action(
+            on_state, "Elf sits on top of the back table.", "back table", "Elf"
+        )
+        self.assertTrue(on_table["accepted"])
+        self.assertEqual(on_table["state_actions"][0]["support_id"], "prop_support_a")
+        self.assertEqual(on_table["outcomes"][0].code, "applied")
+
+    def test_support_action_must_name_the_subject_staged_on_the_surface(self):
+        state = make_reducer_state()
+        state["subjects"]["subject_1"]["name"] = "Amy"
+        state["subjects"]["subject_2"]["name"] = "Elf"
+        state["props"]["prop_support_a"]["name"] = "back table"
+        result = self._parse_support_action(
+            state,
+            "Amy watches Elf climb onto the back table.",
+            "back table",
+            "Amy",
+        )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["state_actions"], [])
+
+    def test_standing_and_creative_climbing_can_establish_support_from_raw(self):
+        state = make_reducer_state()
+        state["subjects"]["subject_1"]["name"] = "Amy"
+        state["props"]["prop_support_a"]["name"] = "polished table"
+        for raw in (
+            "Amy stands on the polished table.",
+            "Amy climbs onto the polished table to reach a high window.",
+            "Amy steps onto the polished table.",
+        ):
+            with self.subTest(raw=raw):
+                result = self._parse_support_action(
+                    state, raw, "polished table", "Amy"
+                )
+                self.assertTrue(result["accepted"])
+                self.assertEqual(result["state_actions"][0]["support_id"], "prop_support_a")
+                self.assertEqual(result["outcomes"][0].code, "applied")
+
+    def test_unsupported_support_clear_is_omitted_and_explicit_departure_clears(self):
+        opening = make_reducer_state()
+        opening["subjects"]["subject_1"]["support_id"] = "prop_support_a"
+        validate_world_state(opening)
+        contract = build_state_action_only_contract(
+            opening, current_segment_text="Subject One leaves Support A."
+        )
+        action = {"state_actions": [{
+            "action_id": "clear-support",
+            "op": "set_support",
+            "subject_id": "Subject One",
+            "support_id": None,
+        }]}
+        unsupported = parse_and_dry_run_state_actions(
+            opening, action, segment_number=2,
+            name_resolution=contract["name_resolution"],
+            raw_scene="Subject One wipes Support A.",
+        )
+        self.assertTrue(unsupported["accepted"])
+        self.assertEqual(unsupported["state_actions"], [])
+        self.assertEqual(opening["subjects"]["subject_1"]["support_id"], "prop_support_a")
+
+        supported = parse_and_dry_run_state_actions(
+            opening, action, segment_number=2,
+            name_resolution=contract["name_resolution"],
+            raw_scene="Subject One steps down from Support A.",
+        )
+        self.assertTrue(supported["accepted"])
+        self.assertEqual(supported["state_actions"][0]["support_id"], None)
+        self.assertEqual(supported["outcomes"][0].code, "applied")
+
+    def test_move_keeps_location_change_but_drops_unsupported_new_support(self):
+        opening = make_reducer_state()
+        contract = build_state_action_only_contract(
+            opening,
+            current_segment_text=(
+                "Subject One moves to Area B from Support A and reaches Support B."
+            ),
+        )
+        result = parse_and_dry_run_state_actions(
+            opening,
+            {"state_actions": [{
+                "action_id": "move-to-area-b",
+                "op": "move",
+                "subject_id": "Subject One",
+                "destination_location_id": "Area B",
+                "support_id": "Support B",
+            }]},
+            segment_number=1,
+            name_resolution=contract["name_resolution"],
+            raw_scene="Subject One walks into Area B.",
+        )
+        self.assertTrue(result["accepted"])
+        self.assertNotIn("support_id", result["state_actions"][0])
+        self.assertEqual(result["outcomes"][0].code, "applied")
+        self.assertEqual(
+            result["outcomes"][0].op,
+            "move",
+        )
+        reduced = reduce_world_state(
+            opening, result["state_actions"], segment_number=1
+        )
+        self.assertTrue(reduced.committed)
+        self.assertEqual(reduced.world_state["subjects"]["subject_1"]["location_id"], "location_b")
+        self.assertIsNone(reduced.world_state["subjects"]["subject_1"]["support_id"])
+
+    def test_supported_state_persists_across_segments_without_reinference(self):
+        opening = make_reducer_state()
+        first = self._parse_support_action(
+            opening, "Subject One climbs onto Support A to reach a high window."
+        )
+        state = minimax.new_generation_state(
+            minimax.build_run_config(5, 10, 0.5, 2)
+        )
+        state["config"]["test_prompt_generation"] = True
+        state["world_state"] = copy.deepcopy(opening)
+        segment_one = minimax.commit_accepted_director_world_state(
+            state,
+            opening,
+            {
+                "state_actions_dry_run_accepted": first["accepted"],
+                "state_actions": first["state_actions"],
+            },
+            1,
+        )
+        self.assertEqual(
+            segment_one["subjects"]["subject_1"]["support_id"],
+            "prop_support_a",
+        )
+
+        second_contract = build_state_action_only_contract(
+            segment_one, current_segment_text="Subject One wipes Support A."
+        )
+        second = parse_and_dry_run_state_actions(
+            segment_one,
+            {"state_actions": [{
+                "action_id": "false-support-refresh",
+                "op": "set_support",
+                "subject_id": "Subject One",
+                "support_id": "Support A",
+            }]},
+            segment_number=2,
+            name_resolution=second_contract["name_resolution"],
+            raw_scene="Subject One wipes Support A.",
+        )
+        segment_two = minimax.commit_accepted_director_world_state(
+            state,
+            segment_one,
+            {
+                "state_actions_dry_run_accepted": second["accepted"],
+                "state_actions": second["state_actions"],
+            },
+            2,
+        )
+        self.assertEqual(second["state_actions"], [])
+        self.assertEqual(
+            segment_two["subjects"]["subject_1"]["support_id"],
+            "prop_support_a",
+        )
+
+
 class WorldStateTransactionTests(unittest.TestCase):
     def test_retrieved_prop_use_checkpoint_reuse_and_failed_segment_rollback(self):
         opening = make_reducer_state()

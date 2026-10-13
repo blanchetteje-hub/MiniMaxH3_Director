@@ -1,5 +1,43 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — RAW-grounded Subject support actions
+
+- The Job 57 result bundle was not present in this checkout, so its exact RAW
+  and StateAction response could not be confirmed. The reported failure was
+  reproduced against the current code path: finalized RAW reached
+  `parse_and_dry_run_state_actions()`, but RAW was consulted only for
+  `retrieve_prop` origin checks. A reducer-valid `set_support` therefore
+  changed canonical state even when the RAW described only wiping, reaching,
+  or another interaction.
+- The existing action parser now keeps a Subject support change only when the
+  validated RAW explicitly stages that Subject standing, sitting, climbing,
+  stepping, or taking a seat on/in the registered support. Contact, wiping,
+  reaching, leaning, and sitting at a table do not qualify. A support-clear
+  action requires explicit departure from the Subject's known support;
+  otherwise the action is omitted and the prior state is preserved. Unsupported
+  support fields on a `move` are removed while the representable location move
+  remains. Malformed or duplicate action shapes still reach reducer rejection.
+  The omission is logged and does not reject the segment. Accepted
+  support actions still go through the same reducer and normal commit boundary.
+- The previous deterministic physical pre-gate required any new support to be
+  named in CURRENT BEAT or opening WorldState, which blocked physically
+  justified creative staging. That pre-gate was removed so the existing
+  semantic physical validator can make the staging judgment. Its runtime
+  prompt was left unchanged. The prompt still ties permitted support changes
+  to the Beat/opening state, so a later prompt change may be needed if that
+  remaining rule rejects otherwise justified creative movement; this requires
+  separate approval. No additional validator or prompt was added.
+- Regressions cover table wiping versus standing, sitting at versus on a table,
+  a RAW-staged creative climb, matching a support action to the Subject actually
+  staged on it, unsupported support assignment/clearing,
+  preservation of a prior support across segment commits, and movement with an
+  unsupported destination support. Focused tests: 11 passed. The broader
+  WorldState, Director, and split-pipeline suites ran 256 tests: 254 passed and
+  two pre-existing story-start tests failed because they expect the retired
+  response shape and prompt wording (`classification`/`evidence` and
+  “performing a starting action”). `py_compile` and `git diff --check` passed.
+- No runtime LLM prompt was modified, and no bridge job was queued.
+
 ## 2026-10-13 — Approved StateAction prompt simplification
 
 - Updated the shared `director_state_actions` / `director_state_actions_repair`
