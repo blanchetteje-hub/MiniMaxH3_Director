@@ -1,0 +1,9 @@
+{
+  "job_id": "accept-tavern-beat-budget-20261013-60",
+  "kind": "run_acceptance",
+  "code_branch": "director-split-refine",
+  "model": "gpt",
+  "benchmark": "tests/acceptance/gold/amy_medieval_tavern_six.json",
+  "image1": "amy.jpg",
+  "timeout_seconds": 3600
+}
