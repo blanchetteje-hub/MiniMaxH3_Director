@@ -15,8 +15,9 @@
   checks still run before returning.
 - On bypass, the resolver returns the original RAW string exactly, including
   timestamp spelling/order, camera tags, action text, and surrounding
-  whitespace. No runtime prompt or downstream Subject/wardrobe precedence was
-  changed.
+  whitespace. The post-resolver final-participant carry-forward is also skipped
+  in this case, preserving the accepted Director text through the full bypass
+  path. No runtime prompt or downstream Subject/wardrobe precedence changed.
 - Added regressions for complete-metadata bypass, exact RAW preservation,
   missing wardrobe metadata, missing identity metadata, and an unnamed actor
   outside the bypass path. The bypass is deliberately conservative; unusual

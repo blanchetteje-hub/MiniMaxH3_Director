@@ -41871,6 +41871,10 @@ def _run_main(
                 "before visible-Subject resolution: "
                 + "; ".join(pre_subject_timestamp_errors)
             )
+        subject_resolution_bypassed = _director_raw_subject_resolution_can_be_skipped(
+            accepted_raw_scene,
+            segment_bundle.get("world_state_opening"),
+        )
         for subject_attempt in range(1, 3):
             try:
                 (
@@ -41914,13 +41918,19 @@ def _run_main(
                 f"RAW Subject resolution failed for Segment {segment} after "
                 f"2 attempts: {subject_resolution_error}"
             )
-        resolved_raw_scene, carried_final_subjects = (
-            _director_carry_forward_final_subjects(
-                resolved_raw_scene,
-                subject_definitions=subject_definitions,
-                resolved_subject_names=raw_subject_names,
+        if subject_resolution_bypassed:
+            # Keep the accepted Director text byte-for-byte intact throughout
+            # this no-discovery path, including its existing end-state wording.
+            resolved_raw_scene = accepted_raw_scene
+            carried_final_subjects = []
+        else:
+            resolved_raw_scene, carried_final_subjects = (
+                _director_carry_forward_final_subjects(
+                    resolved_raw_scene,
+                    subject_definitions=subject_definitions,
+                    resolved_subject_names=raw_subject_names,
+                )
             )
-        )
         if carried_final_subjects:
             console_log(
                 f"Segment {segment} deterministic final-participant carry-forward: "
