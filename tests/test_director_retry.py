@@ -75,6 +75,29 @@ def goblin_mug_bundle():
     return bundle
 
 
+def origin_repair_world_state():
+    state, location_id, _mug_id = goblin_mug_world_state()
+    state = register_explicit_persistent_props(state, [
+        {
+            "name": "shelf",
+            "kind": "support",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "A new movable prop can be retrieved from this support.",
+            "location_id": location_id,
+        },
+        {
+            "name": "back table",
+            "kind": "fixture_support",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "A new prop can be placed here after retrieval.",
+            "location_id": location_id,
+        },
+    ])
+    return state, location_id
+
+
 TAVERN_BENCHMARK = json.loads(
     (Path(__file__).parent / "acceptance" / "gold" / "amy_medieval_tavern_six.json")
     .read_text(encoding="utf-8")
@@ -760,9 +783,198 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             if prop["name"] == "shelf"
         ))
         self.assertEqual(request.call_count, 2)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
+            ["director_state_actions", "director_state_actions_repair"],
+        )
         repair_prompt = request.call_args_list[1].args[0][-1]["content"]
         self.assertIn("FIRST REDUCER FAILURE", repair_prompt)
         self.assertIn("retrieve_prop_origin_not_in_raw", repair_prompt)
+
+    def test_missing_prop_origin_routes_to_current_segment_raw_repair(self):
+        world_state, _location_id = origin_repair_world_state()
+        opening = copy.deepcopy(world_state)
+        initial_raw = (
+            "At 00:00.000, Amy places the crystal chalice on the back table.\n"
+            "End continuity state: The chalice rests on the back table."
+        )
+        invalid_actions = {"state_actions": [{
+            "action_id": "retrieve-chalice",
+            "op": "retrieve_prop",
+            "actor_subject_id": "Amy",
+            "prop_name": "crystal chalice",
+            "kind": "container",
+            "support_id": "back table",
+        }]}
+        repaired_raw = (
+            "At 00:00.000, Amy retrieves the crystal chalice from the shelf.\n"
+            "At 00:03.000, Amy places it on the back table.\n"
+            "End continuity state: The chalice rests on the back table."
+        )
+        location_name = world_state["locations"][_location_id]["name"]
+        valid_actions = {"state_actions": [
+            {
+                "action_id": "retrieve-chalice",
+                "op": "retrieve_prop",
+                "actor_subject_id": "Amy",
+                "prop_name": "crystal chalice",
+                "kind": "container",
+                "support_id": "shelf",
+            },
+            {
+                "action_id": "place-chalice",
+                "op": "place",
+                "actor_subject_id": "Amy",
+                "prop_id": "crystal chalice",
+                "location_id": location_name,
+                "support_id": "back table",
+            },
+        ]}
+        request = mock.Mock(side_effect=[invalid_actions, repaired_raw, valid_actions])
+        bundle = {
+            "current_duration": 6.0,
+            "conditioning_mode": "initial",
+            "current_beat_text": "Amy serves the crystal chalice at the table.",
+            "world_state_opening": copy.deepcopy(world_state),
+        }
+        validators = (
+            mock.patch(
+                "minimax.validate_director_raw_scene_physical",
+                return_value={"valid": True, "issue": ""},
+            ),
+            mock.patch(
+                "minimax.validate_director_raw_scene_prop_state",
+                return_value={"valid": True, "issue": ""},
+            ),
+            mock.patch(
+                "minimax.validate_director_raw_scene_timing",
+                return_value={"valid": True, "issue": ""},
+            ),
+        )
+        with (
+            mock.patch("minimax.ask_llm", request),
+            validators[0],
+            validators[1],
+            validators[2],
+            mock.patch("minimax.console_log"),
+        ):
+            accepted_raw, result = minimax.extract_state_actions_with_origin_repair(
+                world_state,
+                initial_raw,
+                bundle=bundle,
+                segment_number=3,
+                run_id="run-id",
+                run_config={"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(accepted_raw, repaired_raw)
+        self.assertTrue(result["accepted"])
+        self.assertEqual(
+            [action["op"] for action in result["state_actions"]],
+            ["retrieve_prop", "place"],
+        )
+        reduced = minimax.reduce_world_state(
+            world_state,
+            result["state_actions"],
+            segment_number=3,
+        )
+        self.assertTrue(reduced.committed)
+        chalice = next(
+            prop for prop in reduced.world_state["props"].values()
+            if prop["name"] == "crystal chalice"
+        )
+        self.assertEqual(chalice["placement"]["support_id"], next(
+            prop_id for prop_id, prop in world_state["props"].items()
+            if prop["name"] == "back table"
+        ))
+        self.assertEqual(world_state, opening)
+        purposes = [
+            call.kwargs["history_metadata"]["purpose"]
+            for call in request.call_args_list
+        ]
+        self.assertEqual(
+            purposes,
+            ["director_state_actions", "director_raw_scene_repair", "director_state_actions"],
+        )
+        repair_messages = request.call_args_list[1].args[0]
+        repair_issue = repair_messages[1]["content"]
+        self.assertIn("crystal chalice", repair_issue)
+        self.assertIn("current segment", repair_issue)
+        self.assertIn("before its first use", repair_issue)
+        self.assertIn("Registered supports: shelf, back table", repair_issue)
+        self.assertIn("final destination as its origin", repair_issue)
+
+    def test_missing_prop_origin_raw_repairs_are_bounded_and_rollback(self):
+        world_state, _location_id = origin_repair_world_state()
+        opening = copy.deepcopy(world_state)
+        raw_scene = (
+            "At 00:00.000, Amy sets the crystal chalice on the back table.\n"
+            "End continuity state: The chalice rests on the back table."
+        )
+        invalid_actions = {"state_actions": [{
+            "action_id": "retrieve-chalice",
+            "op": "retrieve_prop",
+            "actor_subject_id": "Amy",
+            "prop_name": "crystal chalice",
+            "kind": "container",
+            "support_id": "back table",
+        }]}
+        responses = [invalid_actions]
+        for index in range(minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS):
+            responses.extend([
+                raw_scene,
+                copy.deepcopy(invalid_actions),
+            ])
+        request = mock.Mock(side_effect=responses)
+        bundle = {
+            "current_duration": 6.0,
+            "conditioning_mode": "initial",
+            "current_beat_text": "Amy serves the crystal chalice at the table.",
+            "world_state_opening": copy.deepcopy(world_state),
+        }
+        validators = (
+            mock.patch(
+                "minimax.validate_director_raw_scene_physical",
+                return_value={"valid": True, "issue": ""},
+            ),
+            mock.patch(
+                "minimax.validate_director_raw_scene_prop_state",
+                return_value={"valid": True, "issue": ""},
+            ),
+            mock.patch(
+                "minimax.validate_director_raw_scene_timing",
+                return_value={"valid": True, "issue": ""},
+            ),
+        )
+        with (
+            mock.patch("minimax.ask_llm", request),
+            validators[0],
+            validators[1],
+            validators[2],
+            mock.patch("minimax.console_log"),
+        ):
+            with self.assertRaisesRegex(
+                minimax.StateActionExtractionError,
+                "missing_prop_origin_after_raw_repairs.*crystal chalice",
+            ):
+                minimax.extract_state_actions_with_origin_repair(
+                    world_state,
+                    raw_scene,
+                    bundle=bundle,
+                    segment_number=3,
+                )
+
+        self.assertEqual(request.call_count, 1 + 2 * minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS)
+        repair_calls = [
+            call for call in request.call_args_list
+            if call.kwargs["history_metadata"]["purpose"] == "director_raw_scene_repair"
+        ]
+        self.assertEqual(len(repair_calls), minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS)
+        self.assertEqual(world_state, opening)
+        self.assertFalse(any(
+            prop["name"] == "crystal chalice"
+            for prop in world_state["props"].values()
+        ))
 
     def test_unknown_contents_and_existing_holder_do_not_block_valid_pour(self):
         world_state, location_id, mug_id = goblin_mug_world_state()

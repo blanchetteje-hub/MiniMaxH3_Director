@@ -1,5 +1,40 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-13 — Missing StateAction prop origin routes to RAW repair
+
+- Job 58's reported failure matched the current code boundary: a
+  `retrieve_prop_origin_not_in_raw` error was treated as a generic invalid
+  StateAction response, so the pipeline spent all five action-only repairs on
+  a defect those actions could not fix. No Job 58 artifacts were present in
+  this checkout; the root cause was confirmed by tracing the reducer diagnostic
+  through `extract_and_dry_run_director_state_actions()`.
+- Added deterministic routing for this specific failure. If RAW shows the new
+  prop retrieved from another registered support, the selected support was
+  wrong and the existing StateAction-only repair remains available. If RAW
+  shows no registered support as the prop's retrieval origin, the pipeline
+  stops action-only retries and sends the accepted RAW to the existing
+  `director_raw_scene_repair` call with a diagnostic naming the prop and
+  requiring a physically plausible current-Segment retrieval before first
+  use. It lists the registered supports, rejects using a final destination as
+  an origin, and asks for actions to remain feasible in the Segment.
+- Each repaired RAW is checked by the existing physical/prop, timing, dialogue,
+  timestamp-range, and shot-script-structure checks before StateActions are
+  extracted again. The origin-repair path is capped at the existing five RAW
+  repair attempts; exhaustion raises
+  `missing_prop_origin_after_raw_repairs` with the prop and last failure.
+  StateAction results remain dry-run candidates until normal Segment
+  acceptance, so failures leave canonical WorldState unchanged.
+- Regressions cover missing-origin routing, a corrected origin/destination
+  selection remaining an action-only repair, successful same-Segment retrieval
+  and placement, five-attempt exhaustion, and rollback. The focused tests
+  passed (3). The related Director/WorldState/split-pipeline suites ran 258
+  tests: 256 passed; two pre-existing story-start tests still expect the
+  retired `classification`/`evidence` response and prompt wording. Syntax and
+  whitespace checks passed. Prompt-generation mode non-render tests passed
+  (10); its full run was interrupted after 12 passes while an unrelated
+  reference-image render waited on ComfyUI. No runtime prompt wording changed
+  and no bridge job was queued.
+
 ## 2026-10-13 — RAW-grounded Subject support actions
 
 - The Job 57 result bundle was not present in this checkout, so its exact RAW

@@ -59,6 +59,7 @@ from world_state import (
     new_world_state,
     build_state_action_only_contract,
     parse_and_dry_run_state_actions,
+    _retrieve_prop_origin_is_staged,
     register_explicit_persistent_props,
     reduce_world_state,
     seed_canonical_static_location_state,
@@ -10339,6 +10340,19 @@ class BeatGenerationError(RuntimeError):
 
 class StateActionExtractionError(BeatGenerationError):
     """Accepted RAW could not be paired with a reducer-valid action batch."""
+
+
+class StateActionRawRepairRequired(StateActionExtractionError):
+    """StateAction extraction found a new prop with no staged RAW origin."""
+
+    def __init__(self, prop_name, failure):
+        self.prop_name = str(prop_name or "unknown prop").strip()
+        self.reducer_failure = str(failure or "").strip()
+        super().__init__(
+            f"missing_prop_origin: {self.prop_name!r} has no explicit, registered "
+            "support origin in the current RAW scene. "
+            f"Reducer detail: {self.reducer_failure}"
+        )
 
 
 # Repair a narrow local-model error such as ``"growl" snarls``.
@@ -37477,6 +37491,74 @@ def build_director_state_actions_repair_messages(
     ]
 
 
+def _missing_registered_retrieve_origin(world_state, candidate, failure, raw_scene):
+    """Return the new prop lacking a staged registered origin, if any.
+
+    A wrong ``support_id`` is still an extraction error when RAW shows the
+    prop being retrieved from a different registered support. Only a prop
+    with no such origin in RAW needs the scene itself repaired.
+    """
+    if "retrieve_prop_origin_not_in_raw:" not in str(failure or ""):
+        return None
+    parsed = candidate
+    if isinstance(parsed, str):
+        try:
+            parsed = parse_llm_json_content(parsed, repair_on_failure=False)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return "unknown prop"
+    actions = parsed.get("state_actions") if isinstance(parsed, dict) else None
+    if not isinstance(actions, list):
+        return "unknown prop"
+
+    action_id_match = re.search(
+        r"retrieve_prop action ([^:]+): retrieve_prop_origin_not_in_raw:",
+        str(failure),
+    )
+    target_action_id = action_id_match.group(1).strip() if action_id_match else ""
+    target = next(
+        (
+            action for action in actions
+            if isinstance(action, dict)
+            and action.get("op") == "retrieve_prop"
+            and (not target_action_id or action.get("action_id") == target_action_id)
+        ),
+        None,
+    )
+    if not isinstance(target, dict):
+        return "unknown prop"
+    prop_name = " ".join(str(target.get("prop_name") or "").split()).strip()
+    if not prop_name:
+        return "unknown prop"
+
+    props = world_state.get("props", {}) if isinstance(world_state, dict) else {}
+    known_names = [
+        str(prop.get("name") or "")
+        for prop in props.values()
+        if isinstance(prop, dict) and str(prop.get("name") or "").strip()
+    ]
+    known_names.extend(
+        str(action.get("prop_name") or "")
+        for action in actions
+        if isinstance(action, dict)
+        and action.get("op") == "retrieve_prop"
+        and str(action.get("prop_name") or "").strip()
+    )
+    registered_supports = [
+        prop for prop in props.values()
+        if isinstance(prop, dict)
+        and prop.get("kind") in {"support", "fixture_support"}
+    ]
+    for support in registered_supports:
+        support_name = str(support.get("name") or "").strip()
+        if support_name and _retrieve_prop_origin_is_staged(
+            str(raw_scene or ""), prop_name, support_name, known_names
+        ):
+            # The origin exists in the accepted scene; a StateAction repair
+            # can correct a mistaken choice of destination support.
+            return None
+    return prop_name
+
+
 def extract_and_dry_run_director_state_actions(
     world_state,
     raw_scene,
@@ -37538,7 +37620,13 @@ def extract_and_dry_run_director_state_actions(
                 raw_scene=immutable_raw_scene,
             )
         except (TypeError, ValueError, json.JSONDecodeError) as error:
-            return None, "invalid_state_action_response: " + " ".join(str(error).split())
+            failure = "invalid_state_action_response: " + " ".join(str(error).split())
+            missing_origin_prop = _missing_registered_retrieve_origin(
+                world_state, candidate, failure, immutable_raw_scene
+            )
+            if missing_origin_prop:
+                raise StateActionRawRepairRequired(missing_origin_prop, failure)
+            return None, failure
         if result["accepted"]:
             return result, ""
         first_failure = next(
@@ -37547,10 +37635,16 @@ def extract_and_dry_run_director_state_actions(
         )
         if first_failure is None:
             return None, "invalid_state_action_batch: reducer rejected the batch."
-        return None, (
+        failure = (
             f"{first_failure.op} action {first_failure.action_id}: "
             f"{first_failure.code}: {first_failure.message}"
         )
+        missing_origin_prop = _missing_registered_retrieve_origin(
+            world_state, candidate, failure, immutable_raw_scene
+        )
+        if missing_origin_prop:
+            raise StateActionRawRepairRequired(missing_origin_prop, failure)
+        return None, failure
 
     accepted, failure = validate_response(response)
     for repair_attempt in range(1, DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS + 1):
@@ -37614,6 +37708,268 @@ def extract_and_dry_run_director_state_actions(
         f"Director StateActions failed for Segment {segment_number} after "
         f"{DIRECTOR_STATE_ACTION_REPAIR_ATTEMPTS} action-only repairs: {failure}"
     )
+
+
+def _validate_state_action_origin_raw_repair(
+    raw_scene,
+    bundle,
+    *,
+    segment_number,
+    run_id=None,
+    run_config=None,
+    repair_attempt,
+):
+    """Recheck a repaired scene with the RAW validators already in the pipeline."""
+    candidate = _normalize_director_end_continuity_marker(
+        _normalize_raw_scene_result(raw_scene)
+    ).strip()
+    duration = float(bundle.get("current_duration") or 0)
+    timeline_duration = _director_raw_scene_timeline_duration(
+        duration,
+        bundle.get("conditioning_mode"),
+    )
+    issue = _director_raw_scene_structure_errors(
+        candidate,
+        segment_seconds=timeline_duration,
+    )
+    if issue:
+        return candidate, "SHOT SCRIPT: " + "; ".join(issue)
+
+    current_beat = str(bundle.get("current_beat_text") or "").strip()
+    opening_state = bundle.get("world_state_opening")
+    static_setting = bundle.get("static_setting_description", "")
+    subject_definitions = bundle.get("subject_definitions", "")
+    canonical_location_state = bundle.get("canonical_location_state")
+    character_references = bundle.get("character_references")
+    previous_shot_end = (
+        bundle.get("previous_final_frame", "")
+        if int(segment_number) > 1 else ""
+    )
+    metadata = {
+        "run_id": run_id,
+        "source_sha256": (run_config or {}).get("source_sha256"),
+        "segment": int(segment_number),
+        "stage": "state_action_missing_origin",
+        "repair_attempt": int(repair_attempt),
+        "opening_state_sha256": bundle.get("opening_state_sha256"),
+    }
+    semantic_scene = _director_strip_camera_instructions(candidate)
+
+    try:
+        coherence = validate_director_raw_scene_coherence(
+            current_beat,
+            semantic_scene,
+            previous_shot_end=previous_shot_end,
+            prop_ledger=opening_state,
+            static_setting_description=static_setting,
+            known_subject_state=opening_state,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
+            history_metadata=metadata,
+        )
+    except (
+        LLMConnectionError,
+        requests.RequestException,
+        OSError,
+        ValueError,
+        TypeError,
+    ) as error:
+        coherence = {"valid": False, "issue": f"RAW physical/prop validator failed: {error}"}
+    log_director_raw_validator_result(
+        "physical/prop after StateAction origin repair",
+        coherence,
+        segment_number=segment_number,
+        director_attempt=None,
+        repair_attempt=repair_attempt,
+    )
+    if not coherence.get("valid"):
+        return candidate, "PHYSICAL/PROP: " + str(
+            coherence.get("issue") or "RAW movement or prop state is inconsistent."
+        )
+
+    timestamp_errors = _director_timestamp_range_errors(
+        candidate,
+        segment_seconds=timeline_duration,
+    )
+    if timestamp_errors:
+        return candidate, "SHOT SCRIPT: " + "; ".join(timestamp_errors)
+    try:
+        timing = validate_director_raw_scene_timing(
+            semantic_scene,
+            history_metadata={**metadata, "validator": "timing"},
+        )
+    except (
+        LLMConnectionError,
+        requests.RequestException,
+        OSError,
+        ValueError,
+        TypeError,
+    ) as error:
+        timing = {"valid": False, "issue": f"RAW timing validator failed: {error}"}
+    log_director_raw_validator_result(
+        "timing after StateAction origin repair",
+        timing,
+        segment_number=segment_number,
+        director_attempt=None,
+        repair_attempt=repair_attempt,
+    )
+    if not timing.get("valid"):
+        return candidate, "TIMING: " + str(
+            timing.get("issue") or "RAW timestamps do not fit the actions."
+        )
+
+    dialogue_issue = director_required_dialogue_issue(current_beat, semantic_scene)
+    if dialogue_issue:
+        return candidate, "DIALOGUE: " + dialogue_issue
+    return candidate, ""
+
+
+def extract_state_actions_with_origin_repair(
+    world_state,
+    raw_scene,
+    *,
+    bundle,
+    segment_number,
+    run_id=None,
+    run_config=None,
+    current_segment_subject_names=None,
+):
+    """Repair accepted RAW only when a new prop has no staged registered origin.
+
+    Ordinary reducer/extraction errors retain their existing StateAction-only
+    repair path. Origin failures get one bounded RAW-repair budget, followed by
+    the same RAW validations and a fresh StateAction extraction each time.
+    """
+    current_scene = str(raw_scene or "")
+
+    def extract(scene):
+        return extract_and_dry_run_director_state_actions(
+            world_state,
+            _director_strip_camera_instructions(scene),
+            segment_number=segment_number,
+            run_id=run_id,
+            run_config=run_config,
+            current_segment_subject_names=current_segment_subject_names,
+        )
+
+    try:
+        return current_scene, extract(current_scene)
+    except StateActionRawRepairRequired as error:
+        pending_error = error
+
+    registered_supports = [
+        str(prop.get("name") or "").strip()
+        for prop in (world_state.get("props", {}) if isinstance(world_state, dict) else {}).values()
+        if isinstance(prop, dict)
+        and prop.get("kind") in {"support", "fixture_support"}
+        and str(prop.get("name") or "").strip()
+    ]
+    if not registered_supports:
+        raise StateActionExtractionError(
+            f"missing_prop_origin_no_registered_support: Segment {segment_number} "
+            f"cannot introduce {pending_error.prop_name!r}; no registered support "
+            "is available as a retrieval origin in this segment."
+        ) from pending_error
+
+    last_issue = ""
+    for repair_attempt in range(1, DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS + 1):
+        origin_issue = (
+            f"The materially relevant new prop {pending_error.prop_name!r} has no "
+            "explicit origin in the current segment. Repair RAW to show a "
+            "physically plausible introduction: a Subject retrieving it from a "
+            "registered support before its first use. The "
+            "retrieval must occur in this segment; do not imply an earlier "
+            "acquisition, use its final destination as its origin, or invent a "
+            "support. Prefer an existing registered support when physically "
+            "appropriate. Registered supports: "
+            + ", ".join(registered_supports)
+            + ". Keep the action order physically plausible and feasible "
+            f"within {float(bundle.get('current_duration') or 0):g} seconds."
+        )
+        if last_issue:
+            origin_issue += " The prior repaired RAW also failed: " + last_issue
+        console_log(
+            "DIRECTOR RAW REPAIR DISPATCH " + json.dumps(
+                {
+                    "purpose": "director_raw_scene_repair",
+                    "stage": "state_action_missing_origin",
+                    "segment": segment_number,
+                    "repair_attempt": repair_attempt,
+                    "prop": pending_error.prop_name,
+                    "issue": origin_issue,
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        response = ask_llm(
+            build_director_raw_scene_repair_messages(current_scene, [origin_issue]),
+            response_format=None,
+            parse_json_response=False,
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": (run_config or {}).get("source_sha256"),
+                "segment": int(segment_number),
+                "purpose": "director_raw_scene_repair",
+                "attempt": repair_attempt,
+                "stage": "state_action_missing_origin",
+                "prop": pending_error.prop_name,
+                "opening_state_sha256": hashlib.sha256(
+                    json.dumps(
+                        world_state,
+                        sort_keys=True,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ).encode("utf-8")
+                ).hexdigest(),
+            },
+        )
+        candidate = _normalize_raw_scene_result(response)
+        console_log(
+            "DIRECTOR RAW SCENE REPAIR RESPONSE " + json.dumps(
+                {
+                    "segment": segment_number,
+                    "repair_attempt": repair_attempt,
+                    "stage": "state_action_missing_origin",
+                    "prop": pending_error.prop_name,
+                    "issue": origin_issue,
+                    "response": response,
+                },
+                ensure_ascii=False,
+                default=str,
+            ),
+            flush=True,
+        )
+        if not candidate.strip() or candidate.strip() == "N/A":
+            last_issue = "RAW repair returned no scene text."
+            continue
+        repaired_scene, validation_issue = _validate_state_action_origin_raw_repair(
+            candidate,
+            bundle,
+            segment_number=segment_number,
+            run_id=run_id,
+            run_config=run_config,
+            repair_attempt=repair_attempt,
+        )
+        if validation_issue:
+            current_scene = repaired_scene
+            last_issue = validation_issue
+            continue
+        current_scene = repaired_scene
+        try:
+            return current_scene, extract(current_scene)
+        except StateActionRawRepairRequired as error:
+            pending_error = error
+            last_issue = str(error)
+
+    raise StateActionExtractionError(
+        f"missing_prop_origin_after_raw_repairs: Segment {segment_number} could "
+        f"not establish a valid current-segment origin for "
+        f"{pending_error.prop_name!r} after "
+        f"{DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS} RAW repairs. Last issue: "
+        f"{last_issue or pending_error}"
+    ) from pending_error
 
 
 def _format_director_validator_worldstate_context(
@@ -41796,19 +42152,19 @@ def _run_main(
                 f"Segment {segment} has no immutable opening WorldState for "
                 "StateAction extraction."
             )
-        state_action_raw_scene = _director_strip_camera_instructions(
-            resolved_raw_scene
-        )
         try:
-            state_action_result = extract_and_dry_run_director_state_actions(
-                opening_world_state,
-                state_action_raw_scene,
-                segment_number=segment,
-                run_id=run_id,
-                run_config=run_config,
-                current_segment_subject_names=segment_bundle.get(
-                    "world_state_current_segment_subject_names", []
-                ),
+            resolved_raw_scene, state_action_result = (
+                extract_state_actions_with_origin_repair(
+                    opening_world_state,
+                    resolved_raw_scene,
+                    bundle=segment_bundle,
+                    segment_number=segment,
+                    run_id=run_id,
+                    run_config=run_config,
+                    current_segment_subject_names=segment_bundle.get(
+                        "world_state_current_segment_subject_names", []
+                    ),
+                )
             )
         except LLMConnectionError:
             raise
@@ -41819,6 +42175,15 @@ def _run_main(
                 f"Director StateAction extraction failed for Segment {segment}: "
                 f"{error}"
             ) from error
+        state_action_raw_scene = _director_strip_camera_instructions(
+            resolved_raw_scene
+        )
+        payload["raw_scene"] = resolved_raw_scene
+        request1_result["raw_scene"] = resolved_raw_scene
+        llm_result["detailed_description"] = inject_persistent_state_into_description(
+            _raw_scene_timed_description(resolved_raw_scene),
+        )
+        payload["llm_result"] = llm_result
         _assert_state_action_raw_unchanged(
             state_action_raw_scene,
             state_action_result,
