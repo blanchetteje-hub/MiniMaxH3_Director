@@ -27,10 +27,11 @@
   aliases, and timestamp/action preservation.
 - Verification: all 13 focused identity-resolver tests passed, including the
   relevant postmortem regressions. `tests.test_director_retry` passed all 136
-  tests. `py_compile` and `git diff --check` passed. A broader combined run
-  also exercised unrelated prompt-pipeline assertions that currently disagree
-  with existing physical-validator/H3 expectations; those were not changed in
-  this identity-only task.
+  tests. `py_compile` and `git diff --check` passed. The broader postmortem and
+  location-reference modules ran 114 tests and have 14 unrelated failures:
+  existing assertions expect older Director physical-prompt text and H3
+  continuity behavior. None are identity-resolver failures; those prompt and
+  H3 expectations were left outside this change.
 
 ## 2026-10-13 — Job 56 unnecessary visible-Subject resolution
 
