@@ -1,0 +1,54 @@
+{
+  "version": 3,
+  "source_sha256": "cb86ccfdf8afa04cf438f01c8cd8dc9717836dd618e41a40854dc4d41dc29b83",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman",
+    "action",
+    "skin",
+    "handhold",
+    "position",
+    "hair",
+    "appearance",
+    "scales",
+    "eyes"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": "32",
+      "clothing": "rough-spun tunic, leather apron",
+      "gender": "Female",
+      "confident_woman": "Confident",
+      "action": "wipes a polished table with a cloth soaked in ale-scented oil"
+    },
+    {
+      "name": "Goblin",
+      "age": "22",
+      "clothing": "N/A",
+      "gender": "Male",
+      "skin": "green",
+      "handhold": "tiny hands clutching a chipped mug",
+      "position": "leans over the counter"
+    },
+    {
+      "name": "Elf",
+      "age": "150",
+      "clothing": "N/A",
+      "gender": "Female",
+      "hair": "silver, streaming down shoulders",
+      "appearance": "beautiful female elf"
+    },
+    {
+      "name": "Dragon-shaped creature",
+      "age": "800",
+      "clothing": "N/A",
+      "gender": "Male",
+      "scales": "glittering like polished obsidian",
+      "eyes": "amber, scanning the room",
+      "position": "slides onto a high bar stool"
+    }
+  ]
+}
