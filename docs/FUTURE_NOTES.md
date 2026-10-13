@@ -340,3 +340,15 @@ Back-pocket experiment if implausible staging (for example, unnecessary climbing
 - Keep judgment user-configurable: unusual staging may be intentionally appropriate to the authored story. Treat the file as an optional extra check, subordinate to `story.txt` and `subjects.txt`.
 
 Status: deferred. Revisit only with repeated acceptance evidence that the existing physical/spatial validator cannot adequately handle the desired stylistic/behavioral constraint.
+
+## Populated 360-degree location-reference orbit
+
+Future experiment: include persistent background NPCs/patrons in the 360-degree location-orbit reference video (for example, a busy tavern) to establish a stable *populated* environment, not just static architecture.
+
+- Compare an empty location orbit against a populated orbit for background crowd density, visual consistency, NPC placement, and continuity across H3 segments.
+- Treat background NPCs as ambient visual conditioning only unless they are explicitly registered Subjects; do not let the reference silently establish named characters, ownership, or WorldState presence.
+- Test whether orbit conditioning causes NPC duplication, frozen crowds, inconsistent movement, or conflicts with active story Subjects entering/leaving.
+- Preserve canonical location geometry and WorldState as semantic authority; the orbit remains visual reference material.
+- Explore whether a stable baseline crowd can coexist with scene-specific NPC additions/removals without regenerating the orbit for every segment.
+
+Status: future/back-pocket experiment only; no current pipeline change.
