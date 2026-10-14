@@ -12,6 +12,9 @@
   the same physical and prop/state validators as the original; rejected content
   cannot reach H3 when bounded repairs/regeneration are exhausted. The existing
   required-stage retry policy remains in force.
+- The final pre-H3 boundary checks prompt leakage again. If pronoun resolution
+  introduces an internal header or unresolved placeholder, its changed text is
+  discarded and the last accepted RAW is retained.
 - If pronoun resolution changes accepted RAW, the changed scene now passes the
   existing physical and prop/state validators before replacing the last valid
   scene. Invalid rewritten text is discarded by the existing optional resolver
@@ -23,9 +26,9 @@
   as authoritative geometry.
 - Added regressions for context-rich repair, same-validator revalidation and
   fail-closed exhaustion, `RAW PROMPT`/placeholder leakage, approximate
-  distance handling, and contradictory fixture placement. Seven directly
-  focused tests passed. The full Director retry and location-reference suites
-  reported 188 passed and 2 unrelated failures: an existing wardrobe extractor
+  distance handling, and contradictory fixture placement. All eight directly
+  focused tests pass. The full Director retry and location-reference suites
+  reported 189 passed and 2 unrelated failures: an existing wardrobe extractor
   call-count expectation and an existing physical-validator system-prompt text
   expectation. `py_compile` and `git diff --check` passed.
 - No local artifacts for the cited Alice run were present, so the exact model

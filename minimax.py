@@ -40950,6 +40950,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             segment_seconds=h3_prompt_duration,
         )
         if resolved_raw_scene != raw_scene:
+            prompt_leaks = _director_raw_scene_prompt_leak_errors(
+                resolved_raw_scene
+            )
+            if prompt_leaks:
+                raise ValueError(
+                    "Pronoun resolution introduced an internal prompt leak: "
+                    + "; ".join(prompt_leaks)
+                )
             physical_after_resolution = validate_director_raw_scene_physical(
                 current_beat_for_topology,
                 resolved_raw_scene,
@@ -41026,6 +41034,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             f"WARNING: Pronoun resolution failed for Segment {segment_number}; "
             f"preserving the last valid RAW scene: {type(error).__name__}: {error}",
             flush=True,
+        )
+
+    final_prompt_leaks = _director_raw_scene_prompt_leak_errors(raw_scene)
+    if final_prompt_leaks:
+        raise BeatGenerationError(
+            f"Segment {segment_number} RAW contains an internal prompt leak "
+            "before H3 assembly: " + "; ".join(final_prompt_leaks)
         )
 
     console_log()

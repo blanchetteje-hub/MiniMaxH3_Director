@@ -1944,6 +1944,36 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertNotIn("RAW PROMPT", payload["llm_result"]["detailed_description"])
         self.assertEqual(physical.call_count, 1)
 
+    def test_pronoun_resolution_prompt_leak_is_discarded_before_h3(self):
+        accepted_scene = "Alice walks to the doorway."
+        bundle = segment_bundle()
+        bundle["current_beat_text"] = accepted_scene
+        physical = mock.Mock(return_value={"valid": True, "issue": ""})
+        with (
+            mock.patch(
+                "minimax.ask_llm",
+                pipeline_llm_side_effect([director_response(accepted_scene)]),
+            ),
+            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch(
+                "minimax.validate_director_raw_scene_prop_state",
+                return_value={"valid": True, "issue": ""},
+            ),
+            mock.patch(
+                "minimax.resolve_director_raw_scene_pronouns",
+                return_value="RAW PROMPT\nAlice walks to the doorway.",
+            ),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-id", {"source_sha256": "source-hash"}
+            )
+
+        self.assertNotIn("RAW PROMPT", payload["raw_scene"])
+        self.assertNotIn(
+            "RAW PROMPT", payload["llm_result"]["detailed_description"]
+        )
+
     def test_timing_validation_gets_subject_and_established_geometry_context(self):
         request = mock.Mock(return_value={"valid": True, "issue": ""})
         minimax.validate_director_raw_scene_timing(
