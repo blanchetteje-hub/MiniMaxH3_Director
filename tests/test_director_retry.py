@@ -2392,8 +2392,132 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "<Subject 2> is Will, a boy."
             ),
         )
-        self.assertIn("Will calls out (S2) <d>[English] Amy!</d>", parsed["detailed_description"])
+        self.assertIn("Will (S2) calls out <d>[English] Amy!</d>", parsed["detailed_description"])
         self.assertNotIn("Will calls out (S1)", parsed["detailed_description"])
+
+    def test_final_h3_converts_attributed_dialogue_and_camera_annotations(self):
+        subjects = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "<Subject 3> is White Rabbit, referenced in <Picture 3>."
+        )
+        description = (
+            "[Shot 1]\n"
+            "At 00:04.117, White Rabbit declares in a clear voice, "
+            '“Ten years have passed since your last visit.”\n'
+            'At 00:05.000, Amy says "Follow me!"\n'
+            'At 00:06.000, A sign reads "Tea garden this way."\n'
+            "At 00:07.000, [CAMERA: Close-up on White Rabbit's face.] "
+            'White Rabbit says "Goodbye."'
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": description,
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+            },
+            subjects,
+            segment_number=1,
+            conditioning_mode="initial",
+            accepted_raw_scene=(
+                "At 00:04.117, White Rabbit proclaims "
+                "<d>Ten years have passed since your last visit.</d>\n"
+                "At 00:05.000, Amy says <d>Follow me!</d>\n"
+                "At 00:07.000, White Rabbit says <d>Goodbye.</d>"
+            ),
+        )
+        detailed = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:", 1
+        )[0]
+        self.assertIn(
+            "At 00:04.117, White Rabbit (S3) declares in a clear voice, "
+            "<d>Ten years have passed since your last visit.</d>",
+            detailed,
+        )
+        self.assertIn(
+            'At 00:05.000, Amy (S1) says <d>Follow me!</d>',
+            detailed,
+        )
+        self.assertIn('A sign reads "Tea garden this way."', detailed)
+        self.assertIn(
+            "At 00:07.000, The camera moves into a close-up of "
+            "White Rabbit's face as White Rabbit (S3) says <d>Goodbye.</d>",
+            detailed,
+        )
+        self.assertNotIn("[CAMERA:", prompt)
+
+        descriptive_attribution = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1]\n"
+                    "At 00:02.000, White Rabbit declares in a clear voice, "
+                    '“The garden is near.”'
+                ),
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+            },
+            subjects,
+            segment_number=1,
+        )
+        descriptive_detail = descriptive_attribution.split(
+            "detailed_description: ", 1
+        )[1].split("\n\noverall_soundscape:", 1)[0]
+        self.assertIn(
+            "At 00:02.000, White Rabbit (S3) declares in a clear voice, "
+            "<d>The garden is near.</d>",
+            descriptive_detail,
+        )
+
+    def test_final_h3_preserves_already_tagged_dialogue_and_camera_free_scene(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1]\n"
+                    "At 00:01.000, Amy (S1) says <d>Already formatted.</d>"
+                ),
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+            },
+            "<Subject 1> is Amy, referenced in <Picture 1>.",
+            segment_number=1,
+            conditioning_mode="initial",
+        )
+        detailed = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:", 1
+        )[0]
+        self.assertIn(
+            "At 00:01.000, Amy (S1) says <d>Already formatted.</d>",
+            detailed,
+        )
+        self.assertNotIn("[CAMERA:", detailed)
+
+    def test_final_h3_rejects_unresolved_dialogue_speaker_and_camera_tag_leak(self):
+        base = {
+            "overall_soundscape": "Room tone.",
+            "non_diegetic_music": "N/A",
+        }
+        subjects = "<Subject 1> is Amy, referenced in <Picture 1>."
+        with self.assertRaisesRegex(ValueError, "Attributed spoken dialogue"):
+            minimax.build_h3_prompt(
+                {
+                    **base,
+                    "detailed_description": (
+                        '[Shot 1] At 00:01.000, Stranger says "Hello."'
+                    ),
+                },
+                subjects,
+                segment_number=1,
+            )
+        with self.assertRaisesRegex(ValueError, r"internal \[CAMERA:"):
+            minimax.build_h3_prompt(
+                {
+                    **base,
+                    "detailed_description": (
+                        "[Shot 1] Amy moves [CAMERA: stray annotation]."
+                    ),
+                },
+                subjects,
+                segment_number=1,
+            )
 
     def test_h3_formatter_parses_subject_genders(self):
         parsed = minimax.parse_h3_formatter_result(

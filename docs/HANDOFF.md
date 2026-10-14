@@ -1,5 +1,25 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — final H3 dialogue and camera formatting
+
+- Final H3 assembly now converts registered, attributed quoted speech into
+  `<d>...</d>` blocks and places the stable speaker ID immediately after the
+  canonical Subject name. It preserves attribution and delivery wording. The
+  accepted RAW's tagged dialogue is used as source evidence for unfamiliar
+  attribution wording; explicit written-text contexts remain quoted prose.
+- Camera refiner annotations remain unchanged in internal RAW for validation
+  and StateAction handling, then become natural-language camera sentences at
+  the shared H3 assembly boundary. A final guard rejects leaked `[CAMERA: ...]`
+  tags or unresolved attributed speech. No LLM calls or runtime prompts changed.
+- Added final-prompt regressions for multiple registered speakers, descriptive
+  attribution, source-backed attribution, existing `<d>` tags, written sign
+  text, same-timestamp camera/dialogue, and internal-format leak rejection.
+- Verification: focused dialogue/camera plus split-RAW tests passed (23 passed,
+  3 subtests); `py_compile` and `git diff --check` passed. The broader prompt
+  generation run had one unrelated fixture failure because its expected
+  character-reference MP4 was absent; the full Director suite had one unrelated
+  mocked-LLM sequence exhaustion.
+
 ## 2026-10-14 — two-reference location transitions
 
 - Expanded the existing `scene_location_select` request to return

@@ -25278,46 +25278,236 @@ def _strip_formatter_metadata(value):
     return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
 
-def _repair_named_dialogue_speaker_ids(description, subject_definitions):
-    """Force explicitly named dialogue onto the registered stable speaker ID."""
-    text = str(description or "")
-    registry = parse_subject_registry(subject_definitions or "")
-    speakers = []
-    for subject_id, name, record in _subject_registry_records(registry):
-        speaker = _subject_speaker_display_id(record.get("speaker_id"), subject_id)
-        if name and speaker:
-            speakers.append((name, speaker))
+_H3_SPEECH_ATTRIBUTION_RE = re.compile(
+    r"(?i)\b(?:say|says|said|ask|asks|asked|answer|answers|answered|"
+    r"reply|replies|replied|declare|declares|declared|state|states|stated|"
+    r"remark|remarks|remarked|announce|announces|announced|shout|shouts|"
+    r"shouted|whisper|whispers|whispered|yell|yells|yelled|tell|tells|told|"
+    r"call(?:s)?(?:\s+out)?|called\s+out|cry|cries|cried|scream|screams|"
+    r"screamed|murmur|murmurs|murmured|mutters?|growls?|utters?|speaks?|"
+    r"sings?)\b"
+)
+_H3_WRITTEN_QUOTE_CONTEXT_RE = re.compile(
+    r"(?i)\b(?:sign|banner|label|subtitle|screen|display|monitor|caption|"
+    r"written\s+text|inscription|letter|note|book|reads?|reading|writes?|"
+    r"writing|text\s+on)\b"
+)
+_H3_QUOTED_TEXT_PATTERNS = (
+    re.compile(r'"(?P<words>[^"\r\n]+)"'),
+    re.compile(r'“(?P<words>[^”\r\n]+)”'),
+    re.compile(r'‘(?P<words>[^’\r\n]+)’'),
+    re.compile(r"(?<!\w)'(?P<words>.+?)'(?=$|[\s.,!?;:])"),
+)
 
-    speech_re = re.compile(
-        r"(?i)\b(?:says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|"
-        r"calls?(?:\s+out)?|cries|screams?|murmurs?|mutters?|growls?)\b"
+
+def _h3_clause_start(text, end):
+    line_start = str(text).rfind("\n", 0, end) + 1
+    line_prefix = str(text)[line_start:end]
+    timestamps = list(re.finditer(r"\bAt \d{2}:\d{2}\.\d{3},\s*", line_prefix))
+    search_start = (
+        line_start + timestamps[-1].end()
+        if timestamps
+        else line_start
     )
+    punctuation = [
+        str(text).rfind(mark, search_start, end)
+        for mark in (".", "!", "?")
+    ]
+    last = max(punctuation, default=-1)
+    return max(line_start, last + 1)
+
+
+def _h3_registered_speakers(subject_definitions):
+    registry = parse_subject_registry(subject_definitions or "")
+    return sorted(
+        (
+            (name, _subject_speaker_display_id(record.get("speaker_id"), subject_id))
+            for subject_id, name, record in _subject_registry_records(registry)
+            if name and _subject_speaker_display_id(record.get("speaker_id"), subject_id)
+        ),
+        key=lambda item: (-len(item[0]), item[0].casefold()),
+    )
+
+
+def _h3_quote_attribution(
+    text,
+    end,
+    speakers,
+    source_speaker=None,
+    explicit_source_dialogue=False,
+):
+    """Find one registered speaker explicitly attached to a quoted utterance."""
+    if source_speaker is not None:
+        return (*source_speaker, "")
+    prefix_start = _h3_clause_start(text, end)
+    prefix = text[prefix_start:end]
+    candidates = []
+    for name, speaker in speakers:
+        for match in re.finditer(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", prefix):
+            tail = prefix[match.end():]
+            # A RAW <d> span is itself authoritative evidence that this clause
+            # is speech. For plain quotations, require an attribution verb but
+            # allow any intervening delivery description (for example,
+            # "declares in a clear voice") rather than requiring adjacency.
+            cue = _H3_SPEECH_ATTRIBUTION_RE.search(tail)
+            if cue is None:
+                continue
+            candidates.append((match.start(), name, speaker, tail))
+    if not candidates and explicit_source_dialogue:
+        # In accepted RAW, <d> already distinguishes speech from written text.
+        # If only one registered Subject is named in that clause, the tag is
+        # sufficient evidence even when the Director uses an unusual speech verb.
+        unique = []
+        for name, speaker in speakers:
+            if re.search(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", prefix):
+                unique.append((name, speaker))
+        if len(unique) == 1:
+            return (*unique[0], prefix)
+    if not candidates:
+        return None
+    _position, name, speaker, tail = max(candidates, key=lambda item: item[0])
+    if _H3_WRITTEN_QUOTE_CONTEXT_RE.search(prefix):
+        return None
+    return name, speaker, tail
+
+
+def _h3_source_dialogue_speakers(raw_scene, speakers):
+    """Map exact RAW dialogue text to its registered speaker when available."""
+    candidates = {}
+    for block in re.finditer(r"<d>(.*?)</d>", str(raw_scene or ""), re.I | re.S):
+        attribution = _h3_quote_attribution(
+            str(raw_scene or ""),
+            block.start(),
+            speakers,
+            explicit_source_dialogue=True,
+        )
+        if attribution is None:
+            continue
+        name, speaker, _tail = attribution
+        candidates.setdefault(" ".join(block.group(1).split()), set()).add(
+            (name, speaker)
+        )
+    return {
+        words: next(iter(speakers_for_words))
+        for words, speakers_for_words in candidates.items()
+        if len(speakers_for_words) == 1
+    }
+
+
+def _repair_named_dialogue_speaker_ids(
+    description,
+    subject_definitions,
+    raw_scene=None,
+):
+    """Put each explicitly attributed utterance beside its registered speaker."""
+    text = str(description or "")
+    speakers = _h3_registered_speakers(subject_definitions)
+    source_dialogue = _h3_source_dialogue_speakers(raw_scene, speakers)
     blocks = list(re.finditer(r"<d>.*?</d>", text, re.I | re.S))
     for block in reversed(blocks):
-        prefix_start = max(0, block.start() - 220)
-        prefix = text[prefix_start:block.start()]
-        best = None
-        for name, speaker in speakers:
-            for match in re.finditer(re.escape(name), prefix, re.I):
-                tail = prefix[match.end():]
-                if speech_re.search(tail):
-                    candidate = (match.start(), name, speaker)
-                    if best is None or candidate[0] > best[0]:
-                        best = candidate
-        if best is None:
+        words = " ".join(re.sub(r"</?d>", "", block.group(0), flags=re.I).split())
+        source_speaker = source_dialogue.get(words)
+        attribution = _h3_quote_attribution(
+            text,
+            block.start(),
+            speakers,
+            source_speaker=source_speaker,
+        )
+        if attribution is None:
             continue
-        _, _name, speaker = best
-        before = text[prefix_start:block.start()]
-        replaced = re.sub(
-            r"\(S\d+\)\s*$",
-            speaker + " ",
-            before,
-            count=1,
+        name, speaker, _tail = attribution
+        prefix_start = _h3_clause_start(text, block.start())
+        prefix = text[prefix_start:block.start()]
+        name_matches = list(re.finditer(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", prefix))
+        if not name_matches:
+            continue
+        name_match = name_matches[-1]
+        absolute_name_end = prefix_start + name_match.end()
+        following = text[absolute_name_end:block.start()]
+        # Remove a misplaced or stale speaker token from the attribution, then
+        # attach Python's registered ID directly to the canonical speaker name.
+        following = re.sub(
+            r"(?:\s*\(\s*S\d+\s*\))+",
+            "",
+            following,
             flags=re.I,
         )
-        if replaced == before:
-            replaced = before + speaker + " "
-        text = text[:prefix_start] + replaced + text[block.start():]
+        canonical = text[prefix_start:absolute_name_end]
+        canonical = re.sub(
+            r"(?:\s*\(\s*S\d+\s*\))+\s*$",
+            "",
+            canonical,
+            flags=re.I,
+        )
+        replacement = canonical + f" {speaker}" + following
+        text = text[:prefix_start] + replacement + text[block.start():]
+    return text
+
+
+def _convert_attributed_quoted_dialogue(
+    description,
+    subject_definitions,
+    raw_scene=None,
+):
+    """Convert registered spoken quotations to the established H3 <d> form."""
+    text = str(description or "")
+    speakers = _h3_registered_speakers(subject_definitions)
+    source_dialogue = _h3_source_dialogue_speakers(raw_scene, speakers)
+    tagged_spans = [
+        (match.start(), match.end())
+        for match in re.finditer(r"<d>.*?</d>", text, re.I | re.S)
+    ]
+    matches = [
+        match
+        for pattern in _H3_QUOTED_TEXT_PATTERNS
+        for match in pattern.finditer(text)
+    ]
+    matches.sort(key=lambda item: item.start(), reverse=True)
+    for match in matches:
+        if any(start <= match.start() < end for start, end in tagged_spans):
+            continue
+        words = match.group("words")
+        source_speaker = source_dialogue.get(" ".join(words.split()))
+        prefix_start = _h3_clause_start(text, match.start())
+        prefix = text[prefix_start:match.start()]
+        if _H3_WRITTEN_QUOTE_CONTEXT_RE.search(prefix):
+            continue
+        attribution = _h3_quote_attribution(
+            text,
+            match.start(),
+            speakers,
+            source_speaker=source_speaker,
+        )
+        if attribution is None:
+            continue
+        name, speaker, _tail = attribution
+        name_matches = list(re.finditer(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", prefix))
+        if not name_matches:
+            continue
+        name_match = name_matches[-1]
+        absolute_name_end = prefix_start + name_match.end()
+        before_quote = text[absolute_name_end:match.start()]
+        before_quote = re.sub(
+            r"(?:\s*\(\s*S\d+\s*\))+",
+            "",
+            before_quote,
+            flags=re.I,
+        )
+        before_name = text[prefix_start:absolute_name_end]
+        before_name = re.sub(
+            r"(?:\s*\(\s*S\d+\s*\))+\s*$",
+            "",
+            before_name,
+            flags=re.I,
+        )
+        text = (
+            text[:prefix_start]
+            + before_name
+            + f" {speaker}"
+            + before_quote
+            + f"<d>{words}</d>"
+            + text[match.end():]
+        )
     return text
 
 
@@ -25348,6 +25538,10 @@ def parse_h3_formatter_result(
     description = remove_non_speaking_speaker_ids(
         description,
         {"subject_definitions": subject_definitions},
+    )
+    description = _convert_attributed_quoted_dialogue(
+        description,
+        subject_definitions,
     )
     description = _repair_named_dialogue_speaker_ids(
         description,
@@ -30458,7 +30652,12 @@ def _h3_speaker_sentence_bounds(text, match):
 
 
 # Repair prompt-local identity references from the frozen Subject registry.
-def repair_h3_subject_identity(prompt, subject_definitions, continuity_state=None):
+def repair_h3_subject_identity(
+    prompt,
+    subject_definitions,
+    continuity_state=None,
+    raw_scene=None,
+):
     """Repair prompt-local identity references from the frozen Subject registry.
 
     Formatter output is untrusted prose.  A swapped speaker token is repaired
@@ -30480,30 +30679,14 @@ def repair_h3_subject_identity(prompt, subject_definitions, continuity_state=Non
         if identity["speaker_id"]
     }
 
-    # Add a missing canonical speaker ID when a registered Subject is explicitly
-    # attributed dialogue but Request 1/2 omitted the token. This runs after
-    # dynamic Subject registration, so Python never guesses an S-number.
-    speech_verbs = (
-        r"says?|said|asks?|answers?|replies|shouts?|whispers?|yells?|tells?|"
-        r"exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|mutters?|"
-        r"growls?|screams?"
+    # The stable ID belongs beside the registered Subject name. Preserve the
+    # original speech verb and any delivery description; do not normalize it to
+    # a generic "said" wording.
+    text = _repair_named_dialogue_speaker_ids(
+        text,
+        subject_definitions,
+        raw_scene=raw_scene,
     )
-    for subject_id, identity in identities.items():
-        name = identity.get("name")
-        speaker_id = identity.get("speaker_id")
-        if not name or not speaker_id:
-            continue
-        pattern = re.compile(
-            rf"(?i)(?<!\w)(?P<name>{re.escape(name)})(?!\w)"
-            rf"(?:\s+\(S\d+\))?"
-            rf"\s+(?P<verb>{speech_verbs})"
-            rf"(?:\s+\(S\d+\))?\s+(?=<d>)"
-        )
-        repaired_name = identity["name"]
-        text = pattern.sub(
-            lambda _match: f"{repaired_name} ({speaker_id}) said ",
-            text,
-        )
 
     # Find canonical Subject names mentioned in text.
     def names_in(text_value):
@@ -30818,12 +31001,18 @@ def validate_h3_subject_identity(prompt, subject_definitions, continuity_state=N
 
 
 # Repair and validate final H3 Subject identifiers without aborting.
-def _assert_h3_subject_identity(prompt, subject_definitions, continuity_state=None):
+def _assert_h3_subject_identity(
+    prompt,
+    subject_definitions,
+    continuity_state=None,
+    raw_scene=None,
+):
     """Repair and validate final H3 Subject identifiers without aborting."""
     repaired = repair_h3_subject_identity(
         prompt,
         subject_definitions,
         continuity_state=continuity_state,
+        raw_scene=raw_scene,
     )
     issues = validate_h3_subject_identity(
         repaired,
@@ -30867,6 +31056,138 @@ def _replace_excluded_picture_tags_for_h3(
         else "the supplied opening guide"
     )
     return pattern.sub(replacement, text)
+
+
+def _camera_instruction_to_h3_prose(instruction):
+    cue = re.sub(r"\s+", " ", str(instruction or "").strip()).rstrip(" .;,")
+    if not cue:
+        return ""
+    cue = re.sub(r"(?i)^the\s+camera\s+", "", cue)
+    close_up = re.match(r"(?i)close[- ]up\s+on\s+(.+)$", cue)
+    if close_up:
+        return f"The camera moves into a close-up of {close_up.group(1)}"
+    close_frame = re.match(r"(?i)close[- ]up\s+(?:of|on)\s+(.+)$", cue)
+    if close_frame:
+        return f"The camera moves into a close-up of {close_frame.group(1)}"
+    if re.match(r"(?i)(?:slow\s+)?pan\b", cue) and not re.match(
+        r"(?i)pan(?:s|ned|ning)?\s+(?:to|toward|towards|across|over|around)",
+        cue,
+    ):
+        return f"The camera makes a {cue[0].lower() + cue[1:]}"
+    movement_forms = (
+        (r"(?i)^panning\s+", "pans "),
+        (r"(?i)^tracking\s+", "tracks "),
+        (r"(?i)^following\s+", "follows "),
+        (r"(?i)^moving\s+", "moves "),
+        (r"(?i)^pushing\s+", "pushes "),
+        (r"(?i)^pulling\s+", "pulls "),
+        (r"(?i)^zooming\s+", "zooms "),
+        (r"(?i)^orbiting\s+", "orbits "),
+        (r"(?i)^tilting\s+", "tilts "),
+        (r"(?i)^dollying\s+", "dollies "),
+    )
+    for pattern, replacement in movement_forms:
+        if re.match(pattern, cue):
+            cue = re.sub(pattern, replacement, cue, count=1)
+            break
+    imperative_forms = (
+        (r"(?i)^pan\s+", "pans "),
+        (r"(?i)^track\s+", "tracks "),
+        (r"(?i)^follow\s+", "follows "),
+        (r"(?i)^move\s+", "moves "),
+        (r"(?i)^push\s+", "pushes "),
+        (r"(?i)^pull\s+", "pulls "),
+        (r"(?i)^zoom\s+", "zooms "),
+        (r"(?i)^orbit\s+", "orbits "),
+        (r"(?i)^tilt\s+", "tilts "),
+    )
+    for pattern, replacement in imperative_forms:
+        if re.match(pattern, cue):
+            cue = re.sub(pattern, replacement, cue, count=1)
+            break
+    if re.match(
+        r"(?i)(?:pans?|tracks?|follows?|moves?|pushes?|pulls?|zooms?|"
+        r"orbits?|tilts?|dollies?|cranes?|swings?|drifts?|racks?)\b",
+        cue,
+    ):
+        return f"The camera {cue[0].lower() + cue[1:]}"
+    if re.match(r"(?i)(?:wide|medium|high-angle|low-angle)\s+(?:shot|view)\b", cue):
+        return f"The camera frames {cue[0].lower() + cue[1:]}"
+    return f"The camera follows this instruction: {cue}"
+
+
+def _convert_camera_annotations_for_h3(description):
+    """Turn internal camera tags into natural-language H3 scene text."""
+    converted = []
+    for line in str(description or "").splitlines():
+        match = _DIRECTOR_CAMERA_PREFIX_RE.match(line)
+        tag = (
+            _DIRECTOR_CAMERA_TAG_RE.match(match.group("body"))
+            if match is not None
+            else None
+        )
+        if match is None or tag is None:
+            converted.append(line)
+            continue
+        tag_prefix = tag.group(0).split("] ", 1)[0]
+        camera_prose = _camera_instruction_to_h3_prose(tag_prefix[9:])
+        action = tag.group("action")
+        body = camera_prose
+        if action:
+            body = f"{camera_prose} as {action}" if camera_prose else action
+        converted.append(
+            f"At {match.group('timestamp')}{body}"
+        )
+    return "\n".join(converted)
+
+
+def _h3_dialogue_format_errors(
+    description,
+    subject_definitions,
+    raw_scene=None,
+):
+    """Report spoken quotations left untagged or without a registered speaker ID."""
+    text = str(description or "")
+    speakers = _h3_registered_speakers(subject_definitions)
+    source_dialogue = _h3_source_dialogue_speakers(raw_scene, speakers)
+    errors = []
+    tagged = list(re.finditer(r"<d>(.*?)</d>", text, re.I | re.S))
+    for block in tagged:
+        words = " ".join(block.group(1).split())
+        attribution = _h3_quote_attribution(
+            text,
+            block.start(),
+            speakers,
+            source_speaker=source_dialogue.get(words),
+        )
+        if attribution is None:
+            continue
+        name, speaker, _tail = attribution
+        prefix = text[_h3_clause_start(text, block.start()):block.start()]
+        if not re.search(
+            rf"(?i)(?<!\w){re.escape(name)}\s+{re.escape(speaker)}",
+            prefix,
+        ):
+            errors.append(
+                f"Dialogue for registered Subject {name!r} lacks speaker ID ({speaker})."
+            )
+
+    tagged_spans = [(item.start(), item.end()) for item in tagged]
+    for pattern in _H3_QUOTED_TEXT_PATTERNS:
+        for quote in pattern.finditer(text):
+            if any(start <= quote.start() < end for start, end in tagged_spans):
+                continue
+            prefix_start = _h3_clause_start(text, quote.start())
+            prefix = text[prefix_start:quote.start()]
+            if _H3_WRITTEN_QUOTE_CONTEXT_RE.search(prefix):
+                continue
+            words = " ".join(quote.group("words").split())
+            if words in source_dialogue or _H3_SPEECH_ATTRIBUTION_RE.search(prefix):
+                errors.append(
+                    "Attributed spoken dialogue remains in quotation marks instead "
+                    "of <d>...</d> syntax."
+                )
+    return list(dict.fromkeys(errors))
 
 
 # Remap canonical Picture tags to dense append batch slots in H3 text only.
@@ -31913,6 +32234,7 @@ def build_h3_prompt(
     visual_style=DEFAULT_VISUAL_STYLE,
     subject_state_ledger=None,
     world_state=None,
+    accepted_raw_scene=None,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -32168,6 +32490,17 @@ def build_h3_prompt(
     integrated = ensure_h3_continuous_take_instruction(integrated)
     integrated = ensure_h3_prop_identity_instruction(integrated)
     integrated = inject_h3_visual_style(integrated, visual_style)
+    integrated = _convert_attributed_quoted_dialogue(
+        integrated,
+        subject_definitions,
+        raw_scene=accepted_raw_scene,
+    )
+    integrated = _repair_named_dialogue_speaker_ids(
+        integrated,
+        subject_definitions,
+        raw_scene=accepted_raw_scene,
+    )
+    integrated = _convert_camera_annotations_for_h3(integrated)
     canonical_prompt_text = ""
     if segment_number is not None and int(segment_number) == 1:
         canonical_sentences = canonical_character_subject_descriptions(
@@ -32231,7 +32564,25 @@ def build_h3_prompt(
         final_prompt,
         subject_definitions,
         continuity_state=continuity_state,
+        raw_scene=accepted_raw_scene,
     )
+    formatting_errors = []
+    if re.search(r"(?i)\[\s*CAMERA\s*:", final_prompt):
+        formatting_errors.append(
+            "An internal [CAMERA: ...] annotation remains in the final H3 prompt."
+        )
+    formatting_errors.extend(
+        _h3_dialogue_format_errors(
+            integrated,
+            subject_definitions,
+            raw_scene=accepted_raw_scene,
+        )
+    )
+    if formatting_errors:
+        raise ValueError(
+            "Final H3 audiovisual formatting failed: "
+            + "; ".join(formatting_errors)
+        )
     if canonical_prompt_text:
         final_prompt = final_prompt.replace(canonical_marker, canonical_prompt_text, 1)
     return final_prompt
@@ -36694,6 +37045,7 @@ def repair_existing_segment(
         subject_state_ledger=generation_state.get("subject_state_ledger", {}),
         visual_style=repair_visual_style,
         world_state=opening_state,
+        accepted_raw_scene=director_payload.get("raw_scene"),
     )
 
     console_log()
@@ -44317,6 +44669,7 @@ def _run_main(
             ),
             visual_style=visual_style,
             world_state=segment_bundle.get("world_state_opening"),
+            accepted_raw_scene=payload.get("raw_scene"),
         )
         segment_location_setting = str(
             segment_bundle.get("location_setting_description") or ""
