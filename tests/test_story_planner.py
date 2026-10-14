@@ -210,6 +210,56 @@ def test_classify_source_units_uses_terminal_and_hard_reset_calls(capsys):
     ]
 
 
+def test_exhausted_hard_reset_retries_after_regenerating_terminal_classification():
+    from story_planner import classify_source_units
+
+    story = "Work begins. A later phase starts."
+    units = enumerate_source_units(story)
+    responses = iter([
+        {"decision": "NO", "reason": "opening"},
+        {"decision": "NO", "reason": "phase continues"},
+        "malformed", "malformed", "malformed",
+        {"decision": "YES", "reason": "updated terminal classification"},
+        {"decision": "YES", "reason": "explicit new phase"},
+    ])
+    calls = []
+
+    def fake_llm(messages, **kwargs):
+        calls.append(kwargs["history_metadata"]["purpose"])
+        return next(responses)
+
+    classified = classify_source_units(story, units, fake_llm)
+
+    assert [(unit.terminal, unit.hard_reset) for unit in classified] == [
+        (False, False),
+        (False, True),
+    ]
+    assert calls == [
+        "source_unit_terminal",
+        "source_unit_terminal",
+        "source_unit_hard_reset",
+        "source_unit_hard_reset",
+        "source_unit_hard_reset",
+        "source_unit_terminal",
+        "source_unit_hard_reset",
+    ]
+
+
+def test_semantic_stage_propagates_llm_connection_failure():
+    from story_planner import classify_source_units
+
+    class LLMConnectionError(RuntimeError):
+        pass
+
+    units = enumerate_source_units("Work begins.")
+
+    def unavailable(*_args, **_kwargs):
+        raise LLMConnectionError("offline")
+
+    with pytest.raises(LLMConnectionError, match="offline"):
+        classify_source_units("Work begins.", units, unavailable)
+
+
 
 def test_cut_candidates_preserve_exact_mixed_phase_sentence():
     from story_planner import enumerate_cut_candidates

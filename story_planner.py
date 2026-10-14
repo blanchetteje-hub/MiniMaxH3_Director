@@ -11,6 +11,62 @@ from dataclasses import dataclass
 import re
 from typing import Iterable, Sequence
 
+from pipeline_recovery import run_pipeline_stage_with_backstep
+
+
+_SEMANTIC_RESPONSE_ATTEMPTS = 3
+
+
+def _run_semantic_request(
+    stage_name,
+    llm_request,
+    messages,
+    response_format,
+    history_metadata,
+    purpose,
+    parser,
+    sampling,
+    *,
+    previous_stage=None,
+    should_run=None,
+):
+    """Retry malformed semantic output, then regenerate the prior stage."""
+    def request_and_parse():
+        if should_run is not None and not should_run():
+            return None
+        last_error = None
+        for attempt in range(1, _SEMANTIC_RESPONSE_ATTEMPTS + 1):
+            try:
+                raw = llm_request(
+                    messages,
+                    response_format=response_format,
+                    history_metadata={
+                        **dict(history_metadata),
+                        "purpose": purpose,
+                        "attempt": attempt,
+                    },
+                    **sampling,
+                )
+                return parser(raw)
+            except Exception as error:
+                if type(error).__name__ in {
+                    "LLMConnectionError",
+                    "ComfyUIConnectionError",
+                }:
+                    raise
+                last_error = error
+        raise ValueError(
+            f"{stage_name} returned unusable output after "
+            f"{_SEMANTIC_RESPONSE_ATTEMPTS} attempts: {last_error}"
+        ) from last_error
+
+    return run_pipeline_stage_with_backstep(
+        stage_name,
+        request_and_parse,
+        previous_stage=previous_stage,
+        log=lambda message, **_kwargs: print(message, flush=True),
+    )
+
 
 _SENTENCE_END_RE = re.compile(r"[.!?](?=\s|$)")
 
@@ -459,17 +515,19 @@ def classify_source_units(
     classified: list[SourceUnit] = []
 
     for index, unit in enumerate(units):
-        terminal_raw = llm_request(
-            build_terminal_messages(story, unit),
-            response_format=build_binary_decision_response_format(),
-            history_metadata={
-                **history,
-                "purpose": "source_unit_terminal",
-                "source_unit_id": unit.id,
-            },
-            **sampling,
-        )
-        terminal = parse_binary_decision(terminal_raw)
+        def classify_terminal():
+            return _run_semantic_request(
+                "source_unit_terminal",
+                llm_request,
+                build_terminal_messages(story, unit),
+                build_binary_decision_response_format(),
+                {**history, "source_unit_id": unit.id},
+                "source_unit_terminal",
+                parse_binary_decision,
+                sampling,
+            )
+
+        terminal = classify_terminal()
         print(
             f"Terminal check span {unit.id}: {'YES' if terminal else 'NO'}",
             flush=True,
@@ -477,17 +535,17 @@ def classify_source_units(
 
         hard_reset = False
         if index > 0:
-            reset_raw = llm_request(
+            hard_reset = _run_semantic_request(
+                "source_unit_hard_reset",
+                llm_request,
                 build_hard_reset_messages(units[index - 1], unit),
-                response_format=build_binary_decision_response_format(),
-                history_metadata={
-                    **history,
-                    "purpose": "source_unit_hard_reset",
-                    "source_unit_id": unit.id,
-                },
-                **sampling,
+                build_binary_decision_response_format(),
+                {**history, "source_unit_id": unit.id},
+                "source_unit_hard_reset",
+                parse_binary_decision,
+                sampling,
+                previous_stage=lambda _error: classify_terminal(),
             )
-            hard_reset = parse_binary_decision(reset_raw)
             print(
                 f"Hard-reset check span {unit.id}: {'YES' if hard_reset else 'NO'}",
                 flush=True,
@@ -784,31 +842,48 @@ def refine_source_units(
             add_span(unit.start, unit.end)
             continue
 
-        split_raw = llm_request(
-            build_source_unit_split_messages(story, unit),
-            response_format=build_split_decision_response_format(),
-            history_metadata={
-                **history,
-                "purpose": "source_unit_split_gate",
-                "source_unit_id": unit.id,
-            },
-            **sampling,
-        )
-        if not parse_split_decision(split_raw):
+        def classify_split():
+            return _run_semantic_request(
+                "source_unit_split_gate",
+                llm_request,
+                build_source_unit_split_messages(story, unit),
+                build_split_decision_response_format(),
+                {**history, "source_unit_id": unit.id},
+                "source_unit_split_gate",
+                parse_split_decision,
+                sampling,
+            )
+
+        split = classify_split()
+        if not split:
             add_span(unit.start, unit.end)
             continue
 
-        cut_raw = llm_request(
-            build_cut_choice_messages(unit, candidates),
-            response_format=build_cut_choice_response_format(candidates),
-            history_metadata={
-                **history,
-                "purpose": "source_unit_cut_choice",
-                "source_unit_id": unit.id,
-            },
-            **sampling,
-        )
-        chosen = parse_cut_choice(cut_raw, candidates)
+        def choose_cut():
+            nonlocal split
+            if not split:
+                return None
+            return _run_semantic_request(
+                "source_unit_cut_choice",
+                llm_request,
+                build_cut_choice_messages(unit, candidates),
+                build_cut_choice_response_format(candidates),
+                {**history, "source_unit_id": unit.id},
+                "source_unit_cut_choice",
+                lambda raw: parse_cut_choice(raw, candidates),
+                sampling,
+                previous_stage=lambda _error: _refresh_split_decision(),
+                should_run=lambda: split,
+            )
+
+        def _refresh_split_decision():
+            nonlocal split
+            split = classify_split()
+
+        chosen = choose_cut()
+        if not split:
+            add_span(unit.start, unit.end)
+            continue
         if chosen is None:
             add_span(unit.start, unit.end)
             continue
@@ -897,6 +972,7 @@ def classify_visible_source_unit_ids(
     *,
     history_metadata: dict | None = None,
     sampling_parameters: dict | None = None,
+    previous_stage=None,
 ) -> list[int]:
     """Return source-unit IDs that own concrete visible beat responsibility."""
 
@@ -910,17 +986,17 @@ def classify_visible_source_unit_ids(
     visible_ids: list[int] = []
 
     for unit in units:
-        raw_result = llm_request(
+        requires_event = _run_semantic_request(
+            "source_unit_visible_responsibility",
+            llm_request,
             build_visible_responsibility_messages(unit),
-            response_format=build_binary_decision_response_format(),
-            history_metadata={
-                **history,
-                "purpose": "source_unit_visible_responsibility",
-                "source_unit_id": unit.id,
-            },
-            **sampling,
+            build_binary_decision_response_format(),
+            {**history, "source_unit_id": unit.id},
+            "source_unit_visible_responsibility",
+            parse_binary_decision,
+            sampling,
+            previous_stage=previous_stage,
         )
-        requires_event = parse_binary_decision(raw_result)
         print(
             f"Event {unit.id} requires a concrete on-screen event: "
             f"{'YES' if requires_event else 'NO'}",
@@ -1028,6 +1104,7 @@ def group_chapter_source_responsibilities(
     *,
     history_metadata: dict | None = None,
     sampling_parameters: dict | None = None,
+    previous_stage=None,
 ) -> tuple[tuple[int, ...], ...]:
     """Group visible finite units into local beat responsibilities.
 
@@ -1080,21 +1157,24 @@ def group_chapter_source_responsibilities(
             current = [unit_id]
             continue
 
-        raw_relation = llm_request(
+        relation_value = _run_semantic_request(
+            "source_unit_local_relation",
+            llm_request,
             build_local_relation_messages(
                 units_by_id[left_id],
                 units_by_id[unit_id],
             ),
-            response_format=_LOCAL_RELATION_RESPONSE_FORMAT,
-            history_metadata={
+            _LOCAL_RELATION_RESPONSE_FORMAT,
+            {
                 **history,
-                "purpose": "source_unit_local_relation",
                 "left_source_unit_id": left_id,
                 "right_source_unit_id": unit_id,
             },
-            **sampling,
+            "source_unit_local_relation",
+            parse_local_relation,
+            sampling,
+            previous_stage=previous_stage,
         )
-        relation_value = parse_local_relation(raw_relation)
         left = units_by_id[left_id]
         right = units_by_id[unit_id]
         print(
@@ -1272,33 +1352,64 @@ def build_story_plan(
     repeat allocation, chapter boundaries, and final source ownership.
     """
 
-    units, chapter_spans = plan_story_chapters(
-        story,
-        llm_request,
-        history_metadata=history_metadata,
-        sampling_parameters=sampling_parameters,
-        on_source_span=on_source_span,
-    )
-    repeatable = explicit_repeatable_source_unit_ids(units)
-    visible = classify_visible_source_unit_ids(
-        units,
-        llm_request,
-        history_metadata=history_metadata,
-        sampling_parameters=sampling_parameters,
-    )
+    units = []
+    chapter_spans = []
+    repeatable = []
 
-    chapter_groups = [
-        group_chapter_source_responsibilities(
+    def regenerate_chapters(_error=None):
+        nonlocal units, chapter_spans, repeatable
+        units, chapter_spans = plan_story_chapters(
+            story,
+            llm_request,
+            history_metadata=history_metadata,
+            sampling_parameters=sampling_parameters,
+            on_source_span=on_source_span,
+        )
+        repeatable = explicit_repeatable_source_unit_ids(units)
+
+    regenerate_chapters()
+
+    def classify_visible():
+        return classify_visible_source_unit_ids(
             units,
-            chapter,
-            visible,
-            repeatable,
             llm_request,
             history_metadata=history_metadata,
             sampling_parameters=sampling_parameters,
         )
-        for chapter in chapter_spans
-    ]
+
+    visible = run_pipeline_stage_with_backstep(
+        "source_unit_visible_responsibility",
+        classify_visible,
+        previous_stage=regenerate_chapters,
+        log=lambda message, **_kwargs: print(message, flush=True),
+    )
+
+    def regenerate_visible(_error=None):
+        nonlocal visible
+        regenerate_chapters()
+        visible = classify_visible()
+
+    def group_all_chapters():
+        return [
+            group_chapter_source_responsibilities(
+                units,
+                chapter,
+                visible,
+                repeatable,
+                llm_request,
+                history_metadata=history_metadata,
+                sampling_parameters=sampling_parameters,
+                previous_stage=regenerate_visible,
+            )
+            for chapter in chapter_spans
+        ]
+
+    chapter_groups = run_pipeline_stage_with_backstep(
+        "source_unit_local_relation",
+        group_all_chapters,
+        previous_stage=regenerate_visible,
+        log=lambda message, **_kwargs: print(message, flush=True),
+    )
     beat_counts = allocate_grouped_chapter_beats(
         chapter_groups,
         total_beats,

@@ -1,5 +1,37 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — LLM stage retry and predecessor recovery
+
+- Added a shared pipeline-stage recovery helper. Each stage retains its bounded
+  malformed-response/repair attempts; after exhaustion it reruns the immediately
+  preceding stage when that dependency is explicit, then retries the failed
+  stage and downstream work. Root stages retry from their authoritative inputs.
+- Applied this flow to story expansion → Beat extraction, source-unit semantic
+  planning, the chained story-location/static-setting/spatial-setting extractors,
+  Director RAW/StateAction failure routes, and post-RAW soundscape/music stages.
+  Story-planning hard-reset and cut-choice failures regenerate their immediate
+  preceding terminal/split classification before retrying.
+- Runtime supervision now treats ordinary generation, validation, state, and
+  rendering failures as recoverable from the first incomplete segment. Only an
+  unreachable LLM, unreachable ComfyUI, or user cancellation escapes the
+  generation supervisor. CLI argument parsing retains its normal usage exit.
+  LLM connection failures are explicitly rethrown by concurrent Beat validators,
+  Director validators/refiners, and event extraction rather than being reported
+  as content failures or converted to fallback output.
+- Camera-refiner exhaustion now backsteps to timing; pronoun, event, and audio
+  extraction exhaustion backsteps to their declared preceding Director stage.
+  Event extraction no longer accepts an empty batch after malformed extraction
+  or translation failure; its immutable opening WorldState is preserved while
+  the Director stage is retried.
+- Added regressions for story-to-Beat predecessor regeneration, semantic
+  classifier backsteps, connection-failure propagation, Director event failure
+  routing, and recoverable versus fatal runtime failures. The focused Director,
+  story-planner, story-to-Beat, event-extraction, and runtime-supervisor suites
+  passed: 192 tests and 17 subtests. `py_compile`, `git diff --check`, and
+  byte-for-byte automation copies passed. A broader run also exposed one
+  unrelated pre-existing failure in the threat-status shorthand parser test.
+  No runtime prompts or retry suffixes changed.
+
 ## 2026-10-14 — Fail-open WorldState event extraction
 
 - Unresolvable extracted `move` events are skipped when they establish neither a

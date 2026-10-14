@@ -2553,7 +2553,7 @@ if __name__ == "__main__":
 
 
 class RuntimeRecoverySupervisorTests(unittest.TestCase):
-    def test_main_fails_fast_for_prompt_generation(self):
+    def test_main_recovers_generation_errors_in_prompt_only_mode(self):
         with (
             patch.object(
                 minimax.sys,
@@ -2562,17 +2562,15 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
             ),
             patch(
                 "minimax._run_main",
-                side_effect=RuntimeError("post-director structural failure"),
+                side_effect=[RuntimeError("post-director structural failure"), "done"],
             ) as run_main,
             patch("minimax.traceback.print_exc"),
+            patch("minimax._checkpoint_file_signature", return_value=None),
+            patch("minimax.time.sleep"),
         ):
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "post-director structural failure",
-            ):
-                minimax.main()
+            self.assertEqual(minimax.main(), "done")
 
-        self.assertEqual(run_main.call_count, 1)
+        self.assertEqual(run_main.call_count, 2)
 
     def test_main_retries_recoverable_failure_from_checkpoint(self):
         with (
@@ -2617,22 +2615,27 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
             with self.assertRaises(minimax.ComfyUIConnectionError):
                 minimax.main()
 
-    def test_main_fails_closed_on_state_action_extraction_failure(self):
+    def test_main_propagates_user_cancellation(self):
+        with patch("minimax._run_main", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                minimax.main()
+
+    def test_main_recovers_state_extraction_failure(self):
         with (
             patch.object(minimax.sys, "argv", ["minimax.py", "8", "64", "0.5"]),
             patch(
                 "minimax._run_main",
-                side_effect=minimax.WorldStateEventExtractionError(
-                    "all action-only repairs failed"
-                ),
+                side_effect=[
+                    minimax.WorldStateEventExtractionError(
+                        "all action-only repairs failed"
+                    ),
+                    "done",
+                ],
             ) as run_main,
             patch("minimax.time.sleep") as sleep,
+            patch("minimax._checkpoint_file_signature", return_value=None),
         ):
-            with self.assertRaisesRegex(
-                minimax.WorldStateEventExtractionError,
-                "all action-only repairs failed",
-            ):
-                minimax.main()
+            self.assertEqual(minimax.main(), "done")
 
-        self.assertEqual(run_main.call_count, 1)
-        sleep.assert_not_called()
+        self.assertEqual(run_main.call_count, 2)
+        sleep.assert_called_once_with(1)

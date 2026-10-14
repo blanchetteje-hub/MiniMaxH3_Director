@@ -261,16 +261,18 @@ def test_malformed_event_repair_budget_is_bounded_and_does_not_commit():
     malformed = {"events": [{"action": "not-an-event"}]}
     request = mock.Mock(return_value=malformed)
     with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log") as log:
-        result = minimax.extract_and_dry_run_world_state_events(state, raw, segment_number=1)
+        with pytest.raises(minimax.PipelineStageRetryError) as caught:
+            minimax.extract_and_dry_run_world_state_events(state, raw, segment_number=1)
     assert request.call_count == 1 + minimax.WORLD_STATE_EVENT_REPAIR_ATTEMPTS
     assert all(call.args[0][-1]["content"].find(raw) >= 0 for call in request.call_args_list)
-    assert result["accepted"] is True
-    assert result["events"] == []
-    assert result["state_actions"] == []
-    assert result["event_extraction_failed"] is True
-    diagnostic = result["event_failure_diagnostic"]
+    diagnostic = str(caught.value)
+    assert caught.value.stage_name == "director_world_state_events"
+    assert caught.value.previous_stage == "director_raw_scene"
     assert "Malformed event extraction for Segment 1 after 5 repairs" in diagnostic
-    assert any(diagnostic in call.args[0] for call in log.call_args_list)
+    assert any(
+        "Malformed event extraction for Segment 1 after 5 repairs" in call.args[0]
+        for call in log.call_args_list
+    )
     assert state == opening
 
 
@@ -283,11 +285,26 @@ def test_translation_failure_discards_prior_events_and_preserves_opening_world_s
         event("take", "Amy", "new cloth", source="apron pocket", relation="from"),
     ]}
     with mock.patch("minimax.ask_llm", return_value=response), mock.patch("minimax.console_log") as log:
-        result = minimax.extract_and_dry_run_world_state_events(state, raw, segment_number=1)
-    assert result["accepted"] is True
-    assert result["events"] == []
-    assert result["state_actions"] == []
-    assert result["event_extraction_failed"] is True
-    assert "new prop 'new cloth' has no registered support origin" in result["event_failure_diagnostic"]
-    assert any(result["event_failure_diagnostic"] in call.args[0] for call in log.call_args_list)
+        with pytest.raises(minimax.PipelineStageRetryError) as caught:
+            minimax.extract_and_dry_run_world_state_events(state, raw, segment_number=1)
+    assert "new prop 'new cloth' has no registered support origin" in str(caught.value)
+    assert caught.value.previous_stage == "director_raw_scene"
+    assert any(
+        "new prop 'new cloth' has no registered support origin" in call.args[0]
+        for call in log.call_args_list
+    )
     assert state == opening
+
+
+def test_event_extraction_does_not_swallow_fatal_llm_connection_failure():
+    state, _ = state_with_entities(mug=False)
+    with mock.patch(
+        "minimax.ask_llm",
+        side_effect=minimax.LLMConnectionError("LLM unavailable"),
+    ), mock.patch("minimax.console_log"):
+        with pytest.raises(minimax.LLMConnectionError, match="LLM unavailable"):
+            minimax.extract_and_dry_run_world_state_events(
+                state,
+                "Amy opens the entrance.",
+                segment_number=1,
+            )

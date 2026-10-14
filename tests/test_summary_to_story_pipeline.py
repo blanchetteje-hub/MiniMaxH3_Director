@@ -263,6 +263,58 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
                 self.assertNotIn("context_token_budget", kwargs)
                 self.assertNotIn("max_tokens", kwargs)
 
+    def test_exhausted_story_to_beats_regenerates_expanded_story_then_retries(self):
+        expansion_values = [
+            "Mara opens the first gate and crosses its bridge.",
+            "Mara opens the second gate and crosses its bridge.",
+        ]
+        state = {"expansion": "", "beat_attempts": 0}
+        invalid_beats = {"beats": [{"beat_number": 1, "beat_text": "Only one."}]}
+        valid_beats = {
+            "beats": [
+                {"beat_number": 1, "beat_text": "Mara opens the gate."},
+                {"beat_number": 2, "beat_text": "Mara crosses the bridge."},
+            ]
+        }
+        calls = []
+
+        def llm_request(messages, **kwargs):
+            purpose = kwargs.get("history_metadata", {}).get("purpose")
+            calls.append((purpose, messages))
+            if purpose == "story_expansion":
+                state["expansion"] = expansion_values.pop(0)
+                return state["expansion"]
+            if purpose == "story_to_beats":
+                state["beat_attempts"] += 1
+                return invalid_beats if state["beat_attempts"] <= 2 else valid_beats
+            raise AssertionError(f"Unexpected LLM purpose: {purpose}")
+
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(minimax, "SUMMARY_CONTENT_ATTEMPTS", 2), \
+             patch.object(minimax, "BEAT_RETRY_ATTEMPTS", 2), \
+             patch.object(minimax, "_run_forward_beat_validation", return_value=["accepted"]):
+            result = minimax.generate_beats_via_story_expansion(
+                "Mara opens a gate and crosses a bridge.",
+                2,
+                path=str(Path(directory) / "beats.txt"),
+                story_arc_path=str(Path(directory) / "story_arc.json"),
+                expanded_story_path=str(Path(directory) / "expanded_story.txt"),
+                llm_request=llm_request,
+                duration_seconds=16,
+            )
+
+        self.assertEqual(result, ["accepted"])
+        purposes = [purpose for purpose, _messages in calls]
+        self.assertEqual(
+            purposes,
+            ["story_expansion", "story_to_beats", "story_to_beats",
+             "story_expansion", "story_to_beats"],
+        )
+        beat_inputs = [messages[-1]["content"] for purpose, messages in calls
+                       if purpose == "story_to_beats"]
+        self.assertIn("first gate", beat_inputs[0])
+        self.assertIn("second gate", beat_inputs[-1])
+
 
 if __name__ == "__main__":
     unittest.main()

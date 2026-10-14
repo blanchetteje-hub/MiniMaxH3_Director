@@ -49,6 +49,7 @@ from gpt_formatter import (
 )
 from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
+from pipeline_recovery import PipelineStageRetryError, run_pipeline_stage_with_backstep
 from story_planner import StoryPlan, build_story_plan
 from world_state import (
     CURRENT_SEGMENT_PROP_KINDS,
@@ -15131,6 +15132,8 @@ def _run_forward_beat_validation(
                         ).strip()
                         regenerate_candidate = False
                     except (LLMConnectionError, requests.RequestException, OSError, ValueError, TypeError) as error:
+                        if isinstance(error, LLMConnectionError):
+                            raise
                         last_issue = f"Beat regeneration failed: {error}"
                         retry_feedback = last_issue
                         console_log(
@@ -15238,6 +15241,8 @@ def _run_forward_beat_validation(
                     ValueError,
                     TypeError,
                 ) as error:
+                    if isinstance(error, LLMConnectionError):
+                        raise
                     return validator_name, None, error
 
             console_log(
@@ -15262,6 +15267,10 @@ def _run_forward_beat_validation(
                     name: future.result()
                     for name, future in futures.items()
                 }
+
+            for validator_name, (_name, _validation, error) in validations.items():
+                if isinstance(error, LLMConnectionError):
+                    raise error
 
             validator_failures = []
             validator_errors = []
@@ -15334,6 +15343,8 @@ def _run_forward_beat_validation(
                     ValueError,
                     TypeError,
                 ) as error:
+                    if isinstance(error, LLMConnectionError):
+                        raise
                     last_issue = f"Beat finite-endpoint extractor failed: {error}"
                     retry_feedback = last_issue
                     regenerate_candidate = False
@@ -20878,86 +20889,116 @@ def generate_beats_via_story_expansion(
     if story_arc_source is None:
         story_arc_source = story
 
-    last_error = None
     expanded_story = None
-    for attempt in range(1, SUMMARY_CONTENT_ATTEMPTS + 1):
-        try:
-            raw_story = llm_request(
-                build_story_expansion_messages(
-                    story,
-                    duration_seconds,
-                    total_segments=total_segments,
-                ),
-                response_format=None,
-                parse_json_response=False,
-                history_metadata={
-                    **(history_metadata or {}),
-                    "purpose": "story_expansion",
-                    "attempt": attempt,
-                    "total_segments": total_segments,
-                    "duration_seconds": duration_seconds,
-                },
+
+    def generate_expanded_story():
+        last_error = None
+        candidate_story = None
+        for attempt in range(1, SUMMARY_CONTENT_ATTEMPTS + 1):
+            try:
+                raw_story = llm_request(
+                    build_story_expansion_messages(
+                        story,
+                        duration_seconds,
+                        total_segments=total_segments,
+                    ),
+                    response_format=None,
+                    parse_json_response=False,
+                    history_metadata={
+                        **(history_metadata or {}),
+                        "purpose": "story_expansion",
+                        "attempt": attempt,
+                        "total_segments": total_segments,
+                        "duration_seconds": duration_seconds,
+                    },
+                )
+                candidate_story = _parse_expanded_story(raw_story)
+                break
+            except LLMConnectionError:
+                raise
+            except (TypeError, ValueError) as error:
+                last_error = error
+        if candidate_story is None:
+            raise ValueError(
+                "Could not produce a usable continuous story: "
+                + str(last_error or "unknown story-expansion error")
             )
-            expanded_story = _parse_expanded_story(raw_story)
-            break
-        except LLMConnectionError:
-            raise
-        except (TypeError, ValueError) as error:
-            last_error = error
-    if expanded_story is None:
-        raise ValueError(
-            "Could not produce a usable continuous story: "
-            + str(last_error or "unknown story-expansion error")
+        save_expanded_story(candidate_story, expanded_story_path)
+        console_log(f"Expanded story saved to {expanded_story_path}.", flush=True)
+        console_log("Expanded story:\n" + candidate_story, flush=True)
+        return candidate_story
+
+    expanded_story = run_pipeline_stage_with_backstep(
+        "story_expansion",
+        generate_expanded_story,
+        fatal_exceptions=(LLMConnectionError, ComfyUIConnectionError, KeyboardInterrupt),
+        log=console_log,
+    )
+
+    def regenerate_expanded_story_for_beats():
+        nonlocal expanded_story
+        expanded_story = run_pipeline_stage_with_backstep(
+            "story_expansion",
+            generate_expanded_story,
+            fatal_exceptions=(LLMConnectionError, ComfyUIConnectionError, KeyboardInterrupt),
+            log=console_log,
         )
 
-    save_expanded_story(expanded_story, expanded_story_path)
-    console_log(f"Expanded story saved to {expanded_story_path}.", flush=True)
-    console_log("Expanded story:\n" + expanded_story, flush=True)
-
-    extracted_beats = None
-    last_error = None
-    for attempt in range(1, BEAT_RETRY_ATTEMPTS + 1):
-        try:
-            raw_beats = llm_request(
-                build_story_to_beats_messages(
-                    story,
-                    expanded_story,
+    def extract_beats_from_expanded_story():
+        nonlocal expanded_story
+        last_error = None
+        candidate_beats = None
+        for attempt in range(1, BEAT_RETRY_ATTEMPTS + 1):
+            try:
+                raw_beats = llm_request(
+                    build_story_to_beats_messages(
+                        story,
+                        expanded_story,
+                        total_segments,
+                        beat_instructions=beat_instructions,
+                        phrase_exclusions=phrase_exclusions,
+                    ),
+                    response_format=build_story_to_beats_response_format(
+                        total_segments
+                    ),
+                    parse_json_response=False,
+                    history_metadata={
+                        **(history_metadata or {}),
+                        "purpose": "story_to_beats",
+                        "attempt": attempt,
+                        "total_segments": total_segments,
+                    },
+                )
+                candidate_beats = _normalize_story_derived_beats(
+                    raw_beats,
                     total_segments,
-                    beat_instructions=beat_instructions,
                     phrase_exclusions=phrase_exclusions,
-                ),
-                response_format=build_story_to_beats_response_format(
-                    total_segments
-                ),
-                parse_json_response=False,
-                history_metadata={
-                    **(history_metadata or {}),
-                    "purpose": "story_to_beats",
-                    "attempt": attempt,
-                    "total_segments": total_segments,
-                },
+                    llm_request=llm_request,
+                )
+                break
+            except LLMConnectionError:
+                raise
+            except (TypeError, ValueError) as error:
+                last_error = error
+                console_log(
+                    "Story-to-Beats response was invalid; requesting the complete "
+                    f"Beat set again: {error}",
+                    flush=True,
+                )
+        if candidate_beats is None:
+            raise ValueError(
+                "Could not convert the expanded story into Beats: "
+                + str(last_error or "unknown Beat-extraction error")
             )
-            extracted_beats = _normalize_story_derived_beats(
-                raw_beats,
-                total_segments,
-                phrase_exclusions=phrase_exclusions,
-                llm_request=llm_request,
-            )
-            break
-        except LLMConnectionError:
-            raise
-        except (TypeError, ValueError) as error:
-            last_error = error
-            console_log(
-                "Story-to-Beats response was invalid; requesting the complete "
-                f"Beat set again: {error}",
-                flush=True,
-            )
-    if extracted_beats is None:
-        raise ValueError(
-            "Could not convert the expanded story into Beats: "
-            + str(last_error or "unknown Beat-extraction error")
-        )
+        return candidate_beats
+
+    extracted_beats = run_pipeline_stage_with_backstep(
+        "story_to_beats",
+        extract_beats_from_expanded_story,
+        previous_stage=lambda _error: regenerate_expanded_story_for_beats(),
+        fatal_exceptions=(LLMConnectionError, ComfyUIConnectionError, KeyboardInterrupt),
+        log=console_log,
+    )
 
     macro_arc = _story_derived_macro_arc(extracted_beats)
     save_story_arc(macro_arc, story_arc_source, story_arc_path)
@@ -37876,28 +37917,23 @@ def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_nu
             raise WorldStateEventExtractionError(f"No event list returned for Segment {segment_number}.")
         console_log("WORLDSTATE EVENTS " + json.dumps({"segment": segment_number, "events": events}, ensure_ascii=False), flush=True)
         result = translate_world_state_events(world_state, events, immutable_raw, segment_number=int(segment_number))
+    except LLMConnectionError:
+        # Losing the required LLM is one of the few fatal infrastructure
+        # conditions. Do not turn it into an accepted empty event batch.
+        raise
     except Exception as error:
         diagnostic = f"{type(error).__name__}: {error}"
         console_log(
             f"WORLDSTATE EVENT EXTRACTION FAILED for Segment {segment_number}; "
-            f"discarding entire event batch and continuing without state changes: {diagnostic}",
+            f"discarding the event batch and stepping back to the preceding "
+            f"Director stage: {diagnostic}",
             flush=True,
         )
-        empty = parse_and_dry_run_state_actions(
-            world_state,
-            {"state_actions": []},
-            segment_number=int(segment_number),
-            name_resolution=name_resolution,
-            raw_scene=immutable_raw,
-        )
-        return {
-            **empty,
-            "events": [],
-            "raw_scene": immutable_raw,
-            "opening_state_sha256": opening_hash,
-            "event_extraction_failed": True,
-            "event_failure_diagnostic": diagnostic,
-        }
+        raise PipelineStageRetryError(
+            stage_name="director_world_state_events",
+            previous_stage="director_raw_scene",
+            diagnostic=diagnostic,
+        ) from error
     return {**result, "events": events, "raw_scene": immutable_raw, "opening_state_sha256": opening_hash}
 
 def _format_director_validator_worldstate_context(
@@ -39203,6 +39239,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 ValueError,
                 TypeError,
             ) as error:
+                if isinstance(error, LLMConnectionError):
+                    raise
                 result = {
                     "valid": False,
                     "issue": f"RAW physical validator failed: {error}",
@@ -39241,6 +39279,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 ValueError,
                 TypeError,
             ) as error:
+                if isinstance(error, LLMConnectionError):
+                    raise
                 prop_state = {
                     "valid": False,
                     "issue": f"RAW prop/state validator failed: {error}",
@@ -39425,6 +39465,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 TypeError,
                 json.JSONDecodeError,
             ) as error:
+                if isinstance(error, LLMConnectionError):
+                    raise
                 timing_failure = f"Malformed timing-refiner response: {error}"
             console_log(
                 "DIRECTOR TIMING REFINER RESPONSE " + json.dumps(
@@ -39485,6 +39527,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             ValueError,
             TypeError,
         ) as error:
+            if isinstance(error, LLMConnectionError):
+                raise
             timing_validation = {
                 "valid": False,
                 "issue": f"RAW timing validator failed: {error}",
@@ -39570,6 +39614,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 ValueError,
                 TypeError,
             ) as error:
+                if isinstance(error, LLMConnectionError):
+                    raise
                 camera_failure = f"Malformed camera-refiner response: {error}"
             console_log(
                 "DIRECTOR CAMERA REFINER RESPONSE " + json.dumps(
@@ -39587,20 +39633,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 flush=True,
             )
         if not camera_accepted:
-            camera_scene = timed_scene
-            console_log(
-                "DIRECTOR CAMERA REFINER FALLBACK " + json.dumps(
-                    {
-                        "segment": segment_number,
-                        "director_attempt": request1_attempt,
-                        "attempts": DIRECTOR_RAW_REFINER_ATTEMPTS,
-                        "issue": camera_failure,
-                        "fallback": "accepted timed scene unchanged",
-                    },
-                    ensure_ascii=False,
-                    default=str,
+            raise PipelineStageRetryError(
+                stage_name="add_camera_refiner",
+                previous_stage="add_scene_timing_refiner",
+                diagnostic=(
+                    f"Segment {segment_number}; after "
+                    f"{DIRECTOR_RAW_REFINER_ATTEMPTS} attempts: {camera_failure}"
                 ),
-                flush=True,
             )
 
         raw_scene = _normalize_director_end_continuity_marker(
@@ -39872,10 +39911,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         ValueError,
         TypeError,
     ) as error:
-        console_log(
-            f"WARNING: Segment {segment_number} RAW pronoun resolution ignored: "
-            f"{error}",
-            flush=True,
+        if isinstance(error, LLMConnectionError):
+            raise
+        raise PipelineStageRetryError(
+            stage_name="director_raw_scene_pronoun_resolution",
+            previous_stage="director_raw_scene",
+            diagnostic=f"Segment {segment_number}: {error}",
         )
 
     console_log()
@@ -39935,6 +39976,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             ValueError,
             TypeError,
         ) as error:
+            if isinstance(error, LLMConnectionError):
+                raise
             if audio_attempt < 2:
                 console_log(
                     f"H3 soundscape segment {segment_number} invalid "
@@ -39952,8 +39995,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 continue
             console_log(
                 f"WARNING: H3 soundscape segment {segment_number} failed; "
-                f"using N/A: {error}",
+                f"stepping back to Director RAW: {error}",
                 flush=True,
+            )
+            raise PipelineStageRetryError(
+                stage_name="director_h3_soundscape",
+                previous_stage="director_raw_scene",
+                diagnostic=f"Segment {segment_number}: {error}",
             )
 
     music = "N/A"
@@ -39993,6 +40041,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 ValueError,
                 TypeError,
             ) as error:
+                if isinstance(error, LLMConnectionError):
+                    raise
                 if audio_attempt < 2:
                     console_log(
                         f"H3 music segment {segment_number} invalid "
@@ -40007,9 +40057,15 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     )
                     continue
                 console_log(
-                    f"WARNING: H3 music segment {segment_number} failed; using N/A: "
+                    f"WARNING: H3 music segment {segment_number} failed; "
+                    "stepping back to Director RAW: "
                     f"{error}",
                     flush=True,
+                )
+                raise PipelineStageRetryError(
+                    stage_name="director_h3_music",
+                    previous_stage="director_raw_scene",
+                    diagnostic=f"Segment {segment_number}: {error}",
                 )
 
     audio_result = {
@@ -40672,11 +40728,15 @@ def _run_main(
     character_canon = (
         copy.deepcopy(replay_inputs["character_canon"])
         if pre_director_replay is not None
-        else load_or_generate_character_canon(
-            canonical_data,
-            story=story,
-            subject_definitions=subject_definitions,
-            history_metadata={"run_id": run_id},
+        else run_pipeline_stage_with_backstep(
+            "character_canon",
+            lambda: load_or_generate_character_canon(
+                canonical_data,
+                story=story,
+                subject_definitions=subject_definitions,
+                history_metadata={"run_id": run_id},
+            ),
+            log=console_log,
         )
     )
     subject_information = format_beat_generation_subjects(subject_definitions)
@@ -40768,12 +40828,16 @@ def _run_main(
         else load_text_file(EXPANDED_STORY_FILE, required=False)
     )
     if expanded_story_context and pre_director_replay is None:
-        character_canon = canonicalize_defined_subject_wardrobes(
-            character_canon,
-            expanded_story_context,
-            base_subject_definitions,
-            canonical_data=canonical_data,
-            history_metadata={"run_id": run_id},
+        character_canon = run_pipeline_stage_with_backstep(
+            "story_subject_wardrobe_extract",
+            lambda: canonicalize_defined_subject_wardrobes(
+                character_canon,
+                expanded_story_context,
+                base_subject_definitions,
+                canonical_data=canonical_data,
+                history_metadata={"run_id": run_id},
+            ),
+            log=console_log,
         )
         subject_information = format_beat_generation_subjects(
             subject_definitions
@@ -40818,33 +40882,75 @@ def _run_main(
                 prior.get("location_state", {})
             )
         elif expanded_story_context:
-            story_location_metadata = extract_story_locations(
-                expanded_story_context,
-                history_metadata={"run_id": run_id},
+            def extract_locations():
+                nonlocal story_location_metadata
+                story_location_metadata = extract_story_locations(
+                    expanded_story_context,
+                    history_metadata={"run_id": run_id},
+                )
+                return story_location_metadata
+
+            static_setting = ""
+
+            def extract_static_setting_stage():
+                nonlocal static_setting
+                static_setting = extract_static_setting(
+                    expanded_story_context,
+                    story_location_metadata["overall_location"],
+                    visual_style=visual_style,
+                    history_metadata={"run_id": run_id},
+                )
+                return static_setting
+
+            spatial_location = ""
+
+            def refine_spatial_setting_stage():
+                nonlocal spatial_location
+                spatial_location = refine_story_setting_spatially(
+                    static_setting,
+                    history_metadata={"run_id": run_id},
+                )
+                return spatial_location
+
+            def extract_structured_setting_stage():
+                spatial_setting = extract_story_setting_description(
+                    spatial_location,
+                    static_setting=static_setting,
+                    history_metadata={"run_id": run_id},
+                )
+                story_location_metadata["setting_description"] = (
+                    spatial_setting["text_description"]
+                )
+                story_location_metadata["location_state"] = copy.deepcopy(
+                    spatial_setting["location_state"]
+                )
+                story_location_metadata["spatial_location_description"] = (
+                    spatial_location
+                )
+                return spatial_setting
+
+            run_pipeline_stage_with_backstep(
+                "story_location_extract",
+                extract_locations,
+                log=console_log,
             )
-            static_setting = extract_static_setting(
-                expanded_story_context,
-                story_location_metadata["overall_location"],
-                visual_style=visual_style,
-                history_metadata={"run_id": run_id},
+            run_pipeline_stage_with_backstep(
+                "static_setting_extract",
+                extract_static_setting_stage,
+                previous_stage=lambda _error: extract_locations(),
+                log=console_log,
             )
-            spatial_location = refine_story_setting_spatially(
-                static_setting,
-                history_metadata={"run_id": run_id},
+            run_pipeline_stage_with_backstep(
+                "story_setting_spatial_refine",
+                refine_spatial_setting_stage,
+                previous_stage=lambda _error: extract_static_setting_stage(),
+                log=console_log,
             )
-            spatial_setting = extract_story_setting_description(
-                spatial_location,
-                static_setting=static_setting,
-                history_metadata={"run_id": run_id},
-            )
-            story_location_metadata["setting_description"] = (
-                spatial_setting["text_description"]
-            )
-            story_location_metadata["location_state"] = copy.deepcopy(
-                spatial_setting["location_state"]
-            )
-            story_location_metadata["spatial_location_description"] = (
-                spatial_location
+            run_pipeline_stage_with_backstep(
+                "story_setting_extract",
+                extract_structured_setting_stage,
+                previous_stage=lambda _error: refine_spatial_setting_stage(),
+                log=console_log,
             )
             console_log(
                 "Story location metadata: "
@@ -42027,6 +42133,8 @@ def _run_main(
                 ValueError,
                 TypeError,
             ) as error:
+                if isinstance(error, LLMConnectionError):
+                    raise
                 subject_resolution_error = error
                 if subject_attempt < 2:
                     console_log(
@@ -42035,9 +42143,13 @@ def _run_main(
                         flush=True,
                     )
         if not subject_resolution_succeeded:
-            raise BeatGenerationError(
-                f"RAW Subject resolution failed for Segment {segment} after "
-                f"2 attempts: {subject_resolution_error}"
+            raise PipelineStageRetryError(
+                stage_name="director_raw_scene_visible_subject_resolution",
+                previous_stage="director_raw_scene",
+                diagnostic=(
+                    f"Segment {segment} after 2 attempts: "
+                    f"{subject_resolution_error}"
+                ),
             )
         if subject_resolution_bypassed:
             # Keep the accepted Director text byte-for-byte intact throughout
@@ -42091,7 +42203,7 @@ def _run_main(
         except LLMConnectionError:
             raise
         except Exception as error:
-            if isinstance(error, WorldStateEventExtractionError):
+            if isinstance(error, (WorldStateEventExtractionError, PipelineStageRetryError)):
                 raise
             raise WorldStateEventExtractionError(
                 f"WorldState event extraction failed for Segment {segment}: "
@@ -42796,9 +42908,10 @@ def _run_main(
             except LLMConnectionError:
                 raise
             except Exception as error:
-                console_log(
-                    f"WARNING: visual end-state observation for segment {segment} "
-                    f"failed: {error}. Generation will continue without it."
+                raise PipelineStageRetryError(
+                    stage_name="visual_end_state",
+                    previous_stage="comfyui_render",
+                    diagnostic=f"Segment {segment}: {error}",
                 )
 
             # Rendered observations remain separately recorded diagnostics and
@@ -43085,17 +43198,7 @@ def main():
     console_log("Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
     clear_state_media_output()
     recovery_resume_segment = None
-    normalized_args = set(normalize_command_line(sys.argv[1:]))
-    fail_fast_generation = bool(
-        normalized_args.intersection({
-            "--test-prompt-generation",
-            "--generate-prompts",
-            "--director-only",
-            "--generate-beats",
-        })
-    )
     while True:
-        checkpoint_signature_before = _checkpoint_file_signature()
         try:
             # Recreate worker pools after every failed attempt. Their context
             # managers drain/cancel the old work before the next recovery pass.
@@ -43123,38 +43226,26 @@ def main():
             raise
         except KeyboardInterrupt:
             raise
-        except (
-            re.error,
-            WorldStateEventExtractionError,
-            RequiredEventStateApplicationError,
-            WorkflowConfigurationError,
-        ):
-            # Deterministic programming/state/workflow defects cannot repair
-            # themselves by replaying the same saved checkpoint.
-            raise
         except SystemExit:
-            # argparse and explicit command-line exits are user-controlled.
-            # Never retry invalid or missing arguments.
+            # argparse exits are command-line usage handling, not generation
+            # failures. The three fatal runtime conditions are handled above.
             raise
         except Exception as error:
-            if fail_fast_generation:
+            # Always resume at the first incomplete segment. If failure
+            # occurred after a RAW-producing stage, this rebuilds that segment
+            # from its immutable opening state instead of replaying completed
+            # segments or restarting the entire run from Segment 1.
+            recovery_resume_segment = _checkpoint_recovery_resume_segment()
+            if recovery_resume_segment is None:
+                recovery_resume_segment = 1
+            if isinstance(error, PipelineStageRetryError):
                 console_log(
-                    f"FATAL: prompt-generation run stopped at first real failure: "
-                    f"{type(error).__name__}: {error}",
+                    f"Backstep requested: {error.stage_name} -> "
+                    f"{error.previous_stage}; restarting from incomplete "
+                    f"segment {recovery_resume_segment}.",
                     file=sys.stderr,
                     flush=True,
                 )
-                traceback.print_exc()
-                raise
-
-            checkpoint_signature_after = _checkpoint_file_signature()
-            if (
-                checkpoint_signature_after is not None
-                and checkpoint_signature_after != checkpoint_signature_before
-            ):
-                recovery_resume_segment = _checkpoint_recovery_resume_segment()
-            elif recovery_resume_segment is None:
-                recovery_resume_segment = 1
             console_log(
                 f"WARNING: recoverable generation failure: {error}",
                 file=sys.stderr,

@@ -315,7 +315,11 @@ def pipeline_llm_side_effect(
             pending_timed_scene = minimax._assemble_timed_scene(action_lines, timestamps)
             return {"status": "ok", "timestamps": timestamps}
         if purpose == "add_camera_refiner":
-            return pending_timed_scene
+            messages = args[0] if args else []
+            user_text = str(messages[-1].get("content", "")) if messages else ""
+            return user_text.split("TIMED SCENE\n", 1)[-1].split(
+                "\n\nCAMERA INSTRUCTION FORMAT", 1
+            )[0]
         if purpose == "director_raw_scene_repair":
             try:
                 repaired = next(queued)
@@ -373,7 +377,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:07.900, Amy finishes and steps back."
         )
         request = mock.Mock(side_effect=pipeline_llm_side_effect([response]))
-        pronoun_resolver = mock.Mock(side_effect=lambda raw_scene, **kwargs: raw_scene)
+        pronoun_resolver = mock.Mock(
+            side_effect=lambda raw_scene, _definitions="", **kwargs: raw_scene
+        )
         validators = (
             mock.patch("minimax.validate_director_raw_scene_physical", return_value={"valid": True, "issue": ""}),
             mock.patch("minimax.validate_director_raw_scene_prop_state", return_value={"valid": True, "issue": ""}),
@@ -454,7 +460,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             request.call_args_list[0].kwargs["response_format"],
         )
 
-    def test_unresolved_new_prop_origin_fails_open_without_rewriting_raw(self):
+    def test_unresolved_new_prop_origin_requests_raw_stage_backstep(self):
         world_state, _location_id, _mug_id = goblin_mug_world_state()
         opening = copy.deepcopy(world_state)
         raw_scene = "At 00:00.000, Amy pulls the cloth from her apron pocket."
@@ -465,14 +471,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         }]}
         request = mock.Mock(return_value=events)
         with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log"):
-            result = minimax.extract_and_dry_run_world_state_events(
-                world_state, raw_scene, segment_number=1,
-            )
-        self.assertTrue(result["event_extraction_failed"])
-        self.assertEqual(result["events"], [])
-        self.assertEqual(result["state_actions"], [])
-        self.assertIn("registered support origin", result["event_failure_diagnostic"])
-        self.assertEqual(result["raw_scene"], raw_scene)
+            with self.assertRaises(minimax.PipelineStageRetryError) as caught:
+                minimax.extract_and_dry_run_world_state_events(
+                    world_state, raw_scene, segment_number=1,
+                )
+        self.assertEqual(caught.exception.stage_name, "director_world_state_events")
+        self.assertEqual(caught.exception.previous_stage, "director_raw_scene")
+        self.assertIn("registered support origin", str(caught.exception))
         self.assertEqual(request.call_count, 1)
         self.assertEqual(world_state, opening)
 
@@ -1638,7 +1643,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 6)  # creative, repair, timing/camera, Subject resolution
+        self.assertEqual(len(semantic_calls), 4)  # creative, repair, timing and camera
         self.assertEqual(physical.call_count, 2)
         self.assertEqual(prop_state.call_count, 1)
         self.assertEqual(timing.call_count, 1)
@@ -1811,7 +1816,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 bundle, [], "run-id", {"source_sha256": "source-hash"}
             )
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 6)  # creative, repair, timing/camera, Subject resolution
+        self.assertEqual(len(semantic_calls), 4)  # creative, repair, timing and camera
         self.assertEqual(physical.call_count, 2)
         self.assertEqual(prop_state.call_count, 2)
         self.assertEqual(timing.call_count, 1)
@@ -1959,7 +1964,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
 
         semantic_calls = non_audio_llm_calls(request)
-        self.assertEqual(len(semantic_calls), 6)  # creative, repair, timing/camera, Subject resolution
+        self.assertEqual(len(semantic_calls), 4)  # creative, repair, timing and camera
         repair_prompt = next(
             call.args[0][-1]["content"]
             for call in request.call_args_list
@@ -2590,12 +2595,16 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             music="Low restrained strings.",
         )
 
-        payload = minimax.request_segment_llm(
-            segment_bundle(),
-            ["Mark confronts the Duchess, Cook, piglets, and Cheshire Cat."],
-            "run-id",
-            {"source_sha256": "source-hash"},
-        )
+        with mock.patch(
+            "minimax.validate_director_raw_scene_timing",
+            return_value={"valid": True, "issue": ""},
+        ):
+            payload = minimax.request_segment_llm(
+                segment_bundle(),
+                ["Mark confronts the Duchess, Cook, piglets, and Cheshire Cat."],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
 
         self.assertEqual(ask_llm.call_count, 5)
         legacy_director.assert_not_called()
@@ -2677,7 +2686,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     @mock.patch("minimax.ask_llm")
 
-    def test_audio_field_failures_fall_back_independently(self, ask_llm):
+    def test_soundscape_failure_retries_then_backsteps_before_music(self, ask_llm):
         raw_scene = "Mark enters the room quietly."
 
         def respond(*args, **kwargs):
@@ -2695,23 +2704,19 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
 
         ask_llm.side_effect = respond
-        with mock.patch("builtins.print"):
-            payload = minimax.request_segment_llm(
-                segment_bundle(),
-                [],
-                "run-id",
-                {"source_sha256": "source-hash"},
+        with mock.patch("builtins.print"), self.assertRaises(
+            minimax.PipelineStageRetryError
+        ) as caught:
+            minimax.request_segment_llm(
+                segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-
-        self.assertEqual(payload["llm_result"]["overall_soundscape"], "N/A")
-        self.assertEqual(
-            payload["llm_result"]["non_diegetic_music"],
-            "Soft low strings.",
-        )
-        self.assertIn(
-            "Mark enters the room quietly.",
-            payload["llm_result"]["detailed_description"],
-        )
+        self.assertEqual(caught.exception.previous_stage, "director_raw_scene")
+        purposes = [
+            call.kwargs.get("history_metadata", {}).get("purpose")
+            for call in ask_llm.call_args_list
+        ]
+        self.assertEqual(purposes.count("director_h3_soundscape"), 2)
+        self.assertNotIn("director_h3_music", purposes)
 
     @mock.patch("minimax.ask_llm")
 
@@ -2770,7 +2775,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     @mock.patch("minimax.ask_llm")
 
-    def test_soundscape_failure_does_not_block_music(self, ask_llm):
+    def test_soundscape_failure_backsteps_instead_of_continuing_to_music(self, ask_llm):
         raw_scene = "Mark enters the room quietly."
 
         def respond(*args, **kwargs):
@@ -2788,12 +2793,18 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
 
         ask_llm.side_effect = respond
-        with mock.patch("builtins.print"):
-            payload = minimax.request_segment_llm(
+        with mock.patch("builtins.print"), self.assertRaises(
+            minimax.PipelineStageRetryError
+        ) as caught:
+            minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(payload["llm_result"]["overall_soundscape"], "N/A")
-        self.assertEqual(payload["llm_result"]["non_diegetic_music"], "Sparse piano.")
+        self.assertEqual(caught.exception.previous_stage, "director_raw_scene")
+        purposes = [
+            call.kwargs.get("history_metadata", {}).get("purpose")
+            for call in ask_llm.call_args_list
+        ]
+        self.assertNotIn("director_h3_music", purposes)
 
     @mock.patch("minimax.ask_llm")
     def test_no_music_skips_music_request(self, ask_llm):
@@ -2823,7 +2834,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     @mock.patch("minimax.ask_llm")
 
-    def test_music_failure_does_not_block_soundscape(self, ask_llm):
+    def test_music_failure_backsteps_to_director_raw(self, ask_llm):
         raw_scene = "Mark enters the room quietly."
 
         def respond(*args, **kwargs):
@@ -2841,12 +2852,19 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             raise AssertionError(f"Unexpected LLM purpose {purpose!r}")
 
         ask_llm.side_effect = respond
-        with mock.patch("builtins.print"):
-            payload = minimax.request_segment_llm(
+        with mock.patch("builtins.print"), self.assertRaises(
+            minimax.PipelineStageRetryError
+        ) as caught:
+            minimax.request_segment_llm(
                 segment_bundle(), [], "run-id", {"source_sha256": "source-hash"}
             )
-        self.assertEqual(payload["llm_result"]["overall_soundscape"], "Quiet room tone.")
-        self.assertEqual(payload["llm_result"]["non_diegetic_music"], "N/A")
+        self.assertEqual(caught.exception.previous_stage, "director_raw_scene")
+        purposes = [
+            call.kwargs.get("history_metadata", {}).get("purpose")
+            for call in ask_llm.call_args_list
+        ]
+        self.assertEqual(purposes.count("director_h3_soundscape"), 1)
+        self.assertEqual(purposes.count("director_h3_music"), 2)
 
     def test_wrong_bound_guard_allows_small_route_details_with_correct_door(self):
         binding = {"entity": "door", "destination": "basement", "state": "locked"}
