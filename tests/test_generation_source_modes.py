@@ -89,6 +89,28 @@ def test_automatic_recovery_does_not_clear_new_run_again(recovery, should_reset)
         assert reset.called == should_reset
 
 
+def test_application_startup_preserves_persistent_state_media(tmp_path):
+    state_directory = tmp_path / 'video' / 'state'
+    nested_directory = state_directory / 'reference-cache'
+    nested_directory.mkdir(parents=True)
+    assets = {
+        state_directory / 'location_reference.mp4': b'location reference',
+        state_directory / 'character_reference_v001.png': b'character reference',
+        nested_directory / 'metadata.json': b'{"kept": true}',
+    }
+    for path, contents in assets.items():
+        path.write_bytes(contents)
+
+    with mock.patch.object(minimax, 'STATE_MEDIA_OUTPUT', str(state_directory)), \
+         mock.patch.object(minimax, 'reset_console_logs'), \
+         mock.patch.object(minimax, 'console_log'), \
+         mock.patch.object(minimax, '_run_main', return_value='finished'):
+        assert minimax.main() == 'finished'
+
+    for path, contents in assets.items():
+        assert path.read_bytes() == contents
+
+
 @pytest.mark.parametrize('arguments', [['--new'], ['--new', '--help'], []])
 def test_new_deletes_sources_before_runtime_imports(tmp_path, arguments):
     from pathlib import Path

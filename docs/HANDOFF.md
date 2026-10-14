@@ -1,5 +1,20 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — Preserve persistent state reference media
+
+- Removed the unconditional startup deletion of `video/state`. It ran before
+  CLI mode selection and erased all files and subdirectories on every launch,
+  including resume and saved-prompt rendering. This deleted checkpointed
+  location-reference videos and generated character-reference images that the
+  pipeline is designed to reuse.
+- Removed the blanket cleanup helper. Temporary vision/refresh-frame cleanup
+  remains limited to the specific generated files owned by those paths.
+- Added a regression that runs application startup with persistent location,
+  character, and nested state assets present and verifies their bytes remain
+  unchanged. Focused source-mode tests passed (23 passed, 3 deselected because
+  the existing automatic-recovery cases exercise a separate retry loop); 3
+  related location/reference tests passed. Syntax and whitespace checks passed.
+
 ## 2026-10-14 — LLM stage retry and predecessor recovery
 
 - Added a shared pipeline-stage recovery helper. Each stage retains its bounded
