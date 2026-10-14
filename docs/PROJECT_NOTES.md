@@ -108,6 +108,12 @@ A local pipeline expands the source story into filmable detail, plans source-own
 - Keep soundscape extraction and creative non-diegetic music separate tasks; carry established audio continuity when continuing a segment.
 - Judge against gold **semantically**, allowing different valid choreography, timestamps, wording, and useful unspecified staging; the benchmarks do not prescribe production story content.
 
+### Director vs. H3 choreography — observed boundary
+
+- **Director owns continuity and physical plausibility; H3 owns fine-grained choreography.** Director should establish believable action order, reachable interactions, and meaningful state changes without micromanaging every foot placement, exact limb trajectory, or arbitrary geometry.
+- In an Alice rabbit-hole render, H3 interpreted a flawed Director prompt containing an implausible long-distance reach and step onto a post as a natural approach, grip for balance, and entry into the hole. This is **one encouraging observed recovery**, not a guarantee or permission to ship invalid prompts.
+- Continue fixing real Director bugs (including invalid spatial actions, contradictory location descriptions, failed repair acceptance, and leaked internal headers such as `RAW PROMPT`). But do not overengineer spatial validation to prescribe choreography H3 already handles naturally; prioritize story intent, continuity, physical feasibility, and observed rendered failures over theoretical geometric precision.
+
 ### Use acceptance as the deciding loop
 
 - Exercise the active six-segment tavern case and other **materially different** genres/actions rather than tuning only one fixture. Before calling the project complete, cover returning rooms/characters, intentional wardrobe changes, prop acquire/store/transfer/loss, longer continuation chains, and off-camera persistence.
