@@ -1,0 +1,53 @@
+{
+  "version": 3,
+  "source_sha256": "5e72520d7ae2fb7f8ce48b1838bb7d8c258658fa89446b01fe7f1c025eccf1ec",
+  "fields": [
+    "age",
+    "clothing",
+    "gender",
+    "confident_woman",
+    "wears_ale_scented_oil_soaked_cloth_to_wipe_a_polished_table",
+    "serves_goblin_elf_and_dragon_customers",
+    "green_skin",
+    "tiny_hands_clutching_a_chipped_mug",
+    "beautiful_female",
+    "silver_hair_streaming_down_shoulders",
+    "dragon_shaped_creature_with_obsidian_like_scales_and_amber_eyes",
+    "seated_on_high_bar_stool_wicks_lips_before_sipping_brew"
+  ],
+  "characters": [
+    {
+      "name": "Amy",
+      "age": ":32",
+      "clothing": "A rough‑spun wool tunic in muted earth tones that falls to mid‑thigh, its cuffs frayed from frequent use; over it she wears a worn leather apron tied at the waist with a broad hemp belt. The apron bears visible scuffs and patches where ale has splashed during her trade. Beneath the tunic she slips on a plain linen undershirt for comfort. Her feet are clad in sturdy brown leather boots laced to the ankle, suitable for long hours standing at the bar",
+      "gender": "female",
+      "confident_woman": "true",
+      "wears_ale_scented_oil_soaked_cloth_to_wipe_a_polished_table": "true",
+      "serves_goblin_elf_and_dragon_customers": "true"
+    },
+    {
+      "name": "Goblin",
+      "age": ":20",
+      "clothing": "He wears a tattered brown linen tunic that reaches just below the knees, patched at the elbows with faded fabric, and a small worn‑brown leather apron draped over it for serving ale. A leather belt cinches the tunic at his waist, holding tiny pouches for tools. Dark woolen trousers tuck into simple wooden shoes scuffed from long hours on the floor. Over his shoulders hangs a frayed moss‑green hooded cloak",
+      "gender": "male",
+      "green_skin": "true",
+      "tiny_hands_clutching_a_chipped_mug": "true"
+    },
+    {
+      "name": "Elf",
+      "age": ":120",
+      "clothing": "She wears an elegant knee‑length silk tunic in muted emerald green, its hem embroidered with delicate silver filigree that catches her flowing silver hair. Underneath a loose linen shift provides comfort and breathability. A supple leather belt cinches the waist, holding a small pouch and a slender dagger sheathed at her hip. Her boots are soft brown leather, polished yet bearing faint wear from travel. Around her neck hangs a simple silver circlet that matches the filigree of her tunic",
+      "gender": "female",
+      "beautiful_female": "true",
+      "silver_hair_streaming_down_shoulders": "true"
+    },
+    {
+      "name": "Dragon",
+      "age": ":500",
+      "clothing": "Bronze chainmail vest with polished plates that cover his chest and shoulders; leather gauntlets over the claws of each wing‑hand, cinched at the wrist by a wide belt of weathered leather holding small pouches for ale cups and coins. A crimson tabard draped from his wings adds color to the obsidian‑scaled body, while a simple woolen tunic peeks under the armor around his lower torso. The garment shows signs of age—small scratches on the metal plates and frayed edges where the chain links have worn thin—but still gleams with the dragon’s amber eyes reflecting off its polished surfaces",
+      "gender": "male",
+      "dragon_shaped_creature_with_obsidian_like_scales_and_amber_eyes": "true",
+      "seated_on_high_bar_stool_wicks_lips_before_sipping_brew": "true"
+    }
+  ]
+}
