@@ -51,6 +51,7 @@ EXPECTED_PROFILE_PURPOSES = {
         "registered_subject_story_start_presence",
         "world_state_current_segment_subjects",
         "world_state_current_segment_props",
+        "scene_location_select",
         "source_unit_state_effects",
         "macro_arc_validate",
         "macro_arc_majority_validate",

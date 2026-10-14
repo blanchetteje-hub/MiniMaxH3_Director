@@ -14,6 +14,7 @@
 | `character_canon` | `SMART_CREATIVE_LLM_SETTINGS` | Establish stable configurable character facts | Story, predefined Subjects and configured canon fields | Canonical character facts |
 | `story_subject_wardrobe_extract` | `SMART_CREATIVE_LLM_SETTINGS` | Determine one Subject's canonical appropriate wardrobe | Expanded story, Subject identity, appearance and setting | Structured/canonical wardrobe for that Subject |
 | `story_location_extract` | `EXTRACTOR_LLM_SETTINGS` | Identify story locations and initial setting | Expanded story and established story context | Overall and opening location information |
+| `scene_location_select` | `SMART_EXTRACTOR_LLM_SETTINGS` | Select the primary physical environment for one upcoming Beat | Current Beat, active setting description, and registered location names/descriptions | `{"selection":"active|existing|new","location_name":"","mixed_environment":false}`; mixed scenes select the main action/result environment |
 | `static_setting_extract` | `EXTRACTOR_LLM_SETTINGS` | Extract permanent location facts without action-only objects | Expanded story and named location context | Static setting description |
 | `story_setting_spatial_refine` | `SMART_CREATIVE_LLM_SETTINGS` | Lay out a physically coherent static environment | Extracted setting and location constraints | Spatially refined setting text |
 | `story_setting_extract` | `SMART_EXTRACTOR_LLM_SETTINGS` | Serialize canonical location geometry and text | Refined static layout and source location details | Location-state JSON plus matching literal prose |

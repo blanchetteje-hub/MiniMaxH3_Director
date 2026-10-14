@@ -1,5 +1,38 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — per-segment location selection and reference reuse
+
+- Added a single `scene_location_select` Smart Extractor call for each Beat,
+  before its Director request. It receives only the upcoming Beat, active
+  setting description, and registered location names/descriptions. Python
+  caches both the response and resolved stable location ID in checkpoint
+  metadata, so the main request and Director prefetch reuse one selection.
+- Python resolves exact or unambiguous descriptive aliases against
+  `WorldState.locations`. A genuinely new location reuses the existing static
+  setting, spatial refinement, structured location-state, and canonical
+  WorldState seeding functions. Mixed-environment Beats log that they use the
+  primary action/result environment; no automatic splitting or Subject
+  relocation is inferred.
+- Per-location render descriptions, canonical geometry, active ID, and
+  persistent 360-degree reference path are saved in generation metadata.
+  References use unique paths under `video/state`, so startup cleanup preserves
+  them. Each Director bundle receives the selected location context; each H3
+  prompt records its selected ID, setting, and `<Video 1>` reference path. Live
+  and saved-prompt rendering select the same per-segment path. Existing
+  single-location checkpoints and prompt packages retain a legacy path fallback.
+- Added regressions for the minimal selector contract/profile, alias ambiguity,
+  stable per-location asset paths, location metadata checkpoint round-trip,
+  selector caching and prefetch order, distinct location-specific H3 context,
+  saved-prompt revisit/reference selection, persistent output paths, and
+  state-media cleanup. Focused runs: 10 location-selection/reference
+  regressions passed; 23 source-mode tests passed with 3 existing
+  automatic-recovery cases deselected; 2 saved prompt/reference regressions
+  passed; all 67 LLM-profile routing tests passed. The location and
+  requested-prompt modules together reported 107 passed and 7 pre-existing
+  prompt-expectation failures (6 stale H3 wording expectations and one stale
+  physical-validator prompt expectation). `py_compile` and `git diff --check`
+  passed. No bridge job was queued.
+
 ## 2026-10-14 — Preserve persistent state reference media
 
 - Removed the unconditional startup deletion of `video/state`. It ran before

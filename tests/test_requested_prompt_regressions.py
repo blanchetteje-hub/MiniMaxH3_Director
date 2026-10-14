@@ -138,11 +138,9 @@ class RequestedPromptRegressionTests(unittest.TestCase):
             "\"reference_jobs\": saved_reference_jobs",
             source,
         )
-        self.assertIn(
-            "saved_reference_file_token\\n                or run_id.replace",
-            source,
-        )
-        self.assertIn("job.get(\"job_id\") == \"location:primary\"", source)
+        self.assertIn("saved_reference_file_token", source)
+        self.assertIn("run_id.replace(\"-\", \"\")[:12]", source)
+        self.assertIn('job_id = f"location:{location_id}"', source)
 
     def test_render_from_prompts_executes_saved_reference_jobs_before_segments(self):
         with tempfile.TemporaryDirectory() as directory:

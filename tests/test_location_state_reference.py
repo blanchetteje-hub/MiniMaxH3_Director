@@ -33,10 +33,311 @@ class LocationStateReferenceTests(unittest.TestCase):
             minimax.LLM_PURPOSE_PROFILES["static_setting_extract"],
             minimax.EXTRACTOR_LLM_SETTINGS,
         )
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["scene_location_select"],
+            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
+        )
+        self.assertEqual(
+            minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["scene_location_select"],
+            256,
+        )
         self.assertEqual(
             minimax.SMART_EXTRACTOR_LLM_SETTINGS["thinking_budget_tokens"],
             1024,
         )
+
+    def test_scene_location_selector_receives_names_and_returns_minimal_contract(self):
+        locations = [
+            {"name": "Rabbit Hole", "description": "A grassy hill."},
+            {"name": "Tea Garden", "description": "A garden of tables."},
+        ]
+        messages = minimax.build_scene_location_selection_messages(
+            "Alice tumbles from the rabbit hole into Wonderland.",
+            "A rabbit hole descends through grass.",
+            locations,
+        )
+        self.assertIn("CURRENT BEAT", messages[1]["content"])
+        self.assertIn('"name":"Rabbit Hole"', messages[1]["content"])
+        self.assertNotIn("location_", messages[1]["content"])
+        self.assertIn("main action or result", messages[0]["content"])
+        self.assertEqual(
+            minimax.parse_scene_location_selection({
+                "selection": "existing",
+                "location_name": "Tea Garden",
+                "mixed_environment": True,
+            }),
+            {
+                "selection": "existing",
+                "location_name": "Tea Garden",
+                "mixed_environment": True,
+            },
+        )
+        schema = minimax.build_scene_location_selection_response_format()
+        self.assertEqual(
+            set(schema["json_schema"]["schema"]["properties"]),
+            {"selection", "location_name", "mixed_environment"},
+        )
+
+    def test_scene_location_selection_call_is_tagged_and_logged(self):
+        request = mock.Mock(return_value={
+            "selection": "active",
+            "location_name": "",
+            "mixed_environment": False,
+        })
+        with mock.patch.object(minimax, "console_log") as log:
+            selected = minimax.extract_scene_location_selection(
+                "Alice looks around.",
+                "A garden.",
+                [{"name": "Tea Garden", "description": "A garden."}],
+                llm_request=request,
+                history_metadata={"segment": 3},
+            )
+        self.assertEqual(selected["selection"], "active")
+        self.assertEqual(
+            request.call_args.kwargs["response_format"]["json_schema"]["name"],
+            "scene_location_select",
+        )
+        self.assertEqual(
+            request.call_args.kwargs["history_metadata"]["purpose"],
+            "scene_location_select",
+        )
+        self.assertTrue(any("LLM result" in str(call) for call in log.call_args_list))
+
+    def test_location_aliases_resolve_only_when_unique(self):
+        world_state = minimax.empty_world_state("alias-test")
+        world_state["locations"] = {
+            "location_wonderland": {"id": "location_wonderland", "name": "Wonderland"},
+            "location_garden": {"id": "location_garden", "name": "Tea Garden"},
+        }
+        self.assertEqual(
+            minimax.resolve_world_state_location_alias(world_state, "the Wonderland"),
+            "location_wonderland",
+        )
+        world_state["locations"]["location_garden_copy"] = {
+            "id": "location_garden_copy",
+            "name": "Secret Garden",
+        }
+        with self.assertRaisesRegex(ValueError, "ambiguously matches"):
+            minimax.resolve_world_state_location_alias(world_state, "Garden")
+
+    def test_location_reference_paths_are_stable_per_location_and_run(self):
+        first = minimax.location_reference_output_path("location_one", "run-123")
+        same = minimax.location_reference_output_path("location_one", "run-123")
+        other = minimax.location_reference_output_path("location_two", "run-123")
+        next_run = minimax.location_reference_output_path("location_one", "run-456")
+        self.assertEqual(first, same)
+        self.assertNotEqual(first, other)
+        self.assertNotEqual(first, next_run)
+        self.assertEqual(os.path.dirname(first), os.path.abspath(minimax.STATE_MEDIA_OUTPUT))
+        self.assertTrue(
+            minimax.location_reference_filename_prefix("location_one", "run-123")
+            .endswith(os.path.basename(first)[:-4])
+        )
+
+    def test_location_selection_metadata_survives_checkpoint_resume(self):
+        state = minimax.new_generation_state({"source_sha256": "location-checkpoint"})
+        world_state, hole_id = minimax.seed_canonical_static_location_state(
+            state["world_state"],
+            {"location": {"name": "Rabbit Hole"}, "anchors": [], "objects": []},
+        )
+        world_state, garden_id = minimax.seed_canonical_static_location_state(
+            world_state,
+            {"location": {"name": "Tea Garden"}, "anchors": [], "objects": []},
+        )
+        state["world_state"] = world_state
+        state["metadata"] = {
+            "active_location_id": garden_id,
+            "segment_location_ids": {"1": hole_id, "2": garden_id},
+            "scene_location_selections": {
+                "1": {
+                    "selection": "active",
+                    "location_name": "",
+                    "mixed_environment": False,
+                },
+            },
+            "location_contexts": {
+                hole_id: {
+                    "name": "Rabbit Hole",
+                    "location_reference_video": "/state/hole.mp4",
+                },
+                garden_id: {
+                    "name": "Tea Garden",
+                    "location_reference_video": "/state/garden.mp4",
+                },
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "generation_state.json")
+            minimax.save_generation_state(state, path)
+            loaded = minimax.load_generation_state(path)
+        self.assertEqual(
+            loaded["metadata"]["segment_location_ids"],
+            {"1": hole_id, "2": garden_id},
+        )
+        self.assertEqual(
+            loaded["metadata"]["scene_location_selections"]["1"]["selection"],
+            "active",
+        )
+        self.assertEqual(
+            loaded["metadata"]["location_contexts"][garden_id][
+                "location_reference_video"
+            ],
+            "/state/garden.mp4",
+        )
+        self.assertEqual(set(loaded["world_state"]["locations"]), {hole_id, garden_id})
+
+    def test_saved_prompt_render_uses_each_segments_selected_location_reference(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prompt_path = os.path.join(directory, "generated_prompts.txt")
+            payload = {
+                "version": 1,
+                "config": {
+                    "segment_length": 8.0,
+                    "total_length": 24.0,
+                    "megapixels": 0.5,
+                    "steps": 6,
+                    "trim_frames": 2,
+                    "refresh_interval": None,
+                    "total_segments": 3,
+                    "location_reference_videos": {
+                        "location_hole": "/state/hole.mp4",
+                        "location_garden": "/state/garden.mp4",
+                    },
+                },
+                "macro_arc": {},
+                "reference_jobs": [],
+                "prompts": [
+                    {
+                        "segment": 1,
+                        "duration": 8.0,
+                        "conditioning_mode": "initial",
+                        "location_id": "location_hole",
+                        "location_reference_video_path": "/state/hole.mp4",
+                        "h3_prompt": "first prompt",
+                    },
+                    {
+                        "segment": 2,
+                        "duration": 8.0,
+                        "conditioning_mode": "continuation",
+                        "location_id": "location_garden",
+                        "location_reference_video_path": "/state/garden.mp4",
+                        "h3_prompt": "second prompt",
+                    },
+                    {
+                        "segment": 3,
+                        "duration": 8.0,
+                        "conditioning_mode": "continuation",
+                        "location_id": "location_hole",
+                        "location_reference_video_path": "/state/hole.mp4",
+                        "h3_prompt": "third prompt",
+                    },
+                ],
+            }
+            minimax.save_generated_prompts_file(payload, prompt_path)
+            calls = []
+            render_results = [
+                ({}, os.path.join(directory, "one.mp4"), 1280, 720, 0.5),
+                ({}, os.path.join(directory, "two.mp4"), 1280, 720, 0.5),
+                ({}, os.path.join(directory, "three.mp4"), 1280, 720, 0.5),
+            ]
+            with (
+                mock.patch.object(minimax, "validate_runtime_environment"),
+                mock.patch.object(
+                    minimax,
+                    "render_segment_with_retries",
+                    side_effect=lambda *args, **kwargs: calls.append(kwargs) or render_results[len(calls) - 1],
+                ),
+                mock.patch.object(minimax, "stitch_videos"),
+            ):
+                minimax.render_generated_prompts(
+                    type("Args", (), {"steps": 6})(),
+                    prompt_path,
+                )
+            self.assertEqual(
+                [call["location_reference_video_path"] for call in calls],
+                ["/state/hole.mp4", "/state/garden.mp4", "/state/hole.mp4"],
+            )
+
+    def test_saved_location_reference_jobs_return_reusable_id_mapping(self):
+        jobs = [
+            {
+                "job_id": "location:one",
+                "kind": "location_reference",
+                "location_id": "location_one",
+                "setting_description": "A hillside.",
+                "megapixels": 0.5,
+                "steps": 6,
+                "loras": [],
+                "noise_seed": 1,
+                "file_token": "run",
+            },
+            {
+                "job_id": "location:two",
+                "kind": "location_reference",
+                "location_id": "location_two",
+                "setting_description": "A garden.",
+                "megapixels": 0.5,
+                "steps": 6,
+                "loras": [],
+                "noise_seed": 2,
+                "file_token": "run",
+            },
+        ]
+        first_path = minimax.location_reference_output_path("location_one", "run")
+        second_path = minimax.location_reference_output_path("location_two", "run")
+        with mock.patch.object(
+            minimax,
+            "render_location_reference_video",
+            side_effect=[first_path, second_path],
+        ) as render:
+            paths = minimax.render_saved_reference_jobs(jobs)
+        self.assertEqual(
+            paths,
+            {
+                "location_one": first_path,
+                "location_two": second_path,
+            },
+        )
+        self.assertEqual(render.call_count, 2)
+        self.assertEqual(
+            [call.kwargs["location_id"] for call in render.call_args_list],
+            ["location_one", "location_two"],
+        )
+
+    def test_location_selection_is_cached_before_director_prefetch(self):
+        import inspect
+
+        source = inspect.getsource(minimax._run_main)
+        selection_start = source.index("def prepare_scene_location_for_segment(")
+        selection_end = source.index("# Assemble the prefetched data", selection_start)
+        selection_body = source[selection_start:selection_end]
+        cached = selection_body.index("selection_cache.get(cache_key)")
+        selector = selection_body.index("extract_scene_location_selection(")
+        self.assertLess(cached, selector)
+        prefetch_location = source.index(
+            "prepare_scene_location_for_segment(segment + 1)"
+        )
+        prefetch_submit = source.index("director_prefetch_executor.submit(", prefetch_location)
+        self.assertLess(prefetch_location, prefetch_submit)
+        current_location = source.index("prepare_scene_location_for_segment(segment)")
+        current_bundle = source.index("segment_bundle = build_segment_bundle(", current_location)
+        self.assertLess(current_location, current_bundle)
+
+    def test_h3_location_reference_context_is_selected_per_location(self):
+        rabbit_prompt = minimax.inject_location_reference_into_h3_prompt(
+            "detailed_description: [Shot 1] Alice lands.",
+            "A grassy hill surrounding a rabbit hole.",
+            conditioning_mode="initial",
+        )
+        garden_prompt = minimax.inject_location_reference_into_h3_prompt(
+            "detailed_description: [Shot 1] Alice sits at a tea table.",
+            "A flower garden with a long tea table.",
+            conditioning_mode="continuation",
+        )
+        self.assertIn("grassy hill surrounding a rabbit hole", rabbit_prompt)
+        self.assertIn("flower garden with a long tea table", garden_prompt)
+        self.assertNotIn("flower garden", rabbit_prompt)
+        self.assertNotIn("rabbit hole", garden_prompt)
 
     def test_spatial_refinement_prompt_uses_requested_contract(self):
         location = "A modest medieval tavern with a counter beside a hearth."
@@ -628,6 +929,35 @@ A rectangular tavern interior.
 
         self.assertEqual(returned, handle.name)
         strip.assert_called_once_with(handle.name)
+
+    def test_location_reference_render_persists_to_unique_location_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = os.path.join(directory, "comfy-result.mp4")
+            with open(source, "wb") as handle:
+                handle.write(b"panoramic-reference")
+            expected = os.path.join(
+                directory,
+                "location_reference_run_location_test.mp4",
+            )
+            with (
+                mock.patch.object(minimax, "STATE_MEDIA_OUTPUT", directory),
+                mock.patch.object(minimax, "prepare_location_reference_workflow", return_value={}),
+                mock.patch.object(minimax, "queue_workflow", return_value="prompt-id"),
+                mock.patch.object(minimax, "wait_for_completion", return_value={}),
+                mock.patch.object(minimax, "get_video_path", return_value=source),
+                mock.patch.object(minimax, "strip_video_audio", return_value=source),
+                mock.patch.object(minimax, "get_video_resolution", return_value=(1280, 720)),
+            ):
+                returned = minimax.render_location_reference_video(
+                    "A forest clearing.",
+                    0.3,
+                    6,
+                    location_id="location_test",
+                    file_token="run",
+                )
+            self.assertEqual(returned, expected)
+            with open(expected, "rb") as handle:
+                self.assertEqual(handle.read(), b"panoramic-reference")
 
     def test_h3_prompt_marks_video_one_as_static_location_only(self):
         prompt = minimax.inject_location_reference_into_h3_prompt(

@@ -1,3 +1,4 @@
+import os
 from unittest import mock
 
 import pytest
@@ -93,8 +94,14 @@ def test_application_startup_preserves_persistent_state_media(tmp_path):
     state_directory = tmp_path / 'video' / 'state'
     nested_directory = state_directory / 'reference-cache'
     nested_directory.mkdir(parents=True)
+    with mock.patch.object(minimax, 'STATE_MEDIA_OUTPUT', str(state_directory)):
+        persistent_location_path = minimax.location_reference_output_path(
+            'location_wonderland', 'run-123'
+        )
     assets = {
-        state_directory / 'location_reference.mp4': b'location reference',
+        tmp_path / 'video' / 'state' / os.path.basename(
+            persistent_location_path
+        ): b'location reference',
         state_directory / 'character_reference_v001.png': b'character reference',
         nested_directory / 'metadata.json': b'{"kept": true}',
     }

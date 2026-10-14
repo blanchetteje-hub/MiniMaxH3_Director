@@ -507,6 +507,7 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "character_canon": SMART_CREATIVE_LLM_SETTINGS,
     "story_subject_wardrobe_extract": SMART_CREATIVE_LLM_SETTINGS,
     "story_location_extract": EXTRACTOR_LLM_SETTINGS,
+    "scene_location_select": SMART_EXTRACTOR_LLM_SETTINGS,
     "static_setting_extract": EXTRACTOR_LLM_SETTINGS,
     "story_setting_spatial_refine": SMART_CREATIVE_LLM_SETTINGS,
     "story_setting_extract": SMART_EXTRACTOR_LLM_SETTINGS,
@@ -576,6 +577,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "character_canon": 8192,
     "story_subject_wardrobe_extract": 8192,
     "story_location_extract": 8192,
+    "scene_location_select": 256,
     "static_setting_extract": 8192,
     "macro_arc_create": 8192,
     "macro_arc_majority_tail_repair": 8192,
@@ -9345,6 +9347,68 @@ def build_location_reference_h3_prompt(setting_description):
         "overall_soundscape: N/A\n\n"
         "non_diegetic_music: N/A\n"
     )
+
+
+def _location_name_key(value):
+    return " ".join(re.findall(r"[a-z0-9]+", str(value or "").casefold()))
+
+
+def resolve_world_state_location_alias(world_state, candidate_name):
+    """Resolve an exact or unambiguous contained name among registered locations."""
+    query = _location_name_key(candidate_name)
+    if not query:
+        raise ValueError("Location alias must not be empty.")
+    locations = world_state.get("locations", {}) if isinstance(world_state, dict) else {}
+    exact = [
+        location_id
+        for location_id, record in locations.items()
+        if isinstance(record, dict)
+        and _location_name_key(record.get("name")) == query
+    ]
+    matches = exact
+    if not matches:
+        matches = []
+        for location_id, record in locations.items():
+            if not isinstance(record, dict):
+                continue
+            registered = _location_name_key(record.get("name"))
+            if (
+                registered
+                and (
+                    f" {query} " in f" {registered} "
+                    or f" {registered} " in f" {query} "
+                )
+            ):
+                matches.append(location_id)
+    matches = list(dict.fromkeys(matches))
+    if len(matches) > 1:
+        raise ValueError(
+            f"Location name {candidate_name!r} ambiguously matches registered locations."
+        )
+    return matches[0] if matches else None
+
+
+def location_reference_output_path(location_id, file_token=""):
+    """Return a run-scoped persistent location-video path for one stable ID."""
+    location_token = re.sub(
+        r"[^A-Za-z0-9_-]+", "_", str(location_id or "").strip()
+    ).strip("_")
+    run_token = re.sub(
+        r"[^A-Za-z0-9_-]+", "_", str(file_token or "").strip()
+    ).strip("_")
+    if not location_token:
+        raise ValueError("A stable location ID is required for a reference path.")
+    prefix = f"location_reference_{run_token}_{location_token}" if run_token else (
+        f"location_reference_{location_token}"
+    )
+    return os.path.abspath(os.path.join(STATE_MEDIA_OUTPUT, prefix + ".mp4"))
+
+
+def location_reference_filename_prefix(location_id=None, file_token=""):
+    if not location_id:
+        return "video/state/location_reference"
+    output_path = location_reference_output_path(location_id, file_token)
+    return os.path.join("video", "state", os.path.basename(output_path))[:-4]
 
 
 def inject_location_reference_into_h3_prompt(
@@ -19684,6 +19748,135 @@ def build_story_location_messages(expanded_story):
             ),
         },
     ]
+
+
+def build_scene_location_selection_messages(
+    beat_text,
+    active_location_description,
+    registered_locations,
+):
+    """Build a compact per-Beat location-selection request."""
+    locations = []
+    for item in registered_locations or []:
+        if not isinstance(item, dict):
+            continue
+        name = " ".join(str(item.get("name") or "").split()).strip()
+        description = " ".join(
+            str(item.get("description") or "").split()
+        ).strip()
+        if name:
+            locations.append({"name": name, "description": description})
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Select the primary physical environment for CURRENT BEAT. Use active "
+                "when its main action or result occurs in the active location; use "
+                "existing for another listed location; use new only for a distinct "
+                "unlisted environment. If the Beat spans environments, select where "
+                "its main action or result occurs and set mixed_environment=true. "
+                "Return only JSON with selection, location_name, and "
+                "mixed_environment. Use an empty location_name for active; use a "
+                "listed name for existing and a concise place name for new."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "CURRENT BEAT\n"
+                f"{str(beat_text or '').strip()}\n\n"
+                "ACTIVE LOCATION DESCRIPTION\n"
+                f"{str(active_location_description or '').strip() or 'N/A'}\n\n"
+                "REGISTERED LOCATIONS\n"
+                f"{json.dumps(locations, ensure_ascii=False, separators=(',', ':'))}"
+            ),
+        },
+    ]
+
+
+def build_scene_location_selection_response_format():
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "scene_location_select",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "selection": {
+                        "type": "string",
+                        "enum": ["active", "existing", "new"],
+                    },
+                    "location_name": {"type": "string"},
+                    "mixed_environment": {"type": "boolean"},
+                },
+                "required": [
+                    "selection", "location_name", "mixed_environment",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_scene_location_selection(raw_result):
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {
+        "selection", "location_name", "mixed_environment",
+    }:
+        raise ValueError(
+            "Scene location selection must contain selection, location_name, "
+            "and mixed_environment."
+        )
+    selection = candidate.get("selection")
+    name = " ".join(str(candidate.get("location_name") or "").split()).strip(" .")
+    if not isinstance(selection, str) or selection not in {"active", "existing", "new"}:
+        raise ValueError("Scene location selection has an invalid selection value.")
+    if not isinstance(candidate.get("mixed_environment"), bool):
+        raise ValueError("Scene location mixed_environment must be a boolean.")
+    if selection == "active" and name:
+        raise ValueError("Active scene location must not supply a location_name.")
+    if selection in {"existing", "new"} and not name:
+        raise ValueError(
+            f"Scene location selection {selection!r} requires a location_name."
+        )
+    return {
+        "selection": selection,
+        "location_name": name,
+        "mixed_environment": candidate["mixed_environment"],
+    }
+
+
+def extract_scene_location_selection(
+    beat_text,
+    active_location_description,
+    registered_locations,
+    *,
+    llm_request=None,
+    history_metadata=None,
+):
+    if llm_request is None:
+        llm_request = ask_llm
+    raw = llm_request(
+        build_scene_location_selection_messages(
+            beat_text,
+            active_location_description,
+            registered_locations,
+        ),
+        response_format=build_scene_location_selection_response_format(),
+        parse_json_response=False,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "scene_location_select",
+        },
+    )
+    console_log(
+        f"scene_location_select LLM result:\n{raw}",
+        flush=True,
+    )
+    return parse_scene_location_selection(raw)
 
 
 def build_initial_location_subjects_messages(possible_subjects, beat_text):
@@ -34065,6 +34258,8 @@ def prepare_location_reference_workflow(
     steps=6,
     loras=None,
     noise_seed=None,
+    location_id=None,
+    file_token="",
 ):
     """Prepare a character-free three-second static-environment reference render."""
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
@@ -34119,7 +34314,7 @@ def prepare_location_reference_workflow(
         workflow,
         SAVE_VIDEO_NODE_NAME,
         "filename_prefix",
-        "video/state/location_reference",
+        location_reference_filename_prefix(location_id, file_token),
         label,
         "SaveVideo",
     )
@@ -34182,6 +34377,8 @@ def render_location_reference_video(
     *,
     loras=None,
     noise_seed=None,
+    location_id=None,
+    file_token="",
 ):
     """Render the one persistent location-memory video for the run."""
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
@@ -34202,6 +34399,8 @@ def render_location_reference_video(
             steps=steps,
             loras=loras,
             noise_seed=noise_seed,
+            location_id=location_id,
+            file_token=file_token,
         )
         try:
             prompt_id = queue_workflow(workflow)
@@ -34213,6 +34412,15 @@ def render_location_reference_video(
             path = get_video_path(result, workflow)
             path = _validate_location_reference_path(path)
             path = strip_video_audio(path)
+            if location_id:
+                persistent_path = location_reference_output_path(
+                    location_id,
+                    file_token,
+                )
+                os.makedirs(os.path.dirname(persistent_path), exist_ok=True)
+                if os.path.abspath(path) != persistent_path:
+                    shutil.move(path, persistent_path)
+                path = persistent_path
             width, height = get_video_resolution(path)
             console_log(
                 f"Location reference created: {path}\n"
@@ -40199,7 +40407,7 @@ def render_saved_reference_jobs(
     visual_style=DEFAULT_VISUAL_STYLE,
 ):
     """Execute immutable saved reference jobs in package order."""
-    location_reference_video_path = ""
+    location_reference_video_paths = {}
     completed = set()
     for job in reference_jobs or []:
         job_id = str(job.get("job_id") or "").strip()
@@ -40209,13 +40417,43 @@ def render_saved_reference_jobs(
             )
         kind = str(job.get("kind") or "").strip()
         if kind == "location_reference":
-            location_reference_video_path = render_location_reference_video(
-                job["setting_description"],
-                float(job["megapixels"]),
-                int(job["steps"]),
-                loras=normalize_lora_list(job.get("loras", [])),
-                noise_seed=int(job["noise_seed"]),
-            )
+            location_id = str(job.get("location_id") or "").strip()
+            expected_path = str(job.get("output_path") or "").strip()
+            if not expected_path and location_id:
+                expected_path = location_reference_output_path(
+                    location_id,
+                    str(job.get("file_token") or ""),
+                )
+            if (
+                expected_path
+                and os.path.isfile(expected_path)
+                and os.path.getsize(expected_path) > 0
+            ):
+                actual_path = os.path.abspath(expected_path)
+                console_log(
+                    f"Reusing completed saved location reference: {actual_path}",
+                    flush=True,
+                )
+            else:
+                actual_path = render_location_reference_video(
+                    job["setting_description"],
+                    float(job["megapixels"]),
+                    int(job["steps"]),
+                    loras=normalize_lora_list(job.get("loras", [])),
+                    noise_seed=int(job["noise_seed"]),
+                    location_id=location_id or None,
+                    file_token=str(job.get("file_token") or ""),
+                )
+            if expected_path and os.path.abspath(actual_path) != os.path.abspath(expected_path):
+                raise RuntimeError(
+                    f"Saved location reference job {job_id!r} produced "
+                    f"{actual_path!r}; expected {expected_path!r}."
+                )
+            if location_id:
+                location_reference_video_paths[location_id] = actual_path
+            else:
+                # Older prompt packages had one unkeyed location job.
+                location_reference_video_paths["legacy"] = actual_path
         elif kind == "character_reference":
             output_reference = job.get("output_reference")
             if not isinstance(output_reference, dict):
@@ -40262,7 +40500,7 @@ def render_saved_reference_jobs(
                 f"Unknown saved reference job kind: {kind!r}."
             )
         completed.add(job_id)
-    return location_reference_video_path
+    return location_reference_video_paths
 
 
 def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
@@ -40296,7 +40534,16 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
     macro_arc = payload.get("macro_arc")
     total_segments = len(prompts)
     reference_jobs = payload.get("reference_jobs", [])
-    location_reference_video_path = str(
+    location_reference_video_paths = {
+        str(location_id): str(video_path)
+        for location_id, video_path in (
+            config.get("location_reference_videos", {}).items()
+            if isinstance(config.get("location_reference_videos"), dict)
+            else []
+        )
+        if str(location_id).strip() and str(video_path).strip()
+    }
+    legacy_location_reference_video_path = str(
         config.get("location_reference_video") or ""
     ).strip()
 
@@ -40307,12 +40554,16 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
             "story segments.",
             flush=True,
         )
-        planned_location_path = render_saved_reference_jobs(
+        planned_location_paths = render_saved_reference_jobs(
             reference_jobs,
             visual_style=config.get("visual_style", DEFAULT_VISUAL_STYLE),
         )
-        if planned_location_path:
-            location_reference_video_path = planned_location_path
+        if planned_location_paths:
+            location_reference_video_paths.update(planned_location_paths)
+            legacy_location_reference_video_path = str(
+                planned_location_paths.get("legacy")
+                or legacy_location_reference_video_path
+            )
     generated_video_paths = []
     previous_video_path = None
     console_log(
@@ -40343,6 +40594,13 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
         if not isinstance(continuity_state, dict):
             continuity_state = {}
         continuity_summary = str(record.get("continuity_summary") or "")
+        location_id = str(record.get("location_id") or "").strip()
+        location_reference_video_path = str(
+            record.get("location_reference_video_path")
+            or location_reference_video_paths.get(location_id)
+            or legacy_location_reference_video_path
+            or ""
+        ).strip()
         character_reference_images = normalize_character_reference_images(
             record.get("character_reference_images", {})
         )
@@ -41029,6 +41287,7 @@ def _run_main(
     saved_reference_jobs = []
     saved_reference_file_token = ""
     saved_visual_style = ""
+    saved_location_reference_video = ""
     if resume_segment > 1 and os.path.isfile(GENERATED_PROMPTS_FILE):
         try:
             previous_payload = load_generated_prompts_file(
@@ -41054,6 +41313,9 @@ def _run_main(
                 ).strip()
                 saved_visual_style = str(
                     previous_config.get("visual_style") or ""
+                ).strip()
+                saved_location_reference_video = str(
+                    previous_config.get("location_reference_video") or ""
                 ).strip()
         except Exception as error:
             console_log(
@@ -41086,6 +41348,7 @@ def _run_main(
                 saved_reference_file_token
                 or run_id.replace("-", "")[:12]
             ),
+            "location_reference_video": saved_location_reference_video,
             "reference_image_overrides": {
                 str(number): path
                 for number, path in REFERENCE_IMAGE_OVERRIDES.items()
@@ -41402,102 +41665,88 @@ def _run_main(
         if isinstance(generation_state.get("metadata"), dict)
         else {}
     )
-    location_setting_description = str(
-        location_metadata.get("setting_description")
-        or location_metadata.get("overall_location")
-        or ""
-    ).strip()
-    location_reference_video_path = str(
-        location_metadata.get("location_reference_video")
-        or ""
-    ).strip()
-    location_state = copy.deepcopy(
-        generation_state.get("location_state")
-        if isinstance(generation_state.get("location_state"), dict)
+    # Location descriptions/references are keyed to canonical WorldState IDs.
+    # Older checkpoints are migrated from their one-location metadata without
+    # changing the identity authority (WorldState.locations).
+    location_contexts = location_metadata.get("location_contexts")
+    if not isinstance(location_contexts, dict):
+        location_contexts = {}
+    world_state_locations = (
+        generation_state.get("world_state", {}).get("locations", {})
+        if isinstance(generation_state.get("world_state"), dict)
         else {}
     )
-
-    if location_state:
-        generated_prompts_payload["config"]["location_state"] = copy.deepcopy(
-            location_state
+    active_location_id = str(
+        location_metadata.get("active_location_id") or ""
+    ).strip()
+    legacy_location_state = generation_state.get("location_state")
+    if not isinstance(legacy_location_state, dict):
+        legacy_location_state = {}
+    legacy_location_record = legacy_location_state.get("location")
+    if not isinstance(legacy_location_record, dict):
+        legacy_location_record = {}
+    legacy_location_name = str(
+        location_metadata.get("starting_location")
+        or location_metadata.get("overall_location")
+        or legacy_location_record.get("name", "")
+    ).strip()
+    if active_location_id not in world_state_locations:
+        active_location_id = ""
+        if legacy_location_name and world_state_locations:
+            active_location_id = resolve_world_state_location_alias(
+                generation_state.get("world_state"),
+                legacy_location_name,
+            ) or ""
+        if not active_location_id and len(world_state_locations) == 1:
+            active_location_id = next(iter(world_state_locations))
+    if active_location_id and active_location_id not in location_contexts:
+        location_record = world_state_locations.get(active_location_id, {})
+        fallback_location_state = copy.deepcopy(
+            generation_state.get("location_state")
+            if isinstance(generation_state.get("location_state"), dict)
+            else {}
         )
-
-    if location_setting_description:
-        generated_prompts_payload["config"]["setting_description"] = (
-            location_setting_description
-        )
-
-    if not test_prompt_generation and location_setting_description:
-        if (
-            not location_reference_video_path
-            or not os.path.isfile(location_reference_video_path)
-            or os.path.getsize(location_reference_video_path) == 0
-        ):
-            console_log()
-            console_log("=" * 64)
-            console_log("LOCATION STATE REFERENCE")
-            console_log("=" * 64)
-            console_log(
-                f"Setting: {location_setting_description}\n"
-                "Rendering one character-free 3-second panoramic reference.",
-                flush=True,
+        location_contexts[active_location_id] = {
+            "location_id": active_location_id,
+            "name": str(location_record.get("name") or legacy_location_name),
+            "setting_description": str(
+                location_metadata.get("setting_description")
+                or location_metadata.get("overall_location")
+                or ""
+            ).strip(),
+            "spatial_location_description": str(
+                location_metadata.get("spatial_location_description") or ""
+            ).strip(),
+            "location_state": fallback_location_state,
+            "location_reference_video": str(
+                location_metadata.get("location_reference_video") or ""
+            ).strip(),
+        }
+    location_metadata["location_contexts"] = location_contexts
+    if active_location_id:
+        location_metadata["active_location_id"] = active_location_id
+    generation_state["metadata"] = location_metadata
+    generated_prompts_payload["config"]["location_reference_videos"] = {
+        location_id: str(context.get("location_reference_video") or "")
+        for location_id, context in location_contexts.items()
+        if isinstance(context, dict)
+        and str(context.get("location_reference_video") or "").strip()
+    }
+    if active_location_id:
+        active_context = location_contexts.get(active_location_id, {})
+        if isinstance(active_context, dict):
+            generated_prompts_payload["config"]["active_location_id"] = active_location_id
+            generated_prompts_payload["config"]["location_state"] = copy.deepcopy(
+                active_context.get("location_state", {})
             )
-            location_reference_video_path = render_location_reference_video(
-                location_setting_description,
-                megapixels,
-                args.steps,
-                loras=global_loras,
+            generated_prompts_payload["config"]["setting_description"] = str(
+                active_context.get("setting_description") or ""
             )
-            location_metadata["location_reference_video"] = (
-                location_reference_video_path
-            )
-            generation_state["metadata"] = location_metadata
-            generated_prompts_payload["config"]["location_reference_video"] = (
-                location_reference_video_path
-            )
-            generated_prompts_payload["config"]["setting_description"] = (
-                location_setting_description
-            )
-            save_generated_prompts_file(generated_prompts_payload)
-            checkpoint_generation_state()
-        else:
-            console_log(
-                f"Reusing location reference: {location_reference_video_path}",
-                flush=True,
-            )
-        if location_reference_video_path:
-            generated_prompts_payload["config"]["location_reference_video"] = (
-                location_reference_video_path
-            )
-            generated_prompts_payload["config"]["setting_description"] = (
-                location_setting_description
-            )
-            save_generated_prompts_file(generated_prompts_payload)
-    elif test_prompt_generation and location_setting_description:
-        if not any(
-            isinstance(job, dict)
-            and job.get("job_id") == "location:primary"
-            for job in generated_prompts_payload["reference_jobs"]
-        ):
-            generated_prompts_payload["reference_jobs"].insert(0, {
-                "job_id": "location:primary",
-                "kind": "location_reference",
-                "before_segment": 1,
-                "setting_description": location_setting_description,
-                "megapixels": float(megapixels),
-                "steps": int(args.steps),
-                "loras": [
-                    list(item)
-                    for item in normalize_lora_list(global_loras)
-                ],
-                "noise_seed": generate_random_seed(),
-            })
-        save_generated_prompts_file(generated_prompts_payload)
-        console_log(
-            "Prompt-only mode planned the persistent location reference for "
-            "the later ComfyUI pass.",
-            flush=True,
-        )
+            if active_context.get("location_reference_video"):
+                generated_prompts_payload["config"]["location_reference_video"] = str(
+                    active_context["location_reference_video"]
+                )
+    save_generated_prompts_file(generated_prompts_payload)
 
     console_log()
     console_log("=" * 64)
@@ -41631,6 +41880,17 @@ def _run_main(
     if resume_segment == 1:
         checkpoint_generation_state()
 
+    def location_context_for_segment(segment_number):
+        metadata = generation_state.get("metadata")
+        if not isinstance(metadata, dict):
+            return {}
+        segment_ids = metadata.get("segment_location_ids")
+        contexts = metadata.get("location_contexts")
+        if not isinstance(segment_ids, dict) or not isinstance(contexts, dict):
+            return {}
+        location_id = str(segment_ids.get(str(int(segment_number))) or "")
+        context = contexts.get(location_id)
+        return context if isinstance(context, dict) else {}
 
     # Build a stable fingerprint for one segment request.
     def build_segment_fingerprint(
@@ -41642,6 +41902,7 @@ def _run_main(
         dialogue_exclusions,
         prop_ledger_state,
     ):
+        location_context = location_context_for_segment(segment_number)
         conditioning_mode = conditioning_mode_for_segment(
             segment_number,
             refresh_interval,
@@ -41664,8 +41925,9 @@ def _run_main(
                     str(subject_definitions or "").encode("utf-8")
                 ).hexdigest(),
                 "static_setting_sha256": hashlib.sha256(
-                    str(location_setting_description or "").encode("utf-8")
+                    str(location_context.get("setting_description") or "").encode("utf-8")
                 ).hexdigest(),
+                "location_id": str(location_context.get("location_id") or ""),
             },
             ensure_ascii=False,
             sort_keys=True,
@@ -41736,6 +41998,323 @@ def _run_main(
             dict.fromkeys(present_names + list(added))
         )
 
+    def prepare_scene_location_for_segment(segment_number):
+        """Select, register, and prepare one location before any Director call."""
+        nonlocal active_location_id
+        segment_number = int(segment_number)
+        metadata = generation_state.get("metadata")
+        if not isinstance(metadata, dict):
+            metadata = {}
+        contexts = metadata.get("location_contexts")
+        if not isinstance(contexts, dict):
+            contexts = {}
+        cached_ids = metadata.get("segment_location_ids")
+        if not isinstance(cached_ids, dict):
+            cached_ids = {}
+        selection_cache = metadata.get("scene_location_selections")
+        if not isinstance(selection_cache, dict):
+            selection_cache = {}
+        cache_key = str(segment_number)
+        selected_id = str(cached_ids.get(cache_key) or "").strip()
+        if selected_id:
+            context = contexts.get(selected_id)
+            if not isinstance(context, dict):
+                raise ValueError(
+                    f"Segment {segment_number} checkpoint references missing "
+                    f"location context {selected_id!r}."
+                )
+            active_location_id = selected_id
+            generation_state["location_state"] = copy.deepcopy(
+                context.get("location_state", {})
+            )
+            context = ensure_location_reference_for_segment(
+                context,
+                segment_number,
+            )
+            metadata["active_location_id"] = selected_id
+            metadata["location_contexts"] = contexts
+            metadata["location_reference_video"] = str(
+                context.get("location_reference_video") or ""
+            )
+            generation_state["metadata"] = metadata
+            generation_state["location_state"] = copy.deepcopy(
+                context.get("location_state", {})
+            )
+            generated_prompts_payload["config"]["location_reference_videos"] = {
+                key: str(value.get("location_reference_video") or "")
+                for key, value in contexts.items()
+                if isinstance(value, dict)
+                and str(value.get("location_reference_video") or "").strip()
+            }
+            save_generated_prompts_file(generated_prompts_payload)
+            checkpoint_generation_state()
+            return copy.deepcopy(context)
+
+        world_state = generation_state.get("world_state")
+        if not isinstance(world_state, dict):
+            raise ValueError("Scene location selection requires canonical WorldState.")
+        if not beats:
+            selected_id = active_location_id
+            mixed_environment = False
+        else:
+            beat_text = str(beats[segment_number - 1])
+            active_context = contexts.get(active_location_id, {})
+            registered_locations = []
+            for location_id, location_record in world_state.get("locations", {}).items():
+                if not isinstance(location_record, dict):
+                    continue
+                context = contexts.get(location_id, {})
+                registered_locations.append({
+                    "name": str(location_record.get("name") or ""),
+                    "description": str(
+                        context.get("setting_description") or ""
+                    ) if isinstance(context, dict) else "",
+                })
+            selection = selection_cache.get(cache_key)
+            if not isinstance(selection, dict):
+                selection = extract_scene_location_selection(
+                    beat_text,
+                    (
+                        str(active_context.get("setting_description") or "")
+                        if isinstance(active_context, dict)
+                        else ""
+                    ),
+                    registered_locations,
+                    history_metadata={
+                        "run_id": run_id,
+                        "segment": segment_number,
+                    },
+                )
+                selection_cache[cache_key] = copy.deepcopy(selection)
+                metadata["scene_location_selections"] = selection_cache
+                generation_state["metadata"] = metadata
+                checkpoint_generation_state()
+            mixed_environment = selection["mixed_environment"]
+            choice = selection["selection"]
+            requested_name = selection["location_name"]
+            if mixed_environment:
+                console_log(
+                    f"WARNING: Segment {segment_number} spans multiple physical "
+                    "environments. Using the environment of the main action/result; "
+                    "the segment will not be split automatically.",
+                    flush=True,
+                )
+            if choice == "active":
+                selected_id = active_location_id
+                if not selected_id:
+                    raise ValueError(
+                        f"Scene location selector chose active for Segment "
+                        f"{segment_number}, but no active location is registered."
+                    )
+            else:
+                selected_id = resolve_world_state_location_alias(
+                    world_state,
+                    requested_name,
+                )
+                if selected_id is None and choice == "existing":
+                    raise ValueError(
+                        f"Scene location selector named unregistered existing "
+                        f"location {requested_name!r}."
+                    )
+                if selected_id is None:
+                    static_setting = extract_static_setting(
+                        expanded_story_context or story,
+                        requested_name,
+                        visual_style=visual_style,
+                        history_metadata={
+                            "run_id": run_id,
+                            "segment": segment_number,
+                        },
+                    )
+                    spatial_description = refine_story_setting_spatially(
+                        static_setting,
+                        history_metadata={
+                            "run_id": run_id,
+                            "segment": segment_number,
+                        },
+                    )
+                    setting_result = extract_story_setting_description(
+                        spatial_description,
+                        static_setting=static_setting,
+                        history_metadata={
+                            "run_id": run_id,
+                            "segment": segment_number,
+                        },
+                    )
+                    canonical_state = copy.deepcopy(
+                        setting_result["location_state"]
+                    )
+                    canonical_state.setdefault("location", {})["name"] = requested_name
+                    world_state, selected_id = seed_canonical_static_location_state(
+                        world_state,
+                        canonical_state,
+                        location_name=requested_name,
+                    )
+                    generation_state["world_state"] = world_state
+                    context = {
+                        "location_id": selected_id,
+                        "name": requested_name,
+                        "setting_description": str(
+                            setting_result["text_description"]
+                        ).strip(),
+                        "static_setting": static_setting,
+                        "spatial_location_description": spatial_description,
+                        "location_state": canonical_state,
+                        "location_reference_video": "",
+                    }
+                    contexts[selected_id] = context
+                    console_log(
+                        f"Registered new story location {requested_name!r} "
+                        f"as {selected_id} before Segment {segment_number}.",
+                        flush=True,
+                    )
+        context = contexts.get(selected_id)
+        if not isinstance(context, dict):
+            if selected_id and selected_id in world_state.get("locations", {}):
+                record = world_state["locations"][selected_id]
+                context = {
+                    "location_id": selected_id,
+                    "name": str(record.get("name") or ""),
+                    "setting_description": "",
+                    "location_state": {},
+                    "location_reference_video": "",
+                }
+                contexts[selected_id] = context
+            elif selected_id:
+                raise ValueError(
+                    f"Selected location ID {selected_id!r} is not registered in WorldState."
+                )
+            else:
+                context = {
+                    "location_id": "",
+                    "name": "",
+                    "setting_description": "",
+                    "location_state": {},
+                    "location_reference_video": "",
+                }
+        if mixed_environment:
+            context["mixed_environment"] = True
+        active_location_id = selected_id
+        cached_ids[cache_key] = selected_id
+        metadata["active_location_id"] = selected_id
+        metadata["location_contexts"] = contexts
+        metadata["segment_location_ids"] = cached_ids
+        metadata["scene_location_selections"] = selection_cache
+        metadata["active_location_name"] = str(context.get("name") or "")
+        metadata["setting_description"] = str(
+            context.get("setting_description") or ""
+        )
+        metadata["location_reference_video"] = str(
+            context.get("location_reference_video") or ""
+        )
+        generation_state["metadata"] = metadata
+        generation_state["location_state"] = copy.deepcopy(
+            context.get("location_state", {})
+        )
+        context = ensure_location_reference_for_segment(
+            context,
+            segment_number,
+        )
+        metadata["location_contexts"] = contexts
+        metadata["location_reference_video"] = str(
+            context.get("location_reference_video") or ""
+        )
+        generated_prompts_payload["config"]["active_location_id"] = selected_id
+        generated_prompts_payload["config"]["location_state"] = copy.deepcopy(
+            context.get("location_state", {})
+        )
+        generated_prompts_payload["config"]["setting_description"] = str(
+            context.get("setting_description") or ""
+        )
+        generated_prompts_payload["config"]["location_reference_videos"] = {
+            location_id: str(location_context.get("location_reference_video") or "")
+            for location_id, location_context in contexts.items()
+            if isinstance(location_context, dict)
+            and str(location_context.get("location_reference_video") or "").strip()
+        }
+        save_generated_prompts_file(generated_prompts_payload)
+        checkpoint_generation_state()
+        console_log(
+            f"Segment {segment_number} uses location "
+            f"{context.get('name') or selected_id or 'unknown'} ({selected_id or 'unregistered'}).",
+            flush=True,
+        )
+        return copy.deepcopy(context)
+
+    def ensure_location_reference_for_segment(context, segment_number):
+        """Reuse or plan/render this location's persistent panoramic reference."""
+        location_id = str(context.get("location_id") or "").strip()
+        setting_description = str(context.get("setting_description") or "").strip()
+        if not location_id or not setting_description:
+            return context
+        file_token = str(
+            generated_prompts_payload["config"].get("reference_file_token") or ""
+        )
+        expected_path = location_reference_output_path(location_id, file_token)
+        saved_path = str(context.get("location_reference_video") or "").strip()
+        if saved_path and os.path.isfile(saved_path) and os.path.getsize(saved_path) > 0:
+            expected_path = os.path.abspath(saved_path)
+        if test_prompt_generation:
+            context["location_reference_video"] = expected_path
+            jobs = generated_prompts_payload["reference_jobs"]
+            job_id = f"location:{location_id}"
+            if not any(
+                isinstance(job, dict) and job.get("job_id") == job_id
+                for job in jobs
+            ):
+                jobs.insert(0, {
+                    "job_id": job_id,
+                    "kind": "location_reference",
+                    "location_id": location_id,
+                    "output_path": expected_path,
+                    "file_token": file_token,
+                    "before_segment": int(segment_number),
+                    "setting_description": setting_description,
+                    "megapixels": float(megapixels),
+                    "steps": int(args.steps),
+                    "loras": [
+                        list(item)
+                        for item in normalize_lora_list(global_loras)
+                    ],
+                    "noise_seed": generate_random_seed(),
+                })
+        elif (
+            os.path.isfile(expected_path)
+            and os.path.getsize(expected_path) > 0
+        ):
+            context["location_reference_video"] = os.path.abspath(expected_path)
+            console_log(
+                f"Reusing persistent location reference: {expected_path}",
+                flush=True,
+            )
+        elif (
+            not saved_path
+            or not os.path.isfile(saved_path)
+            or os.path.getsize(saved_path) == 0
+        ):
+            console_log(
+                f"Rendering persistent location reference for "
+                f"{context.get('name') or location_id}.",
+                flush=True,
+            )
+            rendered_path = render_location_reference_video(
+                setting_description,
+                megapixels,
+                args.steps,
+                loras=global_loras,
+                location_id=location_id,
+                file_token=file_token,
+            )
+            context["location_reference_video"] = rendered_path
+        else:
+            context["location_reference_video"] = os.path.abspath(saved_path)
+            console_log(
+                f"Reusing location reference for {context.get('name') or location_id}: "
+                f"{context['location_reference_video']}",
+                flush=True,
+            )
+        return context
+
     # Assemble the prefetched data needed for one segment.
     def build_segment_bundle(
         segment_number,
@@ -41745,6 +42324,15 @@ def _run_main(
         opening_summary_text,
         dialogue_exclusions,
     ):
+        location_context = location_context_for_segment(segment_number)
+        segment_setting_description = str(
+            location_context.get("setting_description") or ""
+        ).strip()
+        segment_location_state = copy.deepcopy(
+            location_context.get("location_state")
+            if isinstance(location_context.get("location_state"), dict)
+            else {}
+        )
         current_duration = segment_length
         active_beat_id = segment_number if beats else None
         current_phase = story_arc_phase_for_beat(macro_arc, active_beat_id)
@@ -41812,7 +42400,7 @@ def _run_main(
             ),
             canonical_character_facts=canonical_character_facts,
             canonical_data=canonical_data,
-            static_setting_description=location_setting_description,
+            static_setting_description=segment_setting_description,
             persistent_movable_prop_state=prop_ledger_snapshot,
             initial_location_subjects=(
                 generation_state.get("initial_location_subjects", [])
@@ -41823,11 +42411,7 @@ def _run_main(
                 if isinstance(generation_state.get("world_state"), dict)
                 else empty_world_state("director_bundle_world_state_unavailable")
             ),
-            canonical_location_state=(
-                generation_state.get("location_state")
-                if isinstance(generation_state.get("location_state"), dict)
-                else None
-            ),
+            canonical_location_state=segment_location_state,
             character_references=generation_state.get("character_reference_images", {}),
             previous_shot_choreography=director_opening_summary,
         )
@@ -41867,11 +42451,13 @@ def _run_main(
                 prepared_world_state_subject_names.get(segment_number, [])
             ),
             "prop_ledger": {},
-            "static_setting_description": location_setting_description,
-            "canonical_location_state": copy.deepcopy(
-                generation_state.get("location_state")
-                if isinstance(generation_state.get("location_state"), dict)
-                else None
+            "static_setting_description": segment_setting_description,
+            "canonical_location_state": segment_location_state,
+            "location_id": str(location_context.get("location_id") or ""),
+            "location_name": str(location_context.get("name") or ""),
+            "location_setting_description": segment_setting_description,
+            "location_reference_video_path": str(
+                location_context.get("location_reference_video") or ""
             ),
             "character_references": copy.deepcopy(
                 generation_state.get("character_reference_images", {})
@@ -41976,6 +42562,7 @@ def _run_main(
                 "dynamically created Subjects from earlier phases."
             )
         prepare_current_segment_world_state(segment)
+        prepare_scene_location_for_segment(segment)
         segment_bundle = build_segment_bundle(
             segment,
             completed_beat_ids,
@@ -42456,10 +43043,14 @@ def _run_main(
                 prompt_reduced_continuity_state if retention else None
             ),
             starting_location=(
-                str((generation_state.get("metadata") or {}).get(
-                    "starting_location", ""
-                )).strip()
-                if isinstance(generation_state.get("metadata"), dict)
+                str(
+                    segment_bundle.get("location_name")
+                    or (generation_state.get("metadata") or {}).get(
+                        "starting_location", ""
+                    )
+                    or ""
+                ).strip()
+                if segment == 1
                 else ""
             ),
             retained_subject_ids=segment_reference_binding_snapshot.get(
@@ -42469,13 +43060,19 @@ def _run_main(
             visual_style=visual_style,
             world_state=segment_bundle.get("world_state_opening"),
         )
+        segment_location_setting = str(
+            segment_bundle.get("location_setting_description") or ""
+        ).strip()
+        segment_location_reference_path = str(
+            segment_bundle.get("location_reference_video_path") or ""
+        ).strip()
         if (
-            location_setting_description
-            and (location_reference_video_path or test_prompt_generation)
+            segment_location_setting
+            and (segment_location_reference_path or test_prompt_generation)
         ):
             h3_prompt = inject_location_reference_into_h3_prompt(
                 h3_prompt,
-                location_setting_description,
+                segment_location_setting,
                 conditioning_mode=segment_bundle["conditioning_mode"],
             )
 
@@ -42484,6 +43081,9 @@ def _run_main(
         generated_prompts_payload["prompts"].append({
             "segment": int(segment),
             "duration": float(segment_bundle["current_duration"]),
+            "location_id": str(segment_bundle.get("location_id") or ""),
+            "location_setting_description": segment_location_setting,
+            "location_reference_video_path": segment_location_reference_path,
             "conditioning_mode": segment_bundle["conditioning_mode"],
             "h3_prompt": h3_prompt,
             "subject_definitions": h3_subject_definitions,
@@ -42652,7 +43252,7 @@ def _run_main(
                 segment_length=segment_length,
                 h3_fixture_context=h3_fixture_context,
                 h3_fixture_path=h3_fixture_path if h3_fixture_context else None,
-                location_reference_video_path=location_reference_video_path,
+                location_reference_video_path=segment_location_reference_path,
                 character_reference_images=segment_character_reference_images,
                 excluded_picture_ids=segment_excluded_picture_ids,
             )
@@ -42994,6 +43594,7 @@ def _run_main(
             and not next_segment_starts_phase
         ):
             prepare_current_segment_world_state(segment + 1)
+            prepare_scene_location_for_segment(segment + 1)
             next_bundle = build_segment_bundle(
                 segment + 1,
                 completed_beat_ids,
