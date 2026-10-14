@@ -7859,10 +7859,17 @@ def apply_story_subject_wardrobes(
             llm_request=llm_request,
             history_metadata=history_metadata,
         )
+        structured = extract_clothing_state(
+            clothing, llm_request=llm_request,
+            history_metadata={"subject": existing_name},
+        )
         if world_state_wardrobe_sink is not None:
-            world_state_wardrobe_sink[existing_name] = (
-                _world_state_wardrobe_from_canonical_text(clothing)
-            )
+            world_state_wardrobe_sink[existing_name] = {
+                slot: ([_world_state_garment_record(value)]
+                       if value.casefold() not in {"n/a", "none", "unknown"}
+                       else [])
+                for slot, value in structured.items()
+            }
         existing_wardrobe = record.get("wardrobe")
         if not isinstance(existing_wardrobe, dict):
             existing_wardrobe = {}
@@ -7870,21 +7877,11 @@ def apply_story_subject_wardrobes(
             field: copy.deepcopy(existing_wardrobe.get(field, "N/A"))
             for field in _WARDROBE_FIELDS
         }
-        if clothing != "N/A":
-            grouped = {}
-            for field, value in _split_wardrobe_components(clothing):
-                grouped.setdefault(field, []).append(value)
-            for field, values in grouped.items():
-                current = _known_replacement_value(
-                    wardrobe.get(field), f"wardrobe.{field}"
-                )
-                if current is None:
-                    wardrobe[field] = _join_wardrobe_components(values)
-            # Preserve the complete canonical outfit even when prose is richer
-            # than the deterministic garment splitter can fully decompose.
-            if not grouped:
-                if _known_replacement_value(wardrobe.get("other"), "wardrobe.other") is None:
-                    wardrobe["other"] = clothing
+        for field, value in structured.items():
+            if value.casefold() not in {"n/a", "none", "unknown"} and (
+                _known_replacement_value(wardrobe.get(field), f"wardrobe.{field}") is None
+            ):
+                wardrobe[field] = value
         record["wardrobe"] = wardrobe
         console_log(
             f"Canonical appropriate attire for {existing_name}: {clothing}",
