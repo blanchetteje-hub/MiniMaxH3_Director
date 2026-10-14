@@ -506,6 +506,7 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "story_to_beats_repair": SMART_EXTRACTOR_LLM_SETTINGS,
     "character_canon": SMART_CREATIVE_LLM_SETTINGS,
     "story_subject_wardrobe_extract": SMART_CREATIVE_LLM_SETTINGS,
+    "clothing_state_extractor": SMART_EXTRACTOR_LLM_SETTINGS,
     "story_location_extract": EXTRACTOR_LLM_SETTINGS,
     "scene_location_select": SMART_EXTRACTOR_LLM_SETTINGS,
     "static_setting_extract": EXTRACTOR_LLM_SETTINGS,
@@ -7913,10 +7914,17 @@ def apply_story_subject_wardrobes(
             llm_request=llm_request,
             history_metadata=history_metadata,
         )
+        structured = extract_clothing_state(
+            clothing, llm_request=llm_request,
+            history_metadata={"subject": existing_name},
+        )
         if world_state_wardrobe_sink is not None:
-            world_state_wardrobe_sink[existing_name] = (
-                _world_state_wardrobe_from_canonical_text(clothing)
-            )
+            world_state_wardrobe_sink[existing_name] = {
+                slot: ([_world_state_garment_record(value)]
+                       if value.casefold() not in {"n/a", "none", "unknown"}
+                       else [])
+                for slot, value in structured.items()
+            }
         existing_wardrobe = record.get("wardrobe")
         if not isinstance(existing_wardrobe, dict):
             existing_wardrobe = {}
@@ -7924,21 +7932,11 @@ def apply_story_subject_wardrobes(
             field: copy.deepcopy(existing_wardrobe.get(field, "N/A"))
             for field in _WARDROBE_FIELDS
         }
-        if clothing != "N/A":
-            grouped = {}
-            for field, value in _split_wardrobe_components(clothing):
-                grouped.setdefault(field, []).append(value)
-            for field, values in grouped.items():
-                current = _known_replacement_value(
-                    wardrobe.get(field), f"wardrobe.{field}"
-                )
-                if current is None:
-                    wardrobe[field] = _join_wardrobe_components(values)
-            # Preserve the complete canonical outfit even when prose is richer
-            # than the deterministic garment splitter can fully decompose.
-            if not grouped:
-                if _known_replacement_value(wardrobe.get("other"), "wardrobe.other") is None:
-                    wardrobe["other"] = clothing
+        for field, value in structured.items():
+            if value.casefold() not in {"n/a", "none", "unknown"} and (
+                _known_replacement_value(wardrobe.get(field), f"wardrobe.{field}") is None
+            ):
+                wardrobe[field] = value
         record["wardrobe"] = wardrobe
         console_log(
             f"Canonical appropriate attire for {existing_name}: {clothing}",
@@ -8054,6 +8052,10 @@ def canonicalize_defined_subject_wardrobes(
                 f"{last_wardrobe_error or 'unknown wardrobe extraction error'}"
             )
         record["clothing"] = clothing
+        record["clothing_state"] = extract_clothing_state(
+            clothing, llm_request=llm_request,
+            history_metadata={"subject": name, "subject_id": subject_id},
+        )
         console_log(
             f"Canonical appropriate attire for {name}: {clothing}",
             flush=True,
@@ -26212,6 +26214,95 @@ def _world_state_garment_record(component):
     }
 
 
+def build_clothing_state_extractor_messages(clothing):
+    """Convert the canonical complete outfit to all WorldState clothing slots."""
+    system = (
+        "Convert a complete clothing description into four WorldState wardrobe slots: "
+        "upper, lower, footwear, and other. Preserve garment identity, color, material, "
+        "coverage, condition, and details. A dress, robe, jumpsuit, or other full-body "
+        "garment must retain its full garment name in BOTH upper and lower. "
+        "Use other for hats, gloves, belts, jewelry and remaining accessories. "
+        "Do not invent, remove or reinterpret garments; sleeves, hems and collars "
+        "are parts of garments, not garments by themselves. "
+        'Use "N/A" where clothing is not specified, never as proof of nudity. '
+        "Return all four keys as a JSON object."
+    )
+    return [{"role": "system", "content": system},
+            {"role": "user", "content": "CLOTHING DESCRIPTION\n" + clothing}]
+
+
+def build_clothing_state_extractor_response_format():
+    slots = ("upper", "lower", "footwear", "other")
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "clothing_state_extractor",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {slot: {"type": "string"} for slot in slots},
+                "required": list(slots),
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def extract_clothing_state(clothing, *, llm_request=None, history_metadata=None):
+    """Fail safely to the complete garment text if structured conversion is lossy."""
+    slots = ("upper", "lower", "footwear", "other")
+    full_text = " ".join(str(clothing or "").split()).strip()
+    if not full_text or full_text.casefold() in {"n/a", "none", "unknown"}:
+        return {slot: "N/A" for slot in slots}
+    fallback = {slot: "N/A" for slot in slots}
+    fallback["other"] = full_text
+    if llm_request is None:
+        llm_request = ask_llm
+    try:
+        raw = llm_request(
+            build_clothing_state_extractor_messages(full_text),
+            response_format=build_clothing_state_extractor_response_format(),
+            history_metadata={
+                **dict(history_metadata or {}),
+                "purpose": "clothing_state_extractor",
+            },
+        )
+        if isinstance(raw, str):
+            raw = parse_llm_json_content(
+                raw, llm_request=llm_request, repair_on_failure=False
+            )
+        if not isinstance(raw, dict) or set(raw) != set(slots):
+            raise ValueError("Clothing state must contain all four slots.")
+        result = {}
+        for slot in slots:
+            value = raw[slot]
+            if not isinstance(value, str):
+                raise ValueError(f"Clothing state {slot} must be text.")
+            result[slot] = " ".join(value.split()).strip() or "N/A"
+        # Verify that full-body garments have survived BOTH coverage slots.
+        full_body = re.search(
+            r"(?i)\b(?:sundress|dress|robe|jumpsuit|romper|overall|gown|"
+            r"bodysuit|onesie|kimono|cassock|coverall)s?\b", full_text
+        )
+        if full_body:
+            garment = full_body.group(0).casefold()
+            if any(garment not in result[slot].casefold()
+                   for slot in ("upper", "lower")):
+                raise ValueError("Full-body garment identity was lost.")
+        if all(value.casefold() in {"n/a", "unknown", "none"}
+               for value in result.values()):
+            raise ValueError("Clothing conversion discarded the complete outfit.")
+        return result
+    except LLMConnectionError:
+        raise
+    except (TypeError, ValueError, KeyError) as error:
+        console_log(
+            f"Clothing state conversion failed; preserving complete outfit: {error}",
+            flush=True,
+        )
+        return fallback
+
+
 def _world_state_wardrobe_from_canonical_text(clothing):
     """Convert dedicated canonical wardrobe text without another model call."""
     slots = ("upper", "lower", "footwear", "other")
@@ -26219,13 +26310,10 @@ def _world_state_wardrobe_from_canonical_text(clothing):
     if not text or text.casefold() in {"n/a", "none", "unknown"}:
         value = "N/A" if text.casefold() in {"n/a", "none"} else "unknown"
         return {slot: value for slot in slots}
+    # Without structured extraction, retain the entire outfit instead of
+    # allowing the punctuation-based component splitter to discard garments.
     grouped = {slot: [] for slot in slots}
-    for slot, garment in _split_wardrobe_components(text):
-        if garment.casefold() in {"barefoot", "bare-chested", "bare chested"}:
-            continue
-        grouped[slot].append(_world_state_garment_record(garment))
-    if not any(grouped.values()):
-        grouped["other"].append(_world_state_garment_record(text))
+    grouped["other"].append(_world_state_garment_record(text))
     return grouped
 
 
@@ -26240,7 +26328,17 @@ def world_state_wardrobes_from_character_canon(character_canon):
         name = " ".join(str(record.get("name") or "").split()).strip()
         clothing = record.get("clothing")
         if name and isinstance(clothing, str) and clothing.strip():
-            wardrobes[name] = _world_state_wardrobe_from_canonical_text(clothing)
+            structured = record.get("clothing_state")
+            if isinstance(structured, dict) and set(structured) == set(_WARDROBE_FIELDS):
+                wardrobes[name] = {
+                    slot: ([_world_state_garment_record(structured[slot])]
+                           if isinstance(structured[slot], str)
+                           and structured[slot].strip().casefold() not in {"n/a", "none", "unknown"}
+                           else [])
+                    for slot in _WARDROBE_FIELDS
+                }
+            else:
+                wardrobes[name] = _world_state_wardrobe_from_canonical_text(clothing)
     return wardrobes
 
 
@@ -26419,8 +26517,15 @@ def seed_character_canon_wardrobe(
             continue
         wardrobe = subject_state.setdefault("wardrobe", {})
         grouped = {}
-        for field, value in _split_wardrobe_components(clothing):
-            grouped.setdefault(field, []).append(value)
+        structured = record.get("clothing_state")
+        if isinstance(structured, dict) and set(structured) == set(_WARDROBE_FIELDS):
+            grouped = {
+                field: [value]
+                for field, value in structured.items()
+                if isinstance(value, str) and value.strip().casefold() not in {"n/a", "none", "unknown"}
+            }
+        else:
+            grouped["other"] = [clothing]
         for field, values in grouped.items():
             if _known_replacement_value(
                 wardrobe.get(field),
