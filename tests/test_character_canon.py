@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 from unittest.mock import Mock
 
 import minimax
@@ -24,6 +25,39 @@ def character_result(age="30", clothing="black tank top and jeans", gender="fema
 
 
 class CharacterCanonTests(unittest.TestCase):
+    def test_failed_optional_wardrobe_extraction_keeps_prior_canon(self):
+        canon = {
+            "fields": ["age", "gender", "clothing"],
+            "characters": [{
+                "name": "Amy", "age": "30", "gender": "female",
+                "clothing": "black tunic and leather boots",
+            }],
+        }
+        with mock.patch(
+            "minimax.canonicalize_defined_subject_wardrobes",
+            side_effect=ValueError("three invalid wardrobe responses"),
+        ), mock.patch("minimax.console_log") as log:
+            result = minimax.canonicalize_defined_subject_wardrobes_best_effort(
+                canon, "Story", "<Subject 1> is Amy."
+            )
+        self.assertIs(result, canon)
+        self.assertEqual(result["characters"][0]["clothing"], "black tunic and leather boots")
+        self.assertTrue(any(
+            "preserving the previously valid character canon" in call.args[0]
+            for call in log.call_args_list
+        ))
+
+    def test_optional_wardrobe_does_not_swallow_transport_failure(self):
+        failure = minimax.requests.HTTPError("wardrobe endpoint unavailable")
+        with mock.patch(
+            "minimax.canonicalize_defined_subject_wardrobes",
+            side_effect=failure,
+        ):
+            with self.assertRaises(minimax.requests.HTTPError):
+                minimax.canonicalize_defined_subject_wardrobes_best_effort(
+                    {"characters": []}, "Story", "<Subject 1> is Amy."
+                )
+
     def test_canonical_data_is_loaded_as_configured_fields(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "canonical_data.txt"

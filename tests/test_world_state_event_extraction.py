@@ -306,6 +306,34 @@ def test_translation_failure_discards_prior_events_and_preserves_opening_world_s
     assert state == opening
 
 
+def test_raw_integrity_failure_discards_event_batch_and_keeps_empty_candidate():
+    state, _ = state_with_entities(mug=False)
+    opening = copy.deepcopy(state)
+    raw = "Amy opens the entrance."
+    changed_result = {
+        "accepted": True,
+        "raw_scene": "Amy opens a different door.",
+        "state_actions": [{"op": "exit", "subject_id": "subject_amy"}],
+        "opening_state_sha256": minimax.world_state_sha256(state),
+    }
+    with mock.patch("minimax.ask_llm", return_value={"events": []}), mock.patch(
+        "minimax.translate_world_state_events", return_value=changed_result
+    ), mock.patch("minimax.console_log") as log:
+        result = minimax.extract_and_dry_run_world_state_events(
+            state, raw, segment_number=1
+        )
+    assert result["accepted"] is True
+    assert result["events"] == []
+    assert result["state_actions"] == []
+    assert result["raw_scene"] == raw
+    assert state == opening
+    assert any(
+        "changed the accepted RAW" in call.args[0]
+        and "discarding the entire event batch" in call.args[0]
+        for call in log.call_args_list
+    )
+
+
 def test_alice_grabbing_fixed_wooden_post_discards_entire_rejected_batch():
     state = new_world_state({
         "source_sha256": "alice-fixed-post",
@@ -355,6 +383,20 @@ def test_event_extraction_does_not_swallow_fatal_llm_connection_failure():
         side_effect=minimax.LLMConnectionError("LLM unavailable"),
     ), mock.patch("minimax.console_log"):
         with pytest.raises(minimax.LLMConnectionError, match="LLM unavailable"):
+            minimax.extract_and_dry_run_world_state_events(
+                state,
+                "Amy opens the entrance.",
+                segment_number=1,
+            )
+
+
+def test_event_extraction_does_not_swallow_non_connection_transport_failure():
+    state, _ = state_with_entities(mug=False)
+    with mock.patch(
+        "minimax.ask_llm",
+        side_effect=minimax.requests.HTTPError("LLM endpoint returned 503"),
+    ), mock.patch("minimax.console_log"):
+        with pytest.raises(minimax.requests.HTTPError, match="503"):
             minimax.extract_and_dry_run_world_state_events(
                 state,
                 "Amy opens the entrance.",

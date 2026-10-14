@@ -561,6 +561,21 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "beat_instruction_review": SMART_EXTRACTOR_LLM_SETTINGS,
 })
 
+# These enrichments must distinguish an unusable model reply from transport
+# failure so their local fail-open behavior never hides an unavailable service.
+OPTIONAL_LLM_TRANSPORT_FAILURE_PURPOSES = frozenset({
+    "add_camera_refiner",
+    "director_raw_scene_pronoun_resolution",
+    "director_raw_scene_visible_subject_resolution",
+    "director_world_state_events",
+    "director_world_state_events_repair",
+    "director_h3_soundscape",
+    "director_h3_music",
+    "world_state_current_segment_subjects",
+    "world_state_current_segment_props",
+    "story_subject_wardrobe_extract",
+})
+
 # Long story-pipeline inputs use larger contexts without creating more profiles.
 LLM_PURPOSE_CONTEXT_TOKEN_BUDGETS = MappingProxyType({
     "story_expansion": STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
@@ -4118,22 +4133,43 @@ def prepare_segment_world_state_for_director(
         for subject in state["subjects"].values()
         if isinstance(subject, dict)
     ]
-    candidates = extract_current_segment_subjects(
-        current_beat,
-        assigned_source,
-        registered_names,
-        llm_request=llm_request,
-        history_metadata={
-            **dict(history_metadata or {}),
-            "segment": int(segment_number),
-        },
-    )
+    try:
+        candidates = extract_current_segment_subjects(
+            current_beat,
+            assigned_source,
+            registered_names,
+            llm_request=llm_request,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "segment": int(segment_number),
+            },
+        )
+    except LLMConnectionError:
+        raise
+    except (TypeError, ValueError, json.JSONDecodeError) as error:
+        console_log(
+            f"PRE-DIRECTOR SUBJECT DISCOVERY failed for Segment "
+            f"{segment_number}; discarding candidates and preserving registered "
+            f"identities: {type(error).__name__}: {error}",
+            flush=True,
+        )
+        candidates = []
     before_names = {
         " ".join(subject.get("name", "").split()).casefold()
         for subject in state["subjects"].values()
         if isinstance(subject, dict)
     }
-    state = seed_current_segment_subject_identities(state, candidates)
+    try:
+        state = seed_current_segment_subject_identities(state, candidates)
+    except (TypeError, ValueError) as error:
+        console_log(
+            f"PRE-DIRECTOR SUBJECT CANDIDATES rejected for Segment "
+            f"{segment_number}; preserving registered identities: "
+            f"{type(error).__name__}: {error}",
+            flush=True,
+        )
+        candidates = []
+        state = world_state
     added = [
         item for item in candidates
         if " ".join(item["name"].split()).casefold() not in before_names
@@ -4147,21 +4183,40 @@ def prepare_segment_world_state_for_director(
             "physical_form": subject.get("physical_form", "unknown"),
             "source_description": subject.get("source_description", "unknown"),
         }
-        clothing = extract_subject_canonical_wardrobe(
-            story_context,
-            name,
-            subject.get("source_description", ""),
-            canonical_record,
-            llm_request=llm_request,
-            history_metadata={
-                **dict(history_metadata or {}),
-                "segment": int(segment_number),
-                "authority": "pre_director_current_segment_subject",
-            },
-        )
+        try:
+            clothing = extract_subject_canonical_wardrobe(
+                story_context,
+                name,
+                subject.get("source_description", ""),
+                canonical_record,
+                llm_request=llm_request,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "segment": int(segment_number),
+                    "authority": "pre_director_current_segment_subject",
+                },
+            )
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            console_log(
+                f"PRE-DIRECTOR WARDROBE EXTRACTION failed for {name!r} in "
+                f"Segment {segment_number}; keeping identity and leaving wardrobe "
+                f"unknown: {type(error).__name__}: {error}",
+                flush=True,
+            )
+            continue
         wardrobe_updates[name] = _world_state_wardrobe_from_canonical_text(clothing)
     if wardrobe_updates:
-        state = seed_canonical_wardrobes(state, wardrobe_updates)
+        try:
+            state = seed_canonical_wardrobes(state, wardrobe_updates)
+        except (TypeError, ValueError) as error:
+            console_log(
+                f"PRE-DIRECTOR WARDROBE CANDIDATES rejected for Segment "
+                f"{segment_number}; preserving prior wardrobe facts: "
+                f"{type(error).__name__}: {error}",
+                flush=True,
+            )
     # Pre-Director prop registration is useful context, but it must not turn
     # an invalid candidate into a reason to regenerate the whole Segment.
     # Keep identity/wardrobe seeds and all previously registered props, and
@@ -8019,6 +8074,37 @@ def canonicalize_defined_subject_wardrobes(
     )
 
 
+def canonicalize_defined_subject_wardrobes_best_effort(
+    character_canon,
+    expanded_story,
+    subject_definitions,
+    **kwargs,
+):
+    """Keep prior canon when optional attire extraction exhausts content retries."""
+    try:
+        return canonicalize_defined_subject_wardrobes(
+            character_canon,
+            expanded_story,
+            subject_definitions,
+            **kwargs,
+        )
+    except (
+        LLMConnectionError,
+        requests.RequestException,
+        OSError,
+        ComfyUIConnectionError,
+    ):
+        raise
+    except (TypeError, ValueError, json.JSONDecodeError) as error:
+        console_log(
+            "WARNING: Canonical wardrobe enrichment failed after its local "
+            "attempts; preserving the previously valid character canon: "
+            f"{type(error).__name__}: {error}",
+            flush=True,
+        )
+        return character_canon
+
+
 def format_character_canon_for_beats(canon):
     """Render configured canonical character facts for planning/directing prompts."""
     if not isinstance(canon, dict):
@@ -11314,6 +11400,17 @@ def ask_llm(
             f"LLM host could not be reached after {max_attempts} attempts. "
             f"Last error: {last_connection_error}"
         ) from last_connection_error
+
+    # These optional stages distinguish infrastructure failure from malformed
+    # content. Keep legacy recovery unchanged for all other LLM purposes.
+    if (
+        history_purpose in OPTIONAL_LLM_TRANSPORT_FAILURE_PURPOSES
+        and isinstance(last_error, requests.RequestException)
+    ):
+        raise LLMConnectionError(
+            f"LLM service request failed after {max_attempts} attempts for "
+            f"optional stage {history_purpose!r}: {last_error}"
+        ) from last_error
 
     # A reachable model that keeps returning malformed/truncated content is a
     # content failure, not a fatal transport failure. Preserve its last reply
@@ -32300,6 +32397,11 @@ def ask_vision_model(
             f"Vision LLM could not be reached after {max_retries} attempts "
             f"for segment {segment_number}."
         ) from last_error
+    if isinstance(last_error, requests.RequestException):
+        raise LLMConnectionError(
+            f"Vision LLM service request failed after {max_retries} attempts "
+            f"for segment {segment_number}: {last_error}"
+        ) from last_error
     console_log(
         f"WARNING: Vision end-state content was unusable after {max_retries} "
         f"attempts for segment {segment_number}; using empty best effort: "
@@ -32617,6 +32719,29 @@ def request_visual_end_state(video_path, subject_definitions, segment_number):
         )
     finally:
         cleanup_generated_frames(vision_segment=segment_number)
+
+
+def request_optional_visual_end_state(video_path, subject_definitions, segment_number):
+    """Return an optional rendered observation, or omit unusable content."""
+    try:
+        return request_visual_end_state(
+            video_path, subject_definitions, segment_number
+        )
+    except (
+        LLMConnectionError,
+        requests.RequestException,
+        OSError,
+        ComfyUIConnectionError,
+    ):
+        raise
+    except (ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
+        console_log(
+            f"WARNING: Rendered visual/wardrobe enrichment failed for Segment "
+            f"{segment_number}; discarding its incomplete observation and "
+            f"continuing without enrichment: {type(error).__name__}: {error}",
+            flush=True,
+        )
+        return None
 
 # Validate the continuity summary and return the value to use for queuing.
 def _assert_h3_prompt_contains_continuity(
@@ -38146,11 +38271,23 @@ def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_nu
             raise WorldStateEventExtractionError(f"No event list returned for Segment {segment_number}.")
         console_log("WORLDSTATE EVENTS " + json.dumps({"segment": segment_number, "events": events}, ensure_ascii=False), flush=True)
         result = translate_world_state_events(world_state, events, immutable_raw, segment_number=int(segment_number))
-    except LLMConnectionError:
-        # Losing the required LLM is one of the few fatal infrastructure
-        # conditions. Do not turn it into an accepted empty event batch.
+        _assert_event_raw_unchanged(immutable_raw, result, segment_number)
+    except (
+        LLMConnectionError,
+        requests.RequestException,
+        OSError,
+        ComfyUIConnectionError,
+    ):
+        # Infrastructure failures are not optional extraction failures. Do not
+        # turn a failed service/filesystem request into an accepted empty batch.
         raise
-    except Exception as error:
+    except (
+        WorldStateEventExtractionError,
+        TypeError,
+        ValueError,
+        KeyError,
+        IndexError,
+    ) as error:
         diagnostic = f"{type(error).__name__}: {error}"
         console_log(
             f"WORLDSTATE EVENT EXTRACTION FAILED for Segment {segment_number}; "
@@ -39846,11 +39983,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 LLMConnectionError,
                 requests.RequestException,
                 OSError,
-                ValueError,
-                TypeError,
-            ) as error:
-                if isinstance(error, LLMConnectionError):
-                    raise
+                ComfyUIConnectionError,
+            ):
+                raise
+            except (ValueError, TypeError) as error:
                 camera_failure = f"Malformed camera-refiner response: {error}"
             console_log(
                 "DIRECTOR CAMERA REFINER RESPONSE " + json.dumps(
@@ -39868,13 +40004,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 flush=True,
             )
         if not camera_accepted:
-            raise PipelineStageRetryError(
-                stage_name="add_camera_refiner",
-                previous_stage="add_scene_timing_refiner",
-                diagnostic=(
-                    f"Segment {segment_number}; after "
-                    f"{DIRECTOR_RAW_REFINER_ATTEMPTS} attempts: {camera_failure}"
-                ),
+            camera_scene = timed_scene
+            console_log(
+                f"WARNING: Camera refinement failed for Segment {segment_number} "
+                f"after {DIRECTOR_RAW_REFINER_ATTEMPTS} attempts; preserving the "
+                f"last valid timed scene without camera instructions: {camera_failure}",
+                flush=True,
             )
 
         raw_scene = _normalize_director_end_continuity_marker(
@@ -40143,15 +40278,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         LLMConnectionError,
         requests.RequestException,
         OSError,
-        ValueError,
-        TypeError,
-    ) as error:
-        if isinstance(error, LLMConnectionError):
-            raise
-        raise PipelineStageRetryError(
-            stage_name="director_raw_scene_pronoun_resolution",
-            previous_stage="director_raw_scene",
-            diagnostic=f"Segment {segment_number}: {error}",
+        ComfyUIConnectionError,
+    ):
+        raise
+    except (ValueError, TypeError) as error:
+        console_log(
+            f"WARNING: Pronoun resolution failed for Segment {segment_number}; "
+            f"preserving the last valid RAW scene: {type(error).__name__}: {error}",
+            flush=True,
         )
 
     console_log()
@@ -40204,15 +40338,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 flush=True,
             )
             break
-        except (
-            LLMConnectionError,
-            requests.RequestException,
-            OSError,
-            ValueError,
-            TypeError,
-        ) as error:
-            if isinstance(error, LLMConnectionError):
-                raise
+        except LLMConnectionError:
+            raise
+        except (ValueError, TypeError) as error:
             if audio_attempt < 2:
                 console_log(
                     f"H3 soundscape segment {segment_number} invalid "
@@ -40230,13 +40358,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 continue
             console_log(
                 f"WARNING: H3 soundscape segment {segment_number} failed; "
-                f"stepping back to Director RAW: {error}",
+                f"omitting only this optional enrichment and using N/A: {error}",
                 flush=True,
-            )
-            raise PipelineStageRetryError(
-                stage_name="director_h3_soundscape",
-                previous_stage="director_raw_scene",
-                diagnostic=f"Segment {segment_number}: {error}",
             )
 
     music = "N/A"
@@ -40273,11 +40396,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 LLMConnectionError,
                 requests.RequestException,
                 OSError,
-                ValueError,
-                TypeError,
-            ) as error:
-                if isinstance(error, LLMConnectionError):
-                    raise
+                ComfyUIConnectionError,
+            ):
+                raise
+            except (ValueError, TypeError) as error:
                 if audio_attempt < 2:
                     console_log(
                         f"H3 music segment {segment_number} invalid "
@@ -40293,14 +40415,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     continue
                 console_log(
                     f"WARNING: H3 music segment {segment_number} failed; "
-                    "stepping back to Director RAW: "
-                    f"{error}",
+                    f"omitting only this optional enrichment and using N/A: {error}",
                     flush=True,
-                )
-                raise PipelineStageRetryError(
-                    stage_name="director_h3_music",
-                    previous_stage="director_raw_scene",
-                    diagnostic=f"Segment {segment_number}: {error}",
                 )
 
     audio_result = {
@@ -40811,6 +40927,62 @@ def load_pre_director_replay_fixture(path):
     return copy.deepcopy(fixture)
 
 
+def _resolve_visible_subjects_best_effort(
+    accepted_raw_scene,
+    *,
+    world_state,
+    history_metadata,
+    segment_seconds,
+):
+    """Use the existing two resolver attempts, otherwise keep accepted RAW."""
+    last_error = None
+    for attempt in range(1, 3):
+        try:
+            resolved_scene, subjects = resolve_director_raw_scene_subjects(
+                accepted_raw_scene,
+                world_state=world_state,
+                history_metadata={**dict(history_metadata or {}), "attempt": attempt},
+                segment_seconds=segment_seconds,
+            )
+            subject_names = list(dict.fromkeys(
+                str(item.get("name") or "").strip()
+                for item in subjects
+                if isinstance(item, dict) and str(item.get("name") or "").strip()
+            ))
+            new_subject_names = list(dict.fromkeys(
+                str(item.get("name") or "").strip()
+                for item in subjects
+                if (
+                    isinstance(item, dict)
+                    and item.get("is_new") is True
+                    and str(item.get("name") or "").strip()
+                )
+            ))
+            return resolved_scene, subject_names, new_subject_names, True
+        except (
+            LLMConnectionError,
+            requests.RequestException,
+            OSError,
+            ComfyUIConnectionError,
+        ):
+            raise
+        except (ValueError, TypeError) as error:
+            last_error = error
+            if attempt < 2:
+                console_log(
+                    f"RAW Subject resolution failed (attempt {attempt}/2); "
+                    f"retrying only this optional extractor: {error}",
+                    flush=True,
+                )
+    console_log(
+        "WARNING: Visible-Subject resolution failed after 2 attempts; "
+        "discarding incomplete identity results and preserving accepted RAW "
+        f"unchanged: {type(last_error).__name__}: {last_error}",
+        flush=True,
+    )
+    return accepted_raw_scene, [], [], False
+
+
 def _run_main(
     summary_executor,
     director_prefetch_executor=None,
@@ -41093,16 +41265,12 @@ def _run_main(
         else load_text_file(EXPANDED_STORY_FILE, required=False)
     )
     if expanded_story_context and pre_director_replay is None:
-        character_canon = run_pipeline_stage_with_backstep(
-            "story_subject_wardrobe_extract",
-            lambda: canonicalize_defined_subject_wardrobes(
-                character_canon,
-                expanded_story_context,
-                base_subject_definitions,
-                canonical_data=canonical_data,
-                history_metadata={"run_id": run_id},
-            ),
-            log=console_log,
+        character_canon = canonicalize_defined_subject_wardrobes_best_effort(
+            character_canon,
+            expanded_story_context,
+            base_subject_definitions,
+            canonical_data=canonical_data,
+            history_metadata={"run_id": run_id},
         )
         subject_information = format_beat_generation_subjects(
             subject_definitions
@@ -42671,8 +42839,6 @@ def _run_main(
         resolved_subject_names = []
         accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
         resolved_raw_scene = accepted_raw_scene
-        subject_resolution_error = None
-        subject_resolution_succeeded = False
         raw_scene_timeline_duration = _director_raw_scene_timeline_duration(
             segment_bundle["current_duration"],
             segment_bundle.get("conditioning_mode"),
@@ -42691,66 +42857,27 @@ def _run_main(
             accepted_raw_scene,
             segment_bundle.get("world_state_opening"),
         )
-        for subject_attempt in range(1, 3):
-            try:
-                resolved_raw_scene, resolved_subjects = resolve_director_raw_scene_subjects(
-                    accepted_raw_scene,
-                    world_state=segment_bundle.get("world_state_opening"),
-                    history_metadata={
-                        "run_id": run_id,
-                        "source_sha256": run_config["source_sha256"],
-                        "segment": segment,
-                        "attempt": subject_attempt,
-                    },
-                    segment_seconds=raw_scene_timeline_duration,
-                )
-                resolved_subject_names = list(dict.fromkeys(
-                    str(item.get("name") or "").strip()
-                    for item in resolved_subjects
-                    if isinstance(item, dict) and str(item.get("name") or "").strip()
-                ))
-                raw_subject_names = list(dict.fromkeys(
-                    str(item.get("name") or "").strip()
-                    for item in resolved_subjects
-                    if (
-                        isinstance(item, dict)
-                        and item.get("is_new") is True
-                        and str(item.get("name") or "").strip()
-                    )
-                ))
-                subject_resolution_succeeded = True
-                break
-            except (
-                LLMConnectionError,
-                requests.RequestException,
-                OSError,
-                ValueError,
-                TypeError,
-            ) as error:
-                if isinstance(error, LLMConnectionError):
-                    raise
-                subject_resolution_error = error
-                if subject_attempt < 2:
-                    console_log(
-                        f"RAW Subject resolution failed for Segment {segment} "
-                        f"(attempt {subject_attempt}/2); retrying: {error}",
-                        flush=True,
-                    )
-        if not subject_resolution_succeeded:
-            raise PipelineStageRetryError(
-                stage_name="director_raw_scene_visible_subject_resolution",
-                previous_stage="director_raw_scene",
-                diagnostic=(
-                    f"Segment {segment} after 2 attempts: "
-                    f"{subject_resolution_error}"
-                ),
-            )
+        (
+            resolved_raw_scene,
+            resolved_subject_names,
+            raw_subject_names,
+            subject_resolution_succeeded,
+        ) = _resolve_visible_subjects_best_effort(
+            accepted_raw_scene,
+            world_state=segment_bundle.get("world_state_opening"),
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": run_config["source_sha256"],
+                "segment": segment,
+            },
+            segment_seconds=raw_scene_timeline_duration,
+        )
         if subject_resolution_bypassed:
             # Keep the accepted Director text byte-for-byte intact throughout
             # this no-discovery path, including its existing end-state wording.
             resolved_raw_scene = accepted_raw_scene
             carried_final_subjects = []
-        else:
+        elif subject_resolution_succeeded:
             resolved_raw_scene, carried_final_subjects = (
                 _director_carry_forward_final_subjects(
                     resolved_raw_scene,
@@ -42794,7 +42921,12 @@ def _run_main(
                 run_id=run_id,
                 run_config=run_config,
             )
-        except LLMConnectionError:
+        except (
+            LLMConnectionError,
+            requests.RequestException,
+            OSError,
+            ComfyUIConnectionError,
+        ):
             raise
         except Exception as error:
             if isinstance(error, (WorldStateEventExtractionError, PipelineStageRetryError)):
@@ -43496,12 +43628,12 @@ def _run_main(
         # falling back to requested clothing.
         visual_result = None
         if segment < total_segments and vision_required:
-            try:
-                visual_result = request_visual_end_state(
-                    video_path,
-                    subject_definitions,
-                    segment,
-                )
+            visual_result = request_optional_visual_end_state(
+                video_path,
+                subject_definitions,
+                segment,
+            )
+            if visual_result is not None:
                 console_log()
                 console_log("=" * 64)
                 console_log(f"VISUAL END STATE: SEGMENT {segment}")
@@ -43512,14 +43644,6 @@ def _run_main(
                     indent=2,
                 ))
                 console_log("=" * 64)
-            except LLMConnectionError:
-                raise
-            except Exception as error:
-                raise PipelineStageRetryError(
-                    stage_name="visual_end_state",
-                    previous_stage="comfyui_render",
-                    diagnostic=f"Segment {segment}: {error}",
-                )
 
             # Rendered observations remain separately recorded diagnostics and
             # media evidence; they never write WorldState or legacy continuity.

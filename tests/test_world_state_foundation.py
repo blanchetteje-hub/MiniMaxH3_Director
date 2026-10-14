@@ -305,6 +305,74 @@ class DestructiveStateMergeRegressionTests(unittest.TestCase):
 
 
 class WorldStateSeedTests(unittest.TestCase):
+    def test_pre_director_subject_discovery_exhaustion_keeps_registered_state(self):
+        state = new_world_state({
+            "source_sha256": "optional-subject-discovery",
+            "subjects": {
+                "1": {"subject_id": 1, "name": "Alice", "gender": UNKNOWN, "picture_ids": []},
+            },
+        })
+        opening = copy.deepcopy(state)
+        with patch(
+            "minimax.extract_current_segment_subjects",
+            side_effect=ValueError("three unusable responses"),
+        ), patch(
+            "minimax.extract_current_segment_persistent_props", return_value=[]
+        ), patch("minimax.console_log") as log:
+            prepared, added = minimax.prepare_segment_world_state_for_director(
+                state, 2, "A visitor arrives.", "A visitor arrives.", "Story."
+            )
+        self.assertEqual(prepared, opening)
+        self.assertEqual(added, [])
+        self.assertTrue(any(
+            "discarding candidates" in call.args[0] for call in log.call_args_list
+        ))
+
+    def test_dynamic_subject_identity_survives_optional_wardrobe_failure(self):
+        state = new_world_state({"source_sha256": "optional-wardrobe"})
+        candidate = {
+            "name": "A visitor",
+            "physical_form": "humanoid",
+            "gender": "unknown",
+            "source_description": "A visitor in a room",
+        }
+        with patch(
+            "minimax.extract_current_segment_subjects", return_value=[candidate]
+        ), patch(
+            "minimax.extract_subject_canonical_wardrobe",
+            side_effect=ValueError("three invalid wardrobes"),
+        ), patch(
+            "minimax.extract_current_segment_persistent_props", return_value=[]
+        ), patch("minimax.console_log") as log:
+            prepared, added = minimax.prepare_segment_world_state_for_director(
+                state, 2, "A visitor arrives.", "A visitor arrives.", "Story."
+            )
+        self.assertEqual(added, ["A visitor"])
+        subject = next(
+            item for item in prepared["subjects"].values()
+            if item["name"] == "A visitor"
+        )
+        self.assertEqual(subject["presence"], "unknown")
+        self.assertTrue(all(value == "unknown" for value in subject["wardrobe"].values()))
+        self.assertTrue(any(
+            "leaving wardrobe unknown" in call.args[0]
+            for call in log.call_args_list
+        ))
+
+    def test_pre_director_prop_transport_failure_is_not_discarded_as_bad_content(self):
+        state = new_world_state({"source_sha256": "prop-transport-error"})
+        failure = minimax.requests.HTTPError("prop extractor service error")
+        with patch(
+            "minimax.extract_current_segment_subjects", return_value=[]
+        ), patch(
+            "minimax.extract_current_segment_persistent_props",
+            side_effect=failure,
+        ):
+            with self.assertRaises(minimax.requests.HTTPError):
+                minimax.prepare_segment_world_state_for_director(
+                    state, 1, "A scene.", "A scene.", "Story."
+                )
+
     def test_pre_director_duplicate_fixed_prop_candidates_fail_open(self):
         state = new_world_state({
             "source_sha256": "pre-director-duplicate-prop",

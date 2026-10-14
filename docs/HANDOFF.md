@@ -1,5 +1,46 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — fail open only at optional stages
+
+- Added `docs/PIPELINE_FAILURE_POLICY.md`, linked from `PROJECT_NOTES.md`, to
+  distinguish REQUIRED, OPTIONAL, and CONDITIONAL recovery. It identifies the
+  audited optional enrichments and records that conditional-stage recovery is
+  not changed here.
+- Camera-refiner exhaustion now keeps the accepted timed scene. Pronoun and
+  visible-Subject resolution failures preserve accepted RAW after their
+  existing local attempts. Exhausted soundscape/music extraction uses the
+  existing `N/A` values. Rendered visual analysis failure discards only the
+  observation and no longer reruns the completed render.
+- Pre-Director Subject discovery, dynamic canonical wardrobe extraction, and
+  authored-canon wardrobe enrichment now discard failed optional candidates or
+  metadata while retaining registered identity and prior valid canon. Existing
+  prop rejection and atomic WorldState event-batch fallback remain in place.
+- WorldState event fallback now catches content/translation failures only;
+  request transport, filesystem, ComfyUI, LLM connection, and cancellation
+  failures propagate. The event RAW-integrity check is inside the same
+  fail-open boundary, so an invalid event response cannot block an otherwise
+  accepted segment. The shared LLM request path now preserves non-connection
+  transport failures for the audited optional purposes instead of returning an
+  empty reply that could be mistaken for malformed optional content; vision
+  transport failures also propagate after its existing local retries.
+- Focused regressions cover exhausted Director enrichment, event atomicity,
+  optional Subject/wardrobe failure, rendered-observation fallback, and
+  infrastructure propagation. The final focused post-change runs passed:
+  Director optional-stage tests (6), camera fallback (1), event extraction
+  (17), pre-Director seed/prop tests (4), visual cleanup/fallback (6), and
+  canonical wardrobe fallback (2). `py_compile` and `git diff --check` passed;
+  the automation copy of `minimax.py` was verified with `cmp -s`.
+- The broader affected-module run, before the RAW-integrity regression was
+  added, reported 307 passed and 5 failures (36
+  subtests passed). Two story-start tests use the retired `classification` /
+  `evidence` shape and old prompt wording; two character-canon assertions
+  expect retired prompt wording; the render-enabled prompt fixture references
+  a character-reference MP4 absent from this checkout. These are outside this
+  change; successful behavior and prompts were left unchanged.
+- No optional stage invokes `run_pipeline_stage_with_backstep()` on content
+  exhaustion. Render completion, required RAW/Beat recovery, and conditional
+  mode recovery remain unchanged. No bridge job was queued.
+
 ## 2026-10-14 — keep optional WorldState failures from restarting a segment
 
 - WorldState event extraction/translation failures now log the exact diagnostic,

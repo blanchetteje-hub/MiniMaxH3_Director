@@ -7,6 +7,41 @@ import minimax
 
 
 class FrameCleanupTests(unittest.TestCase):
+    def test_optional_visual_content_failure_is_discarded(self):
+        with mock.patch.object(
+            minimax,
+            "request_visual_end_state",
+            side_effect=ValueError("malformed visual response"),
+        ), mock.patch.object(minimax, "console_log") as log:
+            result = minimax.request_optional_visual_end_state("video.mp4", "", 2)
+        self.assertIsNone(result)
+        self.assertTrue(any(
+            "continuing without enrichment" in call.args[0]
+            for call in log.call_args_list
+        ))
+
+    def test_optional_visual_infrastructure_failures_propagate(self):
+        for failure in (
+            minimax.LLMConnectionError("offline"),
+            minimax.requests.HTTPError("server error"),
+            OSError("frame storage unavailable"),
+        ):
+            with self.subTest(failure=failure), mock.patch.object(
+                minimax, "request_visual_end_state", side_effect=failure
+            ):
+                with self.assertRaises(type(failure)):
+                    minimax.request_optional_visual_end_state("video.mp4", "", 2)
+
+    def test_vision_transport_failure_after_retries_is_infrastructure(self):
+        with mock.patch(
+            "minimax.requests.post",
+            side_effect=minimax.requests.HTTPError("vision endpoint returned 503"),
+        ), mock.patch("minimax.append_prompt_history"), mock.patch(
+            "minimax.time.sleep"
+        ):
+            with self.assertRaises(minimax.LLMConnectionError):
+                minimax.ask_vision_model([], "", 2, max_retries=1)
+
     def test_cleanup_removes_vision_and_refresh_frames(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             vision_dir = os.path.join(temp_dir, "vision", "segment_0002")
