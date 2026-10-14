@@ -454,7 +454,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             request.call_args_list[0].kwargs["response_format"],
         )
 
-    def test_unresolved_new_prop_origin_fails_without_rewriting_raw(self):
+    def test_unresolved_new_prop_origin_fails_open_without_rewriting_raw(self):
         world_state, _location_id, _mug_id = goblin_mug_world_state()
         opening = copy.deepcopy(world_state)
         raw_scene = "At 00:00.000, Amy pulls the cloth from her apron pocket."
@@ -465,8 +465,14 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         }]}
         request = mock.Mock(return_value=events)
         with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log"):
-            with self.assertRaisesRegex(minimax.WorldStateEventExtractionError, "registered support origin"):
-                minimax.extract_and_dry_run_world_state_events(world_state, raw_scene, segment_number=1)
+            result = minimax.extract_and_dry_run_world_state_events(
+                world_state, raw_scene, segment_number=1,
+            )
+        self.assertTrue(result["event_extraction_failed"])
+        self.assertEqual(result["events"], [])
+        self.assertEqual(result["state_actions"], [])
+        self.assertIn("registered support origin", result["event_failure_diagnostic"])
+        self.assertEqual(result["raw_scene"], raw_scene)
         self.assertEqual(request.call_count, 1)
         self.assertEqual(world_state, opening)
 

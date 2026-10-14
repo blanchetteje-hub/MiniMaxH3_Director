@@ -37595,14 +37595,24 @@ def _translate_world_state_event(state, event, raw_scene, segment_number, event_
             sid, record = support
             lid = record.get("placement", {}).get("location_id")
             if not lid or (loc and loc[0] != lid):
-                raise WorldStateEventExtractionError(f"event {event_index}: support and destination location are missing or conflict.")
+                console_log(
+                    f"WORLDSTATE EVENT {event_index} movement skipped: registered support "
+                    "and destination do not establish a valid location.",
+                    flush=True,
+                )
+                return []
             if actor.get("location_id") == lid:
                 return [{"action_id": action_id, "op": "set_support", "subject_id": actor_id,
                          "support_id": sid, "resulting_posture": result or None}]
             return [{"action_id": action_id, "op": "move", "subject_id": actor_id,
                      "destination_location_id": lid, "support_id": sid}]
         if not loc:
-            raise WorldStateEventExtractionError(f"event {event_index}: move destination is not a registered location or explicit support.")
+            console_log(
+                f"WORLDSTATE EVENT {event_index} movement skipped: no registered "
+                "destination or supported support change was established.",
+                flush=True,
+            )
+            return []
         return [{"action_id": action_id, "op": "move", "subject_id": actor_id, "destination_location_id": loc[0]}]
     if op in {"take", "put", "release"}:
         if not obj:
@@ -37839,36 +37849,55 @@ def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_nu
     metadata = {"run_id": run_id, "source_sha256": (run_config or {}).get("source_sha256"),
                 "segment": int(segment_number), "opening_state_sha256": opening_hash}
     schema = build_world_state_event_response_format()
+    name_resolution = _world_state_event_name_resolution(world_state)
     def call(messages, purpose, attempt):
         return ask_llm(messages, response_format=schema, parse_json_response=False,
                        history_metadata={**metadata, "purpose": purpose, "attempt": attempt})
-    response = call(build_world_state_event_messages(immutable_raw), "director_world_state_events", 1)
-    malformed = response
-    events = None
-    for repair_attempt in range(WORLD_STATE_EVENT_REPAIR_ATTEMPTS + 1):
-        try:
-            events = _parse_world_state_event_response(malformed)
-            break
-        except (TypeError, ValueError, json.JSONDecodeError) as error:
-            issue = " ".join(str(error).split())
-            console_log("WORLDSTATE EVENT RESPONSE REJECTED " + json.dumps(
-                {"segment": segment_number, "attempt": repair_attempt + 1,
-                 "response": malformed, "issue": issue}, ensure_ascii=False, default=str), flush=True)
-            if repair_attempt == WORLD_STATE_EVENT_REPAIR_ATTEMPTS:
-                raise WorldStateEventExtractionError(
-                    f"Malformed event extraction for Segment {segment_number} after {repair_attempt} repairs: {issue}") from error
-            malformed = call(
-                build_world_state_event_repair_messages(immutable_raw, malformed, issue),
-                "director_world_state_events_repair", repair_attempt + 1)
-    if events is None:
-        raise WorldStateEventExtractionError(f"No event list returned for Segment {segment_number}.")
-    console_log("WORLDSTATE EVENTS " + json.dumps({"segment": segment_number, "events": events}, ensure_ascii=False), flush=True)
     try:
+        response = call(build_world_state_event_messages(immutable_raw), "director_world_state_events", 1)
+        malformed = response
+        events = None
+        for repair_attempt in range(WORLD_STATE_EVENT_REPAIR_ATTEMPTS + 1):
+            try:
+                events = _parse_world_state_event_response(malformed)
+                break
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                issue = " ".join(str(error).split())
+                console_log("WORLDSTATE EVENT RESPONSE REJECTED " + json.dumps(
+                    {"segment": segment_number, "attempt": repair_attempt + 1,
+                     "response": malformed, "issue": issue}, ensure_ascii=False, default=str), flush=True)
+                if repair_attempt == WORLD_STATE_EVENT_REPAIR_ATTEMPTS:
+                    raise WorldStateEventExtractionError(
+                        f"Malformed event extraction for Segment {segment_number} after {repair_attempt} repairs: {issue}") from error
+                malformed = call(
+                    build_world_state_event_repair_messages(immutable_raw, malformed, issue),
+                    "director_world_state_events_repair", repair_attempt + 1)
+        if events is None:
+            raise WorldStateEventExtractionError(f"No event list returned for Segment {segment_number}.")
+        console_log("WORLDSTATE EVENTS " + json.dumps({"segment": segment_number, "events": events}, ensure_ascii=False), flush=True)
         result = translate_world_state_events(world_state, events, immutable_raw, segment_number=int(segment_number))
-    except WorldStateEventExtractionError:
-        raise
     except Exception as error:
-        raise WorldStateEventExtractionError(f"Event translation failed for Segment {segment_number}: {error}") from error
+        diagnostic = f"{type(error).__name__}: {error}"
+        console_log(
+            f"WORLDSTATE EVENT EXTRACTION FAILED for Segment {segment_number}; "
+            f"discarding entire event batch and continuing without state changes: {diagnostic}",
+            flush=True,
+        )
+        empty = parse_and_dry_run_state_actions(
+            world_state,
+            {"state_actions": []},
+            segment_number=int(segment_number),
+            name_resolution=name_resolution,
+            raw_scene=immutable_raw,
+        )
+        return {
+            **empty,
+            "events": [],
+            "raw_scene": immutable_raw,
+            "opening_state_sha256": opening_hash,
+            "event_extraction_failed": True,
+            "event_failure_diagnostic": diagnostic,
+        }
     return {**result, "events": events, "raw_scene": immutable_raw, "opening_state_sha256": opening_hash}
 
 def _format_director_validator_worldstate_context(

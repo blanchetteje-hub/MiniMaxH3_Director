@@ -1,5 +1,23 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — Fail-open WorldState event extraction
+
+- Unresolvable extracted `move` events are skipped when they establish neither a
+  registered location destination nor a valid registered support change. The
+  remaining event batch can still produce reducer-validated actions.
+- Event extraction, response parsing, and StateAction translation failures now
+  log the exact diagnostic and discard the entire event batch. The pipeline
+  continues with an accepted empty action batch, so the segment's opening
+  WorldState remains unchanged and no partial event effects can commit.
+- Added regressions for Job 63's unregistered movement destination, malformed
+  extraction exhausting its existing repair budget, translation failure after
+  an earlier valid event, exact diagnostics, and unchanged opening state.
+  No Job 63 artifacts were present in this checkout, so the movement regression
+  reproduces the reported invalid-destination condition. Focused event/Director/
+  split-pipeline and transaction/checkpoint tests: 173 passed, 16 subtests
+  passed. Syntax and whitespace checks passed. No prompt, registration,
+  validator, or RAW-generation behavior changed.
+
 ## 2026-10-13 — Python translation of extracted WorldState events
 
 - Replaced the `director_state_actions` call with a Smart Extractor event-list
@@ -15,8 +33,9 @@
   completed-Segment commit input; transaction, checkpoint, and resume code is
   unchanged. Reducer provenance now identifies the event-extraction path.
 - Malformed event JSON/shape uses up to five event-list-only repairs against
-  the same immutable RAW. Name-resolution and reducer failures now report a
-  concrete event diagnostic and fail closed; neither invokes RAW repair. The
+  the same immutable RAW. Exhaustion, name-resolution failures, and reducer
+  translation failures log their diagnostics and discard the full event batch,
+  continuing with an empty reducer-valid candidate; none invokes RAW repair. The
   special `retrieve_prop_origin_not_in_raw` RAW-repair loop and old
   StateAction extraction/repair call purposes were removed. A new prop can be
   introduced only through a `take` event whose source resolves to a registered

@@ -104,6 +104,16 @@ def test_support_standing_maps_to_subject_specific_set_support():
     assert state["subjects"]["subject_1"]["support_id"] is None
 
 
+def test_job63_move_without_registered_destination_is_skipped():
+    state, _ = state_with_entities(mug=False)
+    result = minimax.translate_world_state_events(state, [
+        event("move", "Amy", "unregistered stage", destination="far corner", relation="to"),
+        event("modify", "Amy", "door", result="locked"),
+    ], "Amy moves to the far corner and locks the door.", segment_number=1)
+    assert [action["op"] for action in result["state_actions"]] == ["lock"]
+    assert state["subjects"]["subject_1"]["location_id"] == state["subjects"]["subject_2"]["location_id"]
+
+
 def test_movement_beside_registered_surface_does_not_establish_support():
     state, _ = state_with_entities(mug=False)
     result = minimax.translate_world_state_events(
@@ -250,9 +260,34 @@ def test_malformed_event_repair_budget_is_bounded_and_does_not_commit():
     raw = "Amy moves beside the counter."
     malformed = {"events": [{"action": "not-an-event"}]}
     request = mock.Mock(return_value=malformed)
-    with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log"):
-        with pytest.raises(minimax.WorldStateEventExtractionError, match="after 5 repairs"):
-            minimax.extract_and_dry_run_world_state_events(state, raw, segment_number=1)
+    with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log") as log:
+        result = minimax.extract_and_dry_run_world_state_events(state, raw, segment_number=1)
     assert request.call_count == 1 + minimax.WORLD_STATE_EVENT_REPAIR_ATTEMPTS
     assert all(call.args[0][-1]["content"].find(raw) >= 0 for call in request.call_args_list)
+    assert result["accepted"] is True
+    assert result["events"] == []
+    assert result["state_actions"] == []
+    assert result["event_extraction_failed"] is True
+    diagnostic = result["event_failure_diagnostic"]
+    assert "Malformed event extraction for Segment 1 after 5 repairs" in diagnostic
+    assert any(diagnostic in call.args[0] for call in log.call_args_list)
+    assert state == opening
+
+
+def test_translation_failure_discards_prior_events_and_preserves_opening_world_state():
+    state, _ = state_with_entities(mug=False)
+    opening = copy.deepcopy(state)
+    raw = "Amy locks the door, then retrieves a new cloth from her apron pocket."
+    response = {"events": [
+        event("modify", "Amy", "door", result="locked"),
+        event("take", "Amy", "new cloth", source="apron pocket", relation="from"),
+    ]}
+    with mock.patch("minimax.ask_llm", return_value=response), mock.patch("minimax.console_log") as log:
+        result = minimax.extract_and_dry_run_world_state_events(state, raw, segment_number=1)
+    assert result["accepted"] is True
+    assert result["events"] == []
+    assert result["state_actions"] == []
+    assert result["event_extraction_failed"] is True
+    assert "new prop 'new cloth' has no registered support origin" in result["event_failure_diagnostic"]
+    assert any(result["event_failure_diagnostic"] in call.args[0] for call in log.call_args_list)
     assert state == opening
