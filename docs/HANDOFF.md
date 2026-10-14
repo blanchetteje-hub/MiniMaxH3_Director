@@ -1,5 +1,38 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — guard Alice RAW staging and location geometry
+
+- Director RAW repair requests now include the current Beat, assigned source,
+  previous shot end, opening WorldState, static setting, and registered location
+  geometry. The physical validator and timing validator receive the same source
+  context. Generated-setting distances absent from the Beat/source are labeled
+  approximate so they do not become hard movement requirements.
+- Creative and repaired RAW are checked for leaked internal prompt headers and
+  unresolved template placeholders before timing. A repair remains subject to
+  the same physical and prop/state validators as the original; rejected content
+  cannot reach H3 when bounded repairs/regeneration are exhausted. The existing
+  required-stage retry policy remains in force.
+- If pronoun resolution changes accepted RAW, the changed scene now passes the
+  existing physical and prop/state validators before replacing the last valid
+  scene. Invalid rewritten text is discarded by the existing optional resolver
+  fallback. No additional LLM stage or retry loop was added.
+- Spatial-setting parsing now compares explicit fixture placement claims across
+  structured location state, static setting, spatial refinement, and render
+  description. Contradictory fixed-object placements are rejected before
+  location reference generation. Exact distances are deliberately not compared
+  as authoritative geometry.
+- Added regressions for context-rich repair, same-validator revalidation and
+  fail-closed exhaustion, `RAW PROMPT`/placeholder leakage, approximate
+  distance handling, and contradictory fixture placement. Seven directly
+  focused tests passed. The full Director retry and location-reference suites
+  reported 188 passed and 2 unrelated failures: an existing wardrobe extractor
+  call-count expectation and an existing physical-validator system-prompt text
+  expectation. `py_compile` and `git diff --check` passed.
+- No local artifacts for the cited Alice run were present, so the exact model
+  response that introduced the wooden-post placement conflict could not be
+  attributed. The confirmed code defect was that parser validation checked the
+  mixed response's shape but never compared its fixed-placement claims.
+
 ## 2026-10-14 — isolate Director RAW repair sampling
 
 - Added immutable `REPAIR_LLM_SETTINGS` as a copy of the profile previously

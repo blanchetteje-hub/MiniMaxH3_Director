@@ -335,6 +335,7 @@ def pipeline_llm_side_effect(
                     f"Unscripted {purpose} call metadata={metadata!r}"
                 ) from error
             if metadata.get("stage") == "untimed_creative":
+                pending_creative_scene = untimed_scene(repaired)
                 pending_format_response = director_response(untimed_scene(repaired))
             return repaired
         if purpose == "director_h3_soundscape":
@@ -1769,9 +1770,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
     def test_request_one_repairs_physically_incoherent_raw_scene(self):
         bundle = segment_bundle()
+        bundle["segment"] = 2
         bundle["current_beat_text"] = (
             "Amy pushes Will into the closet and closes the door behind him."
         )
+        bundle["assigned_source"] = "Amy must push Will into the closet."
+        bundle["static_setting_description"] = (
+            "The closet entrance is beside the west wall."
+        )
+        bundle["previous_final_frame"] = "Amy and Will are at the closet doorway."
         bad = director_response(
             "At 00:01.000, Amy closes the closet door.\n"
             "At 00:04.500, Will steps into the closet."
@@ -1848,18 +1855,113 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "Fix the RAW PROMPT based on the VALIDATOR ERRORS.",
             repair_call.args[0][0]["content"],
         )
-        self.assertEqual(
-            repair_call.args[0][-1]["content"],
-            "RAW PROMPT\n"
-            + "Amy closes the closet door.\n"
-            + "Will steps into the closet."
-            + "\n\nVALIDATOR ERRORS:\n"
-            "- The door closes before Will enters.",
+        repair_user = repair_call.args[0][-1]["content"]
+        self.assertIn("CURRENT BEAT\n" + bundle["current_beat_text"], repair_user)
+        self.assertIn("ASSIGNED SOURCE\n" + bundle["assigned_source"], repair_user)
+        self.assertIn("PREVIOUS SHOT END\n" + bundle["previous_final_frame"], repair_user)
+        self.assertIn("OPENING WORLDSTATE", repair_user)
+        self.assertIn(bundle["static_setting_description"], repair_user)
+        self.assertIn("approximate visual context", repair_user)
+        self.assertIn(
+            "RAW PROMPT\nAmy closes the closet door.\nWill steps into the closet.",
+            repair_user,
         )
+        self.assertIn("VALIDATOR ERRORS:\n- The door closes before Will enters.", repair_user)
         self.assertEqual(
             physical.call_args_list[1].args[1],
             good_raw,
         )
+
+    def test_repaired_raw_must_pass_the_same_validator_before_h3(self):
+        bundle = segment_bundle()
+        bundle["current_beat_text"] = "Alice walks to the distant doorway."
+        bad_scene = "Alice reaches the distant doorway without moving."
+        request = mock.Mock(side_effect=[bad_scene, bad_scene])
+        physical = mock.Mock(side_effect=[
+            {"valid": False, "issue": "Alice must walk to the doorway first."},
+            {"valid": False, "issue": "Alice still reaches without walking."},
+        ])
+        with (
+            mock.patch("minimax.ask_llm", request),
+            mock.patch("minimax.DIRECTOR_RAW_SCENE_ATTEMPTS", 1),
+            mock.patch("minimax.DIRECTOR_RAW_SCENE_REPAIR_ATTEMPTS", 1),
+            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch(
+                "minimax.validate_director_raw_scene_prop_state",
+                return_value={"valid": True, "issue": ""},
+            ),
+            mock.patch("builtins.print"),
+        ):
+            with self.assertRaisesRegex(
+                minimax.BeatGenerationError,
+                "validation remained invalid.*Alice still reaches",
+            ):
+                minimax.request_segment_llm(
+                    bundle, [], "run-id", {"source_sha256": "source-hash"}
+                )
+
+        self.assertEqual(physical.call_count, 2)
+        self.assertEqual(
+            [call.args[1] for call in physical.call_args_list],
+            [bad_scene, bad_scene],
+        )
+        self.assertEqual(request.call_count, 2)  # one creative, one repair
+
+    def test_prompt_headers_and_placeholders_are_rejected_before_timing(self):
+        leaky = "RAW PROMPT\nAlice walks to the doorway."
+        self.assertTrue(minimax._director_raw_scene_prompt_leak_errors(leaky))
+        self.assertTrue(
+            minimax._director_raw_scene_prompt_leak_errors(
+                "At 00:00.000, Alice reaches {current_location}."
+            )
+        )
+
+        bundle = segment_bundle()
+        bundle["current_beat_text"] = "Alice walks to the doorway."
+        responses = pipeline_llm_side_effect([
+            leaky,
+            "Alice walks to the doorway.",
+        ])
+        physical = mock.Mock(return_value={"valid": True, "issue": ""})
+        with (
+            mock.patch("minimax.ask_llm", responses),
+            mock.patch("minimax.validate_director_raw_scene_physical", physical),
+            mock.patch(
+                "minimax.validate_director_raw_scene_prop_state",
+                return_value={"valid": True, "issue": ""},
+            ),
+            mock.patch(
+                "minimax.validate_director_raw_scene_timing",
+                return_value={"valid": True, "issue": ""},
+            ),
+            mock.patch("builtins.print"),
+        ):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-id", {"source_sha256": "source-hash"}
+            )
+
+        self.assertNotIn("RAW PROMPT", payload["raw_scene"])
+        self.assertNotIn("RAW PROMPT", payload["llm_result"]["detailed_description"])
+        self.assertEqual(physical.call_count, 1)
+
+    def test_timing_validation_gets_subject_and_established_geometry_context(self):
+        request = mock.Mock(return_value={"valid": True, "issue": ""})
+        minimax.validate_director_raw_scene_timing(
+            "At 00:00.000, Alice walks to the doorway.",
+            current_beat="Alice walks to the doorway.",
+            assigned_source="The doorway is twenty meters away.",
+            previous_shot_end="Alice is by the table.",
+            known_subject_state=minimax.empty_world_state("timing-context"),
+            static_setting_description="The doorway appears 20 meters away.",
+            llm_request=request,
+        )
+        user_context = request.call_args.args[0][1]["content"]
+        self.assertIn("CURRENT BEAT", user_context)
+        self.assertIn("ASSIGNED SOURCE", user_context)
+        self.assertIn("PREVIOUS SHOT END", user_context)
+        self.assertIn("OPENING WORLDSTATE", user_context)
+        self.assertIn("20 meters away", user_context)
+        self.assertIn("approximate visual context", user_context)
 
     def test_five_failed_raw_repairs_regenerate_director_raw(self):
         bundle = segment_bundle()

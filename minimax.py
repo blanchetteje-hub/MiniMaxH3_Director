@@ -20988,7 +20988,138 @@ def _first_balanced_json_object(value):
     raise ValueError("Spatial setting extractor returned unterminated JSON.")
 
 
-def parse_story_setting_description(raw_result):
+def _spatial_direction_claims(value):
+    text = str(value or "").casefold().replace("-", " ")
+    claims = set()
+    for match in re.finditer(
+        r"\b(northwest|north\s+west|northeast|north\s+east|"
+        r"southwest|south\s+west|southeast|south\s+east|"
+        r"north|south|east|west)\b",
+        text,
+    ):
+        direction = match.group(1).replace(" ", "")
+        if direction.startswith("north"):
+            claims.add(("vertical", "north"))
+        elif direction.startswith("south"):
+            claims.add(("vertical", "south"))
+        if direction.endswith("east"):
+            claims.add(("horizontal", "east"))
+        elif direction.endswith("west"):
+            claims.add(("horizontal", "west"))
+    return claims
+
+
+def _spatial_region_claims(value, location_name):
+    """Return only explicit center-versus-entry/perimeter placement claims."""
+    text = " ".join(str(value or "").casefold().split())
+    location = " ".join(str(location_name or "").casefold().split())
+    claims = set()
+    if location:
+        escaped_location = re.escape(location)
+        if re.search(
+            rf"\b(?:(?:at|in|near)\s+)?(?:the\s+)?(?:center|centre|middle)\s+"
+            rf"of\s+(?:the\s+)?{escaped_location}\b",
+            text,
+        ):
+            claims.add("center_of_location")
+        if re.search(
+            rf"\b(?:at|on|along)\s+(?:the\s+)?(?:edge|rim|perimeter)\s+"
+            rf"of\s+(?:the\s+)?{escaped_location}\b",
+            text,
+        ):
+            claims.add("boundary_of_location")
+    if re.search(
+        r"\bfram(?:e|es|ed|ing)\s+(?:the\s+)?(?:entrance|entry|doorway)\b",
+        text,
+    ):
+        claims.add("boundary_of_location")
+    return claims
+
+
+def _fixture_text_spatial_claims(text, item_name, location_name):
+    escaped_name = re.escape(" ".join(str(item_name or "").split()))
+    if not escaped_name.strip():
+        return set()
+    name_pattern = re.compile(rf"(?<!\w){escaped_name}(?!\w)", re.IGNORECASE)
+    claims = set()
+    for sentence in re.split(r"(?<=[.!?])\s+|[;,\n]+", str(text or "")):
+        if not name_pattern.search(sentence):
+            continue
+        claims.update(_spatial_direction_claims(sentence))
+        claims.update(_spatial_region_claims(sentence, location_name))
+    return claims
+
+
+def _spatial_claims_conflict(left, right):
+    if left[0] in {"vertical", "horizontal"} and left[0] == right[0]:
+        return left[1] != right[1]
+    return {left, right} == {"center_of_location", "boundary_of_location"}
+
+
+def validate_location_geometry_consistency(
+    location_state,
+    *,
+    static_setting="",
+    spatial_refinement="",
+    text_description="",
+):
+    """Reject explicit contradictory fixture placements before reference creation."""
+    if not isinstance(location_state, dict):
+        return []
+    location_record = location_state.get("location", {})
+    location_name = (
+        str(location_record.get("name") or "").strip()
+        if isinstance(location_record, dict) else ""
+    )
+    records_by_name = {}
+    for field in ("anchors", "objects"):
+        for record in location_state.get(field, []) or []:
+            if not isinstance(record, dict):
+                continue
+            item_name = " ".join(str(record.get("name") or "").split()).strip()
+            if not item_name:
+                continue
+            claims = set()
+            for position_field in ("wall", "location", "position"):
+                claims.update(_spatial_direction_claims(record.get(position_field)))
+                claims.update(
+                    _spatial_region_claims(record.get(position_field), location_name)
+                )
+            records_by_name.setdefault(_event_name_key(item_name), []).append(
+                (item_name, claims)
+            )
+
+    descriptions = (
+        ("static setting", static_setting),
+        ("spatial refinement", spatial_refinement),
+        ("render description", text_description),
+    )
+    for records in records_by_name.values():
+        item_name = records[0][0]
+        claims = [
+            ("structured placement", claim)
+            for _name, record_claims in records
+            for claim in record_claims
+        ]
+        for label, description in descriptions:
+            claims.extend(
+                (label, claim)
+                for claim in _fixture_text_spatial_claims(
+                    description, item_name, location_name
+                )
+            )
+        for index, (left_source, left_claim) in enumerate(claims):
+            for right_source, right_claim in claims[index + 1:]:
+                if _spatial_claims_conflict(left_claim, right_claim):
+                    return [
+                        f"Fixture {item_name!r} has contradictory fixed placement "
+                        f"claims ({left_source}: {left_claim}; "
+                        f"{right_source}: {right_claim})."
+                    ]
+    return []
+
+
+def parse_story_setting_description(raw_result, *, static_setting="", spatial_refinement=""):
     """Split Location + JSON + text output into persistent state and render prose."""
     text = str(raw_result or "").strip()
     text = re.sub(r"(?im)^\s*```(?:json|text|plaintext)?\s*$", "", text)
@@ -21047,6 +21178,15 @@ def parse_story_setting_description(raw_result):
             "Spatial setting extractor returned no text description based on JSON."
         )
 
+    geometry_errors = validate_location_geometry_consistency(
+        location_state,
+        static_setting=static_setting,
+        spatial_refinement=spatial_refinement,
+        text_description=description,
+    )
+    if geometry_errors:
+        raise ValueError("; ".join(geometry_errors))
+
     return {
         "location_name": location_name,
         "location_state": location_state,
@@ -21090,7 +21230,11 @@ def extract_story_setting_description(
                     "attempt": attempt,
                 },
             )
-            return parse_story_setting_description(raw)
+            return parse_story_setting_description(
+                raw,
+                static_setting=static_setting,
+                spatial_refinement=spatial_location,
+            )
         except LLMConnectionError:
             raise
         except (TypeError, ValueError) as error:
@@ -23393,6 +23537,25 @@ def _normalize_director_raw_scene_structure(raw_scene, segment_seconds=None):
     return _normalize_director_end_continuity_marker(text)
 
 
+def _director_raw_scene_prompt_leak_errors(raw_scene):
+    """Reject internal prompt headings and unresolved template placeholders."""
+    text = str(raw_scene or "")
+    errors = []
+    if re.search(
+        r"(?i)\b(?:RAW\s+PROMPT|VALIDATOR\s+ERRORS|SYSTEM\s+PROMPT|"
+        r"USER\s+PROMPT)\b",
+        text,
+    ):
+        errors.append("RAW SCENE contains a leaked internal prompt header.")
+    placeholder = re.search(r"(?<!\\)\{\s*[A-Za-z_][^{}\r\n]{0,100}\s*\}", text)
+    if placeholder:
+        errors.append(
+            "RAW SCENE contains an unresolved prompt placeholder "
+            f"{placeholder.group(0)!r}."
+        )
+    return errors
+
+
 def _director_raw_scene_structure_errors(
     raw_scene,
     segment_seconds=None,
@@ -23400,6 +23563,9 @@ def _director_raw_scene_structure_errors(
 ):
     """Return deterministic Request-1 structure errors."""
     text_value = str(raw_scene or "").strip()
+    prompt_leaks = _director_raw_scene_prompt_leak_errors(text_value)
+    if prompt_leaks:
+        return prompt_leaks
     markers = list(
         re.finditer(
             r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
@@ -29480,7 +29646,9 @@ def build_generation_messages(
             "duplicate, replace, or restyle an explicitly described fixed element unless "
             "CURRENT BEAT explicitly changes it. When CURRENT BEAT interacts with one, "
             "use its established placement/form. Do not force off-camera fixtures into "
-            "the frame."
+            "the frame. Exact distances and dimensions absent from CURRENT BEAT and "
+            "ASSIGNED SOURCE are approximate visual context, not story-established "
+            "measurements or hard choreography constraints."
         )
 
     try:
@@ -38118,7 +38286,19 @@ def format_known_subject_state_for_validator(continuity_state):
     return "\n".join(lines) or "N/A"
 
 
-def build_director_raw_scene_repair_messages(raw_prompt, validation_errors):
+def build_director_raw_scene_repair_messages(
+    raw_prompt,
+    validation_errors,
+    *,
+    current_beat="",
+    assigned_source="",
+    previous_shot_end="",
+    opening_world_state=None,
+    subject_definitions="",
+    static_setting_description="",
+    canonical_location_state=None,
+    character_references=None,
+):
     """Build a focused text repair request for Director RAW validator errors."""
     if isinstance(validation_errors, str):
         errors = [line.strip().lstrip("-* ").strip() for line in validation_errors.splitlines()]
@@ -38128,6 +38308,35 @@ def build_director_raw_scene_repair_messages(raw_prompt, validation_errors):
             for error in (validation_errors or [])
         ]
     errors = [error for error in errors if error]
+    context = []
+    if str(current_beat or "").strip():
+        context.append("CURRENT BEAT\n" + str(current_beat).strip())
+    if str(assigned_source or "").strip():
+        context.append("ASSIGNED SOURCE\n" + str(assigned_source).strip())
+    if str(previous_shot_end or "").strip():
+        context.append("PREVIOUS SHOT END\n" + str(previous_shot_end).strip())
+    if isinstance(opening_world_state, dict):
+        known_state = _format_director_validator_worldstate_context(
+            opening_world_state,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
+        )
+        context.append("OPENING WORLDSTATE\n" + (known_state or "N/A"))
+    if str(static_setting_description or "").strip():
+        context.append(
+            "STATIC SETTING AUTHORITY\n"
+            + " ".join(str(static_setting_description).split()).strip()
+        )
+    if context:
+        context.append(
+            "Spatial measurements appearing only in generated setting detail are "
+            "approximate visual context. Treat a precise distance as story-established "
+            "only when CURRENT BEAT or ASSIGNED SOURCE states it."
+        )
+    raw_section = "RAW PROMPT\n" + str(raw_prompt or "").strip()
+    if context:
+        raw_section = "\n\n".join(context + [raw_section])
     return [
         {
             "role": "system",
@@ -38140,8 +38349,7 @@ def build_director_raw_scene_repair_messages(raw_prompt, validation_errors):
         {
             "role": "user",
             "content": (
-                "RAW PROMPT\n"
-                f"{str(raw_prompt or '').strip()}\n\n"
+                f"{raw_section}\n\n"
                 "VALIDATOR ERRORS:\n"
                 + "\n".join(f"- {error}" for error in errors)
             ),
@@ -38723,6 +38931,7 @@ def build_director_raw_scene_physical_messages(
     subject_definitions="",
     canonical_location_state=None,
     character_references=None,
+    assigned_source="",
 ):
     """Check only subject movement, spatial continuity, and physical action order."""
     if (
@@ -38765,10 +38974,15 @@ def build_director_raw_scene_physical_messages(
                 f"{str(current_beat or '').strip()}\n\n"
                 "PREVIOUS SHOT END\n"
                 f"{str(previous_shot_end or '').strip() or 'N/A'}\n\n"
+                "ASSIGNED SOURCE\n"
+                f"{str(assigned_source or '').strip() or 'N/A'}\n\n"
                 "KNOWN SUBJECT STATE\n"
                 f"{known_subject_context}\n\n"
                 "STATIC SETTING AUTHORITY\n"
                 f"{' '.join(str(static_setting_description or '').split()).strip() or 'N/A'}\n\n"
+                "Spatial measurements appearing only in generated setting detail are "
+                "approximate visual context. Treat a precise distance as "
+                "story-established only when CURRENT BEAT or ASSIGNED SOURCE states it.\n\n"
                 "RAW SCENE\n"
                 f"{str(raw_scene or '').strip()}\n\n"
                 "If physical/spatial continuity is valid: "
@@ -39367,8 +39581,48 @@ def _world_state_prompt_subject_number(subject, key):
     return 1_000_000_000_000 + int(digest[:12], 16)
 
 
-def build_director_raw_scene_timing_messages(raw_scene):
+def build_director_raw_scene_timing_messages(
+    raw_scene,
+    *,
+    current_beat="",
+    assigned_source="",
+    previous_shot_end="",
+    known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
+    static_setting_description="",
+):
     """Build a narrow semantic check for whether RAW timing is visibly executable."""
+    context = []
+    if str(current_beat or "").strip():
+        context.append("CURRENT BEAT\n" + str(current_beat).strip())
+    if str(assigned_source or "").strip():
+        context.append("ASSIGNED SOURCE\n" + str(assigned_source).strip())
+    if str(previous_shot_end or "").strip():
+        context.append("PREVIOUS SHOT END\n" + str(previous_shot_end).strip())
+    if isinstance(known_subject_state, dict):
+        subject_state_context = _format_director_validator_worldstate_context(
+            known_subject_state,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
+        )
+        context.append("OPENING WORLDSTATE\n" + (subject_state_context or "N/A"))
+    if str(static_setting_description or "").strip():
+        context.append(
+            "STATIC SETTING AUTHORITY\n"
+            + " ".join(str(static_setting_description).split()).strip()
+        )
+    if context:
+        context.append(
+            "Spatial measurements appearing only in generated setting detail are "
+            "approximate visual context. Treat a precise distance as story-established "
+            "only when CURRENT BEAT or ASSIGNED SOURCE states it."
+        )
+    raw_section = "RAW SCENE\n" + str(raw_scene or "").strip()
+    if context:
+        raw_section = "\n\n".join(context + [raw_section])
     return [
         {
             "role": "system",
@@ -39398,8 +39652,7 @@ def build_director_raw_scene_timing_messages(raw_scene):
         {
             "role": "user",
             "content": (
-                "RAW SCENE\n"
-                f"{str(raw_scene or '').strip()}\n\n"
+                f"{raw_section}\n\n"
                 "If every consecutive physical transition has enough visible time: "
                 "{\"valid\": true, \"issue\": \"\"}\n"
                 "If one is clearly too compressed: {\"valid\": false, \"issue\": "
@@ -39412,6 +39665,14 @@ def build_director_raw_scene_timing_messages(raw_scene):
 def validate_director_raw_scene_timing(
     raw_scene,
     *,
+    current_beat="",
+    assigned_source="",
+    previous_shot_end="",
+    known_subject_state=None,
+    subject_definitions="",
+    canonical_location_state=None,
+    character_references=None,
+    static_setting_description="",
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -39419,7 +39680,17 @@ def validate_director_raw_scene_timing(
     if not str(raw_scene or "").strip():
         return {"valid": True, "issue": ""}
     result = llm_request(
-        build_director_raw_scene_timing_messages(raw_scene),
+        build_director_raw_scene_timing_messages(
+            raw_scene,
+            current_beat=current_beat,
+            assigned_source=assigned_source,
+            previous_shot_end=previous_shot_end,
+            known_subject_state=known_subject_state,
+            subject_definitions=subject_definitions,
+            canonical_location_state=canonical_location_state,
+            character_references=character_references,
+            static_setting_description=static_setting_description,
+        ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
         history_metadata={
@@ -39440,6 +39711,7 @@ def validate_director_raw_scene_physical(
     subject_definitions="",
     canonical_location_state=None,
     character_references=None,
+    assigned_source="",
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -39468,6 +39740,7 @@ def validate_director_raw_scene_physical(
             subject_definitions=subject_definitions,
             canonical_location_state=canonical_location_state,
             character_references=character_references,
+            assigned_source=assigned_source,
         ),
         response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
         parse_json_response=False,
@@ -39974,6 +40247,17 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             """Validate RAW content/state before timing or camera refinement."""
             if not current_beat_text:
                 return None
+            prompt_leaks = _director_raw_scene_prompt_leak_errors(candidate)
+            if prompt_leaks:
+                issue = "; ".join(prompt_leaks)
+                log_director_raw_validator_result(
+                    "prompt integrity",
+                    {"valid": False, "issue": issue},
+                    segment_number=segment_number,
+                    director_attempt=request1_attempt,
+                    repair_attempt=repair_attempt,
+                )
+                return ("PROMPT INTEGRITY", issue)
             try:
                 result = validate_director_raw_scene_physical(
                     current_beat_text,
@@ -39984,6 +40268,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     subject_definitions=subject_definitions,
                     canonical_location_state=canonical_location_state,
                     character_references=character_references,
+                    assigned_source=bundle.get("assigned_source", ""),
                     history_metadata=raw_validator_metadata(repair_attempt),
                 )
             except (
@@ -40104,6 +40389,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 build_director_raw_scene_repair_messages(
                     creative_scene,
                     [creative_issue],
+                    current_beat=current_beat_text,
+                    assigned_source=bundle.get("assigned_source", ""),
+                    previous_shot_end=previous_shot_end,
+                    opening_world_state=world_state_opening,
+                    subject_definitions=subject_definitions,
+                    static_setting_description=static_setting_description,
+                    canonical_location_state=canonical_location_state,
+                    character_references=character_references,
                 ),
                 response_format=None,
                 parse_json_response=False,
@@ -40272,6 +40565,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         try:
             timing_validation = validate_director_raw_scene_timing(
                 timed_scene,
+                current_beat=current_beat_text,
+                assigned_source=bundle.get("assigned_source", ""),
+                previous_shot_end=previous_shot_end,
+                known_subject_state=world_state_opening,
+                subject_definitions=subject_definitions,
+                canonical_location_state=canonical_location_state,
+                character_references=character_references,
+                static_setting_description=static_setting_description,
                 history_metadata=raw_validator_metadata(None),
             )
         except (
@@ -40649,6 +40950,63 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             segment_seconds=h3_prompt_duration,
         )
         if resolved_raw_scene != raw_scene:
+            physical_after_resolution = validate_director_raw_scene_physical(
+                current_beat_for_topology,
+                resolved_raw_scene,
+                previous_shot_end=(
+                    bundle.get("previous_final_frame", "")
+                    if segment_number > 1 else ""
+                ),
+                static_setting_description=bundle.get(
+                    "static_setting_description", ""
+                ),
+                known_subject_state=world_state_opening,
+                subject_definitions=subject_definitions,
+                canonical_location_state=canonical_location_state,
+                character_references=character_references,
+                assigned_source=bundle.get("assigned_source", ""),
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": (run_config or {}).get("source_sha256"),
+                    "segment": segment_number,
+                    "conditioning_mode": conditioning_mode,
+                    "stage": "post_pronoun_integrity",
+                },
+            )
+            if not physical_after_resolution.get("valid"):
+                raise ValueError(
+                    "Pronoun resolution changed RAW so it no longer passes the "
+                    "physical/spatial validator: "
+                    + str(physical_after_resolution.get("issue") or "unknown issue")
+                )
+            prop_after_resolution = validate_director_raw_scene_prop_state(
+                current_beat_for_topology,
+                resolved_raw_scene,
+                previous_shot_end=(
+                    bundle.get("previous_final_frame", "")
+                    if segment_number > 1 else ""
+                ),
+                prop_ledger=world_state_opening,
+                static_setting_description=bundle.get(
+                    "static_setting_description", ""
+                ),
+                subject_definitions=subject_definitions,
+                canonical_location_state=canonical_location_state,
+                character_references=character_references,
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": (run_config or {}).get("source_sha256"),
+                    "segment": segment_number,
+                    "conditioning_mode": conditioning_mode,
+                    "stage": "post_pronoun_integrity",
+                },
+            )
+            if not prop_after_resolution.get("valid"):
+                raise ValueError(
+                    "Pronoun resolution changed RAW so it no longer passes the "
+                    "prop/state validator: "
+                    + str(prop_after_resolution.get("issue") or "unknown issue")
+                )
             raw_scene = resolved_raw_scene
             request1_result["raw_scene"] = raw_scene
             console_log(

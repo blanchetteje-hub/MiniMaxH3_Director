@@ -385,6 +385,64 @@ The tavern is rectangular. The entrance is on the north wall.
             "The tavern is rectangular. The entrance is on the north wall.",
         )
 
+    def test_spatial_extraction_rejects_conflicting_fixture_relation_before_use(self):
+        raw = '''Location: Rabbit Hole
+{
+  "location": {"name": "Rabbit Hole"},
+  "anchors": [{"name": "wooden post", "type": "post", "location": "center of Rabbit Hole"}],
+  "objects": []
+}
+Text description based on JSON
+The wooden post frames the entrance.
+'''
+        with self.assertRaisesRegex(ValueError, "contradictory fixed placement"):
+            minimax.parse_story_setting_description(
+                raw,
+                static_setting="A wooden post frames the entrance.",
+                spatial_refinement=(
+                    "The wooden post stands at the center of Rabbit Hole."
+                ),
+            )
+
+    def test_spatial_extraction_rejects_conflicting_fixture_walls(self):
+        location_state = {
+            "location": {"name": "Hall"},
+            "anchors": [{
+                "name": "doorway",
+                "type": "door",
+                "wall": "north",
+            }],
+            "objects": [{
+                "name": "doorway",
+                "type": "door",
+                "location": "south wall",
+            }],
+        }
+        errors = minimax.validate_location_geometry_consistency(location_state)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("doorway", errors[0])
+        self.assertIn("contradictory fixed placement", errors[0])
+
+    def test_derived_measurement_is_not_a_geometry_constraint_by_itself(self):
+        location_state = {
+            "location": {"name": "Clearing"},
+            "anchors": [{
+                "name": "well",
+                "type": "well",
+                "location": "20 meters east of entrance",
+            }],
+            "objects": [],
+        }
+        self.assertEqual(
+            minimax.validate_location_geometry_consistency(
+                location_state,
+                static_setting="A well is part of the clearing.",
+                spatial_refinement="A well is 20 meters east of the entrance.",
+                text_description="The well sits east of the entrance.",
+            ),
+            [],
+        )
+
     def test_smart_extractors_use_profile_context_and_purposes(self):
         refine_request = mock.Mock(
             return_value="30 ft by 20 ft tavern; entrance north."
