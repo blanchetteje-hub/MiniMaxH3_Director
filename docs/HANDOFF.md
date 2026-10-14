@@ -1,5 +1,14 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — scene location selector output budget
+
+- Increased `scene_location_select` maximum output tokens from 256 to 2048.
+  The selector continues using Smart Extractor settings, whose high reasoning
+  budget is 1024 tokens; the request output cap now accommodates that thinking
+  budget alongside its structured response.
+- Updated the focused routing regression. Verification: selector/profile
+  tests, Python compilation, and `git diff --check`.
+
 ## 2026-10-14 — per-segment location selection and reference reuse
 
 - Added a single `scene_location_select` Smart Extractor call for each Beat,

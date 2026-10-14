@@ -577,7 +577,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "character_canon": 8192,
     "story_subject_wardrobe_extract": 8192,
     "story_location_extract": 8192,
-    "scene_location_select": 256,
+    "scene_location_select": 2048,
     "static_setting_extract": 8192,
     "macro_arc_create": 8192,
     "macro_arc_majority_tail_repair": 8192,

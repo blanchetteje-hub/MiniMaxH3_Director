@@ -39,7 +39,7 @@ class LocationStateReferenceTests(unittest.TestCase):
         )
         self.assertEqual(
             minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["scene_location_select"],
-            256,
+            2048,
         )
         self.assertEqual(
             minimax.SMART_EXTRACTOR_LLM_SETTINGS["thinking_budget_tokens"],
