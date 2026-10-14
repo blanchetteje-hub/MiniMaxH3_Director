@@ -2961,6 +2961,48 @@ class WorldStateReducerTests(unittest.TestCase):
         self.assertEqual(subject["location_id"], "location_b")
         self.assertIsNone(subject["support_id"])
 
+    def test_transition_move_commits_only_the_subject_named_by_state_action(self):
+        state = make_reducer_state()
+        state["subjects"]["subject_1"].update(
+            presence="present", location_id="location_a"
+        )
+        state["subjects"]["subject_2"].update(
+            presence="present", location_id="location_a"
+        )
+        validate_world_state(state)
+        transition = reduce_world_state(
+            state,
+            [self.action(
+                "alice-enters-destination",
+                "move",
+                subject_id="subject_1",
+                destination_location_id="location_b",
+            )],
+            segment_number=2,
+        )
+        self.assertTrue(transition.committed)
+        self.assertEqual(
+            transition.world_state["subjects"]["subject_1"]["location_id"],
+            "location_b",
+        )
+        self.assertEqual(
+            transition.world_state["subjects"]["subject_2"]["location_id"],
+            "location_a",
+        )
+        next_segment = reduce_world_state(
+            transition.world_state,
+            [],
+            segment_number=3,
+        )
+        self.assertEqual(
+            next_segment.world_state["subjects"]["subject_1"]["location_id"],
+            "location_b",
+        )
+        self.assertEqual(
+            next_segment.world_state["subjects"]["subject_2"]["location_id"],
+            "location_a",
+        )
+
     def test_move_can_explicitly_establish_new_support(self):
         state = make_reducer_state()
         result = reduce_world_state(

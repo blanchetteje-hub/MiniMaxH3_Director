@@ -1,5 +1,40 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — two-reference location transitions
+
+- Expanded the existing `scene_location_select` request to return
+  `same_location`, `new_location`, or `transitioning`. Python resolves a unique
+  destination alias against the existing WorldState location IDs; a missing
+  destination goes through the established static-setting, spatial-refinement,
+  structured location-state, and persistent 360-degree reference pipeline.
+  Existing location references are reused. Selector results and per-segment
+  origin/destination IDs survive checkpoints, and earlier selector checkpoints
+  are normalized without inferring a transition.
+- A transitioning segment keeps its opening WorldState unchanged. Director
+  context names the origin and destination environments separately and asks for
+  physical movement to the destination without assuming every Subject moves.
+  Subject location changes remain exclusive to accepted StateActions; following
+  segments select the destination as their normal single location reference.
+- H3 transition prompts bind `<Video 1>` to the origin reference and `<Video 2>`
+  to the destination reference, describe those roles at the start and end, and
+  require the final action to establish destination entry. Continuation segments
+  keep the preceding rendered clip as the separate native opening guide; a
+  transition bypasses a scheduled clean refresh to preserve that guide. Picture
+  references remain in their separate image inputs. Saved prompt rendering uses
+  the same ordered pair and guide behavior.
+- Added coverage for the three selector results, unique destination reuse versus
+  registration, checkpoint metadata, two-video prompt roles and ComfyUI input
+  slots, saved-prompt transition/revisit bindings, forced append on a refresh
+  boundary, and a reducer transition that moves only the named Subject and
+  carries that result into the following segment. Focused location tests:
+  13 passed; WorldState transition tests: 2 passed. `py_compile` and
+  `git diff --check` passed. The full location-reference module still has two
+  pre-existing unrelated failures: a wardrobe extractor call-count expectation
+  and a stale physical-validator prompt assertion. Adjacent workflow-name and
+  prompt-generation suites reported 32 passed and 6 unrelated failures: five
+  stale `print` call-count/assertion expectations and one unavailable generated
+  character-reference video fixture.
+
 ## 2026-10-14 — guard Alice RAW staging and location geometry
 
 - Director RAW repair requests now include the current Beat, assigned source,

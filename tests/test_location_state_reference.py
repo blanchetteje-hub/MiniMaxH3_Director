@@ -59,30 +59,31 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertIn("CURRENT BEAT", messages[1]["content"])
         self.assertIn('"name":"Rabbit Hole"', messages[1]["content"])
         self.assertNotIn("location_", messages[1]["content"])
-        self.assertIn("main action or result", messages[0]["content"])
+        self.assertIn("transitioning", messages[0]["content"])
         self.assertEqual(
             minimax.parse_scene_location_selection({
-                "selection": "existing",
+                "classification": "transitioning",
                 "location_name": "Tea Garden",
-                "mixed_environment": True,
             }),
             {
-                "selection": "existing",
+                "classification": "transitioning",
                 "location_name": "Tea Garden",
-                "mixed_environment": True,
             },
         )
         schema = minimax.build_scene_location_selection_response_format()
         self.assertEqual(
             set(schema["json_schema"]["schema"]["properties"]),
-            {"selection", "location_name", "mixed_environment"},
+            {"classification", "location_name"},
+        )
+        self.assertEqual(
+            schema["json_schema"]["schema"]["properties"]["classification"]["enum"],
+            ["same_location", "new_location", "transitioning"],
         )
 
     def test_scene_location_selection_call_is_tagged_and_logged(self):
         request = mock.Mock(return_value={
-            "selection": "active",
+            "classification": "same_location",
             "location_name": "",
-            "mixed_environment": False,
         })
         with mock.patch.object(minimax, "console_log") as log:
             selected = minimax.extract_scene_location_selection(
@@ -92,7 +93,7 @@ class LocationStateReferenceTests(unittest.TestCase):
                 llm_request=request,
                 history_metadata={"segment": 3},
             )
-        self.assertEqual(selected["selection"], "active")
+        self.assertEqual(selected["classification"], "same_location")
         self.assertEqual(
             request.call_args.kwargs["response_format"]["json_schema"]["name"],
             "scene_location_select",
@@ -102,6 +103,61 @@ class LocationStateReferenceTests(unittest.TestCase):
             "scene_location_select",
         )
         self.assertTrue(any("LLM result" in str(call) for call in log.call_args_list))
+
+    def test_location_selector_classifies_all_three_segment_location_modes(self):
+        for value in ("same_location", "new_location", "transitioning"):
+            parsed = minimax.parse_scene_location_selection({
+                "classification": value,
+                "location_name": "" if value == "same_location" else "Wonderland",
+            })
+            self.assertEqual(parsed["classification"], value)
+        with self.assertRaisesRegex(ValueError, "same_location"):
+            minimax.parse_scene_location_selection({
+                "classification": "same_location",
+                "location_name": "Wonderland",
+            })
+        self.assertEqual(
+            minimax.normalize_cached_scene_location_selection({
+                "selection": "existing",
+                "location_name": "Tea Garden",
+                "mixed_environment": True,
+            }),
+            {"classification": "new_location", "location_name": "Tea Garden"},
+        )
+
+    def test_destination_resolution_reuses_existing_alias_or_requests_creation(self):
+        world_state = minimax.empty_world_state("location-transition")
+        world_state["locations"] = {
+            "location_hole": {"id": "location_hole", "name": "Rabbit Hole"},
+            "location_garden": {"id": "location_garden", "name": "Tea Garden"},
+        }
+        same = minimax.resolve_scene_location_destination(
+            world_state,
+            "location_hole",
+            {"classification": "same_location", "location_name": ""},
+        )
+        self.assertEqual(same["destination_location_id"], "location_hole")
+        existing = minimax.resolve_scene_location_destination(
+            world_state,
+            "location_hole",
+            {"classification": "transitioning", "location_name": "the Tea Garden"},
+        )
+        self.assertEqual(existing["origin_location_id"], "location_hole")
+        self.assertEqual(existing["destination_location_id"], "location_garden")
+        self.assertFalse(existing["requires_registration"])
+        new = minimax.resolve_scene_location_destination(
+            world_state,
+            "location_hole",
+            {"classification": "new_location", "location_name": "Wonderland meadow"},
+        )
+        self.assertIsNone(new["destination_location_id"])
+        self.assertTrue(new["requires_registration"])
+        with self.assertRaisesRegex(ValueError, "active origin"):
+            minimax.resolve_scene_location_destination(
+                world_state,
+                "location_hole",
+                {"classification": "transitioning", "location_name": "Rabbit Hole"},
+            )
 
     def test_location_aliases_resolve_only_when_unique(self):
         world_state = minimax.empty_world_state("alias-test")
@@ -148,11 +204,17 @@ class LocationStateReferenceTests(unittest.TestCase):
         state["metadata"] = {
             "active_location_id": garden_id,
             "segment_location_ids": {"1": hole_id, "2": garden_id},
+            "segment_location_transitions": {
+                "2": {
+                    "classification": "transitioning",
+                    "origin_location_id": hole_id,
+                    "destination_location_id": garden_id,
+                },
+            },
             "scene_location_selections": {
                 "1": {
-                    "selection": "active",
+                    "classification": "same_location",
                     "location_name": "",
-                    "mixed_environment": False,
                 },
             },
             "location_contexts": {
@@ -175,14 +237,22 @@ class LocationStateReferenceTests(unittest.TestCase):
             {"1": hole_id, "2": garden_id},
         )
         self.assertEqual(
-            loaded["metadata"]["scene_location_selections"]["1"]["selection"],
-            "active",
+            loaded["metadata"]["scene_location_selections"]["1"]["classification"],
+            "same_location",
         )
         self.assertEqual(
             loaded["metadata"]["location_contexts"][garden_id][
                 "location_reference_video"
             ],
             "/state/garden.mp4",
+        )
+        self.assertEqual(
+            loaded["metadata"]["segment_location_transitions"]["2"],
+            {
+                "classification": "transitioning",
+                "origin_location_id": hole_id,
+                "destination_location_id": garden_id,
+            },
         )
         self.assertEqual(set(loaded["world_state"]["locations"]), {hole_id, garden_id})
 
@@ -258,6 +328,86 @@ class LocationStateReferenceTests(unittest.TestCase):
                 ["/state/hole.mp4", "/state/garden.mp4", "/state/hole.mp4"],
             )
 
+    def test_saved_transition_prompt_binds_both_videos_and_keeps_previous_guide(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prompt_path = os.path.join(directory, "generated_prompts.txt")
+            payload = {
+                "version": 1,
+                "config": {
+                    "segment_length": 8.0,
+                    "total_length": 24.0,
+                    "megapixels": 0.5,
+                    "steps": 6,
+                    "trim_frames": 2,
+                    "refresh_interval": 2,
+                    "total_segments": 3,
+                    "location_reference_videos": {
+                        "location_hole": "/state/hole.mp4",
+                        "location_garden": "/state/garden.mp4",
+                    },
+                },
+                "macro_arc": {},
+                "reference_jobs": [],
+                "prompts": [
+                    {"segment": 1, "duration": 8.0, "conditioning_mode": "initial", "location_id": "location_hole", "h3_prompt": "one"},
+                    {
+                        "segment": 2,
+                        "duration": 8.0,
+                        "conditioning_mode": "continuation",
+                        "location_id": "location_garden",
+                        "location_transition": {
+                            "classification": "transitioning",
+                            "origin_location_id": "location_hole",
+                            "destination_location_id": "location_garden",
+                        },
+                        "location_reference_video_paths": [
+                            "/state/hole.mp4", "/state/garden.mp4",
+                        ],
+                        "h3_prompt": "transition",
+                    },
+                    {
+                        "segment": 3,
+                        "duration": 8.0,
+                        "conditioning_mode": "continuation",
+                        "location_id": "location_garden",
+                        "location_reference_video_path": "/state/garden.mp4",
+                        "h3_prompt": "after transition",
+                    },
+                ],
+            }
+            minimax.save_generated_prompts_file(payload, prompt_path)
+            calls = []
+            render_results = [
+                ({}, os.path.join(directory, "one.mp4"), 1280, 720, 0.5),
+                ({}, os.path.join(directory, "two.mp4"), 1280, 720, 0.5),
+                ({}, os.path.join(directory, "three.mp4"), 1280, 720, 0.5),
+            ]
+            with (
+                mock.patch.object(minimax, "validate_runtime_environment"),
+                mock.patch.object(
+                    minimax,
+                    "render_segment_with_retries",
+                    side_effect=lambda *args, **kwargs: calls.append((args, kwargs)) or render_results[len(calls) - 1],
+                ),
+                mock.patch.object(minimax, "stitch_videos"),
+            ):
+                minimax.render_generated_prompts(
+                    type("Args", (), {"steps": 6})(),
+                    prompt_path,
+                )
+        self.assertEqual(
+            calls[1][1]["location_reference_video_paths"],
+            ["/state/hole.mp4", "/state/garden.mp4"],
+        )
+        self.assertTrue(calls[1][1]["force_append"])
+        self.assertEqual(calls[1][0][4], os.path.join(directory, "one.mp4"))
+        self.assertEqual(
+            calls[2][1]["location_reference_video_paths"],
+            ["/state/garden.mp4"],
+        )
+        self.assertFalse(calls[2][1]["force_append"])
+        self.assertEqual(calls[2][0][4], os.path.join(directory, "two.mp4"))
+
     def test_saved_location_reference_jobs_return_reusable_id_mapping(self):
         jobs = [
             {
@@ -323,6 +473,25 @@ class LocationStateReferenceTests(unittest.TestCase):
         current_bundle = source.index("segment_bundle = build_segment_bundle(", current_location)
         self.assertLess(current_location, current_bundle)
 
+    def test_transition_destination_reuses_static_setting_and_reference_pipeline(self):
+        import inspect
+
+        source = inspect.getsource(minimax._run_main)
+        location_start = source.index("def prepare_scene_location_for_segment(")
+        location_end = source.index("# Assemble the prefetched data", location_start)
+        location_code = source[location_start:location_end]
+        for stage in (
+            "extract_static_setting(",
+            "refine_story_setting_spatially(",
+            "extract_story_setting_description(",
+            "seed_canonical_static_location_state(",
+            "ensure_location_reference_for_segment(",
+        ):
+            self.assertIn(stage, location_code)
+        self.assertIn("resolution.get(\"requires_registration\")", location_code)
+        self.assertIn("ensure_location_reference_for_segment(\n                origin_context", location_code)
+        self.assertIn("selection_cache.get(cache_key)", location_code)
+
     def test_h3_location_reference_context_is_selected_per_location(self):
         rabbit_prompt = minimax.inject_location_reference_into_h3_prompt(
             "detailed_description: [Shot 1] Alice lands.",
@@ -338,6 +507,127 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertIn("flower garden with a long tea table", garden_prompt)
         self.assertNotIn("flower garden", rabbit_prompt)
         self.assertNotIn("rabbit hole", garden_prompt)
+
+    def test_transition_h3_context_assigns_ordered_temporal_video_roles(self):
+        prompt = minimax.inject_location_transition_into_h3_prompt(
+            "detailed_description: [Shot 1] Continuing directly from <Video 1>. Alice enters.",
+            "Rabbit Hole",
+            "A grassy opening above a descending tunnel.",
+            "Tea Garden",
+            "A garden with a long table beneath flowering trees.",
+        )
+        self.assertIn("<Video 1> is the 360-degree reference for the ORIGIN", prompt)
+        self.assertIn("<Video 2> is the 360-degree reference for the DESTINATION", prompt)
+        self.assertLess(prompt.index("<Video 1> is"), prompt.index("<Video 2> is"))
+        self.assertIn("the preceding rendered segment's opening guide", prompt)
+        self.assertIn("show the physical transition", prompt)
+        self.assertIn("final action clearly establish entry", prompt)
+        self.assertIn("do not preserve or combine both environments simultaneously", prompt)
+        self.assertNotIn("Continuing directly from <Video 1>", prompt)
+        initial_transition = minimax.inject_location_transition_into_h3_prompt(
+            "detailed_description: Alice steps into the garden.",
+            "Tunnel",
+            "A narrow tunnel.",
+            "Garden",
+            "An open garden.",
+            has_preceding_guide=False,
+        )
+        self.assertIn("Begin in the origin environment", initial_transition)
+        self.assertNotIn("preceding rendered segment as the separate opening guide", initial_transition)
+
+    def test_director_receives_separate_transition_and_static_location_context(self):
+        messages, _, _ = minimax.build_generation_messages(
+            director_rules="Director rules",
+            story="unused",
+            beats=["A traveler leaves the tunnel and enters a garden."],
+            completed_beat_ids=set(),
+            recent_results=[],
+            current_segment=1,
+            total_segments=1,
+            segment_length=8,
+            total_length=8,
+            static_setting_description=(
+                "ORIGIN ENVIRONMENT AT SEGMENT OPENING — tunnel. "
+                "DESTINATION ENVIRONMENT AT SEGMENT END — garden."
+            ),
+            location_transition_context=(
+                "Show the physical movement from tunnel to garden and end after entry."
+            ),
+        )
+        user = messages[1]["content"]
+        self.assertIn("LOCATION TRANSITION FOR THIS SEGMENT:", user)
+        self.assertIn("Show the physical movement from tunnel to garden", user)
+        self.assertIn("STATIC SETTING AUTHORITY", user)
+        self.assertIn("ORIGIN ENVIRONMENT AT SEGMENT OPENING — tunnel", user)
+        self.assertIn("DESTINATION ENVIRONMENT AT SEGMENT END — garden", user)
+
+    def test_transition_reference_connections_keep_origin_then_destination_slots(self):
+        workflow = minimax.load_workflow(minimax.APPEND_WORKFLOW_FILE)
+        label = "two-location transition test"
+        minimax.validate_workflow(workflow, label, is_append=True)
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as origin, tempfile.NamedTemporaryFile(suffix=".mp4") as destination:
+            origin.write(b"origin")
+            destination.write(b"destination")
+            origin.flush()
+            destination.flush()
+            minimax.connect_location_reference_video(
+                workflow,
+                label,
+                [origin.name, destination.name],
+            )
+        _, conditioner = minimax.find_workflow_node(
+            workflow,
+            minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
+            label,
+            "MiniMaxH3ReferenceToVideo",
+        )
+        inputs = conditioner["inputs"]
+        first_loader, second_loader = (
+            inputs["ref_videos.ref_video_0"][0],
+            inputs["ref_videos.ref_video_1"][0],
+        )
+        self.assertNotEqual(first_loader, second_loader)
+        self.assertEqual(
+            workflow[first_loader]["inputs"]["video"],
+            os.path.abspath(origin.name),
+        )
+        self.assertEqual(
+            workflow[second_loader]["inputs"]["video"],
+            os.path.abspath(destination.name),
+        )
+        self.assertNotIn("ref_video_audios.ref_video_audio_0", inputs)
+        self.assertNotIn("ref_video_audios.ref_video_audio_1", inputs)
+
+    def test_transition_render_uses_append_guide_even_on_refresh_schedule(self):
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as previous:
+            with (
+                mock.patch.object(minimax, "_assert_h3_subject_identity"),
+                mock.patch.object(minimax, "_assert_h3_prompt_contains_continuity"),
+                mock.patch.object(minimax, "prepare_append_workflow", return_value={}) as append,
+                mock.patch.object(minimax, "prepare_refresh_workflow") as refresh,
+                mock.patch.object(minimax, "queue_workflow", return_value="prompt"),
+                mock.patch.object(minimax, "wait_for_completion", return_value={}),
+                mock.patch.object(minimax, "get_video_path", return_value="rendered.mp4"),
+                mock.patch.object(minimax, "postprocess_guided_append_video", return_value="rendered.mp4"),
+                mock.patch.object(minimax, "get_video_resolution", return_value=(1280, 720)),
+            ):
+                minimax._render_segment_with_retries(
+                    2,
+                    8.0,
+                    0.5,
+                    "transition prompt",
+                    previous.name,
+                    6,
+                    refresh_interval=1,
+                    location_reference_video_paths=["/state/origin.mp4", "/state/destination.mp4"],
+                    force_append=True,
+                )
+        append.assert_called_once()
+        refresh.assert_not_called()
+        self.assertEqual(
+            append.call_args.kwargs["location_reference_video_paths"],
+            ["/state/origin.mp4", "/state/destination.mp4"],
+        )
 
     def test_spatial_refinement_prompt_uses_requested_contract(self):
         location = "A modest medieval tavern with a counter beside a hearth."
