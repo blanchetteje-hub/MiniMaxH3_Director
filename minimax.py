@@ -3996,6 +3996,161 @@ def build_current_segment_subject_messages(
     ]
 
 
+def _registered_non_subject_entities(world_state):
+    """Return names of locations and registered physical props/fixtures."""
+    if not isinstance(world_state, dict):
+        return []
+    entities = []
+    for location in (world_state.get("locations") or {}).values():
+        if isinstance(location, dict) and str(location.get("name") or "").strip():
+            entities.append({"name": str(location["name"]).strip(), "aliases": []})
+    for prop in (world_state.get("props") or {}).values():
+        if not isinstance(prop, dict) or not str(prop.get("name") or "").strip():
+            continue
+        aliases = []
+        registration = (prop.get("provenance") or {}).get("registration", {})
+        source_type = str(registration.get("source_type") or "").strip()
+        if source_type and prop.get("kind") in {"fixture", "support", "fixture_support"}:
+            aliases.append(source_type)
+        entities.append({"name": str(prop["name"]).strip(), "aliases": aliases})
+    return entities
+
+
+def _phrase_occurs_in_text(phrase, text):
+    phrase = " ".join(str(phrase or "").split()).strip()
+    text = str(text or "")
+    if not phrase or not text:
+        return False
+    pattern = r"(?<![\w])" + r"\s+".join(
+        re.escape(word) for word in phrase.split()
+    ) + r"(?![\w])"
+    return re.search(pattern, text, re.IGNORECASE) is not None
+
+
+def _explicitly_animated_entity_in_text(text, entity_names):
+    """Recognize direct source evidence that a normally physical entity is animate."""
+    text = " ".join(str(text or "").split())
+    if not text:
+        return False
+    animate_descriptors = r"(?:animated|animate|living|alive|sentient|talking|speaking)"
+    animate_actions = (
+        r"(?:alive|animate|animated|sentient|speaks?|talks?|talking|speaking|"
+        r"says?|asks?|answers?|walks?|runs?|gestures?|waves?|sings?|laughs?|"
+        r"moves\s+(?:itself|on\s+its\s+own|by\s+itself))"
+    )
+    for entity_name in entity_names:
+        entity = "\\s+".join(re.escape(word) for word in str(entity_name).split())
+        if not entity:
+            continue
+        if re.search(
+            rf"(?i)\b{animate_descriptors}\b(?:\s+[\w'-]+){{0,2}}\s+{entity}\b",
+            text,
+        ):
+            return True
+        if re.search(
+            rf"(?i)\b{entity}\b\s+(?:(?:is|was|can|does)\s+)?{animate_actions}\b",
+            text,
+        ):
+            return True
+        if re.search(
+            rf"(?i)\b{entity}\b\s+(?:is|was)\s+(?:an?\s+)?"
+            r"(?:(?:living|animated|sentient)\s+)?"
+            r"(?:person|creature|animal|character|being)\b",
+            text,
+        ):
+            return True
+        if re.search(
+            rf"(?i)\b(?:person|creature|animal|character|being)\b"
+            rf"\s+(?:named|called)\s+{entity}\b",
+            text,
+        ):
+            return True
+    return False
+
+
+def _matches_registered_non_subject(candidate, world_state):
+    """Find registered non-Subject entities that identify a candidate label."""
+    if not isinstance(candidate, dict):
+        candidate = {"name": str(candidate or "")}
+    candidate_name = " ".join(str(candidate.get("name") or "").split()).strip()
+    matches = []
+    for entity in _registered_non_subject_entities(world_state):
+        aliases = [entity["name"], *entity.get("aliases", [])]
+        candidate_key = _subject_identity_key(candidate_name)
+        candidate_stem, _numbered = _functional_subject_type_key(candidate_name)
+        candidate_words = candidate_stem.split()
+        name_match = False
+        for alias in aliases:
+            alias_key = _subject_identity_key(alias)
+            alias_words = alias_key.split()
+            if (
+                candidate_key == alias_key
+                or _phrase_occurs_in_text(alias, candidate_name)
+                or _phrase_occurs_in_text(candidate_name, alias)
+            ):
+                name_match = True
+                break
+            # Functional labels such as "Moss1" may be derived from an
+            # established noun phrase such as "mossy ground". Require a
+            # distinctive four-letter prefix so generic short words do not
+            # collapse unrelated identities.
+            if len(candidate_words) == 1 and any(
+                len(word) >= 4 and (word.startswith(candidate_words[0]) or candidate_words[0].startswith(word))
+                for word in alias_words
+            ):
+                name_match = True
+                break
+        if name_match:
+            matches.append(entity)
+    return matches
+
+
+def _is_registered_non_subject_candidate(candidate, world_state, source_text=""):
+    if isinstance(candidate, dict):
+        candidate_name = str(candidate.get("name") or "")
+        evidence = str(candidate.get("evidence") or "")
+        description = str(candidate.get("source_description") or "")
+    else:
+        candidate_name = str(candidate or "")
+        evidence = description = ""
+    matches = _matches_registered_non_subject(
+        {"name": candidate_name}, world_state
+    )
+    if not matches or _explicitly_animated_entity_in_text(
+        "\n".join((str(source_text or ""), evidence, description)),
+        list(dict.fromkeys([
+            candidate_name,
+            _functional_subject_type_key(candidate_name)[0],
+            *[
+                name
+                for entity in matches
+                for name in [entity["name"], *entity.get("aliases", [])]
+            ],
+        ])),
+    ):
+        return False
+    console_log(
+        "Rejected Subject candidate because it identifies a registered "
+        "non-Subject entity: "
+        f"{candidate_name!r} -> "
+        + ", ".join(entity["name"] for entity in matches),
+        flush=True,
+    )
+    return True
+
+
+def _filter_registered_non_subject_candidates(candidates, world_state, source_text=""):
+    """Drop object/location candidates before they acquire Subject identity."""
+    accepted = []
+    for candidate in candidates or []:
+        if _is_registered_non_subject_candidate(
+            candidate, world_state, source_text
+        ):
+            continue
+        accepted.append(candidate)
+    return accepted
+
+
 def parse_current_segment_subject_result(raw_result, current_beat, assigned_source=""):
     """Validate identity-only Subject candidates against exact beat evidence."""
     candidate = raw_result
@@ -4061,6 +4216,7 @@ def extract_current_segment_subjects(
     assigned_source="",
     registered_subject_names=(),
     *,
+    world_state=None,
     llm_request=None,
     history_metadata=None,
 ):
@@ -4090,8 +4246,13 @@ def extract_current_segment_subjects(
                     "attempt": attempt,
                 },
             )
-            return parse_current_segment_subject_result(
+            parsed = parse_current_segment_subject_result(
                 raw, current_beat, assigned_source
+            )
+            return _filter_registered_non_subject_candidates(
+                parsed,
+                world_state,
+                "\n".join((str(current_beat or ""), str(assigned_source or ""))),
             )
         except LLMConnectionError:
             raise
@@ -4139,6 +4300,7 @@ def prepare_segment_world_state_for_director(
             current_beat,
             assigned_source,
             registered_names,
+            world_state=state,
             llm_request=llm_request,
             history_metadata={
                 **dict(history_metadata or {}),
@@ -4176,7 +4338,28 @@ def prepare_segment_world_state_for_director(
         if " ".join(item["name"].split()).casefold() not in before_names
     ]
     wardrobe_updates = {}
-    for subject in added:
+    wardrobe_targets = {subject["name"]: subject for subject in added}
+    # If an earlier optional wardrobe extraction returned incomplete slots,
+    # retry the existing authority before the first reference can be rendered.
+    for subject in state.get("subjects", {}).values():
+        identity = subject.get("identity", {}) if isinstance(subject, dict) else {}
+        authority = (
+            subject.get("provenance", {}).get("identity", {}).get("authority")
+            if isinstance(subject, dict)
+            else None
+        )
+        if (
+            authority == "current_segment_subject_extractor"
+            and identity.get("clothing_applicability") == "required"
+            and not _reference_wardrobe_has_body_coverage(subject.get("wardrobe"))
+        ):
+            wardrobe_targets.setdefault(subject.get("name", ""), {
+                "name": subject.get("name", ""),
+                "gender": identity.get("gender", "unknown"),
+                "physical_form": identity.get("physical_form", "unknown"),
+                "source_description": identity.get("source_description", "unknown"),
+            })
+    for subject in wardrobe_targets.values():
         name = subject["name"]
         canonical_record = {
             "name": name,
@@ -4197,6 +4380,16 @@ def prepare_segment_world_state_for_director(
                     "authority": "pre_director_current_segment_subject",
                 },
             )
+            clothing_state = extract_clothing_state(
+                clothing,
+                llm_request=llm_request,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "segment": int(segment_number),
+                    "subject": name,
+                    "authority": "pre_director_current_segment_subject",
+                },
+            )
         except LLMConnectionError:
             raise
         except (TypeError, ValueError, json.JSONDecodeError) as error:
@@ -4207,7 +4400,21 @@ def prepare_segment_world_state_for_director(
                 flush=True,
             )
             continue
-        wardrobe_updates[name] = _world_state_wardrobe_from_canonical_text(clothing)
+        structured_wardrobe = _world_state_wardrobe_from_clothing_slots(
+            clothing_state
+        )
+        if (
+            subject.get("physical_form") == "humanoid"
+            and not _reference_wardrobe_has_body_coverage(structured_wardrobe)
+        ):
+            console_log(
+                f"PRE-DIRECTOR WARDROBE for {name!r} did not establish a complete "
+                "upper/lower outfit; preserving unknown wardrobe and withholding "
+                "a first character-reference render until complete attire is known.",
+                flush=True,
+            )
+            continue
+        wardrobe_updates[name] = structured_wardrobe
     if wardrobe_updates:
         try:
             state = seed_canonical_wardrobes(state, wardrobe_updates)
@@ -26317,6 +26524,40 @@ def _world_state_wardrobe_from_canonical_text(clothing):
     return grouped
 
 
+def _world_state_wardrobe_from_clothing_slots(clothing_state):
+    """Adapt the existing four-slot clothing extractor into layered WorldState."""
+    if not isinstance(clothing_state, dict) or set(clothing_state) != set(_WARDROBE_FIELDS):
+        raise ValueError("Structured Subject wardrobe must contain all four slots.")
+    wardrobe = {}
+    for slot in _WARDROBE_FIELDS:
+        value = " ".join(str(clothing_state.get(slot) or "").split()).strip()
+        wardrobe[slot] = (
+            [_world_state_garment_record(value)]
+            if value and value.casefold() not in {"n/a", "none", "unknown"}
+            else []
+        )
+    return wardrobe
+
+
+def _reference_wardrobe_has_body_coverage(wardrobe):
+    """Require upper and lower attire before rendering a required-clothing Subject."""
+    if not isinstance(wardrobe, dict):
+        return False
+    def has_garment(value):
+        if isinstance(value, str):
+            return bool(value.strip()) and value.strip().casefold() not in {
+                "n/a", "none", "unknown",
+            }
+        return isinstance(value, list) and any(
+            isinstance(layer, dict)
+            and str(layer.get("garment") or "").strip()
+            and str(layer.get("garment") or "").strip().casefold()
+            not in {"n/a", "none", "unknown"}
+            for layer in value
+        )
+    return all(has_garment(wardrobe.get(slot)) for slot in ("upper", "lower"))
+
+
 def world_state_wardrobes_from_character_canon(character_canon):
     """Adapt only the per-Subject dedicated wardrobe extractor output."""
     wardrobes = {}
@@ -33452,7 +33693,7 @@ def _character_reference_wardrobe_text(record):
     values = []
     for field in _WARDROBE_FIELDS:
         value = _known_continuity_value(wardrobe.get(field))
-        if not value or value.casefold() == "absent":
+        if not value or value.casefold() in {"absent", "unknown", "none", "n/a"}:
             continue
         if value not in values:
             values.append(value)
@@ -33987,6 +34228,10 @@ def _world_state_subject_reference_records(world_state):
             "name": name,
             "subject_id": subject.get("subject_id"),
             "gender": identity.get("gender", "unknown"),
+            "physical_form": identity.get("physical_form", "unknown"),
+            "clothing_applicability": identity.get(
+                "clothing_applicability", "unknown"
+            ),
             "picture_ids": picture_ids,
             "picture_id": picture_ids[0] if picture_ids else None,
             "speaker_id": f"S{_world_state_prompt_subject_number(subject, subject.get('id', name))}",
@@ -34252,6 +34497,17 @@ def ensure_character_reference_images(
         ) is None:
             continue
         existing = references.get(name)
+        if (
+            not existing
+            and record.get("clothing_applicability") == "required"
+            and not _reference_wardrobe_has_body_coverage(record.get("wardrobe"))
+        ):
+            console_log(
+                f"Skipping first character-reference render for {name!r}: the "
+                "required upper/lower wardrobe is not established.",
+                flush=True,
+            )
+            continue
         source_identity_image_name = subject_identity_reference_image(record)
         if existing and not existing.get("authority"):
             existing["authority"] = (
@@ -34392,6 +34648,17 @@ def plan_character_reference_images(
             continue
 
         existing = references.get(name)
+        if (
+            not existing
+            and record.get("clothing_applicability") == "required"
+            and not _reference_wardrobe_has_body_coverage(record.get("wardrobe"))
+        ):
+            console_log(
+                f"Skipping first character-reference plan for {name!r}: the "
+                "required upper/lower wardrobe is not established.",
+                flush=True,
+            )
+            continue
         source_identity_image_name = subject_identity_reference_image(record)
         if existing and not existing.get("authority"):
             existing["authority"] = (
@@ -37707,6 +37974,10 @@ def resolve_director_raw_scene_subjects(
         subject_reference = item.get("subject_id")
         if not isinstance(is_new, bool):
             raise ValueError("RAW Subject is_new must be a boolean.")
+        if _is_registered_non_subject_candidate(
+            raw_name, world_state, raw_input
+        ):
+            continue
         if is_new:
             if subject_reference is not None:
                 raise ValueError("A new RAW Subject must have subject_id null.")
@@ -42861,8 +43132,11 @@ def _run_main(
                 f"Starting phase {phase_number} at segment {segment}; retaining "
                 "dynamically created Subjects from earlier phases."
             )
-        prepare_current_segment_world_state(segment)
         prepare_scene_location_for_segment(segment)
+        # Register the selected location's canonical fixtures/supports before
+        # interpreting current-Beat Subject candidates, so the existing
+        # non-Subject vocabulary can prevent object-to-Subject promotion.
+        prepare_current_segment_world_state(segment)
         segment_bundle = build_segment_bundle(
             segment,
             completed_beat_ids,
@@ -43087,7 +43361,15 @@ def _run_main(
             if isinstance(llm_result.get("subject_genders"), dict)
             else {}
         )
-        formatter_subject_names = list(formatter_subject_genders)
+        formatter_subject_names = [
+            name
+            for name in formatter_subject_genders
+            if not _is_registered_non_subject_candidate(
+                name,
+                segment_bundle.get("world_state_opening"),
+                detailed_description,
+            )
+        ]
 
         registration_subject_genders = dict(formatter_subject_genders)
         registration_subject_genders.update(canonical_subject_genders)

@@ -1,5 +1,41 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — keep registered physical entities out of Subject discovery
+
+- Pre-Director Subject candidates are now checked against registered locations,
+  props, fixtures, and supports before Python assigns Subject IDs or requests a
+  wardrobe. Visible-Subject resolution and formatter Subject-name hints apply
+  the same check before a new identity can reach reference generation or
+  Subject/Picture bindings.
+  Explicitly animated/talking entities remain eligible even when their name
+  matches a registered physical object. The filter uses runtime WorldState
+  vocabulary and source wording, not a list of forbidden object names.
+- Segment location preparation now precedes current-Beat Subject discovery so
+  fixtures and supports registered for a newly selected location are included
+  in the deterministic category check.
+- Dynamic humanoid wardrobes now follow the predefined-Subject path: after
+  `story_subject_wardrobe_extract`, the existing `clothing_state_extractor`
+  converts the complete outfit into `upper`, `lower`, `footwear`, and `other`
+  before `seed_canonical_wardrobes()` writes it to WorldState. Character
+  references consume that prepared opening state, then Picture bindings and
+  final H3 assembly run as before. Incomplete upper/lower data stays unknown;
+  the first reference render/plan is withheld until body coverage is known, and
+  the existing wardrobe extraction is retried on a later pre-Director pass.
+  Existing references and rendered-wardrobe precedence are unchanged.
+- Focused tests cover Moss1/mossy-ground and registered tote/post rejection,
+  prevention of wardrobe/reference/binding side effects, explicitly animated
+  object and talking-animal preservation, complete Mad-Hatter-style four-slot
+  seeding before Picture creation, and withholding a partial hat-only
+  reference. Focused regressions passed (9 tests, including the tavern
+  Elf/Dragon pre-Director fixtures). The broader five-file run reported 351
+  passed, 23 failed, and 30 subtests passed. Those failures assert older
+  wardrobe adapter/call-count behavior, retired story-start response fields, or
+  pre-split Director prompt wording/contracts; the focused changed paths passed.
+- `python -m py_compile minimax.py world_state.py story_planner.py` and
+  `git diff --check` passed. The updated automation copy of `minimax.py` was
+  verified byte-for-byte with `cmp -s`.
+- No runtime LLM prompts, response schemas, reducers, or retry policy changed.
+
 ## 2026-10-14 — fail open only at optional stages
 
 - Added `docs/PIPELINE_FAILURE_POLICY.md`, linked from `PROJECT_NOTES.md`, to

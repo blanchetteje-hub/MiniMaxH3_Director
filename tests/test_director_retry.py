@@ -211,6 +211,13 @@ def prepare_tavern_segment(state, segment_number):
     replies = [subject_reply]
     if wardrobe_reply is not None:
         replies.append(wardrobe_reply)
+        if wardrobe_reply.get("clothing") != "N/A":
+            replies.append({
+                "upper": "wool tunic",
+                "lower": "travel trousers",
+                "footwear": "leather shoes",
+                "other": "travel cloak",
+            })
     replies.append(tavern_segment_prop_results(segment_number))
     llm = mock.Mock(side_effect=replies)
     state, added_names = minimax.prepare_segment_world_state_for_director(
@@ -1069,6 +1076,92 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(added, ["luminous being"])
         self.assertIn("luminous being", continuity["subjects"])
+
+    def test_raw_subject_resolution_drops_registered_inanimate_props_and_supports(self):
+        state = new_world_state({
+            "source_sha256": "raw-subject-object-collision",
+            "subjects": {
+                "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
+            },
+        })
+        state, location_id = seed_canonical_static_location_state(
+            state,
+            {
+                "location": {"name": "garden"},
+                "anchors": [{
+                    "name": "wooden post",
+                    "type": "wooden post",
+                    "world_state_role": "support",
+                    "mobility": "fixed",
+                }],
+                "objects": [],
+            },
+        )
+        state = register_explicit_persistent_props(state, [{
+            "name": "green tote",
+            "kind": "object",
+            "mobility": "movable",
+            "needed_for_state": True,
+            "reason": "A registered prop.",
+            "location_id": location_id,
+        }])
+        raw = (
+            "At 00:00.000, The green tote rests beside the wooden post.\n"
+            "At 00:04.000, Amy walks past them.\n"
+            "End continuity state: Amy remains in the garden."
+        )
+        request = mock.Mock(return_value={
+            "subjects": [
+                {"raw_name": "green tote", "subject_id": None, "is_new": True},
+                {"raw_name": "wooden post", "subject_id": None, "is_new": True},
+            ],
+        })
+        result, subjects = minimax.resolve_director_raw_scene_subjects(
+            raw, state, llm_request=request, segment_seconds=6.0
+        )
+        self.assertEqual(result, raw)
+        self.assertEqual(subjects, [])
+        self.assertEqual(set(state["subjects"]), {"subject_1"})
+
+    def test_raw_subject_resolution_keeps_explicitly_animated_objects_and_animals(self):
+        state = new_world_state({
+            "source_sha256": "raw-subject-animate-object",
+            "subjects": {
+                "1": {"subject_id": 1, "name": "Amy", "gender": "female", "picture_ids": []},
+            },
+        })
+        state, location_id = seed_canonical_static_location_state(
+            state,
+            {
+                "location": {"name": "garden"},
+                "anchors": [{
+                    "name": "wooden post",
+                    "type": "wooden post",
+                    "world_state_role": "support",
+                    "mobility": "fixed",
+                }],
+                "objects": [],
+            },
+        )
+        raw = (
+            "At 00:00.000, The animated wooden post speaks to Amy.\n"
+            "At 00:03.000, A talking fox waves.\n"
+            "End continuity state: Amy listens to them."
+        )
+        request = mock.Mock(return_value={
+            "subjects": [
+                {"raw_name": "wooden post", "subject_id": None, "is_new": True},
+                {"raw_name": "talking fox", "subject_id": None, "is_new": True},
+            ],
+        })
+        result, subjects = minimax.resolve_director_raw_scene_subjects(
+            raw, state, llm_request=request, segment_seconds=6.0
+        )
+        self.assertEqual(result, raw)
+        self.assertEqual([subject["name"] for subject in subjects], [
+            "wooden post", "talking fox",
+        ])
+        self.assertEqual(set(state["subjects"]), {"subject_1"})
 
     def test_raw_subject_resolution_deduplicates_repeated_identity_rows(self):
         original = (

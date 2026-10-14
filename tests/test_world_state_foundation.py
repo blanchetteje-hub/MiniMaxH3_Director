@@ -305,6 +305,258 @@ class DestructiveStateMergeRegressionTests(unittest.TestCase):
 
 
 class WorldStateSeedTests(unittest.TestCase):
+    @staticmethod
+    def _object_rich_opening_state():
+        state = new_world_state({"source_sha256": "non-subject-promotion"})
+        state, location_id = seed_canonical_static_location_state(
+            state,
+            {
+                "location": {"name": "mossy ground"},
+                "anchors": [{
+                    "name": "wooden post",
+                    "type": "weathered wooden post",
+                    "world_state_role": "support",
+                    "mobility": "fixed",
+                }],
+                "objects": [],
+            },
+        )
+        state = register_explicit_persistent_props(state, [{
+            "name": "green tote",
+            "kind": "object",
+            "mobility": "movable",
+            "needed_for_state": True,
+            "reason": "A registered movable prop.",
+            "location_id": location_id,
+        }])
+        return state
+
+    def test_pre_director_discovery_rejects_registered_location_and_prop_candidates(self):
+        state = self._object_rich_opening_state()
+        beat = (
+            "The mossy ground is covered in green moss beside the green tote and "
+            "wooden post."
+        )
+        candidates = [
+            {
+                "name": "Moss1",
+                "physical_form": "unknown",
+                "gender": "unknown",
+                "source_description": "The mossy ground",
+                "evidence": "The mossy ground",
+            },
+            {
+                "name": "green tote",
+                "physical_form": "unknown",
+                "gender": "unknown",
+                "source_description": "green tote",
+                "evidence": "green tote",
+            },
+            {
+                "name": "wooden post",
+                "physical_form": "unknown",
+                "gender": "unknown",
+                "source_description": "wooden post",
+                "evidence": "wooden post",
+            },
+        ]
+        subject_llm = Mock(return_value={"subjects": candidates})
+        with patch(
+            "minimax.extract_subject_canonical_wardrobe"
+        ) as wardrobe, patch(
+            "minimax.extract_current_segment_persistent_props", return_value=[]
+        ), patch("minimax.console_log") as log:
+            prepared, added = minimax.prepare_segment_world_state_for_director(
+                state, 2, beat, beat, "A story.", llm_request=subject_llm,
+            )
+
+        self.assertEqual(prepared, state)
+        self.assertEqual(added, [])
+        wardrobe.assert_not_called()
+        self.assertEqual(prepared["subjects"], {})
+        self.assertTrue(any(
+            "registered non-Subject entity" in call.args[0]
+            for call in log.call_args_list
+        ))
+        with patch.object(minimax, "render_character_reference_image") as render:
+            references, changed = minimax.ensure_character_reference_images(
+                beat,
+                minimax.world_state_subject_definitions("", prepared),
+                minimax.new_continuity_state(),
+                {},
+                0,
+                0.5,
+                6,
+                world_state=prepared,
+            )
+        _refs, _definitions, _binding_state, snapshot = minimax.build_segment_reference_bindings(
+            segment_number=2,
+            total_segments=2,
+            detailed_description=beat,
+            subject_definitions=minimax.world_state_subject_definitions("", prepared),
+            character_references=references,
+            base_reference_count=0,
+        )
+        self.assertEqual(references, {})
+        self.assertEqual(changed, [])
+        self.assertEqual(snapshot["bindings"], [])
+        render.assert_not_called()
+
+    def test_explicitly_animated_registered_object_and_talking_animal_remain_subjects(self):
+        state = self._object_rich_opening_state()
+        candidates = [
+            {
+                "name": "wooden post",
+                "physical_form": "non_humanoid",
+                "gender": "N/A",
+                "source_description": "The animated wooden post speaks",
+                "evidence": "The animated wooden post speaks to the traveler.",
+            },
+            {
+                "name": "talking fox",
+                "physical_form": "non_humanoid",
+                "gender": "unknown",
+                "source_description": "A talking fox",
+                "evidence": "A talking fox greets the traveler.",
+            },
+        ]
+        filtered = minimax._filter_registered_non_subject_candidates(
+            candidates,
+            state,
+            "The animated wooden post speaks to the traveler. A talking fox greets the traveler.",
+        )
+        self.assertEqual(filtered, candidates)
+
+    def test_dynamic_humanoid_wardrobe_is_structured_before_picture_and_h3_binding(self):
+        state = new_world_state({"source_sha256": "dynamic-complete-wardrobe"})
+        candidate = {
+            "name": "Mad Hatter",
+            "physical_form": "humanoid",
+            "gender": "male",
+            "source_description": "A humanoid man wearing a tall hat",
+        }
+        llm = Mock(side_effect=[
+            {"clothing": "a wool coat, linen shirt, dark trousers, leather boots, and a tall hat"},
+            {
+                "upper": "wool coat and linen shirt",
+                "lower": "dark trousers",
+                "footwear": "leather boots",
+                "other": "tall hat",
+            },
+        ])
+        with patch(
+            "minimax.extract_current_segment_subjects", return_value=[candidate]
+        ), patch(
+            "minimax.extract_current_segment_persistent_props", return_value=[]
+        ):
+            prepared, added = minimax.prepare_segment_world_state_for_director(
+                state,
+                1,
+                "The Mad Hatter adjusts his tall hat and greets a visitor.",
+                "The Mad Hatter adjusts his tall hat and greets a visitor.",
+                "An expanded story.",
+                llm_request=llm,
+            )
+
+        self.assertEqual(added, ["Mad Hatter"])
+        self.assertEqual(llm.call_count, 2)
+        subject = next(
+            row for row in prepared["subjects"].values()
+            if row["name"] == "Mad Hatter"
+        )
+        self.assertEqual(
+            [subject["wardrobe"][slot][0]["garment"] for slot in (
+                "upper", "lower", "footwear", "other",
+            )],
+            [
+                "wool coat and linen shirt",
+                "dark trousers",
+                "leather boots",
+                "tall hat",
+            ],
+        )
+
+        definitions = minimax.world_state_subject_definitions("", prepared)
+        raw = "At 00:00.000, Mad Hatter adjusts his tall hat and greets a visitor."
+        with patch.object(
+            minimax,
+            "render_character_reference_image",
+            return_value="/tmp/mad_hatter_picture.png",
+        ) as render:
+            references, changed = minimax.ensure_character_reference_images(
+                raw,
+                definitions,
+                minimax.new_continuity_state(),
+                {},
+                0,
+                0.5,
+                6,
+                world_state=prepared,
+            )
+        self.assertEqual(changed, ["Mad Hatter"])
+        self.assertIn("tall hat", render.call_args.args[1])
+        self.assertIn("dark trousers", render.call_args.args[1])
+        _refs, h3_definitions, _bindings, snapshot = minimax.build_segment_reference_bindings(
+            segment_number=1,
+            total_segments=1,
+            detailed_description=raw,
+            subject_definitions=definitions,
+            character_references=references,
+            base_reference_count=0,
+        )
+        self.assertIn("<Picture 1>", h3_definitions)
+        self.assertEqual(snapshot["bindings"][0]["picture_number"], 1)
+        final_h3 = minimax.build_h3_prompt(
+            {
+                "detailed_description": raw,
+                "overall_soundscape": "N/A",
+                "non_diegetic_music": "N/A",
+            },
+            h3_definitions,
+            segment_number=1,
+            conditioning_mode="initial",
+            world_state=prepared,
+        )
+        self.assertIn("<Picture 1>", final_h3)
+        self.assertIn("tall hat", final_h3)
+
+    def test_incomplete_dynamic_humanoid_outfit_does_not_render_partial_picture(self):
+        state = new_world_state({"source_sha256": "dynamic-incomplete-wardrobe"})
+        candidate = {
+            "name": "The Hatter",
+            "physical_form": "humanoid",
+            "gender": "male",
+            "source_description": "A humanoid man wearing a tall hat",
+        }
+        llm = Mock(side_effect=[
+            {"clothing": "a tall hat"},
+            {"upper": "N/A", "lower": "N/A", "footwear": "N/A", "other": "a tall hat"},
+        ])
+        with patch(
+            "minimax.extract_current_segment_subjects", return_value=[candidate]
+        ), patch(
+            "minimax.extract_current_segment_persistent_props", return_value=[]
+        ):
+            prepared, _added = minimax.prepare_segment_world_state_for_director(
+                state, 1, "The Hatter adjusts his tall hat.",
+                "The Hatter adjusts his tall hat.", "An expanded story.",
+                llm_request=llm,
+            )
+        with patch.object(minimax, "render_character_reference_image") as render:
+            references, changed = minimax.ensure_character_reference_images(
+                "At 00:00.000, The Hatter adjusts his tall hat.",
+                minimax.world_state_subject_definitions("", prepared),
+                minimax.new_continuity_state(),
+                {},
+                0,
+                0.5,
+                6,
+                world_state=prepared,
+            )
+        self.assertEqual(references, {})
+        self.assertEqual(changed, [])
+        render.assert_not_called()
+
     def test_pre_director_subject_discovery_exhaustion_keeps_registered_state(self):
         state = new_world_state({
             "source_sha256": "optional-subject-discovery",
