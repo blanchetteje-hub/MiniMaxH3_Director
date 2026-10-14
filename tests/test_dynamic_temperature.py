@@ -47,7 +47,7 @@ EXPECTED_PROFILE_PURPOSES = {
         "source_unit_visible_responsibility",
         "source_unit_local_relation",
         "director_raw_scene_subject_resolution",
-        "director_raw_scene_repair",
+        "clothing_state_extractor",
         "registered_subject_story_start_presence",
         "world_state_current_segment_subjects",
         "world_state_current_segment_props",
@@ -73,6 +73,9 @@ EXPECTED_PROFILE_PURPOSES = {
         "director_world_state_events",
         "director_world_state_events_repair",
     },
+    "repair": {
+        "director_raw_scene_repair",
+    },
 }
 
 PROFILE_CONSTANTS = {
@@ -80,6 +83,7 @@ PROFILE_CONSTANTS = {
     "smart_creative": minimax.SMART_CREATIVE_LLM_SETTINGS,
     "extractor": minimax.EXTRACTOR_LLM_SETTINGS,
     "smart_extractor": minimax.SMART_EXTRACTOR_LLM_SETTINGS,
+    "repair": minimax.REPAIR_LLM_SETTINGS,
 }
 
 
@@ -134,6 +138,23 @@ def test_four_llm_profiles_are_immutable_and_keep_sampling_defaults():
     assert minimax.EXTRACTOR_LLM_SETTINGS["thinking_budget_tokens"] == 256
     assert minimax.SMART_EXTRACTOR_LLM_SETTINGS["reasoning_effort"] == "high"
     assert minimax.SMART_EXTRACTOR_LLM_SETTINGS["thinking_budget_tokens"] == 1024
+
+    repair = minimax.REPAIR_LLM_SETTINGS
+    assert repair["temperature"] == 0.2
+    assert repair["seed"] is None
+    assert {
+        key: value for key, value in repair.items()
+        if key not in {"temperature", "seed"}
+    } == {
+        key: value for key, value in minimax.SMART_EXTRACTOR_LLM_SETTINGS.items()
+        if key not in {"temperature", "seed"}
+    }
+    assert minimax.LLM_PURPOSE_PROFILES["director_raw_scene_repair"] is repair
+    assert all(
+        profile is not repair
+        for purpose, profile in minimax.LLM_PURPOSE_PROFILES.items()
+        if purpose != "director_raw_scene_repair"
+    )
 
 
 def test_purpose_routes_are_a_disjoint_exhaustive_partition_of_text_calls():
@@ -208,6 +229,38 @@ def test_request_context_and_output_budgets_are_independent_of_profiles():
     ] == 3172
     assert minimax.LLM_DEFAULT_MAX_OUTPUT_TOKENS == 2048
     assert 1024 not in minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS.values()
+
+
+def test_director_raw_scene_repair_randomizes_seed_per_request():
+    def response():
+        result = mock.Mock()
+        result.raise_for_status.return_value = None
+        result.json.return_value = {
+            "choices": [{"message": {"content": "repaired"}, "finish_reason": "stop"}]
+        }
+        return result
+
+    with (
+        mock.patch.object(minimax.requests, "post", side_effect=[response(), response()]) as post,
+        mock.patch.object(minimax, "append_prompt_history"),
+        mock.patch.object(minimax, "estimate_message_tokens", return_value=10),
+        mock.patch.object(
+            minimax,
+            "generate_random_llm_seed",
+            side_effect=[123456, 654321],
+        ) as random_seed,
+    ):
+        for _ in range(2):
+            minimax.ask_llm(
+                [{"role": "user", "content": "repair this scene"}],
+                response_format=None,
+                history_metadata={"purpose": "director_raw_scene_repair"},
+            )
+
+    requests = [call.kwargs["json"] for call in post.call_args_list]
+    assert [request["seed"] for request in requests] == [123456, 654321]
+    assert [request["temperature"] for request in requests] == [0.2, 0.2]
+    assert random_seed.call_count == 2
 
 
 def test_timing_validator_uses_renamed_purpose():

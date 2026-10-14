@@ -1,5 +1,19 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — isolate Director RAW repair sampling
+
+- Added immutable `REPAIR_LLM_SETTINGS` as a copy of the profile previously
+  assigned to `director_raw_scene_repair` (Smart Extractor), with temperature
+  `0.2` and a randomized seed. Only this purpose routes to the new profile;
+  other purpose mappings are unchanged.
+- `ask_llm()` already generates a fresh LLM seed for each request whose
+  configured seed is `None`, so successive RAW repair attempts receive
+  independently generated seeds without changing startup or retry behavior.
+- Added focused routing/profile tests for profile isolation, preserved copied
+  settings, temperature, and distinct seeds across consecutive repair calls.
+  `tests/test_dynamic_temperature.py`: 69 passed. Its expected routing list also
+  now includes the already Smart-Extractor-routed `clothing_state_extractor`.
+
 ## 2026-10-14 — keep registered physical entities out of Subject discovery
 
 - Pre-Director Subject candidates are now checked against registered locations,

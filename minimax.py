@@ -495,6 +495,12 @@ SMART_EXTRACTOR_LLM_SETTINGS = MappingProxyType({
     "enable_thinking": True,
 })
 
+REPAIR_LLM_SETTINGS = MappingProxyType({
+    **SMART_EXTRACTOR_LLM_SETTINGS,
+    "temperature": 0.2,
+    "seed": None,
+})
+
 LLM_DEFAULT_MAX_OUTPUT_TOKENS = 2048
 LLM_DEFAULT_CONTEXT_TOKEN_BUDGET = LLM_CONTEXT_TOKEN_BUDGET
 
@@ -539,7 +545,7 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "director_raw_scene_creative": SMART_CREATIVE_LLM_SETTINGS,
     "add_scene_timing_refiner": SMART_EXTRACTOR_LLM_SETTINGS,
     "add_camera_refiner": SMART_CREATIVE_LLM_SETTINGS,
-    "director_raw_scene_repair": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_repair": REPAIR_LLM_SETTINGS,
     "director_world_state_events": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_world_state_events_repair": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_physical": SMART_EXTRACTOR_LLM_SETTINGS,
