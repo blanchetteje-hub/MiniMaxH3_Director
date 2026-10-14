@@ -4162,18 +4162,39 @@ def prepare_segment_world_state_for_director(
         wardrobe_updates[name] = _world_state_wardrobe_from_canonical_text(clothing)
     if wardrobe_updates:
         state = seed_canonical_wardrobes(state, wardrobe_updates)
-    extracted_props = extract_current_segment_persistent_props(
-        current_beat,
-        assigned_source,
-        state,
-        llm_request=llm_request,
-        history_metadata={
-            **dict(history_metadata or {}),
-            "segment": int(segment_number),
-        },
-    )
-    if extracted_props:
-        state = register_extracted_persistent_props(state, extracted_props)
+    # Pre-Director prop registration is useful context, but it must not turn
+    # an invalid candidate into a reason to regenerate the whole Segment.
+    # Keep identity/wardrobe seeds and all previously registered props, and
+    # apply newly extracted props only when the complete candidate batch is
+    # valid and registers atomically.
+    props_opening_state = copy.deepcopy(state)
+    try:
+        extracted_props = extract_current_segment_persistent_props(
+            current_beat,
+            assigned_source,
+            props_opening_state,
+            llm_request=llm_request,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "segment": int(segment_number),
+            },
+        )
+        if extracted_props:
+            candidate_state = register_extracted_persistent_props(
+                props_opening_state, extracted_props
+            )
+            state = candidate_state
+    except LLMConnectionError:
+        raise
+    except (TypeError, ValueError, json.JSONDecodeError) as error:
+        diagnostic = f"{type(error).__name__}: {error}"
+        console_log(
+            f"PRE-DIRECTOR PROP CANDIDATES REJECTED for Segment "
+            f"{segment_number}; keeping registered props and continuing: "
+            f"{diagnostic}",
+            flush=True,
+        )
+        state = props_opening_state
     return state, [item["name"] for item in added]
 
 
@@ -38133,15 +38154,21 @@ def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_nu
         diagnostic = f"{type(error).__name__}: {error}"
         console_log(
             f"WORLDSTATE EVENT EXTRACTION FAILED for Segment {segment_number}; "
-            f"discarding the event batch and stepping back to the preceding "
-            f"Director stage: {diagnostic}",
+            f"discarding the entire event batch, preserving opening WorldState, "
+            f"and continuing the segment: {diagnostic}",
             flush=True,
         )
-        raise PipelineStageRetryError(
-            stage_name="director_world_state_events",
-            previous_stage="director_raw_scene",
-            diagnostic=diagnostic,
-        ) from error
+        # Translation is an optional state-bookkeeping pass. A malformed or
+        # reducer-rejected batch cannot invalidate accepted Director RAW or
+        # leak earlier actions from a partially translated batch.
+        result = parse_and_dry_run_state_actions(
+            world_state,
+            {"state_actions": []},
+            segment_number=int(segment_number),
+            name_resolution=name_resolution,
+            raw_scene=immutable_raw,
+        )
+        events = []
     return {**result, "events": events, "raw_scene": immutable_raw, "opening_state_sha256": opening_hash}
 
 def _format_director_validator_worldstate_context(

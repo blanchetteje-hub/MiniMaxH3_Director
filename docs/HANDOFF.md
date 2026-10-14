@@ -1,5 +1,26 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — keep optional WorldState failures from restarting a segment
+
+- WorldState event extraction/translation failures now log the exact diagnostic,
+  discard the full event batch, and return an accepted empty action batch against
+  the immutable opening state. `LLMConnectionError` still propagates. A reducer
+  rejection after an earlier valid event therefore cannot leak a partial state
+  or route back to Director RAW generation.
+- Pre-Director prop extraction/registration failures now reject the complete
+  candidate batch, log the diagnostic, and continue with the already registered
+  props. Subject identity and wardrobe seeds remain intact, and registration is
+  applied only after the complete prop batch succeeds.
+- Added Alice/fixed-post coverage for reducer rejection after a valid pickup,
+  malformed/exhausted event extraction, missing prop origins, and duplicate
+  pre-Director fixed-post proposals. `tests/test_director_retry.py`: 135 passed,
+  13 subtests passed. Event/foundation run: 111 passed, 17 subtests passed; two
+  unrelated stale story-start expectations failed (`classification`/`evidence`
+  fixture shape and old prompt wording). Targeted event/foundation regressions,
+  `py_compile`, and `git diff --check` are recorded with this change.
+- No prompts, reducer rules, location handling, or checkpoint commit boundaries
+  changed.
+
 ## 2026-10-14 — scene location selector output budget
 
 - Increased `scene_location_select` maximum output tokens from 256 to 2048.

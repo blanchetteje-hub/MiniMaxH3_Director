@@ -261,16 +261,23 @@ def test_malformed_event_repair_budget_is_bounded_and_does_not_commit():
     malformed = {"events": [{"action": "not-an-event"}]}
     request = mock.Mock(return_value=malformed)
     with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log") as log:
-        with pytest.raises(minimax.PipelineStageRetryError) as caught:
-            minimax.extract_and_dry_run_world_state_events(state, raw, segment_number=1)
+        result = minimax.extract_and_dry_run_world_state_events(
+            state, raw, segment_number=1
+        )
     assert request.call_count == 1 + minimax.WORLD_STATE_EVENT_REPAIR_ATTEMPTS
     assert all(call.args[0][-1]["content"].find(raw) >= 0 for call in request.call_args_list)
-    diagnostic = str(caught.value)
-    assert caught.value.stage_name == "director_world_state_events"
-    assert caught.value.previous_stage == "director_raw_scene"
-    assert "Malformed event extraction for Segment 1 after 5 repairs" in diagnostic
+    diagnostic = f"Malformed event extraction for Segment 1 after {minimax.WORLD_STATE_EVENT_REPAIR_ATTEMPTS} repairs"
+    assert result["accepted"] is True
+    assert result["events"] == []
+    assert result["state_actions"] == []
+    assert result["raw_scene"] == raw
+    assert (
+        "Malformed event extraction for Segment 1 after "
+        f"{minimax.WORLD_STATE_EVENT_REPAIR_ATTEMPTS} repairs" in diagnostic
+    )
     assert any(
-        "Malformed event extraction for Segment 1 after 5 repairs" in call.args[0]
+        "discarding the entire event batch" in call.args[0]
+        and "Malformed event extraction for Segment 1 after 5 repairs" in call.args[0]
         for call in log.call_args_list
     )
     assert state == opening
@@ -285,15 +292,60 @@ def test_translation_failure_discards_prior_events_and_preserves_opening_world_s
         event("take", "Amy", "new cloth", source="apron pocket", relation="from"),
     ]}
     with mock.patch("minimax.ask_llm", return_value=response), mock.patch("minimax.console_log") as log:
-        with pytest.raises(minimax.PipelineStageRetryError) as caught:
-            minimax.extract_and_dry_run_world_state_events(state, raw, segment_number=1)
-    assert "new prop 'new cloth' has no registered support origin" in str(caught.value)
-    assert caught.value.previous_stage == "director_raw_scene"
+        result = minimax.extract_and_dry_run_world_state_events(
+            state, raw, segment_number=1
+        )
+    assert result["accepted"] is True
+    assert result["events"] == []
+    assert result["state_actions"] == []
+    assert result["raw_scene"] == raw
     assert any(
         "new prop 'new cloth' has no registered support origin" in call.args[0]
         for call in log.call_args_list
     )
     assert state == opening
+
+
+def test_alice_grabbing_fixed_wooden_post_discards_entire_rejected_batch():
+    state = new_world_state({
+        "source_sha256": "alice-fixed-post",
+        "subjects": {
+            "1": {"subject_id": 1, "name": "Alice", "gender": "female", "picture_ids": []},
+        },
+    })
+    state, location_id = seed_canonical_static_location_state(
+        state,
+        {"location": {"name": "Tea Garden"}, "anchors": [], "objects": []},
+    )
+    state = seed_story_start_presence(
+        state, [{"name": "Alice", "initial_state": "standing in the garden"}],
+        location_id=location_id,
+    )
+    state = register_explicit_persistent_props(state, [
+        {"name": "mug", "kind": "container", "mobility": "movable",
+         "needed_for_state": True, "reason": "It can be carried.", "location_id": location_id},
+        {"name": "fixed wooden post", "kind": "support", "mobility": "fixed",
+         "needed_for_state": True, "reason": "It is fixed in the environment.", "location_id": location_id},
+    ])
+    opening = copy.deepcopy(state)
+    raw = "Alice picks up the mug, then grabs the fixed wooden post."
+    response = {"events": [
+        event("take", "Alice", "mug"),
+        event("take", "Alice", "fixed wooden post"),
+    ]}
+    with mock.patch("minimax.ask_llm", return_value=response), mock.patch("minimax.console_log") as log:
+        result = minimax.extract_and_dry_run_world_state_events(
+            state, raw, segment_number=1
+        )
+    assert result["accepted"] is True
+    assert result["events"] == []
+    assert result["state_actions"] == []
+    assert result["raw_scene"] == raw
+    assert state == opening
+    assert any(
+        "fixed" in call.args[0] and "discarding the entire event batch" in call.args[0]
+        for call in log.call_args_list
+    )
 
 
 def test_event_extraction_does_not_swallow_fatal_llm_connection_failure():

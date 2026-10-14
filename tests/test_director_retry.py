@@ -460,7 +460,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             request.call_args_list[0].kwargs["response_format"],
         )
 
-    def test_unresolved_new_prop_origin_requests_raw_stage_backstep(self):
+    def test_unresolved_new_prop_origin_discards_events_without_raw_backstep(self):
         world_state, _location_id, _mug_id = goblin_mug_world_state()
         opening = copy.deepcopy(world_state)
         raw_scene = "At 00:00.000, Amy pulls the cloth from her apron pocket."
@@ -470,14 +470,18 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "relation": "from", "result": None,
         }]}
         request = mock.Mock(return_value=events)
-        with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log"):
-            with self.assertRaises(minimax.PipelineStageRetryError) as caught:
-                minimax.extract_and_dry_run_world_state_events(
-                    world_state, raw_scene, segment_number=1,
-                )
-        self.assertEqual(caught.exception.stage_name, "director_world_state_events")
-        self.assertEqual(caught.exception.previous_stage, "director_raw_scene")
-        self.assertIn("registered support origin", str(caught.exception))
+        with mock.patch("minimax.ask_llm", request), mock.patch("minimax.console_log") as log:
+            result = minimax.extract_and_dry_run_world_state_events(
+                world_state, raw_scene, segment_number=1,
+            )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["events"], [])
+        self.assertEqual(result["state_actions"], [])
+        self.assertTrue(any(
+            "registered support origin" in call.args[0]
+            and "continuing the segment" in call.args[0]
+            for call in log.call_args_list
+        ))
         self.assertEqual(request.call_count, 1)
         self.assertEqual(world_state, opening)
 

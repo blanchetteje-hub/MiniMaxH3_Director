@@ -305,6 +305,90 @@ class DestructiveStateMergeRegressionTests(unittest.TestCase):
 
 
 class WorldStateSeedTests(unittest.TestCase):
+    def test_pre_director_duplicate_fixed_prop_candidates_fail_open(self):
+        state = new_world_state({
+            "source_sha256": "pre-director-duplicate-prop",
+            "subjects": {
+                "1": {"subject_id": 1, "name": "Alice", "gender": UNKNOWN, "picture_ids": []},
+            },
+        })
+        state, location_id = seed_canonical_static_location_state(
+            state,
+            {"location": {"name": "Garden"}, "anchors": [], "objects": []},
+        )
+        state = seed_story_start_presence(
+            state,
+            [{"name": "Alice", "initial_state": "standing in the garden"}],
+            location_id=location_id,
+        )
+        state = register_explicit_persistent_props(state, [{
+            "name": "fixed wooden post",
+            "kind": "support",
+            "mobility": "fixed",
+            "needed_for_state": True,
+            "reason": "A fixed environmental support.",
+            "location_id": location_id,
+        }])
+        opening = copy.deepcopy(state)
+        duplicate = {
+            "props": [
+                {
+                    "name": "fixed wooden post",
+                    "kind": "object",
+                    "mobility": "movable",
+                    "initial_location": "Garden",
+                    "initial_holder": None,
+                    "support_name": None,
+                    "contents": [],
+                    "capabilities": {
+                        "container": "unknown",
+                        "consumable": "unknown",
+                        "openable": "unknown",
+                        "lockable": "unknown",
+                    },
+                    "reason": "Alice grabs it.",
+                    "evidence": "Alice grabs the fixed wooden post.",
+                },
+                {
+                    "name": "fixed wooden post",
+                    "kind": "object",
+                    "mobility": "movable",
+                    "initial_location": "Garden",
+                    "initial_holder": None,
+                    "support_name": None,
+                    "contents": [],
+                    "capabilities": {
+                        "container": "unknown",
+                        "consumable": "unknown",
+                        "openable": "unknown",
+                        "lockable": "unknown",
+                    },
+                    "reason": "A duplicate proposal.",
+                    "evidence": "Alice grabs the fixed wooden post.",
+                },
+            ],
+        }
+        prop_request = Mock(return_value=duplicate)
+        with patch(
+            "minimax.extract_current_segment_subjects", return_value=[]
+        ), patch("minimax.console_log") as log:
+            prepared, added = minimax.prepare_segment_world_state_for_director(
+                state,
+                1,
+                "Alice grabs the fixed wooden post.",
+                "Alice grabs the fixed wooden post.",
+                "A garden.",
+                llm_request=prop_request,
+            )
+        self.assertEqual(added, [])
+        self.assertEqual(prepared, opening)
+        self.assertEqual(prop_request.call_count, 3)
+        self.assertTrue(any(
+            "PRE-DIRECTOR PROP CANDIDATES REJECTED" in call.args[0]
+            and "Current-Segment props must be new" in call.args[0]
+            for call in log.call_args_list
+        ))
+
     def test_canon_covered_dynamic_subject_skips_compatibility_wardrobe_extraction(self):
         canon = {
             "characters": [{
