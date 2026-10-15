@@ -713,6 +713,138 @@ The wooden post frames the entrance.
         self.assertIn("doorway", errors[0])
         self.assertIn("contradictory fixed placement", errors[0])
 
+    def test_tunnel_entry_position_and_extension_are_distinct_claims(self):
+        location_state = {
+            "location": {"name": "Garden"},
+            "anchors": [{
+                "name": "rabbit-hole entrance",
+                "type": "entrance",
+                "position": "at the northern edge of Garden",
+            }],
+            "objects": [{
+                "name": "tunnel",
+                "type": "passage",
+                "location": "south of rabbit-hole entrance",
+            }],
+        }
+        refinement = (
+            "The rabbit-hole entrance lies at the garden's northern edge, "
+            "with a tunnel extending southward and descending underground."
+        )
+        self.assertEqual(
+            minimax.validate_location_geometry_consistency(
+                location_state,
+                static_setting="The rabbit-hole entrance is at the northern edge of the garden.",
+                spatial_refinement=refinement,
+                text_description=refinement,
+            ),
+            [],
+        )
+
+    def test_valid_tunnel_setting_does_not_invoke_setting_repair(self):
+        raw = '''Location: Garden
+{
+  "location": {"name": "Garden"},
+  "anchors": [{"name": "rabbit-hole entrance", "type": "entrance", "position": "north edge of Garden"}],
+  "objects": [{"name": "tunnel", "type": "passage", "location": "south of rabbit-hole entrance"}]
+}
+Text description based on JSON
+The rabbit-hole entrance lies at the garden's northern edge, with a tunnel extending southward and descending underground.
+'''
+        request = mock.Mock(return_value=raw)
+        result = minimax.extract_story_setting_description(
+            "A northern garden edge with a rabbit hole.",
+            static_setting="The rabbit-hole entrance is at the northern edge of the garden.",
+            llm_request=request,
+        )
+        self.assertEqual(result["location_name"], "Garden")
+        request.assert_called_once()
+        self.assertEqual(
+            request.call_args.kwargs["history_metadata"]["purpose"],
+            "story_setting_extract",
+        )
+
+    def test_absolute_and_relative_position_claims_use_distinct_frames(self):
+        location_state = {
+            "location": {"name": "Garden"},
+            "anchors": [],
+            "objects": [{
+                "name": "tunnel",
+                "type": "passage",
+                "location": "north of entrance",
+            }],
+        }
+        self.assertEqual(
+            minimax.validate_location_geometry_consistency(
+                location_state,
+                static_setting="The tunnel is on the south wall.",
+            ),
+            [],
+        )
+
+    def test_orientation_does_not_conflict_with_absolute_position(self):
+        location_state = {
+            "location": {"name": "Garden"},
+            "anchors": [],
+            "objects": [{
+                "name": "tunnel",
+                "type": "passage",
+                "wall": "north",
+            }],
+        }
+        self.assertEqual(
+            minimax.validate_location_geometry_consistency(
+                location_state,
+                spatial_refinement="The tunnel faces south.",
+            ),
+            [],
+        )
+
+    def test_elevation_claims_are_separate_from_cardinal_axes(self):
+        location_state = {
+            "location": {"name": "Garden"},
+            "anchors": [],
+            "objects": [{
+                "name": "tunnel",
+                "type": "passage",
+                "wall": "north",
+            }],
+        }
+        errors = minimax.validate_location_geometry_consistency(
+            location_state,
+            spatial_refinement="The tunnel descends underground then rises aboveground.",
+        )
+        self.assertEqual(errors, [])
+        claims = minimax._spatial_direction_claims(
+            "north wall",
+            location_name="Garden",
+        )
+        self.assertIn(("position", "location:garden", "north_south", "north"), claims)
+        diagonal = minimax._spatial_direction_claims(
+            "on the north-west wall",
+            location_name="Garden",
+        )
+        self.assertIn(("position", "location:garden", "north_south", "north"), diagonal)
+        self.assertIn(("position", "location:garden", "east_west", "west"), diagonal)
+        self.assertNotIn("vertical", {claim[2] for claim in claims})
+        elevation_travel = minimax._spatial_direction_claims(
+            "The tunnel descends underground then rises aboveground."
+        )
+        self.assertIn(("travel", "entity", "elevation", "down"), elevation_travel)
+        self.assertIn(("travel", "entity", "elevation", "up"), elevation_travel)
+        self.assertFalse(any(
+            minimax._spatial_claims_conflict(left, right)
+            for left in elevation_travel
+            for right in elevation_travel
+        ))
+        fixed_elevation = minimax._spatial_direction_claims("The tunnel is underground.")
+        fixed_surface = minimax._spatial_direction_claims("The tunnel is at ground level.")
+        self.assertIn(("position", "ground", "elevation", "down"), fixed_elevation)
+        self.assertIn(("position", "ground", "elevation", "up"), fixed_surface)
+        self.assertTrue(minimax._spatial_claims_conflict(
+            next(iter(fixed_elevation)), next(iter(fixed_surface))
+        ))
+
     def test_derived_measurement_is_not_a_geometry_constraint_by_itself(self):
         location_state = {
             "location": {"name": "Clearing"},

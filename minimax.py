@@ -21127,24 +21127,148 @@ def _first_balanced_json_object(value):
     raise ValueError("Spatial setting extractor returned unterminated JSON.")
 
 
-def _spatial_direction_claims(value):
-    text = str(value or "").casefold().replace("-", " ")
+_SPATIAL_CARDINAL_PATTERN = (
+    r"north\s*west(?:ern|ward)?|north\s*east(?:ern|ward)?|"
+    r"south\s*west(?:ern|ward)?|south\s*east(?:ern|ward)?|"
+    r"north(?:ern|ward)?|south(?:ern|ward)?|east(?:ern|ward)?|west(?:ern|ward)?"
+)
+
+
+def _spatial_direction_axes(direction):
+    direction = str(direction or "").casefold().replace(" ", "")
+    for suffix in ("ward", "ern"):
+        if direction.endswith(suffix):
+            direction = direction[:-len(suffix)]
+            break
+    axes = []
+    if direction.startswith("north"):
+        axes.append(("north_south", "north"))
+    elif direction.startswith("south"):
+        axes.append(("north_south", "south"))
+    if direction.endswith("east"):
+        axes.append(("east_west", "east"))
+    elif direction.endswith("west"):
+        axes.append(("east_west", "west"))
+    return axes
+
+
+def _spatial_reference_frame(reference, location_name):
+    reference_key = _event_name_key(reference)
+    location_key = _event_name_key(location_name)
+    if not reference_key:
+        return "location:" + location_key if location_key else "location"
+    if location_key and (
+        reference_key == location_key
+        or reference_key in location_key
+        or location_key in reference_key
+    ):
+        return "location:" + location_key
+    return "entity:" + reference_key
+
+
+def _spatial_direction_claims(value, *, location_name=""):
+    """Extract typed, explicit position/orientation/extent/elevation claims."""
+    text = " ".join(str(value or "").casefold().replace("-", " ").split())
     claims = set()
+
+    def add(property_name, frame, direction):
+        for axis, normalized_direction in _spatial_direction_axes(direction):
+            claims.add((property_name, frame, axis, normalized_direction))
+
+    location_frame = _spatial_reference_frame("", location_name)
+    cardinal = _SPATIAL_CARDINAL_PATTERN
+
+    # Possessive placement ("the garden's northern edge") and named-region
+    # placement ("the north wall of the garden") are absolute only when their
+    # reference is the canonical location; other references remain relative.
     for match in re.finditer(
-        r"\b(northwest|north\s+west|northeast|north\s+east|"
-        r"southwest|south\s+west|southeast|south\s+east|"
-        r"north|south|east|west)\b",
+        rf"\b(?P<reference>[a-z][a-z0-9' ]*?)['’]s\s+"
+        rf"(?P<direction>{cardinal})\s+(?:wall|edge|side|end|corner)\b",
         text,
     ):
-        direction = match.group(1).replace(" ", "")
-        if direction.startswith("north"):
-            claims.add(("vertical", "north"))
-        elif direction.startswith("south"):
-            claims.add(("vertical", "south"))
-        if direction.endswith("east"):
-            claims.add(("horizontal", "east"))
-        elif direction.endswith("west"):
-            claims.add(("horizontal", "west"))
+        add(
+            "position",
+            _spatial_reference_frame(match.group("reference"), location_name),
+            match.group("direction"),
+        )
+    for match in re.finditer(
+        rf"\b(?P<direction>{cardinal})\s+(?:wall|edge|side|end|corner)\s+"
+        rf"of\s+(?:the\s+)?(?P<reference>[a-z][a-z0-9' -]*?)(?=$|[,;.!?]|\band\b|\bwhile\b|\bbut\b)",
+        text,
+    ):
+        add(
+            "position",
+            _spatial_reference_frame(match.group("reference"), location_name),
+            match.group("direction"),
+        )
+    for match in re.finditer(
+        rf"\b(?:on|at|along|against|near|by|in)\s+(?:the\s+)?"
+        rf"(?P<direction>{cardinal})\s+(?:wall|edge|side|end|corner)\b",
+        text,
+    ):
+        add("position", location_frame, match.group("direction"))
+    for match in re.finditer(
+        rf"\b(?P<direction>{cardinal})\s+(?:wall|edge|side|end|corner)\b(?!\s+of\b)",
+        text,
+    ):
+        add("position", location_frame, match.group("direction"))
+
+    # Relative locations are keyed by the named reference frame, so a
+    # north-of-anchor claim is not compared with a south-wall claim.
+    for match in re.finditer(
+        rf"\b(?P<direction>{cardinal})\s+of\s+(?:the\s+)?"
+        r"(?P<reference>[a-z][a-z0-9' -]*?)(?=$|[,;.!?]|\band\b|\bwhile\b|\bbut\b)",
+        text,
+    ):
+        add(
+            "position",
+            _spatial_reference_frame(match.group("reference"), location_name),
+            match.group("direction"),
+        )
+
+    # Facing/orientation and travel or extension directions are not positions.
+    for match in re.finditer(
+        rf"\b(?:faces?|facing|oriented(?:\s+toward)?|points?)\s+"
+        rf"(?:toward\s+)?(?P<direction>{cardinal})\b",
+        text,
+    ):
+        add("orientation", "entity", match.group("direction"))
+    for verb_pattern, property_name in (
+        (r"extend(?:s|ed|ing)?|run(?:s|ning)?|continue(?:s|d|ing)?|lead(?:s|ing)?", "extension"),
+        (r"move(?:s|d|ment)?|travel(?:s|ed|ing)?|flow(?:s|ed|ing)?|proceed(?:s|ed|ing)?", "travel"),
+    ):
+        for match in re.finditer(
+            rf"\b(?:{verb_pattern})\s+(?:toward\s+)?(?P<direction>{cardinal})\b",
+            text,
+        ):
+            add(property_name, "entity", match.group("direction"))
+
+    # Elevation is the true vertical dimension; cardinal north/south is not.
+    for match in re.finditer(
+        r"\b(?:descend(?:s|ed|ing)?|drop(?:s|ped|ping)?|sink(?:s|ing)?|"
+        r"dive(?:s|d|ing)?|fall(?:s|en|ing)?|lower(?:s|ed|ing)?)\s+"
+        r"(?:down(?:ward)?|below(?:ground)?|underground|beneath)\b",
+        text,
+    ):
+        claims.add(("travel", "entity", "elevation", "down"))
+    for match in re.finditer(
+        r"\b(?:rise(?:s|n|ing)?|ascend(?:s|ed|ing)?|climb(?:s|ed|ing)?|"
+        r"lift(?:s|ed|ing)?)\s+(?:up(?:ward)?|above(?:ground)?|overground)\b",
+        text,
+    ):
+        claims.add(("travel", "entity", "elevation", "up"))
+    if re.search(
+        r"\b(?:is|lies|sits|located|remains?)\s+(?:fully\s+)?"
+        r"(?:underground|below\s+ground|beneath\s+ground|below\s+the\s+surface|beneath\s+the\s+surface)\b",
+        text,
+    ):
+        claims.add(("position", "ground", "elevation", "down"))
+    if re.search(
+        r"\b(?:is|lies|sits|located|remains?)\s+(?:fully\s+)?"
+        r"(?:aboveground|overground|at\s+ground\s+level)\b",
+        text,
+    ):
+        claims.add(("position", "ground", "elevation", "up"))
     return claims
 
 
@@ -21160,18 +21284,18 @@ def _spatial_region_claims(value, location_name):
             rf"of\s+(?:the\s+)?{escaped_location}\b",
             text,
         ):
-            claims.add("center_of_location")
+            claims.add(("region", "location:" + location, "location_region", "center"))
         if re.search(
             rf"\b(?:at|on|along)\s+(?:the\s+)?(?:edge|rim|perimeter)\s+"
             rf"of\s+(?:the\s+)?{escaped_location}\b",
             text,
         ):
-            claims.add("boundary_of_location")
+            claims.add(("region", "location:" + location, "location_region", "boundary"))
     if re.search(
         r"\bfram(?:e|es|ed|ing)\s+(?:the\s+)?(?:entrance|entry|doorway)\b",
         text,
     ):
-        claims.add("boundary_of_location")
+        claims.add(("region", "location:" + location, "location_region", "boundary"))
     return claims
 
 
@@ -21181,18 +21305,30 @@ def _fixture_text_spatial_claims(text, item_name, location_name):
         return set()
     name_pattern = re.compile(rf"(?<!\w){escaped_name}(?!\w)", re.IGNORECASE)
     claims = set()
-    for sentence in re.split(r"(?<=[.!?])\s+|[;,\n]+", str(text or "")):
-        if not name_pattern.search(sentence):
-            continue
-        claims.update(_spatial_direction_claims(sentence))
-        claims.update(_spatial_region_claims(sentence, location_name))
+    for sentence in re.split(r"(?<=[.!?])\s+", str(text or "")):
+        for clause in re.split(r"[;,\n]+", sentence):
+            if not name_pattern.search(clause):
+                continue
+            claims.update(
+                _spatial_direction_claims(clause, location_name=location_name)
+            )
+            claims.update(_spatial_region_claims(clause, location_name))
     return claims
 
 
 def _spatial_claims_conflict(left, right):
-    if left[0] in {"vertical", "horizontal"} and left[0] == right[0]:
-        return left[1] != right[1]
-    return {left, right} == {"center_of_location", "boundary_of_location"}
+    if len(left) != 4 or len(right) != 4 or left[:3] != right[:3]:
+        return False
+    if left[0] == "region":
+        return {left[3], right[3]} == {"center", "boundary"}
+    if left[0] not in {"position", "orientation"}:
+        return False
+    opposites = {
+        "north_south": {"north": "south", "south": "north"},
+        "east_west": {"east": "west", "west": "east"},
+        "elevation": {"up": "down", "down": "up"},
+    }
+    return opposites.get(left[2], {}).get(left[3]) == right[3]
 
 
 def validate_location_geometry_consistency(
@@ -21219,8 +21355,17 @@ def validate_location_geometry_consistency(
             if not item_name:
                 continue
             claims = set()
-            for position_field in ("wall", "location", "position"):
-                claims.update(_spatial_direction_claims(record.get(position_field)))
+            wall = record.get("wall")
+            if wall:
+                claims.update(_spatial_direction_claims(
+                    f"on the {wall} wall",
+                    location_name=location_name,
+                ))
+            for position_field in ("location", "position"):
+                claims.update(_spatial_direction_claims(
+                    record.get(position_field),
+                    location_name=location_name,
+                ))
                 claims.update(
                     _spatial_region_claims(record.get(position_field), location_name)
                 )

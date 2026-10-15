@@ -1,5 +1,34 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — compare spatial claims by property and reference frame
+
+- The setting-geometry false positive came from treating every cardinal word
+  in a sentence mentioning a fixture as its absolute position, then comparing
+  all directions together. This merged an entrance's north-edge placement with
+  a tunnel's southward extension. North/south were also mislabeled `vertical`.
+- Geometry claims are now typed as absolute/relative position, orientation,
+  extension/travel, elevation, or region, and position includes its location or
+  named-fixture reference frame. Fixed position/orientation claims are only
+  compared within the same property, frame, and axis; extension/travel vectors
+  do not conflict with an object's starting position or with later travel.
+  North/south use the plan-view `north_south` axis; east/west use
+  `east_west`; actual elevation remains up/down. Existing explicit north-wall
+  versus south-wall contradictions still fail.
+- Added regressions for the north-edge/southward tunnel, no-repair extraction
+  of that valid setting, same-frame contradictory placements, relative versus
+  absolute positions, facing versus position, vertical descent, and diagonal
+  cardinal axes. Focused spatial tests: 11 passed. The complete location-state
+  reference module reported 61 passed and two unrelated existing failures
+  (wardrobe extractor call count and stale physical-validator prompt text).
+  The adjacent postmortem module reported 8 passed and one unrelated dialogue
+  formatting expectation. `py_compile` and `git diff --check` passed.
+- The current geometry validator does not inspect object footprint dimensions
+  or containment. Although spatial-refinement instructions ask for non-overlap,
+  the deterministic validator only checks a limited set of explicit placement
+  relationships. A four-meter object on a three-meter patch is not currently
+  caught; no dimension simulation or new check was added in this false-positive
+  fix.
+
 ## 2026-10-14 — repair invalid structured setting extraction
 
 - `story_setting_extract` now parses and validates its first response through
