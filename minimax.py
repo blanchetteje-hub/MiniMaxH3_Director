@@ -20820,19 +20820,19 @@ def build_static_setting_extraction_messages(
         {
             "role": "system",
             "content": (
-                "Extract a concise static setting description for a video location reference. \n"
-                "\n"
-                "- Focus on the OVERALL LOCATION, use EXPANDED STORY only as a reference. If the description is short, that is fine.\n"
-                "- Use only facts the story actually presents as description of the place itself: architecture, terrain, broad room layout, fixed fixtures, entrances, surfaces, and persistent lighting sources. \n"
-                "- Exclude characters, creatures, character actions, dialogue, plot events, held props, and objects/furniture mentioned only because a later action uses or introduces them. \n"
-                "- Do not promote every story prop into the global setting. \n"
-                "- Relative action wording is not proof of distinct static architecture: labels such as front/back/side door or left/right table should be kept only when the story clearly establishes multiple distinct instances or that relative identity is itself a persistent architectural fact. \n"
-                "- When only one instance is established, describe it generically (for example, entrance door rather than back door). \n"
-                "- Do not invent details. Respect the supplied visual style when choosing concise appearance language, but do not let style add or alter setting facts. \n"
-                "- Preserve any explicit historical period, culture, or genre in the story or overall location (for example, medieval or fantasy) as a mandatory visual cue; do not reduce a medieval-fantasy tavern to a period-neutral tavern. \n"
-                "- If the story gives only a broad setting, return that broad setting with its stated period/genre and let the video model design unspecified details. \n"
-                "\n"
-                "Return JSON { \"setting_description\": \"[description]\" }"
+                """Extract a concise static setting description from OVERALL LOCATION.
+
+- use EXPANDED STORY only as a reference.
+- Use only facts the story actually presents as description of the place itself: architecture, terrain, broad room layout, fixed fixtures, entrances, surfaces, and persistent lighting sources. 
+- Exclude characters, creatures, character actions, dialogue, plot events, held props, and objects/furniture mentioned only because a later action uses or introduces them. 
+- Do not promote every story prop into the global setting. 
+- Relative action wording is not proof of distinct static architecture: labels such as front/back/side door or left/right table should be kept only when the story clearly establishes multiple distinct instances or that relative identity is itself a persistent architectural fact. 
+- When only one instance is established, describe it generically (for example, entrance door rather than back door). 
+- Do not invent details. Respect the supplied visual style when choosing concise appearance language, but do not let style add or alter setting facts. 
+- Preserve any explicit historical period, culture, or genre in the story or overall location (for example, medieval or fantasy) as a mandatory visual cue; do not reduce a medieval-fantasy tavern to a period-neutral tavern. 
+- If OVERALL LOCATION is not described in the EXPANDED STORY, return a minimal description with its stated period/genre.
+
+Return JSON { "setting_description": "[description]" }"""
             ),
         },
         {
