@@ -550,7 +550,7 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "director_raw_scene_repair": REPAIR_LLM_SETTINGS,
     "director_world_state_events": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_world_state_events_repair": SMART_EXTRACTOR_LLM_SETTINGS,
-    "director_raw_scene_physical": SMART_EXTRACTOR_LLM_SETTINGS,
+    "director_raw_scene_physical": EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_prop_state": SMART_EXTRACTOR_LLM_SETTINGS,
     "validate_timing_valid": SMART_EXTRACTOR_LLM_SETTINGS,
     "director_raw_scene_pronoun_resolution": EXTRACTOR_LLM_SETTINGS,
@@ -637,7 +637,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "director_h3_soundscape": 2048,
     "director_h3_formatter": 2048,
     "director_raw_scene_coherence": 2048,
-    "director_raw_scene_physical": 3072,
+    "director_raw_scene_physical": 4096,
     "director_raw_scene_prop_state": 2048,
     "validate_timing_valid": 4096,
     "director_raw_scene_pronoun_resolution": 2048,
@@ -20980,8 +20980,11 @@ def extract_static_setting(
     )
 
 
-def build_story_setting_spatial_refinement_messages(location):
-    """Build the first SMART extractor that makes one location spatially explicit."""
+def build_story_setting_spatial_refinement_messages(
+    location, *, neighboring_location_context="",
+):
+    """Refine a location while preserving previously accepted neighboring geometry."""
+    neighboring = str(neighboring_location_context or "").strip()
     return [
         {
             "role": "system",
@@ -20997,11 +21000,25 @@ def build_story_setting_spatial_refinement_messages(location):
                 "spatial refinement must not turn a medieval/fantasy place into a modern or "
                 "period-neutral one.\n"
                 "- Return plain text, no tables or JSON."
+                + (
+                    "\n- EXISTING NEIGHBORING LOCATION is previously accepted "
+                    "immutable geometry. Do not move, rotate, resize, rename, "
+                    "or duplicate its fixtures. Describe the destination, "
+                    "including its connection to the existing location; do "
+                    "not rebuild the neighbor as part of the destination."
+                    if neighboring else ""
+                )
             ),
         },
         {
             "role": "user",
-            "content": str(location or "").strip(),
+            "content": (
+                str(location or "").strip()
+                + (
+                    "\n\nEXISTING NEIGHBORING LOCATION (IMMUTABLE)\n" + neighboring
+                    if neighboring else ""
+                )
+            ),
         },
     ]
 
@@ -21021,6 +21038,7 @@ def _parse_plain_extractor_text(raw_result, label):
 def refine_story_setting_spatially(
     location,
     *,
+    neighboring_location_context="",
     llm_request=None,
     history_metadata=None,
     attempts=3,
@@ -21032,7 +21050,9 @@ def refine_story_setting_spatially(
     for attempt in range(1, max(1, int(attempts)) + 1):
         try:
             raw = llm_request(
-                build_story_setting_spatial_refinement_messages(location),
+                build_story_setting_spatial_refinement_messages(
+                    location, neighboring_location_context=neighboring_location_context,
+                ),
                 response_format=None,
                 parse_json_response=False,
                 history_metadata={
@@ -21063,8 +21083,11 @@ def refine_story_setting_spatially(
     )
 
 
-def build_story_setting_description_messages(spatial_location, static_setting=""):
-    """Request only plain-text spatial description; never JSON."""
+def build_story_setting_description_messages(
+    spatial_location, static_setting="", *, neighboring_location_context="",
+):
+    """Describe the location while preserving accepted neighboring geometry."""
+    neighboring = str(neighboring_location_context or "").strip()
     return [
         {
             "role": "system",
@@ -21077,7 +21100,13 @@ def build_story_setting_description_messages(spatial_location, static_setting=""
                 "or new story events.\n"
                 "- Preserve established historical period, culture, and genre cues.\n"
                 "- Focus only on this location, not unrelated surrounding locations.\n"
-                "Return only the physical description as plain text; no JSON, "
+                + (
+                    "- Preserve the accepted geometry of EXISTING NEIGHBORING LOCATION "
+                    "where the two places connect. Do not duplicate that place's "
+                    "fixtures as new fixtures inside this destination.\n"
+                    if neighboring else ""
+                )
+                + "Return only the physical description as plain text; no JSON, "
                 "Location heading, or commentary."
             ),
         },
@@ -21088,6 +21117,10 @@ def build_story_setting_description_messages(spatial_location, static_setting=""
                 + str(static_setting or "").strip()
                 + "\n\nSPATIAL REFINEMENT\n"
                 + str(spatial_location or "").strip()
+                + (
+                    "\n\nEXISTING NEIGHBORING LOCATION (IMMUTABLE)\n" + neighboring
+                    if neighboring else ""
+                )
             ),
         },
     ]
@@ -21444,6 +21477,8 @@ def build_story_setting_json_extraction_messages(description, location_name=""):
                 "- Use LOCATION NAME for the location name when supplied.\n"
                 "- Put persistent entrances and landmarks under anchors; other "
                 "described items belong under objects. Do not create IDs.\n"
+                "- Do not register fixtures of a neighboring or exterior place "
+                "again if mentioned solely to orient this location.\n"
                 "- Every anchor and object requires string name, string type, "
                 "world_state_role (fixture, support, fixture_support, or untracked), "
                 "and mobility (movable, fixed, or unknown).\n"
@@ -21562,6 +21597,7 @@ def extract_story_setting_description(
     *,
     static_setting="",
     location_name="",
+    neighboring_location_context="",
     llm_request=None,
     history_metadata=None,
     repair_attempts=5,
@@ -21572,6 +21608,7 @@ def extract_story_setting_description(
         llm_request = ask_llm
     base_messages = build_story_setting_description_messages(
         spatial_location, static_setting=static_setting,
+        neighboring_location_context=neighboring_location_context,
     )
     max_repairs = max(0, int(repair_attempts))
     previous_raw = ""
