@@ -52,6 +52,13 @@ class LocationStateReferenceTests(unittest.TestCase):
             minimax.SMART_EXTRACTOR_LLM_SETTINGS,
         )
         self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["story_setting_json_extract"],
+            minimax.SMART_EXTRACTOR_LLM_SETTINGS,
+        )
+        self.assertEqual(
+            minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["story_setting_json_extract"], 4096,
+        )
+        self.assertIs(
             minimax.LLM_PURPOSE_PROFILES["story_location_extract"],
             minimax.EXTRACTOR_LLM_SETTINGS,
         )
@@ -667,57 +674,49 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertIn("Return plain text, no tables or JSON", system)
         self.assertEqual(messages[1]["content"], location)
 
-    def test_spatial_description_prompt_emits_json_and_text(self):
+    def test_spatial_description_prompt_is_text_only_and_json_is_separate(self):
         messages = minimax.build_story_setting_description_messages(
-            "A 30 ft by 20 ft tavern with an entrance on the north wall."
+            "A tavern entrance is on the north wall."
         )
         system = messages[0]["content"]
-        self.assertIn("describe ALL objects", system)
-        self.assertIn("Define anchors", system)
-        self.assertIn("Do not include exact coordinates", system)
-        self.assertIn("Keep it literal without embellishment", system)
-        self.assertIn("Location: [location]", system)
-        self.assertIn('"anchors"', system)
-        self.assertIn('"objects"', system)
-
-    def test_spatial_description_parser_splits_state_from_render_text(self):
-        raw = """Location: Tavern Interior
-{
-  "location": {"name": "Tavern Interior"},
-  "anchors": [{"name": "entrance", "type": "door", "wall": "north"}],
-  "objects": [{"name": "bar counter", "type": "counter", "location": "east"}]
-}
-Text description based on JSON
-The tavern is rectangular. The entrance is on the north wall.
-"""
-        parsed = minimax.parse_story_setting_description(raw)
-        self.assertEqual(parsed["location_name"], "Tavern Interior")
-        self.assertEqual(
-            parsed["location_state"]["anchors"][0]["wall"],
-            "north",
+        self.assertIn("plain text", system)
+        self.assertIn("no JSON", system)
+        self.assertNotIn('"anchors"', system)
+        json_messages = minimax.build_story_setting_json_extraction_messages(
+            "An entrance is on the north wall.", "Tavern"
         )
-        self.assertEqual(
-            parsed["text_description"],
-            "The tavern is rectangular. The entrance is on the north wall.",
-        )
+        self.assertIn('"anchors"', json_messages[0]["content"])
+        self.assertIn('"objects"', json_messages[0]["content"])
+        self.assertIn("ACCEPTED PHYSICAL DESCRIPTION", json_messages[1]["content"])
+        self.assertIn("LOCATION NAME\nTavern", json_messages[1]["content"])
 
-    def test_spatial_extraction_rejects_conflicting_fixture_relation_before_use(self):
-        raw = '''Location: Rabbit Hole
-{
-  "location": {"name": "Rabbit Hole"},
-  "anchors": [{"name": "wooden post", "type": "post", "location": "center of Rabbit Hole"}],
-  "objects": []
-}
-Text description based on JSON
-The wooden post frames the entrance.
-'''
+    def test_json_parser_preserves_accepted_text(self):
+        physical = "The tavern entrance is on the north wall."
+        raw = {
+            "location": {"name": "Tavern Interior"},
+            "anchors": [{"name": "entrance", "type": "door", "wall": "north",
+                         "world_state_role": "fixture", "mobility": "fixed"}],
+            "objects": [],
+        }
+        result = minimax.parse_story_setting_json_extraction(
+            raw, description=physical, location_name="Tavern Interior",
+        )
+        self.assertEqual(result["location_name"], "Tavern Interior")
+        self.assertEqual(result["location_state"]["anchors"][0]["wall"], "north")
+        self.assertEqual(result["text_description"], physical)
+
+    def test_json_extraction_rejects_conflict_with_accepted_text(self):
+        description = "The wooden post frames the entrance."
+        raw = {
+            "location": {"name": "Rabbit Hole"},
+            "anchors": [{"name": "wooden post", "type": "post",
+                         "location": "center of Rabbit Hole",
+                         "world_state_role": "fixture", "mobility": "fixed"}],
+            "objects": [],
+        }
         with self.assertRaisesRegex(ValueError, "contradictory fixed placement"):
-            minimax.parse_story_setting_description(
-                raw,
-                static_setting="A wooden post frames the entrance.",
-                spatial_refinement=(
-                    "The wooden post stands at the center of Rabbit Hole."
-                ),
+            minimax.parse_story_setting_json_extraction(
+                raw, description=description, location_name="Rabbit Hole",
             )
 
     def test_spatial_extraction_rejects_conflicting_fixture_walls(self):
@@ -767,27 +766,30 @@ The wooden post frames the entrance.
             [],
         )
 
-    def test_valid_tunnel_setting_does_not_invoke_setting_repair(self):
-        raw = '''Location: Garden
-{
-  "location": {"name": "Garden"},
-  "anchors": [{"name": "rabbit-hole entrance", "type": "entrance", "position": "north edge of Garden"}],
-  "objects": [{"name": "tunnel", "type": "passage", "location": "south of rabbit-hole entrance"}]
-}
-Text description based on JSON
-The rabbit-hole entrance lies at the garden's northern edge, with a tunnel extending southward and descending underground.
-'''
-        request = mock.Mock(return_value=raw)
+    def test_valid_tunnel_setting_runs_text_and_json_without_repair(self):
+        description = (
+            "The rabbit-hole entrance lies at the garden's northern edge, "
+            "with a tunnel extending southward and descending underground."
+        )
+        structured = {
+            "location": {"name": "Garden"},
+            "anchors": [{"name": "rabbit-hole entrance", "type": "entrance",
+                         "position": "north edge of Garden",
+                         "world_state_role": "fixture", "mobility": "fixed"}],
+            "objects": [{"name": "tunnel", "type": "passage",
+                         "location": "south of rabbit-hole entrance",
+                         "world_state_role": "fixture", "mobility": "fixed"}],
+        }
+        request = mock.Mock(side_effect=[description, structured])
         result = minimax.extract_story_setting_description(
-            "A northern garden edge with a rabbit hole.",
-            static_setting="The rabbit-hole entrance is at the northern edge of the garden.",
-            llm_request=request,
+            description, location_name="Garden", llm_request=request,
         )
         self.assertEqual(result["location_name"], "Garden")
-        request.assert_called_once()
+        self.assertEqual(result["text_description"], description)
+        self.assertEqual(request.call_count, 2)
         self.assertEqual(
-            request.call_args.kwargs["history_metadata"]["purpose"],
-            "story_setting_extract",
+            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
+            ["story_setting_extract", "story_setting_json_extract"],
         )
 
     def test_absolute_and_relative_position_claims_use_distinct_frames(self):
@@ -892,175 +894,189 @@ The rabbit-hole entrance lies at the garden's northern edge, with a tunnel exten
         )
 
     def test_smart_extractors_use_profile_context_and_purposes(self):
-        refine_request = mock.Mock(
-            return_value="30 ft by 20 ft tavern; entrance north."
-        )
+        refine_request = mock.Mock(return_value="A tavern entrance is north of the hearth.")
         refined = minimax.refine_story_setting_spatially(
-            "medieval tavern",
-            llm_request=refine_request,
+            "medieval tavern", llm_request=refine_request,
         )
-        self.assertEqual(refined, "30 ft by 20 ft tavern; entrance north.")
-        self.assertNotIn("context_token_budget", refine_request.call_args.kwargs)
+        self.assertIn("entrance", refined)
         self.assertEqual(
             refine_request.call_args.kwargs["history_metadata"]["purpose"],
             "story_setting_spatial_refine",
         )
-
-        structured_request = mock.Mock(return_value="""Location: Tavern Interior
-{"location":{"name":"Tavern Interior"},"anchors":[],"objects":[]}
-Text description based on JSON
-A rectangular tavern interior.
-""")
+        description = "A rectangular tavern interior with a northern entrance."
+        structured = {"location": {"name": "Tavern Interior"}, "anchors": [], "objects": []}
+        request = mock.Mock(side_effect=[description, structured])
         result = minimax.extract_story_setting_description(
-            refined,
-            llm_request=structured_request,
+            refined, location_name="Tavern Interior", llm_request=request,
         )
+        self.assertEqual(result["text_description"], description)
         self.assertEqual(
-            result["text_description"],
-            "A rectangular tavern interior.",
+            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
+            ["story_setting_extract", "story_setting_json_extract"],
         )
-        self.assertNotIn("context_token_budget", structured_request.call_args.kwargs)
-        self.assertEqual(
-            structured_request.call_args.kwargs["history_metadata"]["purpose"],
-            "story_setting_extract",
-        )
+        self.assertNotIn("context_token_budget", request.call_args.kwargs)
 
     def test_story_setting_extraction_repairs_with_exact_issue_and_context(self):
-        invalid = (
-            'Location: Clearing\n'
-            '{"location":{"name":"Clearing"},"anchors":[]}\n'
-            "Text description based on JSON\nA quiet clearing."
+        invalid = "The house is north of the doorway. The house is south of the doorway."
+        corrected = "The house is north of the doorway."
+        structured = {"location": {"name": "Clearing"}, "anchors": [], "objects": []}
+        request = mock.Mock(side_effect=[invalid, corrected, structured])
+        result = minimax.extract_story_setting_description(
+            "The house is north of the doorway.",
+            static_setting="A small clearing.",
+            location_name="Clearing",
+            llm_request=request,
+            history_metadata={"run_id": "repair-test"},
         )
-        valid = (
-            'Location: Clearing\n'
-            '{"location":{"name":"Clearing"},"anchors":[],"objects":[]}\n'
-            "Text description based on JSON\nA quiet clearing."
-        )
-        request = mock.Mock(side_effect=[invalid, valid])
-        with mock.patch.object(minimax, "console_log") as log:
-            result = minimax.extract_story_setting_description(
-                "A level clearing with a stone path.",
-                static_setting="An open meadow.",
-                llm_request=request,
-                history_metadata={"run_id": "repair-test"},
-            )
-
-        self.assertEqual(result["location_name"], "Clearing")
-        self.assertEqual(request.call_count, 2)
+        self.assertEqual(result["text_description"], corrected)
+        self.assertEqual(request.call_count, 3)
         self.assertEqual(
-            request.call_args_list[0].kwargs["history_metadata"]["purpose"],
-            "story_setting_extract",
+            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
+            ["story_setting_extract", "story_setting_extract_repair",
+             "story_setting_json_extract"],
         )
-        repair_call = request.call_args_list[1]
-        self.assertEqual(
-            repair_call.kwargs["history_metadata"]["purpose"],
-            "story_setting_extract_repair",
-        )
-        repair_user = repair_call.args[0][-1]["content"]
-        self.assertIn("An open meadow.", repair_user)
-        self.assertIn("A level clearing with a stone path.", repair_user)
+        repair_user = request.call_args_list[1].args[0][-1]["content"]
         self.assertIn(invalid, repair_user)
-        self.assertIn("Spatial location_state requires 'objects' as list.", repair_user)
-        self.assertTrue(any("accepted" in str(call).lower() for call in log.call_args_list))
+        self.assertIn("north versus south", repair_user)
+        self.assertIn("A small clearing.", repair_user)
+        self.assertEqual(
+            request.call_args_list[2].args[0][-1]["content"].split(
+                "ACCEPTED PHYSICAL DESCRIPTION\n", 1
+            )[1],
+            corrected,
+        )
 
     def test_story_setting_repairs_receive_latest_response_and_changing_issue(self):
-        first_invalid = (
-            'Location: Clearing\n'
-            '{"location":{"name":"Clearing"},"objects":[]}\n'
-            "Text description based on JSON\nA quiet clearing."
-        )
-        second_invalid = (
-            'Location: Clearing\n'
-            '{"location":{"name":"Clearing"},"anchors":[]}\n'
-            "Text description based on JSON\nA quiet clearing."
-        )
-        valid = (
-            'Location: Clearing\n'
-            '{"location":{"name":"Clearing"},"anchors":[],"objects":[]}\n'
-            "Text description based on JSON\nA quiet clearing."
-        )
-        request = mock.Mock(side_effect=[first_invalid, second_invalid, valid])
+        first_invalid = "Location: Clearing\nThe clearing is level."
+        second_invalid = "{invalid"
+        valid = "A level clearing with a stone path."
+        structured = {"location": {"name": "Clearing"}, "anchors": [], "objects": []}
+        request = mock.Mock(side_effect=[first_invalid, second_invalid, valid, structured])
         result = minimax.extract_story_setting_description(
-            "A level clearing.",
-            llm_request=request,
+            "A level clearing.", location_name="Clearing", llm_request=request,
         )
-        self.assertEqual(result["location_name"], "Clearing")
-        first_repair_user = request.call_args_list[1].args[0][-1]["content"]
-        second_repair_user = request.call_args_list[2].args[0][-1]["content"]
-        self.assertIn(first_invalid, first_repair_user)
-        self.assertIn("Spatial location_state requires 'anchors' as list.", first_repair_user)
-        self.assertIn(second_invalid, second_repair_user)
-        self.assertIn("Spatial location_state requires 'objects' as list.", second_repair_user)
-        self.assertEqual(
-            request.call_args_list[2].kwargs["history_metadata"]["repair_attempt"],
-            2,
-        )
+        self.assertEqual(result["text_description"], valid)
+        first_repair = request.call_args_list[1].args[0][-1]["content"]
+        second_repair = request.call_args_list[2].args[0][-1]["content"]
+        self.assertIn(first_invalid, first_repair)
+        self.assertIn("plain text", first_repair)
+        self.assertIn(second_invalid, second_repair)
+        self.assertIn("JSON", second_repair)
+        self.assertEqual(request.call_args_list[2].kwargs["history_metadata"]["repair_attempt"], 2)
+        self.assertEqual(request.call_args_list[3].kwargs["history_metadata"]["purpose"],
+                         "story_setting_json_extract")
 
     def test_malformed_story_setting_response_is_repaired_using_parser_issue(self):
-        malformed = "Location: Grove\n{not valid json\n"
-        valid = (
-            'Location: Grove\n'
-            '{"location":{"name":"Grove"},"anchors":[],"objects":[]}\n'
-            "Text description based on JSON\nA shaded grove."
-        )
-        request = mock.Mock(side_effect=[malformed, valid])
+        malformed = "{not plain text"
+        corrected = "A shaded grove with an entrance along its eastern edge."
+        structured = {"location": {"name": "Grove"}, "anchors": [], "objects": []}
+        request = mock.Mock(side_effect=[malformed, corrected, structured])
         result = minimax.extract_story_setting_description(
-            "A shaded grove.",
-            llm_request=request,
+            "A shaded grove.", location_name="Grove", llm_request=request,
         )
         self.assertEqual(result["location_name"], "Grove")
         repair_user = request.call_args_list[1].args[0][-1]["content"]
         self.assertIn(malformed, repair_user)
-        self.assertIn("Spatial setting extractor returned unterminated JSON.", repair_user)
+        self.assertIn("plain text", repair_user)
 
     def test_story_setting_repair_exhaustion_keeps_latest_diagnostic(self):
-        first_invalid = (
-            'Location: Clearing\n'
-            '{"location":{"name":"Clearing"},"anchors":[]}\n'
-            "Text description based on JSON\nA quiet clearing."
-        )
-        malformed_repair = "Location: Clearing\n{broken"
-        missing_description = (
-            'Location: Clearing\n'
-            '{"location":{"name":"Clearing"},"anchors":[],"objects":[]}\n'
-        )
-        missing_anchors = (
-            'Location: Clearing\n'
-            '{"location":{"name":"Clearing"},"objects":[]}\n'
-            "Text description based on JSON\nA quiet clearing."
-        )
-        missing_objects = (
-            'Location: Clearing\n'
-            '{"location":{"name":"Clearing"},"anchors":[]}\n'
-            "Text description based on JSON\nA quiet clearing."
-        )
-        request = mock.Mock(side_effect=[
-            first_invalid,
-            malformed_repair,
-            missing_description,
-            missing_anchors,
-            missing_objects,
-            missing_description,
-        ])
-        with mock.patch.object(minimax, "console_log") as log:
-            with self.assertRaisesRegex(
-                ValueError,
-                "Spatial setting extractor returned no text description",
-            ):
-                minimax.extract_story_setting_description(
-                    "A quiet clearing.",
-                    llm_request=request,
-                )
-        self.assertEqual(request.call_count, 6)
-        final_repair_user = request.call_args_list[5].args[0][-1]["content"]
-        self.assertIn(missing_objects, final_repair_user)
-        self.assertIn("Spatial location_state requires 'objects' as list.", final_repair_user)
+        invalid = "The house is north of the gate. The house is south of the gate."
+        request = mock.Mock(side_effect=[invalid, invalid, invalid])
+        with self.assertRaisesRegex(ValueError, "north versus south"):
+            minimax.extract_story_setting_description(
+                "A quiet clearing.", llm_request=request, repair_attempts=2,
+            )
+        self.assertEqual(request.call_count, 3)
         self.assertEqual(
-            [call.kwargs["history_metadata"]["repair_attempt"] for call in request.call_args_list[1:]],
-            [1, 2, 3, 4, 5],
+            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
+            ["story_setting_extract", "story_setting_extract_repair",
+             "story_setting_extract_repair"],
         )
-        self.assertTrue(any("attempt 5/5 rejected" in str(call) for call in log.call_args_list))
 
+    def test_spatial_refinement_retries_its_own_conflicting_text(self):
+        inconsistent = "The house is north of the gate. The house is south of the gate."
+        consistent = "The house is north of the gate."
+        request = mock.Mock(side_effect=[inconsistent, consistent])
+        result = minimax.refine_story_setting_spatially(
+            "A house beside a gate.", llm_request=request,
+        )
+        self.assertEqual(result, consistent)
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
+            ["story_setting_spatial_refine", "story_setting_spatial_refine"],
+        )
+
+    def test_wall_sides_are_not_conflicting_fixture_positions(self):
+        description = (
+            "The house has northern and southern walls. "
+            "The house's northern wall faces southward."
+        )
+        self.assertEqual(minimax.validate_spatial_text_consistency(description), [])
+        state = {
+            "location": {"name": "Garden"},
+            "anchors": [{"name": "house", "type": "building",
+                         "world_state_role": "fixture", "mobility": "fixed"}],
+            "objects": [],
+        }
+        self.assertEqual(
+            minimax.validate_location_geometry_consistency(
+                state, spatial_refinement=description, text_description=description,
+            ),
+            [],
+        )
+
+    def test_same_doorway_on_opposite_walls_requires_text_repair(self):
+        invalid = (
+            "The doorway is on the north wall. "
+            "The doorway is on the south wall."
+        )
+        self.assertIn(
+            "contradictory fixed placement",
+            minimax.validate_spatial_text_consistency(invalid)[0],
+        )
+        with self.assertRaisesRegex(ValueError, "north versus south"):
+            minimax.parse_story_setting_text_description(invalid)
+
+    def test_json_retry_uses_unchanged_accepted_description_without_repair(self):
+        description = "The tavern has a wooden counter beside the entrance."
+        structured = {"location": {"name": "Tavern"}, "anchors": [], "objects": []}
+        request = mock.Mock(side_effect=[description, "{invalid json", structured])
+        result = minimax.extract_story_setting_description(
+            "A tavern with a counter.", location_name="Tavern",
+            llm_request=request, json_attempts=2,
+        )
+        self.assertEqual(result["text_description"], description)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
+            ["story_setting_extract", "story_setting_json_extract",
+             "story_setting_json_extract"],
+        )
+        self.assertEqual(
+            request.call_args_list[1].args[0], request.call_args_list[2].args[0],
+        )
+        self.assertNotIn(
+            "PREVIOUS INVALID DESCRIPTION",
+            request.call_args_list[2].args[0][-1]["content"],
+        )
+
+    def test_json_exhaustion_does_not_rewrite_accepted_text(self):
+        description = "A cellar with a north-wall doorway."
+        request = mock.Mock(side_effect=[description, "not json", "still not json"])
+        with self.assertRaisesRegex(
+            minimax.StorySettingJSONExtractionError,
+            "accepted description",
+        ):
+            minimax.extract_story_setting_description(
+                description, location_name="Cellar",
+                llm_request=request, json_attempts=2,
+            )
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["purpose"] for call in request.call_args_list],
+            ["story_setting_extract", "story_setting_json_extract",
+             "story_setting_json_extract"],
+        )
 
     def test_initial_location_subject_prompt_contains_only_one_beat(self):
         beat = "A goblin already seated near the hearth asks Amy for a pint."
@@ -1315,14 +1331,15 @@ A rectangular tavern interior.
             )
 
     def test_location_state_prompt_labels_only_needed_fixtures_and_supports(self):
-        messages = minimax.build_story_setting_description_messages(
-            "A room with a fixed bench and a loose cup."
+        messages = minimax.build_story_setting_json_extraction_messages(
+            "A room with a fixed bench and a loose cup.", "Room",
         )
         system = messages[0]["content"]
         self.assertIn('"world_state_role"', system)
         self.assertIn('"mobility"', system)
-        self.assertIn("only identify persistent fixtures/supports needed for cross-segment", system)
+        self.assertIn("fixture_support", system)
         self.assertIn("Do not create IDs", system)
+        self.assertIn("Do not invent", system)
 
     def test_dynamic_subject_wardrobe_uses_independent_story_extractor(self):
         state = minimax.new_continuity_state()
@@ -1504,8 +1521,7 @@ A rectangular tavern interior.
         static_prompt = "\n".join(
             message["content"]
             for message in minimax.build_static_setting_extraction_messages(
-                "A medieval fantasy tavern with a timber counter.",
-                "Medieval Tavern",
+                "A medieval fantasy tavern with a timber counter.", "Medieval Tavern",
             )
         )
         refinement_prompt = "\n".join(
@@ -1514,7 +1530,7 @@ A rectangular tavern interior.
                 "Medieval fantasy tavern; timber counter on the east wall."
             )
         )
-        final_prompt = "\n".join(
+        text_prompt = "\n".join(
             message["content"]
             for message in minimax.build_story_setting_description_messages(
                 "Medieval fantasy tavern; timber counter on the east wall.",
@@ -1524,7 +1540,8 @@ A rectangular tavern interior.
         self.assertIn("historical period", static_prompt)
         self.assertIn("period-neutral tavern", static_prompt)
         self.assertIn("period-neutral one", refinement_prompt)
-        self.assertIn("medieval fantasy tavern", final_prompt)
+        self.assertIn("historical period", text_prompt)
+        self.assertIn("medieval fantasy tavern", text_prompt)
 
     def test_strip_video_audio_uses_video_stream_copy_and_no_audio(self):
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as handle:

@@ -519,6 +519,7 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "story_setting_spatial_refine": SMART_CREATIVE_LLM_SETTINGS,
     "story_setting_extract": SMART_EXTRACTOR_LLM_SETTINGS,
     "story_setting_extract_repair": REPAIR_LLM_SETTINGS,
+    "story_setting_json_extract": SMART_EXTRACTOR_LLM_SETTINGS,
     "source_unit_terminal": SMART_EXTRACTOR_LLM_SETTINGS,
     "source_unit_hard_reset": SMART_EXTRACTOR_LLM_SETTINGS,
     "source_unit_split_gate": SMART_EXTRACTOR_LLM_SETTINGS,
@@ -617,6 +618,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "story_setting_spatial_refine": 3072,
     "story_setting_extract": 4096,
     "story_setting_extract_repair": 4096,
+    "story_setting_json_extract": 4096,
     "director_raw_scene_subject_resolution": 4096,
     "world_state_current_segment_subjects": 4096,
     "world_state_current_segment_props": 4096,
@@ -21002,7 +21004,11 @@ def refine_story_setting_spatially(
                     "attempt": attempt,
                 },
             )
-            return _parse_plain_extractor_text(raw, "Spatial setting refinement")
+            description = _parse_plain_extractor_text(raw, "Spatial setting refinement")
+            issues = validate_spatial_text_consistency(description)
+            if issues:
+                raise ValueError("; ".join(issues))
+            return description
         except LLMConnectionError:
             raise
         except (TypeError, ValueError) as error:
@@ -21021,59 +21027,21 @@ def refine_story_setting_spatially(
 
 
 def build_story_setting_description_messages(spatial_location, static_setting=""):
-    """Build the second SMART extractor that emits JSON state plus render prose."""
+    """Request only plain-text spatial description; never JSON."""
     return [
         {
             "role": "system",
             "content": (
-                "Describe this location spatially in detail; describe ALL objects.\n"
-                "- Define anchors, such as doors for interiors or buildings for exteriors.\n"
-                "- Do not include exact coordinates, but use references to anchors and "
-                "north/south/east/west instead.  If interior, use west wall, east wall, "
-                "etc. For exteriors, use east_side, west_side, etc.\n"
-                "- Return a spatial description of the specified area only.\n"
-                "- Keep it literal without embellishment.\n"
-                "- For each anchor and object, add world_state_role with one of "
-                "fixture, support, fixture_support, or untracked, and mobility with "
-                "movable, fixed, or unknown. Use untracked for ordinary scene nouns; "
-                "only identify persistent fixtures/supports needed for cross-segment "
-                "state reasoning. Anchors are fixed fixtures unless clearly movable. "
-                "Do not create IDs.\n"
-                "- Preserve any historical period, culture, and genre in STATIC SETTING "
-                "FACTS and SPATIAL REFINEMENT in both the JSON location name/description "
-                "and the final text description. Treat those cues as visual constraints; "
-                "a stated medieval fantasy tavern must read visibly medieval and fantasy, "
-                "not modern or period-neutral.\n"
-                "- Make the format:\n"
-                "Location: [location]\n"
-                "[JSON representation]\n"
-                "[Text description based on JSON]\n\n"
-                "JSON format:\n"
-                "{\n"
-                "  \"location\": {\n"
-                "    \"name\": \"[name]\",\n"
-                "    ...\n"
-                "  },\n"
-                "  \"anchors\": [\n"
-                "    { \"name\": \"entrance\", \"type\": \"door\", "
-                "\"wall\": \"west\", \"world_state_role\": \"fixture\", "
-                "\"mobility\": \"fixed\" },\n"
-                "    { \"name\": \"city hall\", \"type\": \"building\", "
-                "\"location\": \"east\", \"world_state_role\": \"fixture\", "
-                "\"mobility\": \"fixed\" }\n"
-                "  ],\n"
-                "  \"objects\": [\n"
-                "    {\n"
-                "      \"name\": \"sign post\",\n"
-                "      \"type\": \"wooden sign\",\n"
-                "      \"near\": [\"hearth\", \"barrel\"],\n"
-                "      \"world_state_role\": \"untracked\",\n"
-                "      \"mobility\": \"unknown\",\n"
-                "      ...\n"
-                "    },\n"
-                "    ...\n"
-                "  ]\n"
-                "}"
+                "Describe the specified location's physical setting in spatial detail.\n"
+                "- Use STATIC SETTING FACTS and SPATIAL REFINEMENT as references.\n"
+                "- Describe the physical layout, fixed landmarks, fixtures, entrances, "
+                "surfaces, sizes, and relationships of items within this location.\n"
+                "- Keep placements consistent; do not invent objects, measurements, "
+                "or new story events.\n"
+                "- Preserve established historical period, culture, and genre cues.\n"
+                "- Focus only on this location, not unrelated surrounding locations.\n"
+                "Return only the physical description as plain text; no JSON, "
+                "Location heading, or commentary."
             ),
         },
         {
@@ -21083,41 +21051,9 @@ def build_story_setting_description_messages(spatial_location, static_setting=""
                 + str(static_setting or "").strip()
                 + "\n\nSPATIAL REFINEMENT\n"
                 + str(spatial_location or "").strip()
-                + "\n\nReturn all three required parts: Location line, valid "
-                  "double-quoted JSON, then plain-text description based on that JSON."
             ),
         },
     ]
-
-
-def _first_balanced_json_object(value):
-    text = str(value or "")
-    start = text.find("{")
-    if start < 0:
-        raise ValueError("Spatial setting extractor returned no JSON object.")
-    depth = 0
-    in_string = False
-    escaped = False
-    for index in range(start, len(text)):
-        char = text[index]
-        if in_string:
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            continue
-        if char == '"':
-            in_string = True
-        elif char == "{":
-            depth += 1
-        elif char == "}":
-            depth -= 1
-            if depth == 0:
-                return start, index + 1, text[start:index + 1]
-    raise ValueError("Spatial setting extractor returned unterminated JSON.")
-
 
 _SPATIAL_CARDINAL_PATTERN = (
     r"north\s*west(?:ern|ward)?|north\s*east(?:ern|ward)?|"
@@ -21301,11 +21237,66 @@ def _fixture_text_spatial_claims(text, item_name, location_name):
         for clause in re.split(r"[;,\n]+", sentence):
             if not name_pattern.search(clause):
                 continue
+            # A structure's north and south walls do not put the structure
+            # simultaneously north and south of itself.
+            if re.search(
+                rf"(?i){escaped_name}(?:['’]s|(?:\s+itself)?\s+"
+                rf"(?:has|have|features|contains|with))",
+                clause,
+            ) or (
+                re.search(r"\b(?:wall|side|edge)\b", clause, re.IGNORECASE)
+                and re.search(r"\b(?:whose|its|facing|faces|footprint)\b", clause, re.IGNORECASE)
+            ):
+                continue
             claims.update(
                 _spatial_direction_claims(clause, location_name=location_name)
             )
             claims.update(_spatial_region_claims(clause, location_name))
     return claims
+
+
+def validate_spatial_text_consistency(description):
+    """Catch explicit opposing placements without confusing different sides of a structure."""
+    text = _parse_plain_extractor_text(description, "Spatial setting description")
+    if text.lstrip().startswith(("{", "[")) or re.search(r"(?m)^\s*Location\s*:", text):
+        return ["Spatial description must be plain text, without JSON or a Location heading."]
+    direction = r"north(?:east|west)?|south(?:east|west)?|east|west"
+    placement = re.compile(
+        rf"\b(?P<subject>(?:the\s+)?[a-z][\w-]*(?:\s+[a-z][\w-]*){{0,2}})"
+        rf"\s+(?:is|lies|stands|sits|rests|remains)\s+"
+        rf"(?:(?:located|positioned)\s+)?(?:(?:directly|just|immediately)\s+)?"
+        rf"(?:to\s+the\s+)?(?P<direction>{direction})\s+of\s+"
+        rf"(?:the\s+)?(?P<reference>[a-z][\w-]*(?:\s+[a-z][\w-]*){{0,2}})",
+        re.IGNORECASE,
+    )
+    wall_placement = re.compile(
+        rf"\b(?P<subject>(?:the\s+)?[a-z][\w-]*(?:\s+[a-z][\w-]*){{0,2}})"
+        rf"\s+(?:is|lies|stands|sits|rests|remains)\s+"
+        rf"(?:(?:located|positioned)\s+)?(?:on|at|along|against|by|near)\s+"
+        rf"(?:the\s+)?(?P<direction>{direction})\s+(?:wall|side|edge|end)\b",
+        re.IGNORECASE,
+    )
+    seen = {}
+    for sentence in re.split(r"[.!?;\n]+", text):
+        for pattern in (placement, wall_placement):
+            for match in pattern.finditer(sentence):
+                subject = _event_name_key(
+                    re.sub(r"^the\s+", "", match.group("subject"), flags=re.IGNORECASE)
+                )
+                reference = (
+                    _event_name_key(match.group("reference"))
+                    if pattern is placement else "location"
+                )
+                for axis, value in _spatial_direction_axes(match.group("direction")):
+                    key = (subject, reference, axis)
+                    prior = seen.get(key)
+                    if prior and prior != value:
+                        return [
+                            f"Fixture {subject!r} has contradictory fixed placement "
+                            f"relative to {reference!r}: {prior} versus {value}."
+                        ]
+                    seen[key] = value
+    return []
 
 
 def _spatial_claims_conflict(left, right):
@@ -21395,76 +21386,101 @@ def validate_location_geometry_consistency(
     return []
 
 
-def parse_story_setting_description(raw_result, *, static_setting="", spatial_refinement=""):
-    """Split Location + JSON + text output into persistent state and render prose."""
-    text = str(raw_result or "").strip()
-    text = re.sub(r"(?im)^\s*```(?:json|text|plaintext)?\s*$", "", text)
-    text = re.sub(r"(?im)^\s*```\s*$", "", text).strip()
-    if not text:
-        raise ValueError("Spatial setting extraction returned no output.")
+def parse_story_setting_text_description(raw_result):
+    """Validate physical text before starting JSON extraction."""
+    description = _parse_plain_extractor_text(raw_result, "Spatial setting description")
+    issues = validate_spatial_text_consistency(description)
+    if issues:
+        raise ValueError("; ".join(issues))
+    return description
 
-    json_start, json_end, json_text = _first_balanced_json_object(text)
-    try:
-        location_state = json.loads(json_text)
-    except json.JSONDecodeError as error:
-        console_log(
-            "Spatial setting extractor raw response that failed JSON parsing:\n"
-            + text,
-            flush=True,
+
+def build_story_setting_json_extraction_messages(description, location_name=""):
+    """Extract JSON only from already accepted physical description."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract a static location_state JSON object only from ACCEPTED PHYSICAL DESCRIPTION.\n"
+                "- Do not invent or change facts, geometry, measurements, fixtures, "
+                "objects, or placements. Omit unsupported details.\n"
+                "- Use LOCATION NAME for the location name when supplied.\n"
+                "- Put persistent entrances and landmarks under anchors; other "
+                "described items belong under objects. Do not create IDs.\n"
+                "- Every anchor and object requires string name, string type, "
+                "world_state_role (fixture, support, fixture_support, or untracked), "
+                "and mobility (movable, fixed, or unknown).\n"
+                "- Include additional relative positions and sizes only if described.\n"
+                "Return only one JSON object with exactly these top-level fields "
+                "and types: "
+                '{"location":{"name":"string"},"anchors":[{"name":"string",'
+                '"type":"string","world_state_role":"fixture","mobility":"fixed"}],'
+                '"objects":[{"name":"string","type":"string",'
+                '"world_state_role":"untracked","mobility":"unknown"}]}. '
+                "Arrays may be empty; item objects may have additional supported "
+                "spatial fields. No prose or code fences."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "LOCATION NAME\n"
+                + str(location_name or "").strip()
+                + "\n\nACCEPTED PHYSICAL DESCRIPTION\n"
+                + str(description or "").strip()
+            ),
+        },
+    ]
+
+
+def parse_story_setting_json_extraction(raw_result, *, description, location_name=""):
+    """Validate a fresh JSON extraction without changing accepted prose."""
+    if isinstance(raw_result, dict):
+        location_state = raw_result
+    elif isinstance(raw_result, str):
+        candidate = raw_result.strip()
+        fence = chr(96) * 3
+        candidate = re.sub(
+            rf"(?im)^\s*{re.escape(fence)}(?:json)?\s*$", "", candidate
         )
-        raise ValueError(
-            f"Spatial setting extractor returned invalid JSON: {error}"
-        ) from error
+        candidate = re.sub(rf"(?im)^\s*{re.escape(fence)}\s*$", "", candidate).strip()
+        try:
+            location_state = json.loads(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Spatial location_state returned invalid JSON: {error}") from error
+    else:
+        raise ValueError("Spatial location_state must be a JSON object.")
     if not isinstance(location_state, dict):
         raise ValueError("Spatial location_state must be a JSON object.")
-    for key, expected_type in (
-        ("location", dict),
-        ("anchors", list),
-        ("objects", list),
-    ):
-        if not isinstance(location_state.get(key), expected_type):
-            raise ValueError(
-                f"Spatial location_state requires {key!r} as "
-                f"{expected_type.__name__}."
-            )
-
-    prefix = text[:json_start]
-    location_match = re.search(
-        r"(?im)^\s*Location\s*:\s*(.+?)\s*$",
-        prefix,
-    )
-    location_name = (
-        location_match.group(1).strip()
-        if location_match
-        else str(location_state.get("location", {}).get("name") or "").strip()
-    )
-    if not location_name:
-        raise ValueError("Spatial setting extractor returned no Location name.")
-
-    description = text[json_end:].strip()
-    description = re.sub(
-        r"(?im)^\s*(?:\*\*)?Text description based on JSON"
-        r"(?:\*\*)?\s*:?\s*",
-        "",
-        description,
-        count=1,
-    ).strip()
-    if not description:
-        raise ValueError(
-            "Spatial setting extractor returned no text description based on JSON."
-        )
-
-    geometry_errors = validate_location_geometry_consistency(
+    if set(location_state) != {"location", "anchors", "objects"}:
+        raise ValueError("Spatial location_state requires only location, anchors, and objects.")
+    for key, kind in (("location", dict), ("anchors", list), ("objects", list)):
+        if not isinstance(location_state.get(key), kind):
+            raise ValueError(f"Spatial location_state requires {key!r} as {kind.__name__}.")
+    name = str(location_state["location"].get("name") or "").strip()
+    if not name:
+        raise ValueError("Spatial location_state requires a location name.")
+    if location_name and name != str(location_name).strip():
+        raise ValueError("Spatial location_state name does not match LOCATION NAME.")
+    for section in ("anchors", "objects"):
+        for item in location_state[section]:
+            if not isinstance(item, dict) or not all(
+                isinstance(item.get(field), str) and item[field].strip()
+                for field in ("name", "type")
+            ):
+                raise ValueError(f"Spatial location_state {section} require named, typed objects.")
+            if item.get("world_state_role") not in {
+                "fixture", "support", "fixture_support", "untracked",
+            } or item.get("mobility") not in {"movable", "fixed", "unknown"}:
+                raise ValueError(f"Spatial location_state {section} require a valid role and mobility.")
+    issues = validate_location_geometry_consistency(
         location_state,
-        static_setting=static_setting,
-        spatial_refinement=spatial_refinement,
         text_description=description,
     )
-    if geometry_errors:
-        raise ValueError("; ".join(geometry_errors))
-
+    if issues:
+        raise ValueError("; ".join(issues))
     return {
-        "location_name": location_name,
+        "location_name": name,
         "location_state": location_state,
         "text_description": description,
     }
@@ -21475,27 +21491,24 @@ def build_story_setting_description_repair_messages(
     rejected_response,
     issue,
 ):
-    """Build a repair request from the original extraction context and failure."""
-    original_system = str(extraction_messages[0].get("content") or "")
-    original_context = str(extraction_messages[-1].get("content") or "")
+    """Repair the plain-text description only, never JSON."""
     return [
         {
             "role": "system",
             "content": (
-                "Repair the spatial setting extraction response to correct the "
-                "reported validation issue. Preserve all valid setting details. "
-                "Follow the original extraction instructions and return the same "
-                "Location line, JSON structure, and text description format."
+                "Repair the physical description to resolve the validation issue. "
+                "Preserve valid facts from the original instructions and context. "
+                "Return only corrected plain-text description; no JSON or headings."
             ),
         },
         {
             "role": "user",
             "content": (
                 "ORIGINAL EXTRACTION INSTRUCTIONS\n"
-                + original_system
+                + str(extraction_messages[0].get("content") or "")
                 + "\n\nEXTRACTION CONTEXT\n"
-                + original_context
-                + "\n\nPREVIOUS INVALID RESPONSE\n"
+                + str(extraction_messages[-1].get("content") or "")
+                + "\n\nPREVIOUS INVALID DESCRIPTION\n"
                 + str(rejected_response or "")
                 + "\n\nVALIDATION ISSUE\n"
                 + str(issue or "")
@@ -21503,114 +21516,110 @@ def build_story_setting_description_repair_messages(
         },
     ]
 
+class StorySettingJSONExtractionError(ValueError):
+    """JSON-only extraction exhausted; do not discard accepted physical text."""
+
 
 def extract_story_setting_description(
     spatial_location,
     *,
     static_setting="",
+    location_name="",
     llm_request=None,
     history_metadata=None,
     repair_attempts=5,
+    json_attempts=3,
 ):
-    """Create canonical location_state JSON plus the matching ComfyUI description."""
+    """Repair and accept physical text before requesting any structured JSON."""
     if llm_request is None:
         llm_request = ask_llm
     base_messages = build_story_setting_description_messages(
-        spatial_location,
-        static_setting=static_setting,
+        spatial_location, static_setting=static_setting,
     )
-    max_repair_attempts = max(0, int(repair_attempts))
-    total_attempts = max_repair_attempts + 1
+    max_repairs = max(0, int(repair_attempts))
     previous_raw = ""
     previous_issue = ""
+    accepted_description = ""
 
-    for attempt in range(1, total_attempts + 1):
+    for attempt in range(1, max_repairs + 2):
         is_repair = attempt > 1
         repair_attempt = attempt - 1
         messages = (
             build_story_setting_description_repair_messages(
-                base_messages,
-                previous_raw,
-                previous_issue,
-            )
-            if is_repair
-            else [dict(message) for message in base_messages]
+                base_messages, previous_raw, previous_issue,
+            ) if is_repair else [dict(message) for message in base_messages]
         )
         if is_repair:
             console_log(
-                "story_setting_extract repair attempt "
-                f"{repair_attempt}/{max_repair_attempts}; validation issue: "
-                f"{previous_issue}",
+                f"story_setting_extract repair attempt {repair_attempt}/{max_repairs}; "
+                f"validation issue: {previous_issue}",
                 flush=True,
             )
+        raw = llm_request(
+            messages,
+            response_format=None,
+            parse_json_response=False,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "purpose": "story_setting_extract_repair" if is_repair else "story_setting_extract",
+                "attempt": attempt,
+                **({"repair_attempt": repair_attempt} if is_repair else {}),
+            },
+        )
+        previous_raw = str(raw or "")
         try:
-            raw = llm_request(
-                messages,
-                response_format=None,
-                parse_json_response=False,
-                history_metadata={
-                    **dict(history_metadata or {}),
-                    "purpose": (
-                        "story_setting_extract_repair"
-                        if is_repair
-                        else "story_setting_extract"
-                    ),
-                    "attempt": attempt,
-                    **({"repair_attempt": repair_attempt} if is_repair else {}),
-                },
-            )
-        except LLMConnectionError:
-            raise
-
-        raw_text = str(raw or "")
-        try:
-            parsed = parse_story_setting_description(
-                raw_text,
-                static_setting=static_setting,
-                spatial_refinement=spatial_location,
-            )
+            accepted_description = parse_story_setting_text_description(previous_raw)
         except (TypeError, ValueError) as error:
-            previous_raw = raw_text
             previous_issue = str(error)
-            if is_repair:
-                console_log(
-                    "story_setting_extract repair response "
-                    f"(attempt {repair_attempt}/{max_repair_attempts}):\n"
-                    + raw_text,
-                    flush=True,
-                )
-                console_log(
-                    "story_setting_extract repair attempt "
-                    f"{repair_attempt}/{max_repair_attempts} rejected; "
-                    f"validation issue: {previous_issue}",
-                    flush=True,
-                )
-            else:
-                console_log(
-                    "story_setting_extract response rejected; "
-                    f"validation issue: {previous_issue}",
-                    flush=True,
-                )
+            console_log(
+                f"story_setting_extract {'repair ' if is_repair else ''}response rejected; "
+                f"validation issue: {previous_issue}",
+                flush=True,
+            )
             continue
-
         if is_repair:
             console_log(
-                "story_setting_extract repair response "
-                f"(attempt {repair_attempt}/{max_repair_attempts}):\n"
-                + raw_text,
+                f"story_setting_extract repair attempt {repair_attempt}/{max_repairs} accepted.",
                 flush=True,
             )
-            console_log(
-                "story_setting_extract repair attempt "
-                f"{repair_attempt}/{max_repair_attempts} accepted.",
-                flush=True,
-            )
-        return parsed
+        break
 
-    raise ValueError(
-        "Could not extract canonical spatial setting after "
-        f"{max_repair_attempts} repair attempts; latest validation issue: "
-        + str(previous_issue or "unknown spatial setting extraction error")
+    if not accepted_description:
+        raise ValueError(
+            f"Could not validate spatial setting text after {max_repairs} repairs; "
+            f"latest validation issue: {previous_issue or 'unknown description error'}"
+        )
+
+    json_messages = build_story_setting_json_extraction_messages(
+        accepted_description, location_name=location_name,
+    )
+    latest_issue = ""
+    max_json_attempts = max(1, int(json_attempts))
+    for attempt in range(1, max_json_attempts + 1):
+        raw = llm_request(
+            [dict(message) for message in json_messages],
+            response_format=None,
+            parse_json_response=False,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "purpose": "story_setting_json_extract",
+                "attempt": attempt,
+            },
+        )
+        try:
+            return parse_story_setting_json_extraction(
+                raw, description=accepted_description, location_name=location_name,
+            )
+        except (TypeError, ValueError) as error:
+            latest_issue = str(error)
+            console_log(
+                f"story_setting_json_extract attempt {attempt}/{max_json_attempts} "
+                f"rejected; retrying fresh from accepted description: {latest_issue}",
+                flush=True,
+            )
+    raise StorySettingJSONExtractionError(
+        "Could not extract location_state JSON from accepted description after "
+        f"{max_json_attempts} attempts: {latest_issue}"
     )
 
 
@@ -43066,6 +43075,7 @@ def _run_main(
                 spatial_setting = extract_story_setting_description(
                     spatial_location,
                     static_setting=static_setting,
+                    location_name=story_location_metadata["starting_location"],
                     history_metadata={"run_id": run_id},
                 )
                 story_location_metadata["setting_description"] = (
@@ -43100,6 +43110,7 @@ def _run_main(
                 "story_setting_extract",
                 extract_structured_setting_stage,
                 previous_stage=lambda _error: refine_spatial_setting_stage(),
+                fatal_exceptions=(StorySettingJSONExtractionError,),
                 log=console_log,
             )
             console_log(
@@ -44077,6 +44088,7 @@ def _run_main(
                 setting_result = extract_story_setting_description(
                     spatial_description,
                     static_setting=static_setting,
+                    location_name=requested_name,
                     history_metadata={
                         "run_id": run_id,
                         "segment": segment_number,

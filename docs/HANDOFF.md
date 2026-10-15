@@ -916,3 +916,10 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
   combined suite can serve as a gate. `tests/test_world_state_foundation.py`
   had 66 passes, 2 unrelated stale story-start extractor expectations, and 11
   passing subtests.
+
+## 2026-10-14 — split location description and JSON extraction
+
+- `story_setting_extract` now returns only spatial prose. Its existing bounded repair call addresses rejected text; explicit contradictory placements are checked before JSON creation. `story_setting_spatial_refine` independently retries explicit inconsistent upstream geometry instead of passing that issue to the downstream repair.
+- The new `story_setting_json_extract` receives only accepted physical text and a canonical location name. It retries malformed, schema-invalid, or geometry-conflicting JSON from the same unchanged input; it never repairs JSON or regenerates already accepted prose. Exhaustion raises `StorySettingJSONExtractionError` without backstepping the initial location pipeline.
+- Narrowed text-derived fixture claims so a building's distinct north/south walls are not interpreted as contradictory positions of that building. Both initial and dynamically registered locations use the split via `extract_story_setting_description`.
+- Updated purpose profiles, prompt inventory, and location-reference regressions. Verification: GitHub changes reviewed; repository tests and local LLM generation must still be run.
