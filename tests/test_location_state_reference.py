@@ -32,8 +32,8 @@ class LocationStateReferenceTests(unittest.TestCase):
             'Return JSON { "setting_description": "[description]" }',
             system,
         )
-        self.assertIn("OVERALL LOCATION\\ndark rabbit hole", user)
-        self.assertIn("EXPANDED STORY\\nAlice starts", user)
+        self.assertIn("OVERALL LOCATION\ndark rabbit hole", user)
+        self.assertIn("EXPANDED STORY\nAlice starts", user)
         self.assertNotIn("Return exactly setting_description.", user)
         self.assertEqual(
             set(minimax.build_static_setting_extraction_response_format()[
