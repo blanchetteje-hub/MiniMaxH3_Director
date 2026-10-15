@@ -1,6 +1,6 @@
 # LLM Prompt / Call Inventory
 
-**Branch audited:** `director-split-refine` (2026-10-13). **Primary source:** `minimax.py` and `story_planner.py`, including the text request profile map and observed call sites. This is an **index of LLM calls, not verbatim user/system prompt text**: runtime prompts remain user-owned in source. Do not edit prompts merely to make the descriptions here match.
+**Branch audited:** `multi-location-support` (2026-10-14). **Primary source:** `minimax.py` and `story_planner.py`, including the text request profile map and observed call sites. This is an **index of LLM calls, not verbatim user/system prompt text**: runtime prompts remain user-owned in source. Do not edit prompts merely to make the descriptions here match.
 
 **How to read:** `purpose` selects one of four immutable sampling/reasoning profiles. Context budgets and output-token limits are maintained separately per purpose. Unknown text purposes use `EXTRACTOR_LLM_SETTINGS` plus the standard context/output defaults. `visual_end_state` uses a separate multimodal vision request. A listed purpose does not guarantee execution on every run; some calls are conditional, diagnostic, compatibility, or legacy paths.
 
@@ -18,8 +18,9 @@
 | `static_setting_extract` | `EXTRACTOR_LLM_SETTINGS` | Extract permanent location facts without action-only objects | Expanded story and named location context | Static setting description |
 | `story_setting_spatial_refine` | `SMART_CREATIVE_LLM_SETTINGS` | Lay out a physically coherent static environment | Extracted setting and location constraints | Spatially refined setting text |
 | `story_setting_extract` | `SMART_EXTRACTOR_LLM_SETTINGS` | Serialize canonical location geometry and text | Refined static layout and source location details | Location-state JSON plus matching literal prose |
+| `story_setting_extract_repair` | `REPAIR_LLM_SETTINGS` | Repair a rejected structured setting response while preserving valid details | Original extraction instructions/context, latest rejected response, and exact parser/geometry issue | The same Location line, location-state JSON, and matching prose |
 | `director_raw_scene_subject_resolution` | `SMART_EXTRACTOR_LLM_SETTINGS` | Identify animate Subjects present from the beginning | Complete finalized beat list, known Subjects and opening context | Functional names and supported initial states |
-| `director_raw_scene_repair` | `SMART_EXTRACTOR_LLM_SETTINGS` | Repair only the RAW scene for any Director RAW-scene validator finding | Rejected RAW prompt and concrete validator error bullets | Corrected RAW prompt text |
+| `director_raw_scene_repair` | `REPAIR_LLM_SETTINGS` | Repair only the RAW scene for any Director RAW-scene validator finding | Rejected RAW prompt and concrete validator error bullets | Corrected RAW prompt text |
 | `registered_subject_story_start_presence` | `SMART_EXTRACTOR_LLM_SETTINGS` | Classify one authored Subject's opening presence | Full beats/story and one registered Subject with source evidence | Present/absent/unknown classification with evidence |
 | `world_state_current_segment_subjects` | `SMART_EXTRACTOR_LLM_SETTINGS` | Register identities needed for the current Beat before RAW | Current Beat/source, registered Subject context | New current-segment identity records; no inferred entry/presence |
 | `world_state_current_segment_props` | `SMART_EXTRACTOR_LLM_SETTINGS` | Identify explicitly needed persistent props for this Beat | Current Beat/source and registered Subject, prop, location/support vocabulary | Narrow prop registration candidates and initial placement |

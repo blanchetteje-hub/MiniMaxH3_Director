@@ -518,6 +518,7 @@ LLM_PURPOSE_PROFILES = MappingProxyType({
     "static_setting_extract": EXTRACTOR_LLM_SETTINGS,
     "story_setting_spatial_refine": SMART_CREATIVE_LLM_SETTINGS,
     "story_setting_extract": SMART_EXTRACTOR_LLM_SETTINGS,
+    "story_setting_extract_repair": REPAIR_LLM_SETTINGS,
     "source_unit_terminal": SMART_EXTRACTOR_LLM_SETTINGS,
     "source_unit_hard_reset": SMART_EXTRACTOR_LLM_SETTINGS,
     "source_unit_split_gate": SMART_EXTRACTOR_LLM_SETTINGS,
@@ -615,6 +616,7 @@ LLM_PURPOSE_MAX_OUTPUT_TOKENS = MappingProxyType({
     "director_h3_music": 512,
     "story_setting_spatial_refine": 3072,
     "story_setting_extract": 4096,
+    "story_setting_extract_repair": 4096,
     "director_raw_scene_subject_resolution": 4096,
     "world_state_current_segment_subjects": 4096,
     "world_state_current_segment_props": 4096,
@@ -11418,6 +11420,7 @@ def ask_llm(
         "add_scene_timing_refiner",
         "add_camera_refiner",
         "director_raw_scene_repair",
+        "story_setting_extract_repair",
         "director_raw_scene_physical",
         "director_raw_scene_prop_state",
         "validate_timing_valid",
@@ -21330,30 +21333,78 @@ def parse_story_setting_description(raw_result, *, static_setting="", spatial_re
     }
 
 
+def build_story_setting_description_repair_messages(
+    extraction_messages,
+    rejected_response,
+    issue,
+):
+    """Build a repair request from the original extraction context and failure."""
+    original_system = str(extraction_messages[0].get("content") or "")
+    original_context = str(extraction_messages[-1].get("content") or "")
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Repair the spatial setting extraction response to correct the "
+                "reported validation issue. Preserve all valid setting details. "
+                "Follow the original extraction instructions and return the same "
+                "Location line, JSON structure, and text description format."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "ORIGINAL EXTRACTION INSTRUCTIONS\n"
+                + original_system
+                + "\n\nEXTRACTION CONTEXT\n"
+                + original_context
+                + "\n\nPREVIOUS INVALID RESPONSE\n"
+                + str(rejected_response or "")
+                + "\n\nVALIDATION ISSUE\n"
+                + str(issue or "")
+            ),
+        },
+    ]
+
+
 def extract_story_setting_description(
     spatial_location,
     *,
     static_setting="",
     llm_request=None,
     history_metadata=None,
-    attempts=3,
+    repair_attempts=5,
 ):
     """Create canonical location_state JSON plus the matching ComfyUI description."""
     if llm_request is None:
         llm_request = ask_llm
-    last_error = None
     base_messages = build_story_setting_description_messages(
         spatial_location,
         static_setting=static_setting,
     )
-    for attempt in range(1, max(1, int(attempts)) + 1):
-        messages = [dict(message) for message in base_messages]
-        if attempt > 1:
-            messages[-1]["content"] += (
-                "\n\nRETRY: The previous response could not be parsed. Preserve the "
-                "same setting facts. Return exactly: one Location: line, one valid JSON "
-                "object using double quotes with location/anchors/objects, then a plain-"
-                "text location description derived from that JSON."
+    max_repair_attempts = max(0, int(repair_attempts))
+    total_attempts = max_repair_attempts + 1
+    previous_raw = ""
+    previous_issue = ""
+
+    for attempt in range(1, total_attempts + 1):
+        is_repair = attempt > 1
+        repair_attempt = attempt - 1
+        messages = (
+            build_story_setting_description_repair_messages(
+                base_messages,
+                previous_raw,
+                previous_issue,
+            )
+            if is_repair
+            else [dict(message) for message in base_messages]
+        )
+        if is_repair:
+            console_log(
+                "story_setting_extract repair attempt "
+                f"{repair_attempt}/{max_repair_attempts}; validation issue: "
+                f"{previous_issue}",
+                flush=True,
             )
         try:
             raw = llm_request(
@@ -21362,29 +21413,67 @@ def extract_story_setting_description(
                 parse_json_response=False,
                 history_metadata={
                     **dict(history_metadata or {}),
-                    "purpose": "story_setting_extract",
+                    "purpose": (
+                        "story_setting_extract_repair"
+                        if is_repair
+                        else "story_setting_extract"
+                    ),
                     "attempt": attempt,
+                    **({"repair_attempt": repair_attempt} if is_repair else {}),
                 },
-            )
-            return parse_story_setting_description(
-                raw,
-                static_setting=static_setting,
-                spatial_refinement=spatial_location,
             )
         except LLMConnectionError:
             raise
+
+        raw_text = str(raw or "")
+        try:
+            parsed = parse_story_setting_description(
+                raw_text,
+                static_setting=static_setting,
+                spatial_refinement=spatial_location,
+            )
         except (TypeError, ValueError) as error:
-            last_error = error
-            if attempt < max(1, int(attempts)):
+            previous_raw = raw_text
+            previous_issue = str(error)
+            if is_repair:
                 console_log(
-                    f"Spatial setting extractor returned unusable mixed output "
-                    f"(attempt {attempt}/{max(1, int(attempts))}); retrying only "
-                    f"this extractor: {error}",
+                    "story_setting_extract repair response "
+                    f"(attempt {repair_attempt}/{max_repair_attempts}):\n"
+                    + raw_text,
                     flush=True,
                 )
+                console_log(
+                    "story_setting_extract repair attempt "
+                    f"{repair_attempt}/{max_repair_attempts} rejected; "
+                    f"validation issue: {previous_issue}",
+                    flush=True,
+                )
+            else:
+                console_log(
+                    "story_setting_extract response rejected; "
+                    f"validation issue: {previous_issue}",
+                    flush=True,
+                )
+            continue
+
+        if is_repair:
+            console_log(
+                "story_setting_extract repair response "
+                f"(attempt {repair_attempt}/{max_repair_attempts}):\n"
+                + raw_text,
+                flush=True,
+            )
+            console_log(
+                "story_setting_extract repair attempt "
+                f"{repair_attempt}/{max_repair_attempts} accepted.",
+                flush=True,
+            )
+        return parsed
+
     raise ValueError(
-        "Could not extract canonical spatial setting: "
-        + str(last_error or "unknown spatial setting extraction error")
+        "Could not extract canonical spatial setting after "
+        f"{max_repair_attempts} repair attempts; latest validation issue: "
+        + str(previous_issue or "unknown spatial setting extraction error")
     )
 
 

@@ -75,6 +75,7 @@ EXPECTED_PROFILE_PURPOSES = {
     },
     "repair": {
         "director_raw_scene_repair",
+        "story_setting_extract_repair",
     },
 }
 
@@ -150,11 +151,11 @@ def test_four_llm_profiles_are_immutable_and_keep_sampling_defaults():
         if key not in {"temperature", "seed"}
     }
     assert minimax.LLM_PURPOSE_PROFILES["director_raw_scene_repair"] is repair
-    assert all(
-        profile is not repair
+    assert {
+        purpose
         for purpose, profile in minimax.LLM_PURPOSE_PROFILES.items()
-        if purpose != "director_raw_scene_repair"
-    )
+        if profile is repair
+    } == {"director_raw_scene_repair", "story_setting_extract_repair"}
 
 
 def test_purpose_routes_are_a_disjoint_exhaustive_partition_of_text_calls():
@@ -170,6 +171,7 @@ def test_purpose_routes_are_a_disjoint_exhaustive_partition_of_text_calls():
     assert "visual_end_state" not in minimax.LLM_PURPOSE_PROFILES
     assert minimax.VISION_LLM_SETTINGS["max_output_tokens"] == 2500
     assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_raw_scene_repair"] == 8192
+    assert minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["story_setting_extract_repair"] == 4096
 
 
 @pytest.mark.parametrize(
@@ -260,6 +262,39 @@ def test_director_raw_scene_repair_randomizes_seed_per_request():
     requests = [call.kwargs["json"] for call in post.call_args_list]
     assert [request["seed"] for request in requests] == [123456, 654321]
     assert [request["temperature"] for request in requests] == [0.2, 0.2]
+    assert random_seed.call_count == 2
+
+
+def test_story_setting_extract_repair_uses_fresh_repair_profile_seed_per_request():
+    def response():
+        result = mock.Mock()
+        result.raise_for_status.return_value = None
+        result.json.return_value = {
+            "choices": [{"message": {"content": "repaired"}, "finish_reason": "stop"}]
+        }
+        return result
+
+    with (
+        mock.patch.object(minimax.requests, "post", side_effect=[response(), response()]) as post,
+        mock.patch.object(minimax, "append_prompt_history"),
+        mock.patch.object(minimax, "estimate_message_tokens", return_value=10),
+        mock.patch.object(
+            minimax,
+            "generate_random_llm_seed",
+            side_effect=[222333, 444555],
+        ) as random_seed,
+    ):
+        for _ in range(2):
+            minimax.ask_llm(
+                [{"role": "user", "content": "repair the setting"}],
+                response_format=None,
+                history_metadata={"purpose": "story_setting_extract_repair"},
+            )
+
+    requests = [call.kwargs["json"] for call in post.call_args_list]
+    assert [request["seed"] for request in requests] == [222333, 444555]
+    assert [request["temperature"] for request in requests] == [0.2, 0.2]
+    assert [request["reasoning_effort"] for request in requests] == ["high", "high"]
     assert random_seed.call_count == 2
 
 

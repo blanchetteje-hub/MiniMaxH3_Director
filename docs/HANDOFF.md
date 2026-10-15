@@ -1,5 +1,32 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — repair invalid structured setting extraction
+
+- `story_setting_extract` now parses and validates its first response through
+  the existing `parse_story_setting_description()` path. On a parse or geometry
+  failure, the follow-up call uses `story_setting_extract_repair` with the
+  original extraction instructions/context, the latest rejected response, and
+  the exact parser/validator issue. Each repair is checked by the same parser
+  and validators; later repairs receive the latest response and its current
+  issue. The original output structure and downstream location-reference flow
+  are unchanged.
+- The repair purpose routes to the existing `REPAIR_LLM_SETTINGS` profile
+  (temperature 0.2, random seed per request) and keeps a 4096-token output cap.
+  The local bound is five repair calls after the initial extraction. Repair
+  attempts and their issue, response, and accepted/rejected result are logged.
+  Only after this local bound is exhausted does the existing pipeline
+  predecessor-retry policy run.
+- Added regressions for successful repair, changing validation issues across
+  repairs, malformed JSON repair, five-repair exhaustion, repair profile
+  routing, and fresh per-request seeds. The four focused setting-repair tests
+  passed; LLM-settings routing tests passed (71). The full location-reference
+  module reported 56 passed and two unrelated existing failures (a wardrobe
+  extractor call-count expectation and a stale physical-validator prompt
+  assertion). The adjacent postmortem module reported 8 passed and one
+  unrelated existing dialogue-format expectation. `py_compile` and
+  `git diff --check` passed. The updated `minimax.py` automation copy was
+  verified byte-for-byte.
+
 ## 2026-10-14 — final H3 dialogue and camera formatting
 
 - Final H3 assembly now converts registered, attributed quoted speech into

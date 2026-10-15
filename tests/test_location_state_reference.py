@@ -767,6 +767,142 @@ A rectangular tavern interior.
             "story_setting_extract",
         )
 
+    def test_story_setting_extraction_repairs_with_exact_issue_and_context(self):
+        invalid = (
+            'Location: Clearing\n'
+            '{"location":{"name":"Clearing"},"anchors":[]}\n'
+            "Text description based on JSON\nA quiet clearing."
+        )
+        valid = (
+            'Location: Clearing\n'
+            '{"location":{"name":"Clearing"},"anchors":[],"objects":[]}\n'
+            "Text description based on JSON\nA quiet clearing."
+        )
+        request = mock.Mock(side_effect=[invalid, valid])
+        with mock.patch.object(minimax, "console_log") as log:
+            result = minimax.extract_story_setting_description(
+                "A level clearing with a stone path.",
+                static_setting="An open meadow.",
+                llm_request=request,
+                history_metadata={"run_id": "repair-test"},
+            )
+
+        self.assertEqual(result["location_name"], "Clearing")
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(
+            request.call_args_list[0].kwargs["history_metadata"]["purpose"],
+            "story_setting_extract",
+        )
+        repair_call = request.call_args_list[1]
+        self.assertEqual(
+            repair_call.kwargs["history_metadata"]["purpose"],
+            "story_setting_extract_repair",
+        )
+        repair_user = repair_call.args[0][-1]["content"]
+        self.assertIn("An open meadow.", repair_user)
+        self.assertIn("A level clearing with a stone path.", repair_user)
+        self.assertIn(invalid, repair_user)
+        self.assertIn("Spatial location_state requires 'objects' as list.", repair_user)
+        self.assertTrue(any("accepted" in str(call).lower() for call in log.call_args_list))
+
+    def test_story_setting_repairs_receive_latest_response_and_changing_issue(self):
+        first_invalid = (
+            'Location: Clearing\n'
+            '{"location":{"name":"Clearing"},"objects":[]}\n'
+            "Text description based on JSON\nA quiet clearing."
+        )
+        second_invalid = (
+            'Location: Clearing\n'
+            '{"location":{"name":"Clearing"},"anchors":[]}\n'
+            "Text description based on JSON\nA quiet clearing."
+        )
+        valid = (
+            'Location: Clearing\n'
+            '{"location":{"name":"Clearing"},"anchors":[],"objects":[]}\n'
+            "Text description based on JSON\nA quiet clearing."
+        )
+        request = mock.Mock(side_effect=[first_invalid, second_invalid, valid])
+        result = minimax.extract_story_setting_description(
+            "A level clearing.",
+            llm_request=request,
+        )
+        self.assertEqual(result["location_name"], "Clearing")
+        first_repair_user = request.call_args_list[1].args[0][-1]["content"]
+        second_repair_user = request.call_args_list[2].args[0][-1]["content"]
+        self.assertIn(first_invalid, first_repair_user)
+        self.assertIn("Spatial location_state requires 'anchors' as list.", first_repair_user)
+        self.assertIn(second_invalid, second_repair_user)
+        self.assertIn("Spatial location_state requires 'objects' as list.", second_repair_user)
+        self.assertEqual(
+            request.call_args_list[2].kwargs["history_metadata"]["repair_attempt"],
+            2,
+        )
+
+    def test_malformed_story_setting_response_is_repaired_using_parser_issue(self):
+        malformed = "Location: Grove\n{not valid json\n"
+        valid = (
+            'Location: Grove\n'
+            '{"location":{"name":"Grove"},"anchors":[],"objects":[]}\n'
+            "Text description based on JSON\nA shaded grove."
+        )
+        request = mock.Mock(side_effect=[malformed, valid])
+        result = minimax.extract_story_setting_description(
+            "A shaded grove.",
+            llm_request=request,
+        )
+        self.assertEqual(result["location_name"], "Grove")
+        repair_user = request.call_args_list[1].args[0][-1]["content"]
+        self.assertIn(malformed, repair_user)
+        self.assertIn("Spatial setting extractor returned unterminated JSON.", repair_user)
+
+    def test_story_setting_repair_exhaustion_keeps_latest_diagnostic(self):
+        first_invalid = (
+            'Location: Clearing\n'
+            '{"location":{"name":"Clearing"},"anchors":[]}\n'
+            "Text description based on JSON\nA quiet clearing."
+        )
+        malformed_repair = "Location: Clearing\n{broken"
+        missing_description = (
+            'Location: Clearing\n'
+            '{"location":{"name":"Clearing"},"anchors":[],"objects":[]}\n'
+        )
+        missing_anchors = (
+            'Location: Clearing\n'
+            '{"location":{"name":"Clearing"},"objects":[]}\n'
+            "Text description based on JSON\nA quiet clearing."
+        )
+        missing_objects = (
+            'Location: Clearing\n'
+            '{"location":{"name":"Clearing"},"anchors":[]}\n'
+            "Text description based on JSON\nA quiet clearing."
+        )
+        request = mock.Mock(side_effect=[
+            first_invalid,
+            malformed_repair,
+            missing_description,
+            missing_anchors,
+            missing_objects,
+            missing_description,
+        ])
+        with mock.patch.object(minimax, "console_log") as log:
+            with self.assertRaisesRegex(
+                ValueError,
+                "Spatial setting extractor returned no text description",
+            ):
+                minimax.extract_story_setting_description(
+                    "A quiet clearing.",
+                    llm_request=request,
+                )
+        self.assertEqual(request.call_count, 6)
+        final_repair_user = request.call_args_list[5].args[0][-1]["content"]
+        self.assertIn(missing_objects, final_repair_user)
+        self.assertIn("Spatial location_state requires 'objects' as list.", final_repair_user)
+        self.assertEqual(
+            [call.kwargs["history_metadata"]["repair_attempt"] for call in request.call_args_list[1:]],
+            [1, 2, 3, 4, 5],
+        )
+        self.assertTrue(any("attempt 5/5 rejected" in str(call) for call in log.call_args_list))
+
 
     def test_initial_location_subject_prompt_contains_only_one_beat(self):
         beat = "A goblin already seated near the hearth asks Amy for a pint."
