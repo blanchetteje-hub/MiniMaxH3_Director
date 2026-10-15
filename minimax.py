@@ -31347,7 +31347,7 @@ def _camera_instruction_to_h3_prose(instruction):
         return f"The camera {cue[0].lower() + cue[1:]}"
     if re.match(r"(?i)(?:wide|medium|high-angle|low-angle)\s+(?:shot|view)\b", cue):
         return f"The camera frames {cue[0].lower() + cue[1:]}"
-    return f"The camera follows this instruction: {cue}"
+    return f"The camera frames {cue[0].lower() + cue[1:]}"
 
 
 def _convert_camera_annotations_for_h3(description):
@@ -44938,7 +44938,11 @@ def _run_main(
             ),
             starting_location=(
                 str(
-                    segment_bundle.get("location_name")
+                    (
+                        origin_context.get("name")
+                        if transitioning
+                        else segment_bundle.get("location_name")
+                    )
                     or (generation_state.get("metadata") or {}).get(
                         "starting_location", ""
                     )
