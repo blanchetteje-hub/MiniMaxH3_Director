@@ -39938,6 +39938,8 @@ def build_director_raw_scene_prop_state_messages(
                 "them. Reject if a prop changes identity or holder/location without a visible "
                 "action, a transfer lacks a source or destination, pouring/filling lacks a "
                 "real source container, or End continuity contradicts the final prop state. "
+                "Gripping or leaning on a registered fixed fixture is contact, not "
+                "acquiring or relocating the fixture. "
                 "Ignore subject movement, entry staging, camera movement, prose, and timing. "
                 "Return exactly one JSON object with boolean valid and string issue. Report "
                 "only the first concrete problem."
@@ -40798,7 +40800,8 @@ def _fixed_prop_motion_issue(raw_scene, props):
         r"roll(?:s|ed|ing)?|hoist(?:s|ed|ing)?|haul(?:s|ed|ing)?|"
         r"relocat(?:e|es|ed|ing)|reposition(?:s|ed|ing)|"
         r"rais(?:e|es|ed|ing)|lower(?:s|ed|ing)?|"
-        r"shift(?:s|ed|ing)?|rotat(?:e|es|ed|ing))\b",
+        r"shift(?:s|ed|ing)?|rotat(?:e|es|ed|ing)|"
+        r"pull(?:s|ed|ing)?)\b",
         re.IGNORECASE,
     )
     raw = str(raw_scene or "")
@@ -40839,6 +40842,15 @@ def _fixed_prop_motion_issue(raw_scene, props):
                         )
                     if not associated:
                         continue
+                    # Pulling on a fixture is contact; pulling it *from* or
+                    # *into* a location asserts displacement of fixed geometry.
+                    if action_match.group(0).casefold().startswith("pull"):
+                        tail = sentence[entity_match.end():]
+                        if not re.search(
+                            r"\b(?:from|out\s+of|away|across|into|onto|toward|to|up|down)\b",
+                            tail, re.IGNORECASE,
+                        ):
+                            continue
                     if re.search(
                         r"\b(?:not|never|cannot|can't|unable\s+to)\s+(?:\w+\s+){0,2}$",
                         sentence[max(0, action_match.start() - 32):action_match.start()],
@@ -44178,6 +44190,19 @@ def _run_main(
             )
             selected_id = str(resolution.get("destination_location_id") or "")
             if resolution.get("requires_registration"):
+                # A transitioning origin is already accepted physical truth.
+                # Use it to ground shared landmarks before refining destination.
+                neighboring_location_context = ""
+                if classification == "transitioning" and isinstance(active_context, dict):
+                    neighboring_name = str(active_context.get("name") or "").strip()
+                    neighboring_description = str(
+                        active_context.get("setting_description") or ""
+                    ).strip()
+                    if neighboring_name and neighboring_description:
+                        neighboring_location_context = (
+                            f"LOCATION: {neighboring_name}\n"
+                            f"ACCEPTED GEOMETRY: {neighboring_description}"
+                        )
                 static_setting = extract_static_setting(
                     expanded_story_context or story,
                     requested_name,
@@ -44189,6 +44214,7 @@ def _run_main(
                 )
                 spatial_description = refine_story_setting_spatially(
                     static_setting,
+                    neighboring_location_context=neighboring_location_context,
                     history_metadata={
                         "run_id": run_id,
                         "segment": segment_number,
@@ -44198,6 +44224,7 @@ def _run_main(
                     spatial_description,
                     static_setting=static_setting,
                     location_name=requested_name,
+                    neighboring_location_context=neighboring_location_context,
                     history_metadata={
                         "run_id": run_id,
                         "segment": segment_number,
