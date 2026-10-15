@@ -256,6 +256,9 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
     completed_world_states = []
     console_messages = []
     extracted_action_inputs = []
+    assembly_attempts = []
+    reference_generation_calls = []
+    character_canon_calls = []
 
     def capture_console_log(*values, **_kwargs):
         console_messages.append(" ".join(str(value) for value in values))
@@ -275,6 +278,10 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         payload = dict(bundle)
         payload["llm_result"] = {
             "detailed_description": "[Shot 1] Amy waits behind the counter.",
+            "reference_alignment": (
+                "At 00:00.000, [CAMERA: slow pan across the counter.] "
+                "Amy waits behind the counter."
+            ),
             "overall_soundscape": "Room tone.",
             "non_diegetic_music": "N/A",
             "completed_beat_ids": [],
@@ -304,8 +311,28 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         return {}
 
     def assemble_prompt(*args, **kwargs):
+        assembly_attempts.append((args, kwargs))
+        if count == 1 and len(assembly_attempts) == 1:
+            raise ValueError(
+                "Final H3 audiovisual formatting failed: An internal "
+                "[CAMERA: ...] annotation remains in the final H3 prompt."
+            )
         assert kwargs["character_canon"]["characters"][0]["name"] == "Amy"
         return "H3 prompt"
+
+    def generate_reference(*_args, **_kwargs):
+        reference_generation_calls.append(True)
+        return ({
+            "Amy": {
+                "name": "Amy",
+                "picture_number": 1,
+                "image_name": "amy.png",
+                "image_path": "/tmp/amy.png",
+                "signature": "cached-reference",
+                "version": 1,
+                "description": "Amy in her established outfit.",
+            },
+        }, ["Amy"])
 
     render = mock.patch("minimax.render_segment_with_retries",
                         side_effect=RuntimeError("stop at rendering") if render_enabled else None)
@@ -317,10 +344,16 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         mock.patch("minimax.configure_formatter"),
         mock.patch("minimax.configure_reference_image_overrides"),
         mock.patch("minimax.load_text_file", side_effect=load_text),
-        mock.patch("minimax.load_or_generate_character_canon", return_value={
-            "fields": ["age", "clothing", "gender"],
-            "characters": [{"name": "Amy", "age": "30", "clothing": "jeans", "gender": "female"}],
-        }),
+        mock.patch(
+            "minimax.load_or_generate_character_canon",
+            side_effect=lambda *args, **kwargs: (
+                character_canon_calls.append(True)
+                or {
+                    "fields": ["age", "clothing", "gender"],
+                    "characters": [{"name": "Amy", "age": "30", "clothing": "jeans", "gender": "female"}],
+                }
+            ),
+        ),
         mock.patch(
             "minimax.parse_story_beat_instructions",
             return_value=("A story.", []),
@@ -334,6 +367,8 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         mock.patch("minimax.validate_runtime_environment"),
         mock.patch("minimax.save_generated_prompts_file", side_effect=lambda payload: saved_packages.append(copy.deepcopy(payload))),
         mock.patch("minimax.request_segment_llm", side_effect=request_segment),
+        mock.patch("minimax.plan_character_reference_images", side_effect=generate_reference),
+        mock.patch("minimax.ensure_character_reference_images", side_effect=generate_reference),
         mock.patch(
             "minimax.extract_and_dry_run_world_state_events",
             side_effect=extract_actions,
@@ -406,6 +441,11 @@ def test_prompts_are_saved_automatically_before_rendering(count, render_enabled)
         assert completed_world_states == []
         world_state_commit_mock.assert_not_called()
     assert saved_packages[-1]["prompts"][0]["h3_prompt"] == "H3 prompt"
+    assert len(character_canon_calls) == 1
+    assert len(reference_generation_calls) == count
+    assert len(assembly_attempts) == count + (1 if count == 1 else 0)
+    if count == 1:
+        assert "[CAMERA:" not in assembly_attempts[1][0][0]["reference_alignment"]
     binding_logs = [
         message for message in console_messages
         if "Subject/Picture reference bindings before final H3 assembly" in message

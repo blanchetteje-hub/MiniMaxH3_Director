@@ -2553,6 +2553,31 @@ if __name__ == "__main__":
 
 
 class RuntimeRecoverySupervisorTests(unittest.TestCase):
+    def test_legitimate_upstream_invalidation_rebuilds_its_declared_predecessor(self):
+        state = {"opening": "stale"}
+        attempts = []
+        rebuilds = []
+
+        def assemble_final_prompt():
+            attempts.append(state["opening"])
+            if state["opening"] == "stale":
+                raise ValueError("final prompt identity binding is invalid")
+            return "assembled from rebuilt identity bindings"
+
+        def rebuild_identity_bindings(_error):
+            rebuilds.append("identity bindings")
+            state["opening"] = "current"
+
+        result = minimax.run_pipeline_stage_with_backstep(
+            "final_h3_assembly",
+            assemble_final_prompt,
+            previous_stage=rebuild_identity_bindings,
+        )
+
+        self.assertEqual(result, "assembled from rebuilt identity bindings")
+        self.assertEqual(attempts, ["stale", "current"])
+        self.assertEqual(rebuilds, ["identity bindings"])
+
     def test_main_recovers_generation_errors_in_prompt_only_mode(self):
         with (
             patch.object(

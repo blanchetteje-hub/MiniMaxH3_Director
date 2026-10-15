@@ -1,5 +1,38 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — recover final H3 camera formatting locally
+
+- The final H3 guard scanned the complete assembled prompt, but camera
+  conversion previously ran only on `detailed_description`. Separately
+  assembled fields such as `reference_alignment` could therefore retain an
+  internal `[CAMERA: ...]` tag and fail final assembly. Canonical prompt text
+  was also inserted after the guard.
+- Camera conversion now runs on the fully assembled prompt after all fields,
+  including canonical text, are inserted and before the final leak guard. It
+  recognizes timestamped camera annotations even when a section prefix shares
+  the line. Only valid timestamped internal annotations are converted; the
+  final guard still rejects malformed or unrecognized tags. Timestamps and
+  accepted RAW actions are preserved.
+- The main and saved-segment H3 assembly paths now use a local camera recovery
+  wrapper. If the final guard still finds a recognized annotation in a retained
+  formatter field, Python normalizes that field and retries only H3 assembly
+  with the same accepted RAW and upstream artifacts. Non-camera errors are
+  passed through to the existing recovery path. The completed-segment
+  checkpoint boundary and WorldState commit timing are unchanged; no checkpoint
+  schema or state authority was added.
+- Added regressions for a tag in separately assembled reference alignment,
+  recovery after simulated final-assembly failure with canonicalization,
+  wardrobe, and reference generation already completed, accepted RAW identity,
+  and preserving non-camera failures for the existing predecessor-recovery
+  path. Focused Director tests: 151 passed and 13 subtests; the LLM pipeline
+  module: 117 passed; Segment 1/5 prompt-generation cases: 2 passed; checkpoint
+  resume tests excluding the existing fallback-wardrobe expectation: 47 passed
+  and 9 subtests. `py_compile` and `git diff --check` passed. Broader combined
+  prompt-generation/resume run had two existing failures: a missing generated
+  character-reference video fixture and the fallback test expecting canonical
+  clothing to be split into slots when its fixture omits structured
+  `clothing_state`.
+
 ## 2026-10-14 — compare spatial claims by property and reference frame
 
 - The setting-geometry false positive came from treating every cardinal word

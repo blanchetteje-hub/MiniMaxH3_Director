@@ -31352,27 +31352,73 @@ def _camera_instruction_to_h3_prose(instruction):
 
 def _convert_camera_annotations_for_h3(description):
     """Turn internal camera tags into natural-language H3 scene text."""
+    annotation_pattern = re.compile(
+        r"(?P<prefix>.*?\bAt\s+\d{2}:\d{2}\.\d{3},\s*)"
+        r"\[CAMERA:\s*(?P<instruction>[^\]\r\n]+)\]\s*"
+    )
     converted = []
     for line in str(description or "").splitlines():
-        match = _DIRECTOR_CAMERA_PREFIX_RE.match(line)
-        tag = (
-            _DIRECTOR_CAMERA_TAG_RE.match(match.group("body"))
-            if match is not None
-            else None
-        )
-        if match is None or tag is None:
+        match = annotation_pattern.search(line)
+        if match is None:
             converted.append(line)
             continue
-        tag_prefix = tag.group(0).split("] ", 1)[0]
-        camera_prose = _camera_instruction_to_h3_prose(tag_prefix[9:])
-        action = tag.group("action")
+        camera_prose = _camera_instruction_to_h3_prose(
+            match.group("instruction")
+        )
+        action = line[match.end():]
         body = camera_prose
         if action:
             body = f"{camera_prose} as {action}" if camera_prose else action
-        converted.append(
-            f"At {match.group('timestamp')}{body}"
-        )
+        converted.append(match.group("prefix") + body)
     return "\n".join(converted)
+
+
+def build_h3_prompt_with_camera_recovery(*args, **kwargs):
+    """Retry final assembly locally after normalizing a leaked camera tag."""
+    try:
+        return build_h3_prompt(*args, **kwargs)
+    except ValueError as error:
+        if "internal [CAMERA:" not in str(error):
+            raise
+
+        positional = list(args)
+        result_index = 0
+        original_result = (
+            positional[result_index]
+            if len(positional) > result_index
+            else kwargs.get("llm_result")
+        )
+        if not isinstance(original_result, dict):
+            raise
+        normalized_result = copy.deepcopy(original_result)
+        changed_fields = []
+        for field in (
+            "detailed_description",
+            "reference_alignment",
+            "overall_soundscape",
+            "non_diegetic_music",
+        ):
+            value = normalized_result.get(field)
+            if isinstance(value, str):
+                converted = _convert_camera_annotations_for_h3(value)
+                if converted != value:
+                    normalized_result[field] = converted
+                    changed_fields.append(field)
+        if not changed_fields:
+            raise
+
+        console_log(
+            "Final H3 assembly found an internal camera annotation outside its "
+            "normal description path; retrying only assembly after deterministic "
+            "camera conversion in: " + ", ".join(changed_fields),
+            flush=True,
+        )
+        if len(positional) > result_index:
+            positional[result_index] = normalized_result
+            return build_h3_prompt(*positional, **kwargs)
+        retry_kwargs = dict(kwargs)
+        retry_kwargs["llm_result"] = normalized_result
+        return build_h3_prompt(**retry_kwargs)
 
 
 def _h3_dialogue_format_errors(
@@ -32800,6 +32846,12 @@ def build_h3_prompt(
         continuity_state=continuity_state,
         raw_scene=accepted_raw_scene,
     )
+    if canonical_prompt_text:
+        final_prompt = final_prompt.replace(canonical_marker, canonical_prompt_text, 1)
+    # Some prompt sections are assembled outside the main scene description.
+    # Convert internal camera instructions after every section has been
+    # inserted, so the final whole-prompt guard checks the actual output.
+    final_prompt = _convert_camera_annotations_for_h3(final_prompt)
     formatting_errors = []
     if re.search(r"(?i)\[\s*CAMERA\s*:", final_prompt):
         formatting_errors.append(
@@ -32817,8 +32869,6 @@ def build_h3_prompt(
             "Final H3 audiovisual formatting failed: "
             + "; ".join(formatting_errors)
         )
-    if canonical_prompt_text:
-        final_prompt = final_prompt.replace(canonical_marker, canonical_prompt_text, 1)
     return final_prompt
 
 
@@ -37266,7 +37316,7 @@ def repair_existing_segment(
         get_detailed_description(llm_result, "")
     )
     hard_cut_subject_continuity = ""
-    h3_prompt = build_h3_prompt(
+    h3_prompt = build_h3_prompt_with_camera_recovery(
         llm_result,
         historical_subject_definitions,
         hard_cut_subject_continuity,
@@ -44866,7 +44916,7 @@ def _run_main(
             ),
             flush=True,
         )
-        h3_prompt = build_h3_prompt(
+        h3_prompt = build_h3_prompt_with_camera_recovery(
             llm_result,
             h3_subject_definitions,
             hard_cut_subject_continuity,

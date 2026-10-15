@@ -2467,6 +2467,120 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             descriptive_detail,
         )
 
+    def test_final_h3_converts_camera_annotations_from_other_assembled_fields(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1]\nAt 00:04.117, Amy reaches for the cup."
+                ),
+                "reference_alignment": (
+                    "At 00:04.117, [CAMERA: Slow pan across the counter.] "
+                    "Amy reaches for the cup."
+                ),
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+            },
+            "<Subject 1> is Amy, referenced in <Picture 1>.",
+            segment_number=1,
+            conditioning_mode="initial",
+        )
+
+        self.assertNotIn("[CAMERA:", prompt)
+        self.assertIn(
+            "At 00:04.117, The camera makes a slow pan across the counter as "
+            "Amy reaches for the cup.",
+            prompt,
+        )
+
+    def test_camera_assembly_recovery_retries_only_final_formatting(self):
+        original_builder = minimax.build_h3_prompt
+        canonicalizer = mock.Mock(return_value={"characters": []})
+        wardrobe_extractor = mock.Mock(return_value="complete outfit")
+        reference_generator = mock.Mock(return_value={
+            "Amy": {
+                "name": "Amy",
+                "picture_number": 1,
+                "image_name": "amy.png",
+                "image_path": "/state/amy.png",
+            },
+        })
+        # Simulate completed upstream work, then a final-assembly leak guard
+        # failure. Recovery must normalize the immutable formatter input and
+        # retry assembly without invoking those upstream producers again.
+        canonicalizer()
+        wardrobe_extractor()
+        reference_generator()
+        result = {
+            "detailed_description": "[Shot 1] Amy reaches for the cup.",
+            "reference_alignment": (
+                "At 00:04.117, [CAMERA: Slow pan across the counter.] "
+                "Amy reaches for the cup."
+            ),
+            "overall_soundscape": "Room tone.",
+            "non_diegetic_music": "N/A",
+        }
+        accepted_raw = (
+            "At 00:04.117, Amy reaches for the cup.\n"
+            "End continuity state: Amy stands at the counter."
+        )
+        build_attempts = 0
+
+        def fail_first_assembly(*args, **kwargs):
+            nonlocal build_attempts
+            build_attempts += 1
+            if build_attempts == 1:
+                raise ValueError(
+                    "Final H3 audiovisual formatting failed: An internal "
+                    "[CAMERA: ...] annotation remains in the final H3 prompt."
+                )
+            return original_builder(*args, **kwargs)
+
+        with mock.patch.object(
+            minimax,
+            "build_h3_prompt",
+            side_effect=fail_first_assembly,
+        ) as builder, mock.patch.object(minimax, "console_log"):
+            prompt = minimax.build_h3_prompt_with_camera_recovery(
+                result,
+                "<Subject 1> is Amy, referenced in <Picture 1>.",
+                segment_number=1,
+                conditioning_mode="initial",
+                accepted_raw_scene=accepted_raw,
+            )
+
+        self.assertNotIn("[CAMERA:", prompt)
+        self.assertIn("The camera makes a slow pan", prompt)
+        self.assertEqual(builder.call_count, 2)
+        self.assertNotIn(
+            "[CAMERA:",
+            builder.call_args_list[1].args[0]["reference_alignment"],
+        )
+        self.assertEqual(
+            [call.kwargs["accepted_raw_scene"] for call in builder.call_args_list],
+            [accepted_raw, accepted_raw],
+        )
+        canonicalizer.assert_called_once()
+        wardrobe_extractor.assert_called_once()
+        reference_generator.assert_called_once()
+
+    def test_non_camera_h3_failure_is_not_hidden_by_camera_recovery(self):
+        with mock.patch.object(
+            minimax,
+            "build_h3_prompt",
+            side_effect=ValueError("Subject identity binding is invalid."),
+        ) as builder:
+            with self.assertRaisesRegex(ValueError, "Subject identity binding"):
+                minimax.build_h3_prompt_with_camera_recovery(
+                    {
+                        "detailed_description": "Amy reaches for the cup.",
+                        "overall_soundscape": "Room tone.",
+                        "non_diegetic_music": "N/A",
+                    },
+                    "<Subject 1> is Amy, referenced in <Picture 1>.",
+                    segment_number=1,
+                )
+        builder.assert_called_once()
+
     def test_final_h3_preserves_already_tagged_dialogue_and_camera_free_scene(self):
         prompt = minimax.build_h3_prompt(
             {
