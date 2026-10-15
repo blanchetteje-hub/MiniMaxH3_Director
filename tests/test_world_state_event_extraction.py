@@ -334,7 +334,7 @@ def test_raw_integrity_failure_discards_event_batch_and_keeps_empty_candidate():
     )
 
 
-def test_alice_grabbing_fixed_wooden_post_discards_entire_rejected_batch():
+def test_alice_grabbing_fixed_wooden_post_preserves_valid_mug_pickup():
     state = new_world_state({
         "source_sha256": "alice-fixed-post",
         "subjects": {
@@ -366,12 +366,13 @@ def test_alice_grabbing_fixed_wooden_post_discards_entire_rejected_batch():
             state, raw, segment_number=1
         )
     assert result["accepted"] is True
-    assert result["events"] == []
-    assert result["state_actions"] == []
+    assert result["events"] == response["events"]
+    assert len(result["state_actions"]) == 1
+    assert result["state_actions"][0]["op"] == "pickup"
     assert result["raw_scene"] == raw
     assert state == opening
     assert any(
-        "fixed" in call.args[0] and "discarding the entire event batch" in call.args[0]
+        "fixed fixture is not pickup" in call.args[0]
         for call in log.call_args_list
     )
 

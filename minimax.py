@@ -4123,6 +4123,14 @@ def _is_registered_non_subject_candidate(candidate, world_state, source_text="")
     else:
         candidate_name = str(candidate or "")
         evidence = description = ""
+    # A known Subject stays a Subject even when their name appears in a
+    # place or fixture label (e.g. "front step of Alice's house").
+    if any(
+        _subject_identity_key(candidate_name) == _subject_identity_key(subject.get("name"))
+        for subject in (world_state.get("subjects") or {}).values()
+        if isinstance(subject, dict)
+    ):
+        return False
     matches = _matches_registered_non_subject(
         {"name": candidate_name}, world_state
     )
@@ -4593,6 +4601,8 @@ def build_current_segment_persistent_prop_messages(
                 "and must be reused by identity; never duplicate or rename them.\n\n"
                 "- Each new prop must be directly involved in a transfer, placement, "
                 "pour/consume, or mechanism action in CURRENT BEAT or ASSIGNED SOURCE.\n"
+                "- Grabbing, touching, or leaning on an existing fixed fixture does "
+                "not acquire or move it; never return the fixture as a new prop.\n"
                 "- Return exactly one explicit initial_location or initial_holder, "
                 "using only the registered names below.\n"
                 "- A support_name may name only a registered support/fixture.\n"
@@ -4822,8 +4832,14 @@ def parse_current_segment_persistent_prop_result(
             raise ValueError("Persistent prop entry has an invalid shape.")
         name = " ".join(str(entry["name"] or "").split()).strip()
         key = name.casefold()
-        if not name or key in names or key in existing:
-            raise ValueError("Current-Segment props must be new, non-empty, and unique.")
+        if not name or key in names:
+            raise ValueError("Current-Segment props must be non-empty and unique.")
+        if key in existing:
+            console_log(
+                f"Skipping pre-Director prop {name!r}: already registered in WorldState.",
+                flush=True,
+            )
+            continue
         names.add(key)
         if entry["initial_location"] is not None and entry["initial_holder"] is not None:
             raise ValueError(
@@ -9768,6 +9784,27 @@ def inject_location_reference_into_h3_prompt(
     if marker not in prompt:
         return clause + prompt
     return prompt.replace(marker, marker + " " + clause, 1)
+
+
+def _h3_segment_starting_location(segment_number, segment_bundle, metadata):
+    """Use the physical origin at Segment 1, not a transition's destination."""
+    if int(segment_number) != 1:
+        return ""
+    metadata = metadata if isinstance(metadata, dict) else {}
+    transition = segment_bundle.get("location_transition")
+    if isinstance(transition, dict) and transition.get("classification") == "transitioning":
+        contexts = metadata.get("location_contexts")
+        contexts = contexts if isinstance(contexts, dict) else {}
+        origin_id = str(transition.get("origin_location_id") or "")
+        origin = contexts.get(origin_id)
+        if not isinstance(origin, dict) or not str(origin.get("name") or "").strip():
+            raise ValueError(
+                f"Segment 1 transition has no registered origin context: {origin_id!r}."
+            )
+        return str(origin["name"]).strip()
+    return str(
+        segment_bundle.get("location_name") or metadata.get("starting_location") or ""
+    ).strip()
 
 
 def inject_location_transition_into_h3_prompt(
@@ -39171,6 +39208,8 @@ WORLD_STATE_EVENT_SYSTEM_PROMPT = """You extract physical events from a film sce
 Identify events that change a Subject's location, physical support, possession, clothing, or the state of an object. Ignore gestures, appearances, dialogue, and other actions that do not cause these changes.
 
 Report events in chronological order using only what is explicitly described in RAW SCENE.
+Gripping or bracing against a fixed environmental fixture is contact, not taking
+possession of or moving the fixture. Do not report a persistent event for contact alone.
 
 Use these event types:
 - move: Subject changes location or physical support.
@@ -39361,9 +39400,42 @@ def _event_action_id(segment, index):
     return f"event_{int(segment):04d}_{int(index):03d}"
 
 
+def _event_refers_to_fixed_fixture(state, mentioned):
+    """Recognize fixed-geometry contacts, even with location-specific qualifiers."""
+    key = _event_name_key(mentioned)
+    if not key:
+        return False
+    matches = [
+        row for row in state.get("props", {}).values()
+        if isinstance(row, dict)
+        and row.get("status") == "present"
+        and (
+            key == _event_name_key(row.get("name"))
+            or (
+                len(key.split()) >= 2
+                and " " + key + " " in " " + _event_name_key(row.get("name")) + " "
+            )
+        )
+    ]
+    return bool(matches) and all(row.get("mobility") == "fixed" for row in matches)
+
+
 def _translate_world_state_event(state, event, raw_scene, segment_number, event_index):
     action_id = _event_action_id(segment_number, event_index)
     op = event["action"]
+    # A hand braced on a fixed post is not a change of its owner or position.
+    if op == "take" and _event_refers_to_fixed_fixture(state, event.get("object")):
+        console_log(f"WORLDSTATE EVENT {event_index} ignored: touching a fixed fixture is not pickup.", flush=True)
+        return []
+    if (
+        op == "move"
+        and _event_refers_to_fixed_fixture(state, event.get("actor"))
+        and _event_resolve_entity(
+            state, "subject", event.get("actor"), event_index, optional=True
+        ) is None
+    ):
+        console_log(f"WORLDSTATE EVENT {event_index} ignored: fixed fixture cannot move.", flush=True)
+        return []
     actor_id, actor = _event_resolve_entity(state, "subject", event["actor"], event_index)
     obj, source, destination = event.get("object"), event.get("source"), event.get("destination")
     relation = str(event.get("relation") or "").casefold()
@@ -45063,20 +45135,8 @@ def _run_main(
             retention_json=(
                 prompt_reduced_continuity_state if retention else None
             ),
-            starting_location=(
-                str(
-                    (
-                        origin_context.get("name")
-                        if transitioning
-                        else segment_bundle.get("location_name")
-                    )
-                    or (generation_state.get("metadata") or {}).get(
-                        "starting_location", ""
-                    )
-                    or ""
-                ).strip()
-                if segment == 1
-                else ""
+            starting_location=_h3_segment_starting_location(
+                segment, segment_bundle, generation_state.get("metadata")
             ),
             retained_subject_ids=segment_reference_binding_snapshot.get(
                 "defined_subject_ids",
@@ -45838,6 +45898,8 @@ def main():
     reset_console_logs()
     console_log("Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
     recovery_resume_segment = None
+    previous_failure = None
+    repeated_failure_count = 0
     while True:
         try:
             # Recreate worker pools after every failed attempt. Their context
@@ -45870,6 +45932,13 @@ def main():
             # argparse exits are command-line usage handling, not generation
             # failures. The three fatal runtime conditions are handled above.
             raise
+        except NameError as error:
+            # A programming error cannot be fixed by re-generating LLM stages.
+            console_log(
+                f"FATAL: Python programming error (not recoverable by retry): {error}",
+                file=sys.stderr, flush=True,
+            )
+            raise
         except Exception as error:
             # Always resume at the first incomplete segment. If failure
             # occurred after a RAW-producing stage, this rebuilds that segment
@@ -45878,6 +45947,19 @@ def main():
             recovery_resume_segment = _checkpoint_recovery_resume_segment()
             if recovery_resume_segment is None:
                 recovery_resume_segment = 1
+            failure = (type(error).__name__, str(error), recovery_resume_segment)
+            if failure == previous_failure:
+                repeated_failure_count += 1
+            else:
+                previous_failure = failure
+                repeated_failure_count = 1
+            if repeated_failure_count >= 3:
+                console_log(
+                    "FATAL: identical failure repeated three times at the same "
+                    f"incomplete segment {recovery_resume_segment}: {error}",
+                    file=sys.stderr, flush=True,
+                )
+                raise
             if isinstance(error, PipelineStageRetryError):
                 console_log(
                     f"Backstep requested: {error.stage_name} -> "
