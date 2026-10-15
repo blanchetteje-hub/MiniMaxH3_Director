@@ -40284,7 +40284,10 @@ def format_world_state_prompt_context(world_state, *, heading="WORLDSTATE OPENIN
                 description = str(garment["garment"]).strip()
                 if _world_state_known(garment.get("condition")):
                     description += f" ({garment['condition']})"
-                wardrobe.append(description)
+                # A full-body garment occupies multiple structured slots, but
+                # should appear only once in human-readable H3 opening state.
+                if description.casefold() not in {item.casefold() for item in wardrobe}:
+                    wardrobe.append(description)
         if wardrobe:
             facts.append("wearing " + _english_join(wardrobe))
         condition = subject.get("persistent_condition")
