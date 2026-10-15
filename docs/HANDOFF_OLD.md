@@ -4989,3 +4989,1715 @@ This branch is the active workspace for the next object-state work. The latest
 implementation and acceptance target are the 2026-10-05 Subject/prop ledger
 handoff immediately above; no new implementation changes are part of this
 branch setup.
+
+## 2026-10-14 — Director RAW opening footwear consistency
+
+- Fixed a confirmed contradiction: canonical WorldState records Alice's sandals
+  while Director RAW describes her as barefoot without a removal. The existing
+  physical/spatial validation entrypoint now checks explicit barefoot claims
+  against the opening WorldState footwear layers before its existing LLM call.
+  A clearly staged removal earlier in the same RAW permits later barefoot
+  action; other Subjects, unknown footwear, and quoted speech are not treated
+  as a footwear contradiction. A concrete mismatch uses the existing RAW
+  repair path; no runtime prompts, stages, or persistent state are changed.
+- Added focused regressions for invalid opening appearances, legitimate
+  same-scene removals, ordering, multiple footwear layers, non-footwear removals,
+  non-subject mentions, unknown wardrobe, and integration with the physical
+  entrypoint. The isolated equivalent helper passed 13 locally executed
+  scratch tests; the repository-wide tests and real local-20B rendering
+  are not yet verified in this connector-only environment.
+- The impossible step-to-hole movement and inaccurate underground destination
+  visual reference are still open and intentionally untouched.
+
+
+## 2026-10-14 — recover final H3 camera formatting locally
+
+- The final H3 guard scanned the complete assembled prompt, but camera
+  conversion previously ran only on `detailed_description`. Separately
+  assembled fields such as `reference_alignment` could therefore retain an
+  internal `[CAMERA: ...]` tag and fail final assembly. Canonical prompt text
+  was also inserted after the guard.
+- Camera conversion now runs on the fully assembled prompt after all fields,
+  including canonical text, are inserted and before the final leak guard. It
+  recognizes timestamped camera annotations even when a section prefix shares
+  the line. Only valid timestamped internal annotations are converted; the
+  final guard still rejects malformed or unrecognized tags. Timestamps and
+  accepted RAW actions are preserved.
+- The main and saved-segment H3 assembly paths now use a local camera recovery
+  wrapper. If the final guard still finds a recognized annotation in a retained
+  formatter field, Python normalizes that field and retries only H3 assembly
+  with the same accepted RAW and upstream artifacts. Non-camera errors are
+  passed through to the existing recovery path. The completed-segment
+  checkpoint boundary and WorldState commit timing are unchanged; no checkpoint
+  schema or state authority was added.
+- Added regressions for a tag in separately assembled reference alignment,
+  recovery after simulated final-assembly failure with canonicalization,
+  wardrobe, and reference generation already completed, accepted RAW identity,
+  and preserving non-camera failures for the existing predecessor-recovery
+  path. Focused Director tests: 151 passed and 13 subtests; the LLM pipeline
+  module: 117 passed; Segment 1/5 prompt-generation cases: 2 passed; checkpoint
+  resume tests excluding the existing fallback-wardrobe expectation: 47 passed
+  and 9 subtests. `py_compile` and `git diff --check` passed. Broader combined
+  prompt-generation/resume run had two existing failures: a missing generated
+  character-reference video fixture and the fallback test expecting canonical
+  clothing to be split into slots when its fixture omits structured
+  `clothing_state`.
+
+## 2026-10-14 — compare spatial claims by property and reference frame
+
+- The setting-geometry false positive came from treating every cardinal word
+  in a sentence mentioning a fixture as its absolute position, then comparing
+  all directions together. This merged an entrance's north-edge placement with
+  a tunnel's southward extension. North/south were also mislabeled `vertical`.
+- Geometry claims are now typed as absolute/relative position, orientation,
+  extension/travel, elevation, or region, and position includes its location or
+  named-fixture reference frame. Fixed position/orientation claims are only
+  compared within the same property, frame, and axis; extension/travel vectors
+  do not conflict with an object's starting position or with later travel.
+  North/south use the plan-view `north_south` axis; east/west use
+  `east_west`; actual elevation remains up/down. Existing explicit north-wall
+  versus south-wall contradictions still fail.
+- Added regressions for the north-edge/southward tunnel, no-repair extraction
+  of that valid setting, same-frame contradictory placements, relative versus
+  absolute positions, facing versus position, vertical descent, and diagonal
+  cardinal axes. Focused spatial tests: 11 passed. The complete location-state
+  reference module reported 61 passed and two unrelated existing failures
+  (wardrobe extractor call count and stale physical-validator prompt text).
+  The adjacent postmortem module reported 8 passed and one unrelated dialogue
+  formatting expectation. `py_compile` and `git diff --check` passed.
+- The current geometry validator does not inspect object footprint dimensions
+  or containment. Although spatial-refinement instructions ask for non-overlap,
+  the deterministic validator only checks a limited set of explicit placement
+  relationships. A four-meter object on a three-meter patch is not currently
+  caught; no dimension simulation or new check was added in this false-positive
+  fix.
+
+## 2026-10-14 — repair invalid structured setting extraction
+
+- `story_setting_extract` now parses and validates its first response through
+  the existing `parse_story_setting_description()` path. On a parse or geometry
+  failure, the follow-up call uses `story_setting_extract_repair` with the
+  original extraction instructions/context, the latest rejected response, and
+  the exact parser/validator issue. Each repair is checked by the same parser
+  and validators; later repairs receive the latest response and its current
+  issue. The original output structure and downstream location-reference flow
+  are unchanged.
+- The repair purpose routes to the existing `REPAIR_LLM_SETTINGS` profile
+  (temperature 0.2, random seed per request) and keeps a 4096-token output cap.
+  The local bound is five repair calls after the initial extraction. Repair
+  attempts and their issue, response, and accepted/rejected result are logged.
+  Only after this local bound is exhausted does the existing pipeline
+  predecessor-retry policy run.
+- Added regressions for successful repair, changing validation issues across
+  repairs, malformed JSON repair, five-repair exhaustion, repair profile
+  routing, and fresh per-request seeds. The four focused setting-repair tests
+  passed; LLM-settings routing tests passed (71). The full location-reference
+  module reported 56 passed and two unrelated existing failures (a wardrobe
+  extractor call-count expectation and a stale physical-validator prompt
+  assertion). The adjacent postmortem module reported 8 passed and one
+  unrelated existing dialogue-format expectation. `py_compile` and
+  `git diff --check` passed. The updated `minimax.py` automation copy was
+  verified byte-for-byte.
+
+## 2026-10-14 — final H3 dialogue and camera formatting
+
+- Final H3 assembly now converts registered, attributed quoted speech into
+  `<d>...</d>` blocks and places the stable speaker ID immediately after the
+  canonical Subject name. It preserves attribution and delivery wording. The
+  accepted RAW's tagged dialogue is used as source evidence for unfamiliar
+  attribution wording; explicit written-text contexts remain quoted prose.
+- Camera refiner annotations remain unchanged in internal RAW for validation
+  and StateAction handling, then become natural-language camera sentences at
+  the shared H3 assembly boundary. A final guard rejects leaked `[CAMERA: ...]`
+  tags or unresolved attributed speech. No LLM calls or runtime prompts changed.
+- Added final-prompt regressions for multiple registered speakers, descriptive
+  attribution, source-backed attribution, existing `<d>` tags, written sign
+  text, same-timestamp camera/dialogue, and internal-format leak rejection.
+- Verification: focused dialogue/camera plus split-RAW tests passed (23 passed,
+  3 subtests); `py_compile` and `git diff --check` passed. The broader prompt
+  generation run had one unrelated fixture failure because its expected
+  character-reference MP4 was absent; the full Director suite had one unrelated
+  mocked-LLM sequence exhaustion.
+
+## 2026-10-14 — two-reference location transitions
+
+- Expanded the existing `scene_location_select` request to return
+  `same_location`, `new_location`, or `transitioning`. Python resolves a unique
+  destination alias against the existing WorldState location IDs; a missing
+  destination goes through the established static-setting, spatial-refinement,
+  structured location-state, and persistent 360-degree reference pipeline.
+  Existing location references are reused. Selector results and per-segment
+  origin/destination IDs survive checkpoints, and earlier selector checkpoints
+  are normalized without inferring a transition.
+- A transitioning segment keeps its opening WorldState unchanged. Director
+  context names the origin and destination environments separately and asks for
+  physical movement to the destination without assuming every Subject moves.
+  Subject location changes remain exclusive to accepted StateActions; following
+  segments select the destination as their normal single location reference.
+- H3 transition prompts bind `<Video 1>` to the origin reference and `<Video 2>`
+  to the destination reference, describe those roles at the start and end, and
+  require the final action to establish destination entry. Continuation segments
+  keep the preceding rendered clip as the separate native opening guide; a
+  transition bypasses a scheduled clean refresh to preserve that guide. Picture
+  references remain in their separate image inputs. Saved prompt rendering uses
+  the same ordered pair and guide behavior.
+- Added coverage for the three selector results, unique destination reuse versus
+  registration, checkpoint metadata, two-video prompt roles and ComfyUI input
+  slots, saved-prompt transition/revisit bindings, forced append on a refresh
+  boundary, and a reducer transition that moves only the named Subject and
+  carries that result into the following segment. Focused location tests:
+  13 passed; WorldState transition tests: 2 passed. `py_compile` and
+  `git diff --check` passed. The full location-reference module still has two
+  pre-existing unrelated failures: a wardrobe extractor call-count expectation
+  and a stale physical-validator prompt assertion. Adjacent workflow-name and
+  prompt-generation suites reported 32 passed and 6 unrelated failures: five
+  stale `print` call-count/assertion expectations and one unavailable generated
+  character-reference video fixture.
+
+## 2026-10-14 — guard Alice RAW staging and location geometry
+
+- Director RAW repair requests now include the current Beat, assigned source,
+  previous shot end, opening WorldState, static setting, and registered location
+  geometry. The physical validator and timing validator receive the same source
+  context. Generated-setting distances absent from the Beat/source are labeled
+  approximate so they do not become hard movement requirements.
+- Creative and repaired RAW are checked for leaked internal prompt headers and
+  unresolved template placeholders before timing. A repair remains subject to
+  the same physical and prop/state validators as the original; rejected content
+  cannot reach H3 when bounded repairs/regeneration are exhausted. The existing
+  required-stage retry policy remains in force.
+- The final pre-H3 boundary checks prompt leakage again. If pronoun resolution
+  introduces an internal header or unresolved placeholder, its changed text is
+  discarded and the last accepted RAW is retained.
+- If pronoun resolution changes accepted RAW, the changed scene now passes the
+  existing physical and prop/state validators before replacing the last valid
+  scene. Invalid rewritten text is discarded by the existing optional resolver
+  fallback. No additional LLM stage or retry loop was added.
+- Spatial-setting parsing now compares explicit fixture placement claims across
+  structured location state, static setting, spatial refinement, and render
+  description. Contradictory fixed-object placements are rejected before
+  location reference generation. Exact distances are deliberately not compared
+  as authoritative geometry.
+- Added regressions for context-rich repair, same-validator revalidation and
+  fail-closed exhaustion, `RAW PROMPT`/placeholder leakage, approximate
+  distance handling, and contradictory fixture placement. All eight directly
+  focused tests pass. The full Director retry and location-reference suites
+  reported 189 passed and 2 unrelated failures: an existing wardrobe extractor
+  call-count expectation and an existing physical-validator system-prompt text
+  expectation. `py_compile` and `git diff --check` passed.
+- No local artifacts for the cited Alice run were present, so the exact model
+  response that introduced the wooden-post placement conflict could not be
+  attributed. The confirmed code defect was that parser validation checked the
+  mixed response's shape but never compared its fixed-placement claims.
+
+## 2026-10-14 — isolate Director RAW repair sampling
+
+- Added immutable `REPAIR_LLM_SETTINGS` as a copy of the profile previously
+  assigned to `director_raw_scene_repair` (Smart Extractor), with temperature
+  `0.2` and a randomized seed. Only this purpose routes to the new profile;
+  other purpose mappings are unchanged.
+- `ask_llm()` already generates a fresh LLM seed for each request whose
+  configured seed is `None`, so successive RAW repair attempts receive
+  independently generated seeds without changing startup or retry behavior.
+- Added focused routing/profile tests for profile isolation, preserved copied
+  settings, temperature, and distinct seeds across consecutive repair calls.
+  `tests/test_dynamic_temperature.py`: 69 passed. Its expected routing list also
+  now includes the already Smart-Extractor-routed `clothing_state_extractor`.
+
+## 2026-10-14 — keep registered physical entities out of Subject discovery
+
+- Pre-Director Subject candidates are now checked against registered locations,
+  props, fixtures, and supports before Python assigns Subject IDs or requests a
+  wardrobe. Visible-Subject resolution and formatter Subject-name hints apply
+  the same check before a new identity can reach reference generation or
+  Subject/Picture bindings.
+  Explicitly animated/talking entities remain eligible even when their name
+  matches a registered physical object. The filter uses runtime WorldState
+  vocabulary and source wording, not a list of forbidden object names.
+- Segment location preparation now precedes current-Beat Subject discovery so
+  fixtures and supports registered for a newly selected location are included
+  in the deterministic category check.
+- Dynamic humanoid wardrobes now follow the predefined-Subject path: after
+  `story_subject_wardrobe_extract`, the existing `clothing_state_extractor`
+  converts the complete outfit into `upper`, `lower`, `footwear`, and `other`
+  before `seed_canonical_wardrobes()` writes it to WorldState. Character
+  references consume that prepared opening state, then Picture bindings and
+  final H3 assembly run as before. Incomplete upper/lower data stays unknown;
+  the first reference render/plan is withheld until body coverage is known, and
+  the existing wardrobe extraction is retried on a later pre-Director pass.
+  Existing references and rendered-wardrobe precedence are unchanged.
+- Focused tests cover Moss1/mossy-ground and registered tote/post rejection,
+  prevention of wardrobe/reference/binding side effects, explicitly animated
+  object and talking-animal preservation, complete Mad-Hatter-style four-slot
+  seeding before Picture creation, and withholding a partial hat-only
+  reference. Focused regressions passed (9 tests, including the tavern
+  Elf/Dragon pre-Director fixtures). The broader five-file run reported 351
+  passed, 23 failed, and 30 subtests passed. Those failures assert older
+  wardrobe adapter/call-count behavior, retired story-start response fields, or
+  pre-split Director prompt wording/contracts; the focused changed paths passed.
+- `python -m py_compile minimax.py world_state.py story_planner.py` and
+  `git diff --check` passed. The updated automation copy of `minimax.py` was
+  verified byte-for-byte with `cmp -s`.
+- No runtime LLM prompts, response schemas, reducers, or retry policy changed.
+
+## 2026-10-14 — fail open only at optional stages
+
+- Added `docs/PIPELINE_FAILURE_POLICY.md`, linked from `PROJECT_NOTES.md`, to
+  distinguish REQUIRED, OPTIONAL, and CONDITIONAL recovery. It identifies the
+  audited optional enrichments and records that conditional-stage recovery is
+  not changed here.
+- Camera-refiner exhaustion now keeps the accepted timed scene. Pronoun and
+  visible-Subject resolution failures preserve accepted RAW after their
+  existing local attempts. Exhausted soundscape/music extraction uses the
+  existing `N/A` values. Rendered visual analysis failure discards only the
+  observation and no longer reruns the completed render.
+- Pre-Director Subject discovery, dynamic canonical wardrobe extraction, and
+  authored-canon wardrobe enrichment now discard failed optional candidates or
+  metadata while retaining registered identity and prior valid canon. Existing
+  prop rejection and atomic WorldState event-batch fallback remain in place.
+- WorldState event fallback now catches content/translation failures only;
+  request transport, filesystem, ComfyUI, LLM connection, and cancellation
+  failures propagate. The event RAW-integrity check is inside the same
+  fail-open boundary, so an invalid event response cannot block an otherwise
+  accepted segment. The shared LLM request path now preserves non-connection
+  transport failures for the audited optional purposes instead of returning an
+  empty reply that could be mistaken for malformed optional content; vision
+  transport failures also propagate after its existing local retries.
+- Focused regressions cover exhausted Director enrichment, event atomicity,
+  optional Subject/wardrobe failure, rendered-observation fallback, and
+  infrastructure propagation. The final focused post-change runs passed:
+  Director optional-stage tests (6), camera fallback (1), event extraction
+  (17), pre-Director seed/prop tests (4), visual cleanup/fallback (6), and
+  canonical wardrobe fallback (2). `py_compile` and `git diff --check` passed;
+  the automation copy of `minimax.py` was verified with `cmp -s`.
+- The broader affected-module run, before the RAW-integrity regression was
+  added, reported 307 passed and 5 failures (36
+  subtests passed). Two story-start tests use the retired `classification` /
+  `evidence` shape and old prompt wording; two character-canon assertions
+  expect retired prompt wording; the render-enabled prompt fixture references
+  a character-reference MP4 absent from this checkout. These are outside this
+  change; successful behavior and prompts were left unchanged.
+- No optional stage invokes `run_pipeline_stage_with_backstep()` on content
+  exhaustion. Render completion, required RAW/Beat recovery, and conditional
+  mode recovery remain unchanged. No bridge job was queued.
+
+## 2026-10-14 — keep optional WorldState failures from restarting a segment
+
+- WorldState event extraction/translation failures now log the exact diagnostic,
+  discard the full event batch, and return an accepted empty action batch against
+  the immutable opening state. `LLMConnectionError` still propagates. A reducer
+  rejection after an earlier valid event therefore cannot leak a partial state
+  or route back to Director RAW generation.
+- Pre-Director prop extraction/registration failures now reject the complete
+  candidate batch, log the diagnostic, and continue with the already registered
+  props. Subject identity and wardrobe seeds remain intact, and registration is
+  applied only after the complete prop batch succeeds.
+- Added Alice/fixed-post coverage for reducer rejection after a valid pickup,
+  malformed/exhausted event extraction, missing prop origins, and duplicate
+  pre-Director fixed-post proposals. `tests/test_director_retry.py`: 135 passed,
+  13 subtests passed. Event/foundation run: 111 passed, 17 subtests passed; two
+  unrelated stale story-start expectations failed (`classification`/`evidence`
+  fixture shape and old prompt wording). Targeted event/foundation regressions,
+  `py_compile`, and `git diff --check` are recorded with this change.
+- No prompts, reducer rules, location handling, or checkpoint commit boundaries
+  changed.
+
+## 2026-10-14 — scene location selector output budget
+
+- Increased `scene_location_select` maximum output tokens from 256 to 2048.
+  The selector continues using Smart Extractor settings, whose high reasoning
+  budget is 1024 tokens; the request output cap now accommodates that thinking
+  budget alongside its structured response.
+- Updated the focused routing regression. Verification: selector/profile
+  tests, Python compilation, and `git diff --check`.
+
+## 2026-10-14 — per-segment location selection and reference reuse
+
+- Added a single `scene_location_select` Smart Extractor call for each Beat,
+  before its Director request. It receives only the upcoming Beat, active
+  setting description, and registered location names/descriptions. Python
+  caches both the response and resolved stable location ID in checkpoint
+  metadata, so the main request and Director prefetch reuse one selection.
+- Python resolves exact or unambiguous descriptive aliases against
+  `WorldState.locations`. A genuinely new location reuses the existing static
+  setting, spatial refinement, structured location-state, and canonical
+  WorldState seeding functions. Mixed-environment Beats log that they use the
+  primary action/result environment; no automatic splitting or Subject
+  relocation is inferred.
+- Per-location render descriptions, canonical geometry, active ID, and
+  persistent 360-degree reference path are saved in generation metadata.
+  References use unique paths under `video/state`, so startup cleanup preserves
+  them. Each Director bundle receives the selected location context; each H3
+  prompt records its selected ID, setting, and `<Video 1>` reference path. Live
+  and saved-prompt rendering select the same per-segment path. Existing
+  single-location checkpoints and prompt packages retain a legacy path fallback.
+- Added regressions for the minimal selector contract/profile, alias ambiguity,
+  stable per-location asset paths, location metadata checkpoint round-trip,
+  selector caching and prefetch order, distinct location-specific H3 context,
+  saved-prompt revisit/reference selection, persistent output paths, and
+  state-media cleanup. Focused runs: 10 location-selection/reference
+  regressions passed; 23 source-mode tests passed with 3 existing
+  automatic-recovery cases deselected; 2 saved prompt/reference regressions
+  passed; all 67 LLM-profile routing tests passed. The location and
+  requested-prompt modules together reported 107 passed and 7 pre-existing
+  prompt-expectation failures (6 stale H3 wording expectations and one stale
+  physical-validator prompt expectation). `py_compile` and `git diff --check`
+  passed. No bridge job was queued.
+
+## 2026-10-14 — Preserve persistent state reference media
+
+- Removed the unconditional startup deletion of `video/state`. It ran before
+  CLI mode selection and erased all files and subdirectories on every launch,
+  including resume and saved-prompt rendering. This deleted checkpointed
+  location-reference videos and generated character-reference images that the
+  pipeline is designed to reuse.
+- Removed the blanket cleanup helper. Temporary vision/refresh-frame cleanup
+  remains limited to the specific generated files owned by those paths.
+- Added a regression that runs application startup with persistent location,
+  character, and nested state assets present and verifies their bytes remain
+  unchanged. Focused source-mode tests passed (23 passed, 3 deselected because
+  the existing automatic-recovery cases exercise a separate retry loop); 3
+  related location/reference tests passed. Syntax and whitespace checks passed.
+
+## 2026-10-14 — LLM stage retry and predecessor recovery
+
+- Added a shared pipeline-stage recovery helper. Each stage retains its bounded
+  malformed-response/repair attempts; after exhaustion it reruns the immediately
+  preceding stage when that dependency is explicit, then retries the failed
+  stage and downstream work. Root stages retry from their authoritative inputs.
+- Applied this flow to story expansion → Beat extraction, source-unit semantic
+  planning, the chained story-location/static-setting/spatial-setting extractors,
+  Director RAW/StateAction failure routes, and post-RAW soundscape/music stages.
+  Story-planning hard-reset and cut-choice failures regenerate their immediate
+  preceding terminal/split classification before retrying.
+- Runtime supervision now treats ordinary generation, validation, state, and
+  rendering failures as recoverable from the first incomplete segment. Only an
+  unreachable LLM, unreachable ComfyUI, or user cancellation escapes the
+  generation supervisor. CLI argument parsing retains its normal usage exit.
+  LLM connection failures are explicitly rethrown by concurrent Beat validators,
+  Director validators/refiners, and event extraction rather than being reported
+  as content failures or converted to fallback output.
+- Camera-refiner exhaustion now backsteps to timing; pronoun, event, and audio
+  extraction exhaustion backsteps to their declared preceding Director stage.
+  Event extraction no longer accepts an empty batch after malformed extraction
+  or translation failure; its immutable opening WorldState is preserved while
+  the Director stage is retried.
+- Added regressions for story-to-Beat predecessor regeneration, semantic
+  classifier backsteps, connection-failure propagation, Director event failure
+  routing, and recoverable versus fatal runtime failures. The focused Director,
+  story-planner, story-to-Beat, event-extraction, and runtime-supervisor suites
+  passed: 192 tests and 17 subtests. `py_compile`, `git diff --check`, and
+  byte-for-byte automation copies passed. A broader run also exposed one
+  unrelated pre-existing failure in the threat-status shorthand parser test.
+  No runtime prompts or retry suffixes changed.
+
+## 2026-10-14 — Fail-open WorldState event extraction
+
+- Unresolvable extracted `move` events are skipped when they establish neither a
+  registered location destination nor a valid registered support change. The
+  remaining event batch can still produce reducer-validated actions.
+- Event extraction, response parsing, and StateAction translation failures now
+  log the exact diagnostic and discard the entire event batch. The pipeline
+  continues with an accepted empty action batch, so the segment's opening
+  WorldState remains unchanged and no partial event effects can commit.
+- Added regressions for Job 63's unregistered movement destination, malformed
+  extraction exhausting its existing repair budget, translation failure after
+  an earlier valid event, exact diagnostics, and unchanged opening state.
+  No Job 63 artifacts were present in this checkout, so the movement regression
+  reproduces the reported invalid-destination condition. Focused event/Director/
+  split-pipeline and transaction/checkpoint tests: 173 passed, 16 subtests
+  passed. Syntax and whitespace checks passed. No prompt, registration,
+  validator, or RAW-generation behavior changed.
+
+## 2026-10-13 — Python translation of extracted WorldState events
+
+- Replaced the `director_state_actions` call with a Smart Extractor event-list
+  call. It receives the validated, camera-stripped RAW only and returns ordered
+  `events`; it does not receive or emit StateActions. The event response schema
+  is strict and mirrors the exact JSON contract shown in its system prompt.
+- Python resolves event entity names against the immutable opening WorldState,
+  including unique descriptive aliases, rejects unknown/ambiguous references,
+  assigns deterministic action IDs by segment/event order, translates safely
+  representable events into the existing StateAction operations, omits reducer
+  no-ops, and dry-runs the translated batch through the existing atomic
+  reducer. The accepted `state_actions` result remains the established
+  completed-Segment commit input; transaction, checkpoint, and resume code is
+  unchanged. Reducer provenance now identifies the event-extraction path.
+- Malformed event JSON/shape uses up to five event-list-only repairs against
+  the same immutable RAW. Exhaustion, name-resolution failures, and reducer
+  translation failures log their diagnostics and discard the full event batch,
+  continuing with an empty reducer-valid candidate; none invokes RAW repair. The
+  special `retrieve_prop_origin_not_in_raw` RAW-repair loop and old
+  StateAction extraction/repair call purposes were removed. A new prop can be
+  introduced only through a `take` event whose source resolves to a registered
+  support; a known prop is resolved before any introduction, so a cloth already
+  held by its Subject is not duplicated and a pocket is not treated as a
+  support.
+- Runtime system prompt added for the event extractor:
+  “You extract physical events from a film scene. Extract only events that
+  explicitly change persistent physical state; ignore ordinary activity and
+  descriptions that do not establish a state change. Identify events that change a
+  Subject's location, physical support, possession, clothing, or the state of
+  an object. Ignore gestures, appearances, dialogue, and other actions that do
+  not cause these changes. Report events in chronological order using only
+  what is explicitly described in RAW SCENE. Use these event types: move, enter,
+  exit, take, put, transfer, consume, modify, release. Describe actors, objects,
+  sources, and destinations using their names as written in RAW SCENE. Preserve
+  distinctions such as standing on a table versus standing beside it. Do not
+  determine whether an event is valid, already recorded, or representable in
+  WorldState. Do not invent missing actions, sources, or destinations. Use null
+  for information not stated. Return exactly the JSON structure with `events`
+  and the seven fields action, actor, object, source, destination, relation,
+  result.” The repair prompt is limited to correcting that same event list and
+  cannot rewrite RAW.
+- Event schema lacks dedicated amount, wardrobe-slot, clothing-change, and
+  mechanism-operation fields. Python uses explicit relation/result wording and
+  registered wardrobe facts for deterministic mapping; if it cannot make one
+  unambiguous mapping, it fails with an event-specific diagnostic. Transfer
+  amount defaults to `partial` unless the event/result or RAW explicitly
+  establishes a complete transfer. This is a remaining contract limitation
+  for future acceptance review.
+- No Job 61 artifacts were found in this checkout, so regressions use generic
+  constructed event records rather than captured Job 61 RAW. Tests cover
+  support versus adjacency, existing cloth retrieval without duplication,
+  new-prop retrieval and reuse, transfer/consumption, clothing/mechanism
+  changes, enter/exit, release/place, ambiguity, unknown support, no-ops,
+  malformed-response repair and its five-repair bound, reducer rejection,
+  immutable opening state, and failed-extraction rollback. Verification:
+  event/Director/split-pipeline/settings/prompt-generation targeted suites —
+  237 passed, 16 subtests passed; WorldState foundation — 95 passed, 2 known
+  stale story-start tests deselected. Those two still expect the retired
+  `classification`/`evidence` response and previous prompt wording. Syntax and
+  whitespace checks passed, as did byte-for-byte copies of `minimax.py` and
+  `world_state.py` to the automation checkout. No bridge job was queued.
+
+## 2026-10-13 — Beat story validator output budget
+
+- Increased `beat_story_validation`'s per-purpose maximum output tokens from
+  2,048 to 4,096. Its profile, prompt, and retry behavior are unchanged.
+- Added a focused settings assertion; `tests/test_dynamic_temperature.py`
+  passed. `py_compile` and `git diff --check` passed. The updated `minimax.py`
+  was copied to the automation checkout and verified byte-for-byte.
+
+## 2026-10-13 — Missing StateAction prop origin routes to RAW repair
+
+- Job 58's reported failure matched the current code boundary: a
+  `retrieve_prop_origin_not_in_raw` error was treated as a generic invalid
+  StateAction response, so the pipeline spent all five action-only repairs on
+  a defect those actions could not fix. No Job 58 artifacts were present in
+  this checkout; the root cause was confirmed by tracing the reducer diagnostic
+  through `extract_and_dry_run_director_state_actions()`.
+- Added deterministic routing for this specific failure. If RAW shows the new
+  prop retrieved from another registered support, the selected support was
+  wrong and the existing StateAction-only repair remains available. If RAW
+  shows no registered support as the prop's retrieval origin, the pipeline
+  stops action-only retries and sends the accepted RAW to the existing
+  `director_raw_scene_repair` call with a diagnostic naming the prop and
+  requiring a physically plausible current-Segment retrieval before first
+  use. It lists the registered supports, rejects using a final destination as
+  an origin, and asks for actions to remain feasible in the Segment.
+- Each repaired RAW is checked by the existing physical/prop, timing, dialogue,
+  timestamp-range, and shot-script-structure checks before StateActions are
+  extracted again. The origin-repair path is capped at the existing five RAW
+  repair attempts; exhaustion raises
+  `missing_prop_origin_after_raw_repairs` with the prop and last failure.
+  StateAction results remain dry-run candidates until normal Segment
+  acceptance, so failures leave canonical WorldState unchanged.
+- Regressions cover missing-origin routing, a corrected origin/destination
+  selection remaining an action-only repair, successful same-Segment retrieval
+  and placement, five-attempt exhaustion, and rollback. The focused tests
+  passed (3). The related Director/WorldState/split-pipeline suites ran 258
+  tests: 256 passed; two pre-existing story-start tests still expect the
+  retired `classification`/`evidence` response and prompt wording. Syntax and
+  whitespace checks passed. Prompt-generation mode non-render tests passed
+  (10); its full run was interrupted after 12 passes while an unrelated
+  reference-image render waited on ComfyUI. No runtime prompt wording changed
+  and no bridge job was queued.
+
+## 2026-10-13 — RAW-grounded Subject support actions
+
+- The Job 57 result bundle was not present in this checkout, so its exact RAW
+  and StateAction response could not be confirmed. The reported failure was
+  reproduced against the current code path: finalized RAW reached
+  `parse_and_dry_run_state_actions()`, but RAW was consulted only for
+  `retrieve_prop` origin checks. A reducer-valid `set_support` therefore
+  changed canonical state even when the RAW described only wiping, reaching,
+  or another interaction.
+- The existing action parser now keeps a Subject support change only when the
+  validated RAW explicitly stages that Subject standing, sitting, climbing,
+  stepping, or taking a seat on/in the registered support. Contact, wiping,
+  reaching, leaning, and sitting at a table do not qualify. A support-clear
+  action requires explicit departure from the Subject's known support;
+  otherwise the action is omitted and the prior state is preserved. Unsupported
+  support fields on a `move` are removed while the representable location move
+  remains. Malformed or duplicate action shapes still reach reducer rejection.
+  The omission is logged and does not reject the segment. Accepted
+  support actions still go through the same reducer and normal commit boundary.
+- The previous deterministic physical pre-gate required any new support to be
+  named in CURRENT BEAT or opening WorldState, which blocked physically
+  justified creative staging. That pre-gate was removed so the existing
+  semantic physical validator can make the staging judgment. Its runtime
+  prompt was left unchanged. The prompt still ties permitted support changes
+  to the Beat/opening state, so a later prompt change may be needed if that
+  remaining rule rejects otherwise justified creative movement; this requires
+  separate approval. No additional validator or prompt was added.
+- Regressions cover table wiping versus standing, sitting at versus on a table,
+  a RAW-staged creative climb, matching a support action to the Subject actually
+  staged on it, unsupported support assignment/clearing,
+  preservation of a prior support across segment commits, and movement with an
+  unsupported destination support. Focused tests: 11 passed. The broader
+  WorldState, Director, and split-pipeline suites ran 256 tests: 254 passed and
+  two pre-existing story-start tests failed because they expect the retired
+  response shape and prompt wording (`classification`/`evidence` and
+  “performing a starting action”). `py_compile` and `git diff --check` passed.
+- No runtime LLM prompt was modified, and no bridge job was queued.
+
+## 2026-10-13 — Approved StateAction prompt simplification
+
+- Updated the shared `director_state_actions` / `director_state_actions_repair`
+  system-prompt contract to record explicit persistent changes that affect
+  visual continuity or later actions, including handoffs, entrances, exits,
+  and mechanism changes. It now asks for RAW-grounded transfer/retrieval
+  sources and destinations, prohibits invented changes, and explicitly allows
+  an empty batch when no persistent change is established. The existing
+  opening-state, clothing-change, retrieval-origin, exact-entity, and reducer
+  constraints remain in place.
+- Left `director_raw_scene_physical` unchanged as requested; no new support
+  wording was added.
+- Updated the prompt inventory and regressions for both extraction and repair
+  system prompts. Verification: focused StateAction prompt/empty-batch tests,
+  WorldState reducer tests, `py_compile`, and `git diff --check` passed.
+- Committed and pushed only to `director-split-refine`; no additional push to
+  `main` was made.
+
+## 2026-10-13 — Job 57 support staging and StateAction grounding
+
+- No Job 57 result bundle was available in this checkout, so the specific RAW
+  and extractor responses could not be traced verbatim. The reported outcomes
+  were compared against the current validator, StateAction contract, and reducer.
+- The physical validator prompt already distinguishes ordinary furniture
+  interaction from actual support/elevation changes, but its semantic decision
+  was LLM-only. Added a deterministic guard inside the existing physical
+  validator for explicit body-on-support actions against registered supports.
+  It rejects a new support relation absent from both CURRENT BEAT and opening
+  WorldState, while leaving adjacency/reaching/wiping and required support
+  changes to the existing validator. This prevents an unsupported Segment-1
+  support action from becoming canonical and persisting into Segment 6. The
+  reducer itself was already Subject-specific; support is never copied between
+  Subjects.
+- `retrieve_prop` previously validated that the selected support was registered
+  and co-located, but did not verify that RAW used it as the prop's origin. The
+  existing StateAction response validation now checks the immutable accepted
+  RAW for a retrieval from the selected support. A support named only as the
+  destination produces a concrete reducer-path diagnostic and uses the existing
+  action-only repair loop; an empty corrected batch remains valid.
+- WorldState already has `pour`, `handoff`, `exit`, and mechanism operations.
+  The direct barrel-to-mug pour records source/destination contents, while the
+  retrieved ladle remains held or can be placed if RAW stages that change.
+  WorldState has no persistent “used as an intermediate implement” relation,
+  so the liquid path through a ladle is not separately encoded. Empty batches
+  remain valid; omissions of handoff/exit/locking cannot be detected without
+  adding completeness validation or changing the extractor prompt.
+- Explicit `close`, `lock`, and `unlock` actions now establish previously
+  unknown mechanism capability/state. Explicitly non-openable/non-lockable
+  facts and known incompatible mechanism states still reject atomically.
+- No runtime prompt was changed. Proposed wording for approval:
+  - `director_raw_scene_physical`: “When RAW places a Subject on a furnishing,
+    require explicit body-on-surface language and support from CURRENT BEAT or
+    opening WorldState. Wiping, reaching across, leaning toward, or taking a
+    seat at a table does not place the Subject on the tabletop; a seat at a
+    table is adjacent unless RAW identifies the actual seat.”
+  - Replace the `director_state_actions` instruction to “include every explicit
+    persistent change” with: “Record persistent changes that materially affect
+    later visual continuity or a later action. Include clearly staged handoffs,
+    entrances/exits, and mechanism changes when they alter the ending state.
+    Do not infer uncertain changes; an empty array is valid when no material
+    persistent change is clearly established. For transfers, use the actual
+    source and destination shown in RAW; treat an implement as a transfer
+    source only when RAW shows the substance in it. For `retrieve_prop`, use
+    only the support explicitly shown as the prop's origin; a destination
+    support is not its origin.”
+- Regressions cover unsupported climbing and sitting-on-table, ordinary
+  interaction and beat-required support, retrieval-origin repair, unknown
+  close/lock plus exit, and preservation of known contradictions. Verification
+  results: reducer tests — 27 passed; split RAW pipeline — 19 passed; focused
+  support/retrieval/mechanism regressions passed. The combined
+  `test_director_retry` + `test_world_state_foundation` run executed 230 tests:
+  228 passed, with two existing story-start tests still failing because they
+  expect the retired `classification`/`evidence` response and older prompt
+  wording. `py_compile` and `git diff --check` passed. No six-Segment
+  acceptance job was queued.
+
+## 2026-10-13 — Job 56 identity-only visible-Subject resolution
+
+- Replaced the visible-Subject resolver's scene-rewrite/bootstrap response with
+  an identity map containing `raw_name`, a registered `<Subject N>` reference
+  or null, and `is_new`. The user message now contains only the accepted RAW
+  and registered name/reference vocabulary; the JSON contract remains in the
+  system prompt. The system prompt now limits this call to identity matching.
+- Python validates each returned name against the unchanged RAW and resolves
+  existing references through the exact vocabulary supplied to that request.
+  A descriptive alias that uniquely identifies a registered Subject maps to
+  its canonical WorldState ID; mismatched, unknown, or ambiguous references
+  fail closed. New Subjects are returned to the existing named-Subject
+  registration path to receive stable Subject IDs for downstream H3 reference
+  handling. Duplicate rows for an existing identity are collapsed.
+- This resolver applies exact Subject-name substitutions deterministically in
+  Python; it does not alter actions, timestamps, camera text, end-continuity
+  content, or other RAW text. The no-discovery bypass returns the original RAW
+  string byte-for-byte.
+- Removed the old resolver's description/wardrobe bootstrap helper and all
+  production consumers of those response fields. Canonical identity, Picture
+  references, and wardrobe remain owned by their existing sources and seed
+  paths; incomplete metadata no longer triggers this identity-only resolver.
+- Added regressions for prompt/user-data boundaries, known alias-to-ID mapping,
+  new Subjects, repeated identities, unknown references, duplicate registered
+  aliases, and timestamp/action preservation.
+- Verification: all 13 focused identity-resolver tests passed, including the
+  relevant postmortem regressions. `tests.test_director_retry` passed all 136
+  tests. `py_compile` and `git diff --check` passed. The broader postmortem and
+  location-reference modules ran 114 tests and have 14 unrelated failures:
+  existing assertions expect older Director physical-prompt text and H3
+  continuity behavior. None are identity-resolver failures; those prompt and
+  H3 expectations were left outside this change.
+
+## 2026-10-13 — Job 56 unnecessary visible-Subject resolution
+
+- The post-RAW visible-Subject resolver always called the LLM, even when the
+  accepted scene named only registered Subjects with complete canonical
+  identity and wardrobe data. Job 56's resolver rewrote timestamps twice in
+  that no-discovery case.
+- Added a deterministic bypass at the existing resolver entry point. It uses
+  the opening WorldState and skips only when every action line is attributable
+  to a registered Subject or a clear pronoun reference, and the referenced
+  Subjects have established identity/reference and all wardrobe-slot data.
+  Unrecognized action-line Subjects, likely unnamed actors, or missing metadata
+  continue through the existing resolver. Existing shot-script structure
+  checks still run before returning.
+- On bypass, the resolver returns the original RAW string exactly, including
+  timestamp spelling/order, camera tags, action text, and surrounding
+  whitespace. The post-resolver final-participant carry-forward is also skipped
+  in this case, preserving the accepted Director text through the full bypass
+  path. No runtime prompt or downstream Subject/wardrobe precedence changed.
+- Added regressions for complete-metadata bypass, exact RAW preservation,
+  missing wardrobe metadata, missing identity metadata, and an unnamed actor
+  outside the bypass path. The bypass is deliberately conservative; unusual
+  sentence forms and ambiguous secondary references may still use the
+  resolver.
+- Verification: four focused resolver regressions passed; the complete
+  `tests.test_director_retry` module passed (137 tests).
+
+## 2026-10-13 — Job 55 unsupported pre-Director prop placement
+
+- Fixed `parse_current_segment_persistent_prop_result()` so a registered
+  support/fixture name returned as `initial_location` resolves to its canonical
+  WorldState location while preserving `support_name`, when the current-source
+  evidence supports an opening/static placement or retrieval-from-support
+  origin.
+- Well-formed candidates with unknown placement or evidence only for a later
+  placement are skipped before registration. They do not consume another
+  extraction attempt, leaving the existing Director `retrieve_prop` path
+  available. Malformed shapes and invalid source evidence still use the
+  existing retry loop. No prompt, LLM call, or WorldState authority changed.
+- Added the Job 55 chalice regression, supported support-alias normalization,
+  and coverage proving unsupported placement skips without retry while
+  malformed evidence retries.
+- The placement check is intentionally conservative: source relations such as
+  a prop resting on a support or being retrieved from it can establish an
+  opening position. Unclear wording remains unregistered for Director staging.
+- Verification: focused WorldState seed and Director pipeline suites passed
+  (176 tests). The combined `test_world_state_foundation` and
+  `test_director_retry` run executed 221 tests; its only two failures are the
+  existing story-start expectations for the retired `classification`/`evidence`
+  response shape and retired prompt wording. `py_compile` and `git diff --check`
+  passed.
+
+## 2026-10-13 — Transactional Director-introduced props
+
+- Added `retrieve_prop` to the existing ordered StateAction contract. It may
+  register an ordinary movable prop only from a named, registered support in
+  the present Subject's location. The prop's deterministic Python ID is based
+  on its canonical kind/name and registered location; provenance records its
+  initial support placement and retrieval action. A duplicate registered name
+  is rejected so later segments reuse the same WorldState record.
+- The request schema now allows prop-name strings for prop references because a
+  later action may reference a prop introduced earlier in the same batch.
+  Python resolves exact opening-vocabulary names or names introduced earlier in
+  that ordered batch; unknown, out-of-order, ambiguous, and duplicate names
+  fail closed. Subject, location, and support names remain restricted to the
+  request vocabulary.
+- The reducer stages registration and later possession/content changes in its
+  existing atomic candidate. A failed action returns the unchanged opening
+  state; the existing completed-segment commit remains the only canonical
+  write. No additional LLM call or state layer was added. The existing
+  `world_state_current_segment_props` pre-Director path is unchanged.
+- Added the approved contract instruction verbatim to the dynamically built
+  StateAction system prompt:
+  “A `retrieve_prop` action may introduce a prop only when validated RAW
+  explicitly shows a Subject retrieving it from a registered support
+  accessible to that Subject. Do not introduce a prop without that origin and
+  retrieval action. Later actions in the same batch may refer to the exact name
+  introduced earlier. Reuse existing registered props whenever available.”
+- Deterministic checks prove the actor and support are present in the same
+  registered location. WorldState does not model distance or reachability, so
+  exact physical accessibility still relies on the existing validated RAW and
+  StateAction interpretation. Retrieval from a location with no registered
+  support is not currently represented.
+- Verification: focused WorldState reducer/transaction and Director pipeline
+  tests passed (204 tests). The combined `test_world_state_foundation` and
+  `test_director_retry` run executed 218 tests and had two unrelated existing
+  story-start expectation failures: one supplies the retired
+  `classification`/`evidence` response shape, and one asserts retired prompt
+  wording. `py_compile` and `git diff --check` passed.
+
+## 2026-10-13 — Explicitly prohibit timestamps in creative RAW
+
+- Added the requested `- do not include timestamps.` bullet to the
+  `director_raw_scene_creative` system prompt. The timing refiner remains the
+  timestamp authority; no other prompt wording changed.
+- Updated the creative prompt contract regression to assert the rule.
+- Verification: `python -m unittest discover -s tests -p
+  'test_llm_prompt_pipeline.py'` — 115 passed.
+
+## 2026-10-13 — Job 53 timing budget, untimed RAW, and transfer staging
+
+- Job 53 (`gpt-runtime` revision `a60f19990357488738658a7fe6588518e4b4e03c`)
+  shows `validate_timing_valid` exhausted ten attempts at
+  `max_tokens=2048`; all ten ended with `finish_reason=length` and no usable
+  JSON. Raised only this purpose's output limit to 4096. Profile, prompt,
+  reasoning, temperature, and retry handling are unchanged.
+- `director_raw_scene_creative` did not prohibit time annotations. Segment 3
+  creative attempts included forms such as `At 00:01.700` and `By 00:03.000`,
+  while the timing refiner independently assigned its timestamp array. Python
+  now removes explicit timestamp annotations from both creative and repaired
+  RAW before content validation and timing refinement. The raw LLM responses
+  remain logged unchanged; Python-assembled timing remains authoritative.
+- Segment 2's physical validator only checks Subject movement and support
+  continuity. The prop-state validator checked for a real source and
+  destination, which the barrel and mug satisfied; neither check rejected
+  `Amy lifts a handful of liquid from the barrel`. Added a deterministic guard
+  inside the existing prop-state validation entry point for explicit bare-hand
+  transfer of a fluid. Explicit carrier/tool or outlet wording is allowed, as
+  are physically plausible handful transfers of granular material. No extra
+  LLM call or validation stage was added.
+- The bare-hand rule is deliberately narrow; it does not prove that every
+  transfer from a fixed vessel has a physically plausible outlet. A general
+  semantic boundary is best stated in the existing prop-state prompt. Suggested
+  prompt wording for separate approval:
+  - `director_raw_scene_creative`: “Do not include timestamps; timestamps are
+    assigned by the timing refiner.”
+  - `director_raw_scene_prop_state`: “For each substance transfer, verify that
+    RAW shows a physically plausible way for the substance to move from source
+    to destination. Bare hands cannot carry liquids. A fixed container may
+    dispense only through a visible or established outlet or operating
+    mechanism, or through an explicitly shown suitable carrier or implement.
+    Do not invent a prop or mechanism to make a transfer possible. Allow direct
+    hand transfer of powders and granular materials only when physically
+    plausible.”
+- No runtime prompt was changed. Verification: `tests/test_split_raw_pipeline.py`
+  — 19 passed; `DirectorMicroPromptPipelineTests` — 132 passed; direct
+  output-budget checks for the timing purpose passed; `py_compile` and
+  `git diff --check` passed.
+
+## 2026-10-12 — Job 52 opening actions and RAW staging gaps
+
+- Reviewed Job 52 artifacts from `gpt-runtime` commit
+  `28df5fa53779dd2db70b5030828ddc5730a5561d`. Segment 3 failed StateAction
+  extraction after five repairs: the Elf was registered with unknown presence,
+  while the entrance fixture's `openable` capability and mechanism state were
+  unknown. The reducer required the actor to be present before opening and
+  required `openable=true`, so the staged `open` → `enter` sequence could not
+  succeed.
+- The reducer now permits an absent/unknown Subject with no contradictory known
+  location to open a registered, located fixture before entering; an explicit
+  open establishes unknown `openable` and mechanism state. Explicitly
+  non-openable fixtures, incompatible known locations, and unlocated fixtures
+  still fail. Successful opening updates canonical capability/mechanism state.
+- Job 52 Segment 2's physical validator received the full static setting and
+  opening WorldState; those identify the eight-foot barrel as fixed, but the
+  validator's responsibility is only Subject movement/support changes. Added a
+  deterministic check in the existing physical-validation entry point that
+  rejects clearly associated lifting, tilting, carrying, or relocating of a
+  registered fixed prop. It does not reject mere mentions, unrelated nearby
+  actions, or movement of movable props.
+- Other Job 52 false positives were not safe to correct deterministically with
+  the existing inputs. The timing validator receives only RAW, so it could not
+  compare the Elf's reported two-second walk with the room layout; the final
+  repaired RAW repeated the prior Beat's goblin refill and redundantly placed
+  the same chalice twice, which current checks do not treat as contradictions.
+  No runtime prompt was changed. Suggested wording for approval:
+  - `director_raw_scene_creative`: “Do not repeat any persistent action
+    completed in an earlier Beat; stage only the actions required by CURRENT
+    BEAT.”
+  - `director_raw_scene_physical`: “Reject an action that moves or reorients a
+    prop when WorldState or STATIC SETTING AUTHORITY identifies it as fixed,
+    unless the source explicitly establishes a movable mechanism or
+    component.”
+  - `validate_timing_valid`: “Use STATIC SETTING AUTHORITY and registered
+    opening positions to judge travel distance; a stated travel duration does
+    not override a distance that cannot plausibly be covered in that time.”
+  - `director_raw_scene_prop_state`: “Reject redundant repeated placement or
+    transfer actions when the same prop has already reached the stated final
+    holder or location and no intervening action changes it.”
+- Verification: `PYTHONPATH=. python tests/test_world_state_foundation.py
+  WorldStateReducerTests` passed (26 tests); focused fixed-prop regressions
+  passed (2 tests); `DirectorMicroPromptPipelineTests` passed (130 tests).
+  `py_compile` and `git diff --check` passed.
+
+## 2026-10-12 — specify the timing-refiner 8-second JSON contract
+
+- Updated only the `add_scene_timing_refiner` system prompt to specify an
+  8-second video and the requested JSON shape, timestamp-array semantics, and
+  `not_enough_time` empty-array behavior. The Python response schema and timing
+  validation remain unchanged.
+- Added an exact rendered-prompt regression and updated the active prompt
+  catalog. Verification: `pytest -q tests/test_split_raw_pipeline.py` — 16
+  passed, 3 subtests passed; `py_compile` and `git diff --check` passed.
+
+## 2026-10-12 — allow supported pours through unknown WorldState details
+
+- The Job 50 result artifacts were not present in this checkout; the latest
+  committed acceptance artifacts here are Job 49. The specified unknown-source
+  scenario was reproduced with a focused reducer and StateAction regression.
+- The `pour` reducer now treats an unregistered source substance, unknown
+  source/target placement, unknown source quantity, and unknown destination
+  container capability as missing information when the accepted RAW-derived
+  action explicitly establishes the transfer. It records only the named
+  substance and coarse `all`/`partial` result. Unknown container capability is
+  established as true by an explicit pour. A mug's recorded holder remains
+  unchanged during the pour.
+- Explicitly empty matching source contents, an explicitly non-container
+  destination, and a known location mismatch still reject the batch atomically.
+  Other known source contents are preserved while the RAW-established substance
+  is added. Same-location movement is accepted as a no-op when it provides no
+  persistent position change; an explicitly supplied support change is still
+  reduced. No validators, retries, state representation, or runtime prompts
+  changed. The existing StateAction prompt
+  could be clarified to say that unknown opening facts are missing information
+  and explicit validated RAW actions may establish them; that prompt edit needs
+  separate approval.
+- Verification: `tests/test_director_retry.py` — 128 passed, 7 subtests;
+  `tests/test_world_state_foundation.py` excluding two unrelated stale
+  story-start expectations — 75 passed, 11 subtests. The full foundation file
+  still reports those two pre-existing failures (`classification`/`evidence`
+  fixture shape and obsolete prompt wording). Focused pour/movement reducer
+  regressions — 9 passed. `py_compile` and `git diff --check` passed.
+
+## 2026-10-12 — rename timing-validator prompt purpose
+
+- Renamed the `director_raw_scene_timing` LLM purpose to
+  `validate_timing_valid` in purpose routing, output-token routing, response
+  history selection, and request metadata. The validator/helper function names,
+  prompt text, schema, profile, and 2048-token output limit are unchanged.
+- Updated the active prompt catalog and purpose-routing regression. Verification:
+  `pytest -q tests/test_dynamic_temperature.py` — 65 passed; `py_compile` and
+  `git diff --check` passed.
+
+## 2026-10-12 — increase physical-validator output budget
+
+- Raised the per-purpose maximum output tokens for
+  `director_raw_scene_physical` from 2048 to 3072. Its Smart Extractor profile,
+  context budget, prompt, schema, and validation behavior are unchanged.
+- Added a routing regression asserting the 3072-token purpose limit.
+  Verification: `pytest -q tests/test_dynamic_temperature.py` — 64 passed;
+  `py_compile` and `git diff --check` passed.
+
+## 2026-10-12 — clarify current-Segment prop capability extraction
+
+- Updated only the `world_state_current_segment_props` system prompt. It now
+  permits contents and capabilities that are explicit or strongly implied by
+  the setting/actions, while requiring inferred initial contents to describe
+  the state before CURRENT BEAT rather than its outcome. It also clarifies that
+  `true` and `false` are JSON booleans. The response schema already supports
+  booleans and `unknown`; no schema or extraction code changed.
+- Added a focused assertion for the new guidance and retained the existing
+  registered-name/ID privacy and evidence checks. Verification:
+  `pytest -q tests/test_world_state_foundation.py -k
+  'current_segment_prop_extractor_uses_names_and_cloth_id_persists or
+  current_segment_prop_evidence'` — 8 passed, 7 subtests passed;
+  `py_compile` and `git diff --check` passed.
+
+## 2026-10-12 — Job #49 StateAction reducer failures
+
+- Job #49's Segment 2 opening WorldState and prompt history show the failure was
+  not a reducer defect. The barrel was registered from canonical location state
+  as a fixed support with empty contents. The chipped mug was registered as
+  held by Goblin with ale contents but `container="unknown"`. The StateAction
+  request received those exact facts and the validated RAW. RAW shows Amy
+  reaching toward the barrel, lifting a ladle, and pouring from the ladle into
+  Goblin's mug; it does not show a barrel pickup or Amy changing support.
+- The first extractor response nevertheless proposed `pickup(Amy, barrel)` and
+  `pour(barrel, mug)`. The reducer correctly rejected pickup because the barrel
+  is fixed. During action-only repair, the model added `set_support(Amy,
+  counter)` even though RAW only places her at the counter, then continued
+  proposing invalid pickup/pour actions. The support invention is not
+  mechanically decidable from registered state alone: `set_support` names a
+  real support and is otherwise a legal reducer operation. Preventing that
+  semantic mismatch needs an approved prompt change or RAW/action consistency
+  validation, neither of which was in scope.
+- The action schema now restricts `pickup.prop_id` to registered props whose
+  WorldState mobility is `movable`. Fixed and unknown-mobility props remain in
+  the full vocabulary for other operations and remain rejected by the reducer
+  if presented outside the structured schema. This deterministic eligibility
+  filter prevents the Job #49 fixed-barrel pickup from being offered as a
+  valid structured action without weakening reducer validation.
+- The mug capability failure originates upstream of the reducer: the current
+  Segment prop extractor returned `container="unknown"` despite the Beat saying
+  the mug is refilled, and Python preserved that unknown value. The reducer
+  correctly fails closed on a pour into an unconfirmed container. The ladle
+  was absent from the opening registered vocabulary, the barrel had no
+  recorded contents, and the reducer cannot substitute either as an established
+  source. No capability or source was inferred in Python. A generic extractor
+  prompt clarification is the smallest next step for that issue and needs
+  approval before any runtime prompt change.
+- Added regressions for fixed-prop exclusion from the pickup schema and for
+  pour rollback when destination container capability is unknown. Verification:
+  the focused pickup/container/name-resolution tests passed (4 passed). The combined
+  WorldState foundation and Director retry run reported 195 passed and 18
+  subtests passed, with two known unrelated story-start failures: an obsolete
+  `classification`/`evidence` fixture and an outdated prompt wording assertion.
+  `py_compile` and `git diff --check` passed.
+
+## 2026-10-12 — Job #48 identity, StateAction, physical wording, and timestamps
+
+- Subject ID 1 was not being reassigned. Prompt-only completion recorded the
+  legacy continuity state after it had been reset to an empty state, and that
+  empty value was also used as the completed Segment's identity snapshot. When
+  later Subjects were registered, identity validation compared the old empty
+  snapshot against the authored registry and reported Subject ID 1 missing.
+  Completion now snapshots the canonical Subject registry separately from the
+  reset continuity state and records that identity snapshot for both prompt-only
+  and rendered completion. Identity validation and authored Subject IDs remain
+  unchanged.
+- The StateAction extractor had no explicit baseline/completeness distinction:
+  it could treat existing wardrobe descriptions as changes, while an empty
+  batch could pass despite omitted persistent changes. Its existing prompt
+  contract now says opening WorldState is the baseline, clothing descriptions
+  alone are not changes, and the full RAW must be reviewed for every explicit
+  representable persistent change. Empty batches remain permitted only when no
+  such change occurs. The reducer, action schema, and repair path are unchanged;
+  this remains semantic extraction guidance rather than a new completeness
+  validator.
+- The physical prompt now distinguishes movement across an already-occupied
+  surface from an actual support/elevation change while retaining rejection of
+  unsupported climbing or stepping onto furniture.
+- Timing output is now normalized by Python for unambiguous local timestamp
+  spellings accepted by the downstream formatter (including omitted leading
+  zeroes, `.` or `:` fractional separators, and one-to-three fractional digits).
+  Canonical `MM:SS.mmm` values then pass through the existing chronology and
+  duration checks. Ambiguous/malformed values and seconds outside 00–59 still
+  fail through the existing bounded refiner retry.
+- Focused regressions cover Subject identity across later registration,
+  description-only clothing and actual prop pickup/pour extraction, ordinary
+  floor movement versus support changes, timestamp normalization/rejection,
+  and normalized timing through the pipeline. Verification: `pytest -q
+  tests/test_resume.py tests/test_director_retry.py
+  tests/test_split_raw_pipeline.py` — 190 passed, 19 subtests; `py_compile`
+  and `git diff --check` passed.
+
+## 2026-10-12 — StateAction RAW integrity representation match
+
+- Job #46 reached StateAction extraction with a camera-refined accepted RAW.
+  The caller correctly removed `[CAMERA: ...]` annotations before passing RAW
+  to `director_state_actions`, whose result preserves its exact input. The
+  integrity guard then incorrectly compared that camera-stripped value with
+  the camera-tagged Subject-resolver output, causing a false failure even for
+  `{"state_actions": []}`. No StateAction-stage RAW mutation occurred. Job #46
+  artifacts were not available in this checkout, so the failure was reproduced
+  with a focused camera-tagged fixture.
+- The caller now names the exact camera-stripped StateAction input and verifies
+  the extractor's returned RAW against that same value. The check remains exact:
+  changing action text or timestamps still raises `StateActionExtractionError`.
+  Empty StateAction batches remain valid. No prompt, schema, or extraction
+  behavior changed.
+- Added focused regressions for unchanged camera-stripped RAW with an empty
+  batch, changed timestamp, and changed action text.
+- Verification: StateAction-focused regressions — 5 passed; split RAW pipeline —
+  12 passed; `python -m py_compile minimax.py
+  tests/test_prompt_generation_mode.py tests/test_director_retry.py` and
+  `git diff --check` passed. A broader combined run was interrupted during a
+  slow prompt-generation test after 11 tests had passed; the focused affected
+  tests completed successfully.
+
+## 2026-10-12 — RAW validation before timing and camera refinement
+
+- Reordered RAW content validation so `director_raw_scene_physical` and
+  `director_raw_scene_prop_state` each validate/repair/revalidate the untimed
+  creative scene before `add_scene_timing_refiner`. Timestamp assignment is
+  followed by the `validate_timing_valid` purpose; an infeasible result
+  regenerates creative RAW with its issue as feedback under the existing
+  Director attempt bound. It does not rewrite the accepted actions.
+- The final camera-refined scene runs deterministic shot-script and dialogue
+  checks. Physical and prop/state LLM validators are not repeated because the
+  timing and camera refiners already have deterministic action-preservation
+  checks. Their failures cannot be repaired by mutating timed text; the
+  existing Director retry budget regenerates creative RAW instead.
+- Added the requested generic physical rule against unsupported support or
+  elevation changes. It allows movement required by CURRENT BEAT or established
+  by prior state, and tells the validator to report the unsupported movement
+  itself. Ordinary furniture interaction remains permitted.
+- Tightened the shared StateAction prompt contract: omit transient or
+  unrepresentable actions and never invent transfers, pouring, consumption, or
+  an unrelated operation. The empty batch remains valid; existing reducer
+  operations and authority are unchanged. Job #44's artifacts were not present
+  in this checkout, so the reported wiping output could not be independently
+  inspected here.
+- Added regressions for support/elevation movement, pre-refinement validator
+  order, no redundant physical/prop checks, timing-driven creative retries,
+  wiping as an empty StateAction batch, and transfer-preserving extraction.
+- Verification: `pytest -q tests/test_split_raw_pipeline.py
+  tests/test_director_retry.py tests/test_llm_prompt_pipeline.py` passed (251
+  tests, 7 subtests). `python -m py_compile minimax.py
+  tests/test_split_raw_pipeline.py tests/test_director_retry.py` and
+  `git diff --check` passed. `tests/test_world_state_foundation.py` had 66
+  passes, 11 subtests, and 2 unrelated existing story-start contract failures:
+  an outdated `classification`/`evidence` fixture and an obsolete prompt-text
+  assertion.
+
+## 2026-10-12 — visible Subject resolver output budget
+
+- Raised the `director_raw_scene_visible_subject_resolution` per-purpose
+  maximum output-token limit from 2048 to 3172. Its profile and other request
+  settings are unchanged. Added a regression asserting the configured value
+  and the actual request's `max_tokens` when context capacity permits.
+
+## 2026-10-12 — timestamp-only timing refiner output
+
+- Changed `add_scene_timing_refiner` to receive numbered, nonempty RAW action
+  lines and return only `{status, timestamps}`. The timing model no longer
+  reproduces or rewrites scene text.
+- Python preserves each nonblank source line verbatim, checks timestamp count,
+  `MM:SS.mmm` format, strict chronological order, first timestamp at
+  `00:00.000`, and segment duration, then assembles the timed scene. Malformed
+  timestamp batches use the existing bounded refiner retries. An explicit
+  `not_enough_time` with an empty timestamp list still feeds the existing
+  bounded creative regeneration path. Camera refinement and downstream RAW
+  contracts are unchanged.
+- Added regressions for blank-line normalization, verbatim action assembly,
+  malformed and out-of-order timestamps, incorrect counts, duration limits,
+  and `not_enough_time`. Updated timing schema assertions and prompt inventory.
+- Verification: focused split RAW, Director retry, prompt pipeline, and
+  pre-Director replay tests passed: 251 passed, 7 subtests. `py_compile` and
+  `git diff --check` passed.
+
+## 2026-10-12 — split RAW timing and camera refiners
+
+- Replaced the monolithic `director_raw_scene` formatter stage with a separate
+  `add_scene_timing_refiner` call. It returns the exact `{status, timed_scene}`
+  contract and receives the approved timestamp-only system prompt. Python
+  rejects changed, reordered, missing, extra, malformed, non-monotonic, or
+  out-of-duration action lines. A `not_enough_time` result adds feedback to
+  the existing creative retry input and regenerates creative RAW; it never
+  enters the normal RAW repair loop. The existing five Director attempts and
+  five RAW repairs remain bounded.
+- Added `add_camera_refiner` after successful timing. It receives the approved
+  camera-only prompt and uses `[CAMERA: ...]` tags immediately after timestamps
+  so validators can compare the underlying action text. Altered/malformed
+  output retries three times, then falls back to the accepted timed scene
+  without camera additions. No camera movement is a valid unchanged response.
+- Existing RAW validators still run on the final formatted scene, with camera
+  tags removed for semantic validation. The existing StateAction and H3 paths
+  retain their accepted input contracts. Removed obsolete timestamp surgery
+  that could add opening/final-quarter actions and the continuation frame-zero
+  substitution that could replace an accepted first action. Continuation
+  timestamp offsetting remains for the renderer timeline.
+- Added coverage for content-preserving timestamping, malformed timing retry,
+  `not_enough_time` regeneration and attempt exhaustion, camera preservation
+  and fallback, RAW repair budget, final structure metadata, and downstream
+  compatibility. The profile/prompt inventory now lists both refiners.
+- Verification: the Director Request 1 context, Director retry, prompt pipeline,
+  split RAW, pre-Director replay, profile routing, integration, continuation
+  frame, and location postmortem suites passed: 337 passed, 1 skipped, 7
+  subtests. `py_compile` and `git diff --check` passed. No acceptance job was
+  queued.
+
+## 2026-10-12 — classify and resolve the 45 Director test failures
+
+- Re-ran the failing Director retry and prompt-pipeline files. The 45 failures
+  were stale expectations for the retired monolithic Director contract: old
+  creative prompt wording, one-call request counts, and fixtures that skipped
+  the untimed creative stage and downstream timed formatter. Updated those
+  tests to exercise the current split stages instead of deleting the behavior
+  coverage.
+- The review also found one real integration gap: the new creative system
+  prompt names `ASSIGNED SOURCE` as an authority, but the deterministic prompt
+  builder did not include the current assignment. The builder now accepts and
+  renders that source, and both normal and repair prompt construction pass the
+  assignment selected for the current segment. No runtime prompt wording,
+  validator behavior, or retry budget changed.
+- Verification: `tests/test_director_retry.py` and
+  `tests/test_llm_prompt_pipeline.py` — 235 passed, 7 subtests. Split RAW,
+  pre-Director replay, and Request 1 context tests — 17 passed. `py_compile`
+  and `git diff --check` passed.
+
+## 2026-10-09 — seed canonical Subjects after checkpoint recovery fallback
+
+- When checkpoint restoration failed, `_run_main()` created a fresh generation
+  state but skipped the canonical `character_canon` identity and wardrobe seeds
+  applied on a normal new run. The fallback now uses the same shared composition
+  of the existing authored identity and wardrobe seed functions, then rebuilds
+  Subject definitions from the resulting WorldState. Presence remains unknown.
+- The fresh-run path uses this same seed composition. Successful checkpoint
+  resume remains unchanged and continues restoring the completed Segment's
+  canonical WorldState.
+- Added regressions for canonical wardrobe/identity seeding on the fallback
+  initialization path and wardrobe preservation through normal checkpoint
+  resume. Verification: `pytest -q tests/test_resume.py
+  tests/test_world_state_foundation.py::WorldStateSeedTests` — 76 passed,
+  16 subtests; `py_compile` and `git diff --check` passed.
+
+## 2026-10-09 — use WorldState for Director and final H3 continuity
+
+- Bridge job 26 showed physical facts duplicated across the generated
+  `subject_definitions`, legacy `generated_continuity_state`, and final H3
+  inputs. The run's legacy summary described Subject positions, wardrobe, and
+  a held prop independently of the reducer state.
+- Director Request 1 continuity now formats established Subject, wardrobe,
+  location, support, condition, and prop facts from the immutable WorldState
+  opening. Legacy continuity summaries, prop ledgers, and initial-location
+  summaries no longer feed that request. The previous Director end frame is
+  carried separately as choreography context.
+- Final H3 assembly now places WorldState physical facts in the existing
+  Subject-definition content while retaining identity and Picture references,
+  location Video references, soundscape, music, and visual style. Canonical
+  identity descriptions remain; their wardrobe clauses and the redundant raw
+  `canonical_data.txt` insertion are omitted when WorldState is present.
+- Removed the live combined-continuity extraction/Phase-2 update and the
+  visual-observation-to-continuity merge. Rendered observations remain saved
+  as separate diagnostics/media evidence and do not write WorldState. Dynamic
+  Subject identity fallback remains identity-only; deterministic WorldState
+  display references are stable even for string stable IDs.
+- The accepted Director action batch still commits through the existing
+  reducer only after segment acceptance. Checkpoint/resume keeps the canonical
+  WorldState; old continuity and prop fields are read only while normalizing
+  prior checkpoint formats and are reset before prompt construction.
+- No runtime system/user prompt templates or retry suffixes were edited; only
+  their assembled physical-state inputs now come from WorldState.
+- Verification: prompt-authority plus canonical-insertion tests passed (8
+  passed, 2 subtests); prompt-generation mode passed (10); WorldState foundation
+  passed (57 passed, 2 stale story-start response-contract tests deselected,
+  7 subtests); focused Director state-action regressions passed (3 passed, 112
+  deselected, 2 subtests). `py_compile` and `git diff --check` passed. Bridge
+  job 26 was used for diagnosis; no acceptance job was queued.
+
+## 2026-10-09 — route all Director RAW validators through repair
+
+- Every Director RAW-scene validator now sends its first concrete failure to
+  `director_raw_scene_repair`: shot-script structure, required dialogue,
+  physical/spatial movement, prop/state consistency, and timing feasibility.
+  The repaired RAW is normalized and the full validator sequence reruns. Five
+  unsuccessful repairs still step back to a new `director_raw_scene` attempt.
+  The separate `state_actions` contract/reducer retry remains separate because
+  the RAW-only repair cannot change the action response.
+- The repair request labels its errors generically as `VALIDATOR ERRORS`. Each
+  verdict and repair dispatch logs the Segment, Director attempt, repair
+  attempt, validator, and concrete issue. Raw physical, prop/state, and timing
+  responses are retained in prompt history.
+- `docs/LLM_PROMPTS.md` now records the broader repair scope. Verification:
+  `tests/test_director_retry.py` and `tests/test_dynamic_temperature.py` passed
+  (174 passed, 7 subtests); `py_compile` and `git diff --check` passed. The
+  broader combined run including `tests/test_llm_prompt_pipeline.py` had 24
+  failures among 288 cases, from stale prompt assertions and pre-WorldState
+  Director response fixtures; those were not changed in this scoped update.
+
+## 2026-10-09 — bridge accepts fixture Director plans
+
+- `run_acceptance` jobs may provide `director_plan_dir`; the bridge resolves it
+  inside the execution worktree, restricts it to `tests/acceptance/fixtures/`,
+  verifies `story_arc.json`, `beats.txt`, and `expanded_story.txt`, and forwards
+  the resolved path to the existing `--director-plan-dir` runner option.
+- The established plan is
+  `tests/acceptance/fixtures/tavern_run21_plan`. Existing `director_plan_job`
+  materialization remains unchanged; a job cannot specify both plan sources.
+- Verification: bridge tests passed (9 passed; one unrelated stale branch-error
+  assertion deselected), acceptance-runner tests passed (10 passed), and syntax
+  and whitespace checks passed.
+
+## 2026-10-09 — include expanded story in Director-only plans
+
+- Recovered the saved expanded tavern story from the run artifacts and added
+  it to `tests/acceptance/fixtures/tavern_run21_plan/expanded_story.txt`.
+- Director-only acceptance now requires and stages `story_arc.json`,
+  `beats.txt`, and `expanded_story.txt`, and captures the expanded story in the
+  acceptance artifacts. The existing Director-only path continues to load the
+  saved Beats and skip story expansion, Beat generation, and Beat validation.
+- Added a regression proving the saved expanded story reaches location
+  extraction and that its resulting location/fixture state seeds canonical
+  WorldState. Story and Beat stages remain uncalled; existing WorldState
+  validation remains active.
+- Verification: acceptance-runner tests passed (11 passed), bridge tests passed
+  (9 passed; one unrelated stale branch-error assertion deselected),
+  prompt-generation-mode tests passed (10 passed), and syntax/whitespace checks
+  passed.
+
+## 2026-10-09 — reusable six-Beat tavern Director plan
+
+- Preserved the **six accepted Beats** from acceptance 21 and paired them with the supplied one-phase `story_arc.json` and recovered `expanded_story.txt` at `tests/acceptance/fixtures/tavern_run21_plan/`. The arc retains E1–E6, their original source-event wording (including Amy's explicit wardrobe in E1), ordering/dependencies, and empty source state effects; accepted Beat text is copied verbatim from the run log.
+- **Future tavern WorldState/Director/H3 tests:** use the existing `tests/acceptance/run_acceptance.py --director-plan-dir tests/acceptance/fixtures/tavern_run21_plan` mode with the tavern gold benchmark and normal image/model options. This reuses the fixed planning outputs and skips story expansion/Beat generation/Beat validation; do not quietly substitute a fresh plan.
+- The separate `tests/acceptance/fixtures/tavern_run21_accepted_beats.txt` remains as a source record. No production prompt, reducer, or acceptance runner code changed. Re-enable fresh full-pipeline acceptance when testing planning itself.
+
+Read `docs/PROJECT_NOTES.md` first for project-wide architectural rules. This file describes the current branch implementation, active experiment, latest evidence, and immediate next work.
+
+## Repository / active branch
+
+Repository: `blanchetteje-hub/MiniMaxH3_Director`
+
+Active experimental branch: `world-state-rebuild`
+
+Runtime/bridge mailbox branch: `gpt-runtime`
+
+Baseline branch this experiment diverged from: `main`
+
+Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is development/evaluation only and must not become a production dependency.
+
+## Primary goal
+
+`story.txt -> gold-standard MiniMax H3 prompts`
+
+`story.txt` remains the sole narrative authority. Expansion may add concrete staging/detail where the source is silent, but it may not add, replace, contradict, skip, reorder, or materially alter source events/outcomes.
+
+### Primary goal achieved
+
+### Next goal
+
+Continuity
+
+Location continuity -> 3-second persistent 360-orbit room reference is accepted; covered geometry stayed ~99% consistent in the latest tavern run
+State/subject/action continuity -> active work
+
+## 2026-10-06 — tavern generation postmortem fixes
+
+Applied to `object-state-work` after reviewing the eight-second, six-segment tavern
+generation:
+
+- Fixed wardrobe component parsing so the `lower:` slot label is not mistaken for
+  the action verb “lower”; lower garments and later outfit slots now survive
+  normalization.
+- Made the humanoid clothing requirement a fixed, species-neutral rule in
+  defined-Subject wardrobe extraction and character reference rendering.
+  Non-humanoid forms may use `N/A` when clothing does not apply.
+- Preserved explicit period/culture/genre cues through static-setting extraction,
+  spatial refinement, location description, and the final location-reference
+  prompt. Medieval-fantasy locations must retain a visibly medieval-fantasy look.
+- Strengthened the Director and RAW physical validator against gratuitous climbs
+  onto counters, tables, bars, shelves, or stools when the beat and prior state do
+  not establish the climb.
+- Decoupled persistent Subject definitions from the shorter Picture-reference
+  window. Definitions persist until an explicit departure; H3 continuation prose
+  falls back to the durable Subject-state ledger when current continuity has no
+  usable position.
+- Corrected the initial-location held-prop detector's escaped word-boundary
+  pattern so it rejects held-prop actions as intended.
+
+The broader Python object-state validators for Amy's cloth and the chalice remain
+deferred, as requested. After the next tavern run, inspect the wardrobe for
+Goblin1/Elf1, Dragon1's clothing, the location's period styling, furniture use,
+and whether Elf1/Dragon1 remain in their established positions through Segment 6.
+
+## 2026-10-06 — WorldState foundation, review gates A and B
+
+Implemented only the first two steps of the WorldState refactor for review. Do
+not start Gate C or Gate D until the user approves this checkpoint.
+
+- Gate A: sparse prop and Subject-ledger observations no longer replace
+  established scalar or wardrobe facts with omitted, blank, `N/A`, or `unknown`
+  defaults. Explicit empty Subject lists remain meaningful clears. A continuity
+  wardrobe replacement of an established garment now requires a matching
+  explicit put-on/take-off action in the newest scene. Story wardrobe extraction
+  fills unknown slots and preserves already-established attire.
+- The fixed clothing rule is explicit in wardrobe extraction and dynamic Subject
+  resolution: humanoids must remain clothed regardless of species; non-humanoid
+  forms may use `N/A` where clothing does not apply unless the source explicitly
+  gives clothing. WorldState validation uses the explicit clothing-applicability
+  field, not the Subject's name, and rejects `N/A` or `absent` slots when
+  clothing is required.
+- Gate B's identity-only seed is a temporary migration state. Later
+  authority-specific seed functions may initialize story-start presence,
+  canonical wardrobe, canonical location, and explicitly established props.
+  Legacy continuity, RAW, visual observations, and beat summaries remain
+  ineligible as WorldState seed or synchronization sources.
+- Current schema: `schema_version`, `revision`, `source_sha256`, `seed_status`,
+  `subjects`, `props`, and `locations`. A subject has immutable identity
+  metadata (`physical_form` and `clothing_applicability`), unknown-initialized
+  physical state, wardrobe slots, and identity provenance. A new run currently
+  seeds only identity metadata from the user-authored `subjects.txt` definitions;
+  other subject facts stay unknown and props/locations start empty. Old
+  checkpoints receive an unknown-only WorldState with no legacy migration.
+- There is no legacy-state-to-WorldState synchronization path. The only
+  current WorldState construction/write paths are `world_state.new_world_state`,
+  `world_state.empty_world_state`, `minimax.new_generation_state`,
+  `minimax.load_generation_state` (legacy-key fallback),
+  `minimax.save_generation_state` (legacy-key fallback),
+  `minimax.record_completed_segment` (snapshot), and
+  `minimax.restore_generation_state` (restore of that snapshot).
+  `minimax.authoritative_world_state_seed_from_subject_definitions` only
+  prepares the narrow authored-input seed; `world_state.copy_world_state`
+  returns a validated independent copy. At the Gate A/B checkpoint, no
+  Director, reducer, visual observer, beat summary, RAW parser, or legacy writer
+  updated WorldState facts. Step 3 below adds a pure reducer core without a
+  Director call site or legacy-state synchronization.
+
+Legacy state writers still active and therefore still competing authorities for
+their compatibility state:
+
+- `normalize_structured_continuity_state` applies continuity-model values to
+  legacy continuity; `request_combined_continuity` orchestrates that path.
+- `merge_prompt_and_visual_end_state` still applies visual position, pose,
+  camera, and environment observations to legacy continuity. Wardrobe is kept
+  diagnostic and no longer promoted from visual observations.
+- `apply_state_patch` and `apply_accepted_beat_state_patch` apply accepted-beat
+  effects to legacy beat state; `_continuity_apply_authoritative_state_effects`
+  applies scripted effects to legacy continuity and prop ledgers.
+- `seed_initial_location_subjects`, `apply_visible_subject_bootstrap_metadata`,
+  and `apply_authoritative_prop_state_effects` add or update legacy Subject and
+  prop facts. `_run_main` orchestrates these paths and additional direct legacy
+  assignments during segment processing.
+- `merge_prop_ledger`, `merge_subject_state_ledger`,
+  `record_completed_segment`, and generation-state load/restore/save still
+  canonicalize or merge the legacy ledgers and snapshots.
+- Wardrobe compatibility writers include `seed_story_wardrobe`,
+  `seed_character_canon_wardrobe`, `seed_canonical_opening_wardrobe`,
+  `apply_story_subject_wardrobes`, and `_repair_candidate_wardrobe_extraction`.
+  These do not write WorldState.
+
+These writers are intentionally not removed or redirected in this checkpoint.
+Gate C must report them again after adding Director `state_actions` and reducer
+validation; Gate D is where segment processing becomes transactional and legacy
+writers begin to be replaced or disabled.
+
+## 2026-10-06 — Step 3 reducer core
+
+Implemented the pure WorldState reducer and unit tests. This is only the reducer
+core: Director `state_actions` emission, prompt vocabulary injection, segment
+transactions, and disabling/replacing legacy writers remain out of scope.
+
+Public API in `world_state.py`:
+
+- `reduce_world_state(world_state, state_actions, *, segment_number)` returns a
+  `ReductionResult` containing ordered `ActionOutcome` records and a `committed`
+  flag. Successful batches return the fully reduced candidate. On the first
+  rejected action, processing stops and the result contains a deep copy of the
+  original input with `committed=false`; earlier successful actions are rolled
+  back and later actions are not evaluated.
+- `validate_state_actions(world_state, state_actions, *, segment_number)` dry-
+  runs that same engine and returns the same outcomes without exposing the
+  candidate.
+- `props_held_by(world_state, subject_id)` derives a subject's held-prop IDs
+  from each prop's single `placement` field; no subject-held-props list is
+  persisted.
+
+Each `StateAction` has `action_id`, `op`, and only the operation-specific
+registered fields. Supported operations and effects:
+
+| Operation | State effect |
+| --- | --- |
+| `pickup` | Changes one movable prop from located to held by the actor. |
+| `place` | Changes an actor-held movable prop to a location, optionally on an explicitly registered support. |
+| `handoff` | Changes a movable prop's recorded holder from giver to receiver. |
+| `pour` | Transfers a registered substance using `all` or `partial` coarse amounts. |
+| `consume` | Consumes an explicitly consumable prop or content using `all` or `partial`. |
+| `enter` / `exit` | Set presence to present / absent; exit may record a known destination. |
+| `move` | Changes a present subject's registered location without changing presence; support clears unless supplied. |
+| `set_support` | Sets or clears (`support_id: null`) a subject's explicit support and optionally its posture. |
+| `change_clothing` | Puts on, removes, or replaces an exact recorded garment layer, or updates its separate condition. |
+| `open` / `close` / `lock` / `unlock` | Changes a registered mechanism state when explicit capabilities and prior states permit it. |
+
+Persistent props now carry one authoritative `placement`, `mobility` (`movable`,
+`fixed`, or `unknown`), a kind (including `fixture`, `support`, and
+`fixture_support`), coarse contents, explicit capabilities, and mechanism state.
+Pickup rejects fixed and unknown-mobility props. Entity references must resolve
+to IDs already present in the WorldState; arbitrary field-patch operations and
+unknown entity IDs are rejected.
+
+WorldState wardrobe slots (`upper`, `lower`, `footwear`, `other`) each hold
+`unknown`, `N/A`, or a list of zero or more `{garment, condition}` records.
+Garment identity and condition are separate; for example, a torn shirt remains
+`garment: "shirt"` with `condition: "torn"`. `change_clothing` supports a
+`set_condition` action for an exact recorded garment. Garments are not global
+props. `clothing_applicability: "required"` does not require all four slots to
+contain garments: empty lists and an `other: "N/A"` slot are valid when another
+garment is recorded. A fully known required wardrobe with no garments is
+rejected. The reducer also rejects removing the last recorded garment from a
+required-clothing subject; it does not infer garment coverage or appropriateness
+from slot names, so semantic clothing validation must check that separately.
+
+The reducer proves only facts encoded in WorldState: registered identity,
+presence, location equality, placement, mobility, capability, content, and
+mechanism state. It does not infer proximity, reachability, route plausibility,
+collision/fit, or whether a support is physically unoccupied. Within-location
+movement cannot be represented because the current schema has no position
+coordinate, so it is rejected as `movement_not_representable`. Physical staging
+remains the semantic validator's responsibility. An `off_camera` action is not
+defined; off-camera continuity produces no action.
+
+WorldState mutation and compatibility status at this gate:
+
+- `new_world_state` and `empty_world_state` construct seed states; neither
+  imports legacy continuity, RAW, visual observations, or beat summaries.
+- `reduce_world_state` and `validate_state_actions` call the shared reducer
+  engine. The engine mutates only private deep copies while evaluating actions;
+  the caller's input remains unchanged. `copy_world_state` returns a validated
+  copy and `props_held_by` is read-only.
+- `minimax.new_generation_state` assigns the authoritative identity seed.
+  `load_generation_state` creates an unknown-only state for legacy checkpoints;
+  `save_generation_state`, `record_completed_segment`, and
+  `restore_generation_state` validate or copy WorldState snapshots. None of
+  these paths applies legacy state facts to WorldState.
+- All legacy continuity, visual, beat, wardrobe, Subject, and prop-ledger
+  writers listed in Gate A/B remain active for compatibility state and have not
+  been integrated with this reducer. No Director call site invokes the reducer.
+
+Focused validation: `python -m pytest -q tests/test_world_state_foundation.py`.
+The reducer tests cover atomic fail-fast rollback, dry-run agreement, fixed and
+unknown mobility, placement and derived holders, support clearing, presence
+semantics, coarse transfer amounts, layered garments and per-garment condition,
+clothing applicability, mechanism prerequisites, and rejection of unregistered
+IDs and generic patches. This did not run the full repository suite.
+
+Focused validation: `tests/test_world_state_foundation.py`,
+`tests/test_rendered_wardrobe_state.py`, `tests/test_subject_identity_continuity.py`,
+`tests/test_location_state_reference.py`, `tests/test_postmortem_regressions.py`,
+and the relevant `tests/test_continuity_summary.py` cases had 225 passing tests
+and 12 passing subtests. Eleven existing tests were deselected: stale prompt or
+retention contracts, unrelated timing/speaker-repair assertions, and a test that
+tries to delete a ComfyUI output file outside the writable workspace. The whole
+suite was not rerun at this gate.
+
+## 2026-10-06 — Gate C phase 1: authority seeds and Director action contract
+
+Implemented Gate C phase 1 only. This adds explicit one-way WorldState seed
+functions, deterministic Python entity IDs, and a dry-run response contract.
+The initial seed composition runs before Segment 1. Director `state_actions`
+are not connected to the live Director call and are never written back to
+`generation_state["world_state"]`. Gate D transactions have not started.
+
+Authority-specific seed APIs in `world_state.py`:
+
+- `seed_predefined_subject_identities(world_state, subject_definitions_seed)`
+  accepts only the parsed authored Subject identity seed.
+- `seed_story_start_presence(world_state, initial_location_subjects,
+  location_id=...)` consumes the Subjects explicitly returned by the dedicated
+  story-start extractor. Returned Subjects become present at the registered
+  starting location; omitted Subjects are left unchanged, usually `unknown`.
+  The extractor intentionally excludes Subjects already in existing
+  definitions, so its omissions cannot establish absence. Extractor-discovered
+  Subjects receive stable Python IDs and unknown identity fields. Later `enter`
+  actions remain the state transition for an arriving Subject.
+- `seed_canonical_wardrobes(world_state, wardrobes_by_subject)` consumes only
+  dedicated per-Subject wardrobe-extractor output. `minimax.py` adapts the
+  canonical text deterministically into slot arrays of `{garment, condition}`
+  records. Unstated garment conditions are `unknown`; explicit condition words
+  remain separate from garment identity. `N/A` remains `N/A` for non-humanoid
+  wardrobes. No additional model call is made for this conversion.
+- `seed_canonical_static_location_state(world_state, location_state)` consumes
+  the established location-state pipeline. Anchors are registered as fixed
+  fixtures by default. Objects enter WorldState only when explicitly marked
+  `world_state_role` as `fixture`, `support`, or `fixture_support`; `untracked`
+  objects are omitted. The location extractor now labels role and mobility and
+  does not supply IDs.
+- `register_explicit_persistent_props(world_state, prop_registry)` requires a
+  Python-authored entry with `needed_for_state: true`, a reason, mobility,
+  kind, and exactly one initial location or Subject holder. It rejects
+  caller-supplied IDs and unneeded props. This is an explicit registration API;
+  there is no automatic noun/story-prop sweep.
+
+`stable_world_state_id(namespace, label, scope="")` normalizes authoritative
+labels and derives IDs from a stable SHA-256 digest. Location IDs derive from
+the canonical location name. Fixture/support IDs include location, role, name,
+and type. Registered prop IDs include the authoritative prop identity and
+initial placement scope. Subject IDs use authored Subject numbers where
+available, and extractor-discovered story-start Subjects use a deterministic
+normalized-name ID. These IDs are supplied in the Director vocabulary; the
+model cannot create IDs.
+
+The proposed Director response uses one response containing both RAW and
+actions:
+
+```json
+{
+  "raw_scene": "...",
+  "finite_activity_complete": true,
+  "named_beneficiaries_complete": true,
+  "activity_tools_settled": true,
+  "beat_complete": true,
+  "state_actions": []
+}
+```
+
+`build_director_state_action_contract(world_state)` creates the constrained
+JSON schema and the exact registered vocabulary supplied alongside it:
+
+- `subjects`: `{id, name, presence, location_id}`
+- `locations`: `{id, name}`
+- `props`: `{id, name, kind, mobility, status, placement, contents,
+  capabilities, mechanism_state}`
+- `supports`: `{id, name, location_id}` for registered `support` and
+  `fixture_support` props
+
+Every action ID field is constrained to the matching IDs in that vocabulary.
+The available operations follow the existing reducer contract (`pickup`,
+`place`, `handoff`, `pour`, `consume`, `enter`, `exit`, `move`, `set_support`,
+`change_clothing`, `open`, `close`, `lock`, `unlock`). `parse_and_dry_run_director_state_actions`
+parses the same-response envelope and calls `validate_state_actions`, which
+dry-runs the shared reducer engine. It returns diagnostics and acceptance only;
+it does not expose or persist a candidate state. The live Director response
+format and generation call are unchanged.
+
+Gate C phase 1 tests cover story-start Goblin presence without an entrance,
+Elf/Dragon unknown until an entrance action, preservation of explicitly seeded
+absence on omitted Subjects, canonical layered wardrobe adaptation,
+non-humanoid `N/A`, stable fixture/support IDs, one-placement explicit prop
+registration, exclusion of legacy/visual/RAW/accepted-beat data, and rejection
+of an unregistered Director ID. Focused validation:
+`python -m pytest -q tests/test_world_state_foundation.py tests/test_location_state_reference.py` — 65 passed.
+
+WorldState writers now include the explicit seed APIs above, existing
+construction/checkpoint APIs (`new_world_state`, `empty_world_state`,
+`minimax.new_generation_state`, load/save/restore/snapshot), and the approved
+reducer APIs (`reduce_world_state`, `validate_state_actions`). The contract
+builder and dry-run parser do not write WorldState. The startup composition
+assigns the result of authorized seed functions before Segment 1. No
+legacy-state-to-WorldState synchronization exists.
+
+The competing legacy writers remain active and compatibility-only:
+
+- `normalize_structured_continuity_state`, `request_combined_continuity`,
+  `merge_prompt_and_visual_end_state`, `apply_state_patch`,
+  `apply_accepted_beat_state_patch`, and
+  `_continuity_apply_authoritative_state_effects`.
+- `seed_initial_location_subjects`, `apply_visible_subject_bootstrap_metadata`,
+  `apply_authoritative_prop_state_effects`, `_run_main` legacy assignments,
+  `merge_prop_ledger`, `merge_subject_state_ledger`, and
+  `record_completed_segment`.
+- Wardrobe compatibility writers `seed_story_wardrobe`,
+  `seed_character_canon_wardrobe`, `seed_canonical_opening_wardrobe`,
+  `apply_story_subject_wardrobes`, and `_repair_candidate_wardrobe_extraction`.
+
+None of these writers updates WorldState. At the Gate C phase 2 checkpoint,
+these compatibility writers remain active; connecting the reducer candidate
+to canonical segment state and changing legacy writers remains for the next
+approved phase.
+
+## 2026-10-06 — Gate C phase 2: Director action contract and dry-run
+
+Director Request 1 now receives a compact registered WorldState vocabulary and
+returns `state_actions` in its existing response with `raw_scene` and the four
+completion fields. No second LLM call was added. The contract includes only
+registered Subjects referenced by the current beat/source, their current
+locations/supports and held props, plus registered props and locations
+referenced by that Segment. Action operations are limited to those signaled by
+the current beat/source. IDs in the strict dynamic response schema are enums
+from this Python-built vocabulary.
+
+The exact Request 1 user-message addition is:
+
+```text
+REGISTERED WORLDSTATE VOCABULARY — Python-assigned IDs; select only IDs shown here:
+{minified JSON vocabulary}
+
+STATE ACTION CONTRACT — Return state_actions in this same response as RAW SCENE. Add only explicit persistent changes staged in RAW SCENE; off-camera is not an action. Use [] if no represented state changes. The response schema restricts operations and IDs to the registered vocabulary.
+```
+
+The system prompt also states that actions must correspond to explicit changes
+staged in RAW SCENE, IDs must come from Python, off-camera is not an action,
+and an empty array is correct when no represented persistent state changes.
+The same-response object is:
+
+```json
+{
+  "raw_scene": "...",
+  "finite_activity_complete": true,
+  "named_beneficiaries_complete": true,
+  "activity_tools_settled": true,
+  "beat_complete": true,
+  "state_actions": []
+}
+```
+
+`request_segment_llm()` deep-copies the opening WorldState once and parses and
+dry-runs each response with `parse_and_dry_run_director_state_actions()` and
+`validate_state_actions()`. A rejected batch retries from the same immutable
+opening state with only the first concrete reducer diagnostic. This retry is
+rebuilt from the base Request 1 messages, so failures from earlier physical,
+prop, timing, or reducer attempts do not accumulate. A passing dry-run is
+attached to the Request 1 result for downstream inspection; its candidate is
+not assigned to `generation_state["world_state"]`. Existing RAW physical,
+prop-state, and timing validators still run afterward and retain their
+semantic staging role. No legacy writers are disabled or redirected, and Gate
+D transactions have not started.
+
+Focused regressions cover a valid Goblin mug transfer, duplicate pickup and
+unknown prop IDs, a handoff whose giver is not the holder, and a reducer retry
+that includes only the first reducer error without stale prior-attempt text.
+The dynamic schema and prompt vocabulary are also checked in the Request 1
+path. Legacy compatibility writers listed in the phase 1 report remain active;
+they are still the competing state writers to audit before Gate D.
+
+## 2026-10-06 — Gate C phase 2 vocabulary and pre-Director seeding corrections
+
+Corrected three problems before Gate D. No Director candidate is committed to
+canonical WorldState, no legacy writer is disabled, and no full tavern render
+was run.
+
+- Removed `director_state_action_operations_for_segment()` and its beat/source
+  regex gating. `build_director_state_action_contract()` now includes every
+  reducer operation for which the registered entity categories can form a
+  schema. Verb wording never removes an operation; the reducer decides whether
+  an emitted action is legal.
+- Added `extract_persistent_prop_registry()` as a small semantic extractor over
+  authored story, numbered beats, validated structured event effects, and
+  canonical location state. It selects only explicitly placed cross-beat props,
+  not every noun and not legacy ledgers, accepted-beat summaries, RAW, or visual
+  observations. IDs remain Python-assigned. Prop registration now happens at
+  the prop's first relevant beat, after that beat's dynamic Subjects are
+  registered. This supports a cup whose explicit pre-handoff holder is Elf1.
+- Added `extract_current_segment_subjects()` and
+  `prepare_segment_world_state_for_director()`. Before Request 1, the narrow
+  current-beat extractor registers new identity-only Subjects, the existing
+  per-Subject canonical wardrobe extractor fills their layered wardrobe, and
+  eligible persistent props are registered. These functions do not infer
+  presence. Elf1 and Dragon1 remain `unknown` until an `enter` action. The
+  post-RAW visible-Subject resolver remains a fallback for unanticipated
+  foreground identities; those identities cannot join the current action plan
+  until they pass the controlled registration path.
+- The current-beat extractor uses exact source evidence, explicit `physical_form`
+  values, and Python stable IDs. It never infers body type from a name. The prop
+  extractor requires at least two relevant beats and an explicit pre-action
+  placement; for a handoff, the source names the giver as the prior holder.
+- Added tavern-sequence regressions that derive Amy/Goblin1 from authored and
+  story-start authorities and derive mug/barrel/chalice/cup from the prop
+  extractor response. They do not manually pre-seed Elf1, Dragon1, or the mug.
+  Segments 1, 3, and 4 assert the pre-Request-1 vocabulary; Segment 4's cup is
+  registered as held by Elf1, and the full 14-operation contract is unchanged
+  for “refills,” “handing,” “locking,” “steps outside,” and “slides onto.”
+
+Focused validation: `python -m py_compile minimax.py world_state.py
+tests/test_director_retry.py`; the five focused tavern/operation/Request-1
+regressions passed, and `tests/test_world_state_foundation.py` passed 40 tests.
+The combined `tests/test_director_retry.py tests/test_world_state_foundation.py`
+run had 137 passing tests and 14 failures in unchanged prompt-template, timing,
+and RAW-resolver assertions outside this change; those failures remain
+to be triaged separately. No full render was run.
+
+The active compatibility writers remain the legacy list recorded above. New
+WorldState writes are still limited to explicit seed APIs, the pre-Director
+identity/wardrobe/prop seed functions, and checkpoint/snapshot plumbing. The
+reducer candidate remains dry-run-only at this checkpoint.
+
+### Test-suite maintenance and current status
+
+Use pytest from the repository root; some external-service modules use
+pytest-level skips and do not work correctly under `unittest discover`.
+Removed the legacy macro-arc mock tests that hang against the current
+source-span planner, the full-entrypoint test that does not terminate against
+the current generation pipeline, and two prop-staging tests for an API that no
+longer exists. Updated stale prompt assertions and the continuity-scheduling
+mocks for separate soundscape/music requests. Focused tavern regressions and
+the postmortem, location-reference, and macro-state modules pass.
+
+The latest whole-suite pytest run completed in 43.44 seconds: **934 passed,
+438 skipped, 88 failed**. Remaining failures span stale prompt/call-contract
+expectations and unresolved continuity/state/render scheduling tests. Do not
+delete these wholesale: update stale fixtures/assertions against current APIs,
+and investigate failures that may expose production defects before claiming a
+green suite.
