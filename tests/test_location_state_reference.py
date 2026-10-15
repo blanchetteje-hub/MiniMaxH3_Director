@@ -16,6 +16,32 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertIn("objects/furniture mentioned only because a later action", system)
         self.assertIn("Do not promote every story prop", system)
 
+    def test_static_setting_extractor_focuses_on_requested_location_and_system_owns_json(self):
+        messages = minimax.build_static_setting_extraction_messages(
+            "Alice starts at her house, enters a rabbit hole, then sees a meadow.",
+            "dark rabbit hole",
+        )
+        system = messages[0]["content"]
+        user = messages[1]["content"]
+        self.assertIn(
+            "- Focus on the OVERALL LOCATION, use EXPANDED STORY only as a reference. "
+            "If the description is short, that is fine.",
+            system,
+        )
+        self.assertIn(
+            'Return JSON { "setting_description": "[description]" }',
+            system,
+        )
+        self.assertIn("OVERALL LOCATION\\ndark rabbit hole", user)
+        self.assertIn("EXPANDED STORY\\nAlice starts", user)
+        self.assertNotIn("Return exactly setting_description.", user)
+        self.assertEqual(
+            set(minimax.build_static_setting_extraction_response_format()[
+                "json_schema"
+            ]["schema"]["properties"]),
+            {"setting_description"},
+        )
+
     def test_setting_and_world_state_purpose_routes_use_standard_profiles(self):
         self.assertIs(
             minimax.LLM_PURPOSE_PROFILES["story_setting_spatial_refine"],
