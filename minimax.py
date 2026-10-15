@@ -43046,7 +43046,7 @@ def _run_main(
                 nonlocal static_setting
                 static_setting = extract_static_setting(
                     expanded_story_context,
-                    story_location_metadata["overall_location"],
+                    story_location_metadata["starting_location"],
                     visual_style=visual_style,
                     history_metadata={"run_id": run_id},
                 )

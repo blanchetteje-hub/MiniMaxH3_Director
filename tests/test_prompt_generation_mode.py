@@ -136,6 +136,11 @@ def test_director_only_saved_expansion_seeds_location_world_state(tmp_path):
             "starting_location": "The Hearthside Tavern",
         }
 
+    def extract_static_setting(source, location, **_kwargs):
+        captured["static_setting_source"] = source
+        captured["static_setting_location"] = location
+        return "Static setting"
+
     location_description = {
         "text_description": "A medieval tavern with stone walls and a counter.",
         "location_state": expected_location_state,
@@ -168,7 +173,7 @@ def test_director_only_saved_expansion_seeds_location_world_state(tmp_path):
         mock.patch.object(minimax, "reset_prompt_history"),
         mock.patch.object(minimax, "save_generated_prompts_file"),
         mock.patch.object(minimax, "extract_story_locations", side_effect=extract_story_locations),
-        mock.patch.object(minimax, "extract_static_setting", return_value="Static setting"),
+        mock.patch.object(minimax, "extract_static_setting", side_effect=extract_static_setting),
         mock.patch.object(minimax, "refine_story_setting_spatially", return_value="Spatial setting"),
         mock.patch.object(minimax, "extract_story_setting_description", return_value=location_description),
         mock.patch.object(minimax, "extract_initial_location_subjects", return_value=[]),
@@ -188,6 +193,8 @@ def test_director_only_saved_expansion_seeds_location_world_state(tmp_path):
         generate_beats_patcher.stop()
 
     assert captured["expanded_story_for_location"] == expanded_story.strip()
+    assert captured["static_setting_source"] == expanded_story.strip()
+    assert captured["static_setting_location"] == "The Hearthside Tavern"
     assert captured["location_state"] == expected_location_state
     assert {
         location["name"] for location in captured["world_state"]["locations"].values()
