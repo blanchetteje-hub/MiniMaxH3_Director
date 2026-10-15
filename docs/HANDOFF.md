@@ -1,5 +1,25 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-14 — Director RAW opening footwear consistency
+
+- Fixed a confirmed contradiction: canonical WorldState records Alice's sandals
+  while Director RAW describes her as barefoot without a removal. The existing
+  physical/spatial validation entrypoint now checks explicit barefoot claims
+  against the opening WorldState footwear layers before its existing LLM call.
+  A clearly staged removal earlier in the same RAW permits later barefoot
+  action; other Subjects, unknown footwear, and quoted speech are not treated
+  as a footwear contradiction. A concrete mismatch uses the existing RAW
+  repair path; no runtime prompts, stages, or persistent state are changed.
+- Added focused regressions for invalid opening appearances, legitimate
+  same-scene removals, ordering, multiple footwear layers, non-footwear removals,
+  non-subject mentions, unknown wardrobe, and integration with the physical
+  entrypoint. The isolated equivalent helper passed 13 locally executed
+  scratch tests; the repository-wide tests and real local-20B rendering
+  are not yet verified in this connector-only environment.
+- The impossible step-to-hole movement and inaccurate underground destination
+  visual reference are still open and intentionally untouched.
+
+
 ## 2026-10-14 — recover final H3 camera formatting locally
 
 - The final H3 guard scanned the complete assembled prompt, but camera

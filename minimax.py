@@ -40507,6 +40507,123 @@ def validate_director_raw_scene_timing(
     return parse_beat_validation_result(result)
 
 
+def _director_raw_scene_footwear_issue(raw_scene, world_state):
+    """Catch explicit barefoot claims that precede removal of known footwear.
+
+    Only unambiguous named-subject claims are checked. Descriptions without
+    a clear actor remain for semantic validation, not a regex guess.
+    """
+    if not isinstance(world_state, dict) or not isinstance(raw_scene, str):
+        return ""
+    known = {}
+    registered = {}
+    for subject in world_state.get("subjects", {}).values():
+        if not isinstance(subject, dict):
+            continue
+        name = str(subject.get("name") or "").strip()
+        if name:
+            registered[name] = True
+        wardrobe = subject.get("wardrobe")
+        footwear = wardrobe.get("footwear") if isinstance(wardrobe, dict) else None
+        if name and isinstance(footwear, list) and footwear:
+            names = [
+                str(layer.get("garment") or "").strip().split()[-1].casefold().strip(".,;:()")
+                for layer in footwear
+                if isinstance(layer, dict) and str(layer.get("garment") or "").strip()
+            ]
+            if names:
+                known[name] = set(names)
+    if not known:
+        return ""
+
+    # Dialogue about bare feet is not a physical appearance claim.
+    unquoted = re.sub(r'"[^"\n]*"|“[^”\n]*”', "", raw_scene)
+    names_pattern = re.compile(
+        r"(?<!\w)(?:"
+        + "|".join(re.escape(name) for name in sorted(registered, key=len, reverse=True))
+        + r")(?!\w)",
+        re.IGNORECASE,
+    )
+    barefoot_pattern = re.compile(r"\b(?:barefoot|bare\s+feet)\b", re.IGNORECASE)
+    # "Barefoot children" describes the following noun, not the preceding Subject.
+    status_followers = {
+        "on", "in", "at", "across", "through", "while", "with", "beside",
+        "toward", "towards", "and", "but", "then", "before", "as", "by",
+        "from", "near", "into", "under", "over", "after", "outside",
+        "inside", "around", "along", "past", "behind", "beneath",
+    }
+    removal_verb = re.compile(
+        r"\b(?:remov(?:e|es|ed|ing)|tak(?:e|es|ing|en)\s+off|"
+        r"slip(?:s|ped|ping)?\s+(?:off|out\s+of)|"
+        r"kick(?:s|ed|ing)?\s+off|pull(?:s|ed|ing)?\s+off|"
+        r"step(?:s|ped|ping)?\s+out\s+of)\b",
+        re.IGNORECASE,
+    )
+    remaining = {name: set(heads) for name, heads in known.items()}
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", unquoted):
+        mentions = list(names_pattern.finditer(sentence))
+        if not mentions:
+            continue
+
+        def actor_at(position):
+            prior = [match for match in mentions if match.start() < position]
+            if prior:
+                return next(
+                    (name for name in registered
+                     if name.casefold() == prior[-1].group().casefold()), None
+                )
+            # Also handle "Barefoot, Alice ..." after an optional RAW timestamp.
+            prefix = sentence[:position].strip()
+            prefix = re.sub(r"^At\s+\d{2}:\d{2}\.\d{3},?\s*", "", prefix)
+            if not prefix.strip(",: "):
+                return next(
+                    (name for name in registered
+                     if name.casefold() == mentions[0].group().casefold()), None
+                )
+            return None
+
+        def physical_barefoot_claim(match):
+            word = re.match(r"\s+([A-Za-z]+)", sentence[match.end():])
+            return not word or word.group(1).casefold() in status_followers
+
+        events = [
+            (match.start(), "barefoot", match)
+            for match in barefoot_pattern.finditer(sentence)
+            if physical_barefoot_claim(match)
+        ]
+        events.extend(
+            (match.start(), "remove", match)
+            for match in removal_verb.finditer(sentence)
+        )
+        for position, kind, match in sorted(events, key=lambda item: item[0]):
+            name = actor_at(position)
+            if name is None:
+                continue
+            if kind == "barefoot":
+                if remaining.get(name):
+                    return (
+                        f"RAW describes {name} as barefoot before removing established "
+                        f"WorldState footwear ({', '.join(sorted(remaining[name]))}). "
+                        "Show the removal before the barefoot appearance, or preserve the footwear."
+                    )
+                continue
+            # A removal must name the actual recorded footwear, not another garment.
+            next_action = removal_verb.search(sentence, match.end())
+            end = min(
+                len(sentence), match.end() + 100,
+                next_action.start() if next_action else len(sentence),
+            )
+            tail = sentence[match.end():end]
+            tail = re.split(
+                r"[,;]|\b(?:then|while|before|after)\b",
+                tail, maxsplit=1, flags=re.IGNORECASE,
+            )[0]
+            for head in tuple(remaining.get(name, ())):
+                if re.search(r"(?<!\w)" + re.escape(head) + r"(?!\w)", tail, re.IGNORECASE):
+                    remaining[name].remove(head)
+    return ""
+
+
 def validate_director_raw_scene_physical(
     current_beat,
     raw_scene,
@@ -40525,6 +40642,9 @@ def validate_director_raw_scene_physical(
     if not str(current_beat or "").strip():
         return {"valid": True, "issue": ""}
     if isinstance(known_subject_state, dict) and "schema_version" in known_subject_state:
+        footwear_issue = _director_raw_scene_footwear_issue(raw_scene, known_subject_state)
+        if footwear_issue:
+            return {"valid": False, "issue": footwear_issue}
         fixed_prop_issue = _fixed_prop_motion_issue(
             raw_scene,
             known_subject_state.get("props", {}),
