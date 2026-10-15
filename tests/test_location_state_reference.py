@@ -674,6 +674,89 @@ class LocationStateReferenceTests(unittest.TestCase):
         self.assertIn("Return plain text, no tables or JSON", system)
         self.assertEqual(messages[1]["content"], location)
 
+    def test_transition_spatial_refinement_uses_immutable_neighbor(self):
+        prior = "LOCATION: south garden\nACCEPTED GEOMETRY: step north of tunnel."
+        messages = minimax.build_story_setting_spatial_refinement_messages(
+            "A descending tunnel.", neighboring_location_context=prior,
+        )
+        self.assertIn("EXISTING NEIGHBORING LOCATION (IMMUTABLE)", messages[1]["content"])
+        self.assertIn(prior, messages[1]["content"])
+        self.assertIn("Do not move, rotate, resize", messages[0]["content"])
+        self.assertEqual(
+            minimax.build_story_setting_spatial_refinement_messages(
+                "Independent room."
+            )[1]["content"],
+            "Independent room.",
+        )
+        llm = mock.Mock(return_value="The descending tunnel has mossy ground.")
+        self.assertEqual(
+            minimax.refine_story_setting_spatially(
+                "A descending tunnel.", neighboring_location_context=prior,
+                llm_request=llm,
+            ),
+            "The descending tunnel has mossy ground.",
+        )
+        self.assertIn(prior, llm.call_args.args[0][1]["content"])
+
+    def test_transition_prose_has_neighbor_but_json_only_accepted_prose(self):
+        prior = "LOCATION: south garden\nACCEPTED GEOMETRY: step north of entrance."
+        accepted = "A descending tunnel has mossy ground below its entrance."
+        request = mock.Mock(side_effect=[
+            accepted,
+            {"location": {"name": "Rabbit Tunnel"}, "anchors": [], "objects": []},
+        ])
+        output = minimax.extract_story_setting_description(
+            "The tunnel slopes below the garden.",
+            static_setting="A descending rabbit tunnel.",
+            location_name="Rabbit Tunnel",
+            neighboring_location_context=prior,
+            llm_request=request,
+        )
+        self.assertEqual(output["text_description"], accepted)
+        self.assertIn(prior, request.call_args_list[0].args[0][1]["content"])
+        json_input = request.call_args_list[1].args[0][1]["content"]
+        self.assertIn("ACCEPTED PHYSICAL DESCRIPTION\n" + accepted, json_input)
+        self.assertNotIn("EXISTING NEIGHBORING LOCATION", json_input)
+        self.assertNotIn(prior, json_input)
+        self.assertIn(
+            "Do not register fixtures of a neighboring",
+            request.call_args_list[1].args[0][0]["content"],
+        )
+
+    def test_dynamic_transition_passes_neighbor_into_two_text_stages(self):
+        import inspect
+        source = inspect.getsource(minimax._run_main)
+        start = source.index('if resolution.get("requires_registration")')
+        end = source.index("canonical_state = copy.deepcopy", start)
+        portion = source[start:end]
+        self.assertIn('classification == "transitioning"', portion)
+        self.assertIn("neighboring_description", portion)
+        self.assertEqual(
+            portion.count("neighboring_location_context=neighboring_location_context"), 2,
+        )
+
+    def test_physical_validator_budget_and_fixed_post_pull(self):
+        self.assertIs(
+            minimax.LLM_PURPOSE_PROFILES["director_raw_scene_physical"],
+            minimax.EXTRACTOR_LLM_SETTINGS,
+        )
+        self.assertEqual(
+            minimax.LLM_PURPOSE_MAX_OUTPUT_TOKENS["director_raw_scene_physical"], 4096,
+        )
+        props = {"post": {
+            "name": "rustic Victorian wooden post", "mobility": "fixed",
+        }}
+        self.assertIn("fixed prop", minimax._fixed_prop_motion_issue(
+            "Alice pulls the rustic Victorian wooden post from the rabbit hole onto the step.",
+            props,
+        ))
+        self.assertEqual(minimax._fixed_prop_motion_issue(
+            "Alice pulls on the rustic Victorian wooden post to steady herself.", props,
+        ), "")
+        self.assertEqual(minimax._fixed_prop_motion_issue(
+            "Alice grasps the rustic Victorian wooden post for balance.", props,
+        ), "")
+
     def test_spatial_description_prompt_is_text_only_and_json_is_separate(self):
         messages = minimax.build_story_setting_description_messages(
             "A tavern entrance is on the north wall."

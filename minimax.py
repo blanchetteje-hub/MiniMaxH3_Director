@@ -40847,7 +40847,7 @@ def _fixed_prop_motion_issue(raw_scene, props):
                     if action_match.group(0).casefold().startswith("pull"):
                         tail = sentence[entity_match.end():]
                         if not re.search(
-                            r"\b(?:from|out\s+of|away|across|into|onto|toward|to|up|down)\b",
+                            r"\b(?:from|out\s+of|away|across|into|onto|toward|up|down)\b",
                             tail, re.IGNORECASE,
                         ):
                             continue
