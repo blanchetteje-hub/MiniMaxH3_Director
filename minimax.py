@@ -9727,7 +9727,23 @@ def resolve_world_state_location_alias(world_state, candidate_name):
         raise ValueError(
             f"Location name {candidate_name!r} ambiguously matches registered locations."
         )
-    return matches[0] if matches else None
+    if matches:
+        return matches[0]
+    # A selector may name a floor, doorway, or fixture instead of its place.
+    # Follow an existing fixed fixture's owner; never mint a location for it.
+    fixture_owners = set()
+    for fixture in world_state.get("props", {}).values():
+        if not isinstance(fixture, dict) or fixture.get("mobility") != "fixed":
+            continue
+        name = _location_name_key(fixture.get("name"))
+        if not name or not (name == query or f" {name} " in f" {query} "):
+            continue
+        owner = fixture.get("placement", {}).get("location_id")
+        if owner in locations:
+            fixture_owners.add(owner)
+    if len(fixture_owners) > 1:
+        raise ValueError(f"Location surface {candidate_name!r} has ambiguous canonical owners.")
+    return next(iter(fixture_owners), None)
 
 
 def location_reference_output_path(location_id, file_token=""):
@@ -9807,6 +9823,26 @@ def _h3_segment_starting_location(segment_number, segment_bundle, metadata):
     ).strip()
 
 
+def build_location_transition_context(origin_name, destination_name, *, has_preceding_guide=True):
+    """Bound transition staging to known opening facts and source-owned outcomes."""
+    origin = " ".join(str(origin_name or "origin location").split())
+    destination = " ".join(str(destination_name or "destination location").split())
+    context = (
+        f"OPENING STATE: use each Subject's actual opening WorldState position in {origin}. "
+        f"REQUIRED END STATE: Subjects whose CURRENT BEAT actions establish the transition "
+        f"reach {destination}; unrelated Subjects retain their actual positions. "
+        "Establish the opening and required destination state; let MiniMax H3 realize "
+        "the movement naturally. Do not invent intermediate hand or foot movements, "
+        "trajectories, or waypoints solely to explain the journey. Preserve explicit "
+        "story-critical actions, prop changes, dialogue, injuries, and required manner "
+        "of movement from CURRENT BEAT and ASSIGNED SOURCE, even during the transition. "
+        "Unspecified H3 intermediate movements establish no persistent WorldState facts."
+    )
+    if has_preceding_guide:
+        context += " The preceding rendered segment remains the opening guide."
+    return context
+
+
 def inject_location_transition_into_h3_prompt(
     h3_prompt,
     origin_name,
@@ -9848,9 +9884,11 @@ def inject_location_transition_into_h3_prompt(
         f"<Video 1> is the 360-degree reference for the ORIGIN environment at the "
         f"start of this segment ({origin_fact}). <Video 2> is the 360-degree "
         f"reference for the DESTINATION environment at the end ({destination_fact}). "
-        f"{opening_guide_clause}show "
-        "the physical transition and make the final action clearly establish entry "
-        "into the destination. These references have different temporal roles; do "
+        f"{opening_guide_clause}establish the required destination/end state. "
+        "Realize the movement naturally between the stated opening and end states; "
+        "do not add intermediate choreography solely to explain the journey. Preserve "
+        "all explicit story-critical actions, props, dialogue, injuries, and required "
+        "manner of movement in the scene. These references have different temporal roles; do "
         "not preserve or combine both environments simultaneously. Neither location "
         "reference defines character identity or current camera framing. "
     )
@@ -20993,7 +21031,9 @@ def build_story_setting_spatial_refinement_messages(
                 "- use east/west/north/south.\n"
                 "- if it is an interior, define anchor objects first, such as doors "
                 "or large objects, if exterior, use houses or other large landmarks.\n"
-                "- Define the size of the overall space and sizes of the objects.\n"
+                "- Preserve explicit source measurements. Otherwise use relative "
+                "scale suitable for the established subjects and traversal; do not "
+                "invent precise numeric measurements.\n"
                 "- Make sure nothing is overlapping and everything is accessible "
                 "(especially doors).\n"
                 "- Preserve every stated historical period, culture, and genre cue exactly; "
@@ -21005,7 +21045,8 @@ def build_story_setting_spatial_refinement_messages(
                     "immutable geometry. Do not move, rotate, resize, rename, "
                     "or duplicate its fixtures. Describe the destination, "
                     "including its connection to the existing location; do "
-                    "not rebuild the neighbor as part of the destination."
+                    "not rebuild the neighbor as part of the destination. Include "
+                    "only neighboring details necessary to orient that connection."
                     if neighboring else ""
                 )
             ),
@@ -21103,7 +21144,8 @@ def build_story_setting_description_messages(
                 + (
                     "- Preserve the accepted geometry of EXISTING NEIGHBORING LOCATION "
                     "where the two places connect. Do not duplicate that place's "
-                    "fixtures as new fixtures inside this destination.\n"
+                    "fixtures as new fixtures inside this destination. Include "
+                    "only neighboring details necessary to orient that connection.\n"
                     if neighboring else ""
                 )
                 + "Return only the physical description as plain text; no JSON, "
@@ -21465,6 +21507,142 @@ def parse_story_setting_text_description(raw_result):
     return description
 
 
+def reconcile_neighboring_location_fixtures(location_state, world_state, description=""):
+    """Keep known neighboring fixtures under their original canonical owner.
+
+    Exact distinctive names are identity evidence; generic shared types alone
+    are not. Conflicting owners or indistinguishable candidates fail closed.
+    """
+    result = copy.deepcopy(location_state)
+    known = []
+    for prop_id, prop in (world_state or {}).get("props", {}).items():
+        registration = prop.get("provenance", {}).get("registration", {})
+        if registration.get("authority") == "canonical_location_state" and prop.get("mobility", "fixed") != "movable":
+            known.append((prop_id, prop))
+    def key(value):
+        return _event_name_key(value)
+    for section in ("anchors", "objects"):
+        retained = []
+        for item in result.get(section, []):
+            name = key(item.get("name", ""))
+            matches = [(pid, prop) for pid, prop in known
+                       if (key(prop.get("name", "")) == name
+                           or (len(name.split()) >= 2 and
+                               (f" {name} " in f" {key(prop.get('name', ''))} "
+                                or f" {key(prop.get('name', ''))} " in f" {name} ")))]
+            if not matches:
+                retained.append(item)
+                continue
+            if len(matches) != 1:
+                raise ValueError(f"Ambiguous neighboring fixture identity: {item['name']!r}")
+            prop_id, prop = matches[0]
+            owner = (world_state or {}).get("locations", {}).get(
+                prop.get("placement", {}).get("location_id"), {}).get("name", "")
+            if key(owner) == key(result.get("location", {}).get("name", "")):
+                retained.append(item)
+                continue
+            type_name = key(prop.get("provenance", {}).get("registration", {}).get("source_type", ""))
+            if type_name and type_name != key(item.get("type", "")):
+                raise ValueError(f"Conflicting neighboring fixture type: {item['name']!r}")
+            # A generic 'door' may be a second physical door. Require ownership
+            # or explicit neighbor orientation rather than silently merging it.
+            evidence = key(str(description) + " " + json.dumps(item))
+            distinctive = bool(re.search(r"[’\']s\b", str(item.get("name", ""))))
+            oriented = bool(owner and f" {key(owner)} " in f" {evidence} ")
+            if not distinctive and not oriented:
+                raise ValueError(f"Ambiguous neighboring fixture {item['name']!r}; clarify its owner")
+            console_log(f"Reused neighboring fixture {item['name']!r} ({prop_id}), owner {owner!r}; excluded duplicate registration.", flush=True)
+        result[section] = retained
+    return result
+
+
+def validate_traversal_geometry(description, *, source_text="", traversal_text="", location_name=""):
+    """Reject measured bottlenecks when source establishes incompatible traversal.
+
+    Explicit creature widths work for any anatomy. A conservative adult-human
+    minimum is used only when the authored source actually identifies an adult
+    human. Unknown anatomy and magical size changes require semantic validation.
+    """
+    traversal = str(traversal_text or source_text)
+    if not re.search(r"\b(enter|pass|walk|crawl|descend|fall|through|cross|squeeze)\w*\b", traversal, re.I):
+        return []
+    units = {"mm": .001, "cm": .01, "centimeters": .01, "centimetres": .01, "m": 1., "metres": 1., "meters": 1., "feet": .3048, "ft": .3048, "inches": .0254}
+    measure = r"(\d+(?:\.\d+)?)\s*(mm|cm|centimeters|centimetres|metres|meters|m|feet|ft|inches)\b"
+    required = []
+    morphology_source = str(source_text)
+    if traversal_text:
+        # Use only authored clauses naming a participant in this traversal.
+        # A distant large creature must not determine another actor's clearance.
+        actor_names = set(re.findall(r"\b[A-Z][a-zA-Z]+\b", str(traversal_text))) - {"The", "A", "An", "At"}
+        morphology_source = ". ".join(
+            clause for clause in re.split(r"(?<!\d)[.!?](?!\d)|[;\n]", morphology_source)
+            if any(re.search(r"\b" + re.escape(name) + r"\b", clause) for name in actor_names)
+        )
+    body_width = (r"\b(?:body|shoulders?|wingspan)\s+"
+                  r"(?:(?:is|are|measures?|spans?|about|approximately|roughly|only|at|most)\s+){0,4}"
+                  + measure + r"[ -]*(?:wide|in width|across)\b")
+    for match in re.finditer(body_width, morphology_source, re.I):
+        required.append(float(match[1]) * units[match[2].lower()])
+    for match in re.finditer(r"\b(?:shoulder|body)\s+width\s*(?:is|of|:)??\s*" + measure, morphology_source, re.I):
+        required.append(float(match[1]) * units[match[2].lower()])
+    required_height = []
+    upright = bool(re.search(r"\b(walk|walks|walking|upright|standing)\b", traversal, re.I)) and not re.search(
+        r"\b(crawl|crawls|crawling|crouch|crouches|crouching|duck|ducks|ducking)\b", traversal, re.I)
+    if upright:
+        for clause in re.split(r"(?<!\d)[.!?](?!\d)|[;\n]", morphology_source):
+            if re.search(r"\b(entrance|opening|corridor|shaft|passage|tunnel|doorway|hole)\b", clause, re.I):
+                continue
+            for match in re.finditer(measure + r"[ -]*(?:tall|in height)", clause, re.I):
+                if not re.search(r"\b(?:is|are|stands?|measures?)\s*$", clause[:match.start()], re.I):
+                    continue
+                required_height.append(float(match[1]) * units[match[2].lower()])
+    if not required and re.search(r"\badult\s+(?:human|man|woman|person)\b", morphology_source, re.I):
+        required.append(.35)
+    if not (required or required_height) or re.search(r"\b(shrink|shrinks|shrunken|shapeshift|teleport|intangible)\w*\b", traversal, re.I):
+        return []
+    issues = []
+    passage_pattern = r"\b(entrance|opening|corridor|shaft|passage|tunnel|doorway|hole)\b"
+    for clause in re.split(r"(?<!\d)[.!?](?!\d)|[;\n]", str(description)):
+        if str(description) == str(source_text):
+            measured_passages = set(re.findall(passage_pattern, clause, re.I))
+            # Source can describe a tiny unrelated aperture. Bind numeric
+            # constraints only when that passage is actually traversed.
+            same_clause = bool(re.search(r"\b(enter|pass|crawl|descend|fall|through|squeeze)\w*\b", clause, re.I))
+            explicit_traversal = str(traversal_text or "")
+            if not explicit_traversal:
+                explicit_traversal = " ".join(part for part in re.split(
+                    r"(?<!\d)[.!?](?!\d)|[;\n]", str(source_text))
+                    if re.search(r"\b(enter|pass|crawl|descend|fall|through|squeeze)\w*\b", part, re.I))
+            repeated = measured_passages.intersection(re.findall(passage_pattern, explicit_traversal, re.I))
+            # Repeated generic labels only identify a source passage when its
+            # measured source clause is unique, avoiding two different tunnels.
+            unique = any(sum(bool(re.search(r"\b" + noun + r"\b", part, re.I))
+                for part in re.split(r"(?<!\d)[.!?](?!\d)|[;\n]", str(source_text))
+                if re.search(measure, part, re.I)) == 1 for noun in repeated)
+            if not same_clause and not unique:
+                continue
+        if not re.search(r"\b(entrance|opening|corridor|shaft|passage|tunnel|doorway|hole)\b", clause, re.I):
+            continue
+        for match in re.finditer(measure, clause, re.I):
+            after = clause[match.end():]
+            before = clause[:match.start()]
+            suffix = re.match(r"[ -]*(wide|in width|across|diameter|high|tall|in height|long|deep)\b", after, re.I)
+            prefix = re.search(r"\b(width|diameter|height|length|depth|narrow\w*)\s*(?:of|is|to|:)??\s*$", before, re.I)
+            dimension = (suffix[1] if suffix else prefix[1] if prefix else "").lower()
+            if dimension in {"high", "tall", "in height", "height"}:
+                limits = required_height
+            elif dimension in {"wide", "in width", "across", "diameter", "width"} or dimension.startswith("narrow"):
+                limits = required
+            else:
+                continue
+            width = float(match[1]) * units[match[2].lower()]
+            if limits and width < max(limits):
+                explicit = match.group(0).lower() in str(source_text).lower()
+                authority = "Explicit source measurement conflicts with required traversal" if explicit else "Invented passage measurement cannot accommodate required traversal"
+                issues.append(f"{authority}: {match.group(0)} in {location_name or 'location'}. Preserve source facts; omit unsupported dimensions or resolve the conflict.")
+    return issues
+
+
 def build_story_setting_json_extraction_messages(description, location_name=""):
     """Extract JSON only from already accepted physical description."""
     return [
@@ -21598,6 +21776,9 @@ def extract_story_setting_description(
     static_setting="",
     location_name="",
     neighboring_location_context="",
+    world_state=None,
+    source_text="",
+    traversal_text="",
     llm_request=None,
     history_metadata=None,
     repair_attempts=5,
@@ -21606,6 +21787,12 @@ def extract_story_setting_description(
     """Repair and accept physical text before requesting any structured JSON."""
     if llm_request is None:
         llm_request = ask_llm
+    source_geometry_issues = validate_traversal_geometry(
+        source_text, source_text=source_text, traversal_text=traversal_text,
+        location_name=location_name,
+    )
+    if source_geometry_issues:
+        raise ValueError("Authored physical conflict requires source clarification: " + "; ".join(source_geometry_issues))
     base_messages = build_story_setting_description_messages(
         spatial_location, static_setting=static_setting,
         neighboring_location_context=neighboring_location_context,
@@ -21642,7 +21829,33 @@ def extract_story_setting_description(
         )
         previous_raw = str(raw or "")
         try:
-            accepted_description = parse_story_setting_text_description(previous_raw)
+            candidate_description = parse_story_setting_text_description(previous_raw)
+            for prop in (world_state or {}).get("props", {}).values():
+                owner = (world_state or {}).get("locations", {}).get(
+                    prop.get("placement", {}).get("location_id"), {}).get("name", "")
+                fixture_name = str(prop.get("name") or "").strip()
+                if not fixture_name or not owner or owner.casefold() == str(location_name).strip().casefold():
+                    continue
+                for clause in re.split(r"(?<!\d)[.!?](?!\d)|[;\n]", candidate_description):
+                    if fixture_name.lower() not in clause.lower():
+                        continue
+                    # Shared landmarks can orient a view, but their detailed
+                    # geometry must not be rebuilt into the destination orbit.
+                    local_claim = re.search(
+                        r"\b(contains|includes|houses|inside|within|stands? here|located here)\b",
+                        clause, re.I,
+                    )
+                    relational_view = re.search(
+                        r"\b(visible|seen|overlooks?|beyond|outside|neighboring|neighbouring)\b",
+                        clause, re.I,
+                    )
+                    if (local_claim and not relational_view) or re.search(r"\b\d+(?:\.\d+)?\s*(?:cm|mm|m|meters|metres|feet|ft)\b", clause, re.I):
+                        raise ValueError(f"Neighbor fixture {fixture_name!r} belongs to {owner!r}; retain only its connection/orientation, omit its detailed geometry from this destination.")
+            issues = validate_traversal_geometry(candidate_description, source_text=source_text,
+                traversal_text=traversal_text, location_name=location_name)
+            if issues:
+                raise ValueError("; ".join(issues))
+            accepted_description = candidate_description
         except (TypeError, ValueError) as error:
             previous_issue = str(error)
             console_log(
@@ -21681,9 +21894,13 @@ def extract_story_setting_description(
             },
         )
         try:
-            return parse_story_setting_json_extraction(
+            result = parse_story_setting_json_extraction(
                 raw, description=accepted_description, location_name=location_name,
             )
+            result["location_state"] = reconcile_neighboring_location_fixtures(
+                result["location_state"], world_state, accepted_description,
+            )
+            return result
         except (TypeError, ValueError) as error:
             latest_issue = str(error)
             console_log(
@@ -39176,6 +39393,7 @@ def build_director_raw_scene_repair_messages(
     static_setting_description="",
     canonical_location_state=None,
     character_references=None,
+    location_transition_context="",
 ):
     """Build a focused text repair request for Director RAW validator errors."""
     if isinstance(validation_errors, str):
@@ -39187,6 +39405,8 @@ def build_director_raw_scene_repair_messages(
         ]
     errors = [error for error in errors if error]
     context = []
+    if str(location_transition_context or "").strip():
+        context.append("LOCATION TRANSITION FOR THIS SEGMENT\n" + str(location_transition_context).strip())
     if str(current_beat or "").strip():
         context.append("CURRENT BEAT\n" + str(current_beat).strip())
     if str(assigned_source or "").strip():
@@ -39331,25 +39551,32 @@ def _parse_world_state_event_response(response):
     if not isinstance(parsed, dict) or set(parsed) != {"events"} or not isinstance(parsed.get("events"), list):
         raise ValueError("response must contain exactly an events array.")
     events = []
+    valid_count = 0
     for index, event in enumerate(parsed["events"], 1):
-        if not isinstance(event, dict) or set(event) != set(WORLD_STATE_EVENT_FIELDS):
-            raise ValueError(f"event {index} has an invalid field shape.")
-        if event.get("action") not in WORLD_STATE_EVENT_TYPES:
-            raise ValueError(f"event {index} has an unsupported action type.")
-        if not isinstance(event.get("actor"), str) or not event["actor"].strip():
-            raise ValueError(f"event {index} actor must be a non-empty string.")
-        normalized = {}
-        for field in WORLD_STATE_EVENT_FIELDS:
-            value = event[field]
-            if field == "action" or field == "actor":
-                normalized[field] = " ".join(value.split()).strip()
-            elif value is None:
-                normalized[field] = None
-            elif isinstance(value, str) and value.strip():
-                normalized[field] = " ".join(value.split()).strip()
-            else:
-                raise ValueError(f"event {index} {field} must be a non-empty string or null.")
-        events.append(normalized)
+        try:
+            if not isinstance(event, dict) or set(event) != set(WORLD_STATE_EVENT_FIELDS):
+                raise ValueError("invalid field shape")
+            if event.get("action") not in WORLD_STATE_EVENT_TYPES:
+                raise ValueError("unsupported action type")
+            if not isinstance(event.get("actor"), str) or not event["actor"].strip():
+                raise ValueError("actor must be a non-empty string")
+            normalized = {}
+            for field in WORLD_STATE_EVENT_FIELDS:
+                value = event[field]
+                if value is None and field not in {"action", "actor"}:
+                    normalized[field] = None
+                elif isinstance(value, str) and value.strip():
+                    normalized[field] = " ".join(value.split()).strip()
+                else:
+                    raise ValueError(f"{field} must be a non-empty string or null")
+            events.append(normalized)
+            valid_count += 1
+        except ValueError as error:
+            # Preserve array positions for deterministic action IDs and audit.
+            events.append({"_extraction_issue": f"event {index}: {error}",
+                           "extracted_event": event})
+    if events and not valid_count:
+        raise ValueError(events[0]["_extraction_issue"])
     return events
 
 
@@ -39393,6 +39620,12 @@ def _event_resolve_entity(world_state, category, value, event_index, *, optional
     records = (world_state.get("subjects", {}) if category == "subject" else
                world_state.get("locations", {}) if category == "location" else
                world_state.get("props", {}))
+    exact = {entity_id: record for entity_id, record in records.items()
+             if isinstance(record, dict) and _event_name_key(record.get("name")) == key
+             and (category != "support" or record.get("kind") in {"support", "fixture_support"})
+             and (category != "prop" or record.get("status") == "present")}
+    if len(exact) == 1:
+        return next(iter(exact.items()))
     tokens = key.split()
     matches = {}
     for entity_id, record in records.items():
@@ -39404,6 +39637,11 @@ def _event_resolve_entity(world_state, category, value, event_index, *, optional
             continue
         name = _event_name_key(record.get("name"))
         aliases = {name, re.sub(r"\s*\d+$", "", name).strip()}
+        if category == "location":
+            aliases.update(_event_name_key(alias) for alias in record.get("aliases", [])
+                           if isinstance(alias, str))
+            # Interior/surface qualifiers describe an existing place, not a new ID.
+            aliases.add(re.sub(r"\s+(?:interior|inside)$", "", name).strip())
         for alias in aliases - {""}:
             alias_tokens = alias.split()
             if alias == key or any(tokens[i:i + len(alias_tokens)] == alias_tokens
@@ -39420,17 +39658,31 @@ def _event_resolve_entity(world_state, category, value, event_index, *, optional
     raise WorldStateEventExtractionError(f"event {event_index}: unknown registered {category} name {value!r}.")
 
 
-def _event_amount(event, raw_scene):
-    signals = (str(event.get("relation") or "") + " " + str(event.get("result") or "")).casefold()
-    raw_signals = str(raw_scene or "").casefold()
-    action_verbs = {
-        "consume": r"(?:consumes?|eats?|drinks?|finishes?)",
-        "transfer": r"(?:pours?|transfers?|empties?)",
-    }
-    verb_pattern = action_verbs.get(event.get("action"), r"(?:consumes?|eats?|drinks?|pours?|transfers?)")
-    if re.search(rf"\b{verb_pattern}\s+(?:all|the entire|the whole)\b", raw_signals):
-        signals += " all"
-    return "all" if re.search(r"\b(all|entire|whole|empties|emptied|finishes|finished)\b", signals) else "partial"
+def _event_amount(event, raw_scene, state=None):
+    # An extractor's "all" is not evidence that RAW emptied a vessel.
+    verbs = {"consume": r"consum\w*|eat\w*|ate|drink\w*|drank|sip\w*|finish\w*",
+             "transfer": r"pour\w*|transfer\w*|empt\w*"}
+    pattern = verbs.get(event.get("action"), r"(?!)")
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", str(raw_scene or "")):
+        if not _event_name_matches(event.get("actor"), sentence):
+            continue
+        amount_pattern = r"\b(?:" + pattern + r")\s+(?:all|the entire|the whole)\b"
+        if event.get("action") == "transfer":
+            amount_pattern += r"|\bempt(?:y|ies|ied|ying)\b"
+        for match in re.finditer(amount_pattern, sentence, re.I):
+            amount_clause = re.split(r",|;|\b(?:and|then)\b", sentence[match.start():], maxsplit=1, flags=re.I)[0]
+            amount_target = event.get("source") if event.get("action") == "transfer" else event.get("object")
+            if amount_target and not _event_name_matches(amount_target, amount_clause):
+                continue
+            preceding = []
+            for subject in (state or {}).get("subjects", {}).values():
+                name = str(subject.get("name") or "")
+                preceding.extend((named.start(), name) for named in re.finditer(
+                    r"\b" + re.escape(name) + r"\b", sentence[:match.start()], re.I))
+            if preceding and _event_name_key(max(preceding)[1]) != _event_name_key(event.get("actor")):
+                continue
+            return "all"
+    return "partial"
 
 
 def _event_action_id(segment, index):
@@ -39477,18 +39729,32 @@ def _translate_world_state_event(state, event, raw_scene, segment_number, event_
     obj, source, destination = event.get("object"), event.get("source"), event.get("destination")
     relation = str(event.get("relation") or "").casefold()
     result = str(event.get("result") or "").strip()
+    if op in {"move", "enter", "exit"} and source:
+        origin = _event_destination_location(state, source, event_index)
+        if origin and actor.get("location_id") != origin[0]:
+            raise WorldStateEventExtractionError(f"event {event_index}: movement source conflicts with current canonical position.")
+    if op in {"move", "enter", "exit"} and (destination or (obj if op == "enter" else None)):
+        mentioned_destination = destination or obj
+        if not _event_name_matches(mentioned_destination, raw_scene):
+            resolved = _event_destination_location(state, mentioned_destination, event_index)
+            supported = _event_destination_location(state, obj, event_index) if obj else None
+            if not supported or not resolved or supported[0] != resolved[0] or not _event_name_matches(obj, raw_scene):
+                raise WorldStateEventExtractionError(f"event {event_index}: movement destination is not established in accepted RAW.")
     if op == "enter":
-        loc_id, _ = _event_resolve_entity(state, "location", destination or obj, event_index)
+        loc = _event_destination_location(state, destination or obj, event_index)
+        if loc is None:
+            raise WorldStateEventExtractionError(f"event {event_index}: unknown enter destination.")
+        loc_id, _ = loc
         return [{"action_id": action_id, "op": "enter", "subject_id": actor_id, "location_id": loc_id}]
     if op == "exit":
-        loc = _event_resolve_entity(state, "location", destination, event_index, optional=True)
+        loc = _event_destination_location(state, destination, event_index)
         action = {"action_id": action_id, "op": "exit", "subject_id": actor_id}
         if loc:
             action["destination_location_id"] = loc[0]
         return [action]
     if op == "move":
         support = _event_resolve_entity(state, "support", obj or destination, event_index, optional=True)
-        loc = _event_resolve_entity(state, "location", destination, event_index, optional=True)
+        loc = _event_destination_location(state, destination, event_index)
         if support and re.search(r"\b(on|onto|atop|in)\b", relation):
             sid, record = support
             lid = record.get("placement", {}).get("location_id")
@@ -39581,7 +39847,7 @@ def _translate_world_state_event(state, event, raw_scene, segment_number, event_
             raise WorldStateEventExtractionError(f"event {event_index}: transfer substance is not established.")
         return [{"action_id": action_id, "op": "pour", "actor_subject_id": actor_id,
                  "source_prop_id": src, "target_prop_id": dst, "substance": substance,
-                 "amount": _event_amount(event, raw_scene)}]
+                 "amount": _event_amount(event, raw_scene, state)}]
     if op == "consume":
         prop_id, prop = _event_resolve_entity(state, "prop", obj, event_index)
         substance = _event_substance(result or obj, prop)
@@ -39596,7 +39862,7 @@ def _translate_world_state_event(state, event, raw_scene, segment_number, event_
         if substance is None and prop.get("kind") != "consumable":
             raise WorldStateEventExtractionError(f"event {event_index}: consumed substance is not established.")
         return [{"action_id": action_id, "op": "consume", "actor_subject_id": actor_id,
-                 "prop_id": prop_id, "amount": _event_amount(event, raw_scene), "substance": substance}]
+                 "prop_id": prop_id, "amount": _event_amount(event, raw_scene, state), "substance": substance}]
     if op == "modify":
         prop_match = _event_resolve_entity(state, "prop", obj, event_index, optional=True)
         signal = (relation + " " + result).casefold()
@@ -39705,40 +39971,164 @@ def _world_state_event_name_resolution(world_state):
     }
 
 
+def _event_raw_support_issue(event, raw_scene, state):
+    """Conservative lexical grounding; the accepted RAW remains the authority.
+
+    These checks reject unsupported event interpretations, rather than inferring
+    missing events. The reducer separately validates physical preconditions.
+    """
+    patterns = {
+        "move": r"mov(?:e[sd]?|ing)|step(?:s|ped|ping)?|walk(?:s|ed|ing)?|run(?:s|ning)?|ran|descend\w*|ascend\w*|fall(?:s|ing)?|fell|reach\w*|land\w*|arriv\w*|cross\w*|climb\w*|crawl\w*|jump\w*|sink\w*|sank|slid\w*|enter\w*|emerg\w*",
+        "enter": r"enter\w*|step\w*|walk\w*|arriv\w*|reach\w*|come\w*|came",
+        "exit": r"exit\w*|leav\w*|left|depart\w*|emerg\w*|step\w*|walk\w*",
+        "take": r"tak(?:e[sn]?|ing)|took|pick\w*|retriev\w*|pull\w*|grab\w*|receiv\w*|acquir\w*|hold\w*|held",
+        "put": r"put\w*|plac\w*|set\w*|hand\w*|giv\w*|gave|pass\w*|drop\w*",
+        "release": r"releas\w*|drop\w*|let(?:s)? go|relinquish\w*",
+        "transfer": r"pour\w*|transfer\w*|empt\w*",
+        "consume": r"consum\w*|eat\w*|ate|drink\w*|drank|sip\w*|finish\w*",
+        "modify": r"unlock\w*|lock\w*|clos\w*|shut\w*|open\w*|put(?:s|ting)? on|tak(?:e[sd]?|ing) off|took off|remov\w*|replac\w*|chang\w*|don\w*|wear\w*|torn|tear\w*|rip\w*|damag\w*|dirt\w*|soil\w*|wet|dry|clean\w*|stain\w*",
+    }
+    pattern = patterns.get(event["action"], r"(?!)")
+    if event["action"] == "modify":
+        signal = _event_name_key(str(event.get("relation") or "") + " " + str(event.get("result") or ""))
+        for token, specific in (
+            (r"unlock\w*", r"unlock\w*"), (r"lock\w*", r"lock\w*"),
+            (r"clos\w*|shut\w*", r"clos\w*|shut\w*"), (r"open\w*", r"open\w*"),
+            (r"remov\w*|take off|takes off|took off", r"remov\w*|tak\w* off|took off"),
+            (r"put on|puts on|wear\w*|don\w*", r"put\w* on|wear\w*|don\w*"),
+            (r"replac\w*|change into|changes into|switch into", r"replac\w*|chang\w* into|switch\w* into"),
+            (r"torn", r"torn|tear\w*|rip\w*"), (r"damaged", r"damag\w*"),
+            (r"dirty|soiled", r"dirt\w*|soil\w*"), (r"wet", r"wet|soak\w*"),
+            (r"dry", r"dry|dried|dries"), (r"clean", r"clean\w*"),
+            (r"stained", r"stain\w*"),
+        ):
+            if re.search(r"\b(?:" + token + r")\b", signal):
+                pattern = specific
+                break
+    # Keep coordinated actions in a sentence together, but never borrow evidence
+    # from another sentence or accept a negated action.
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", str(raw_scene or "")):
+        if not _event_name_matches(event["actor"], sentence):
+            continue
+        if event.get("object") and not _event_name_matches(event["object"], sentence):
+            continue
+        destination = event.get("destination") or (event.get("object") if event["action"] == "enter" else None)
+        if event["action"] in {"move", "enter", "exit"} and destination:
+            if not _event_name_matches(destination, sentence):
+                loc = _event_destination_location(state, destination, 0)
+                obj = event.get("object")
+                support_loc = _event_destination_location(state, obj, 0) if obj else None
+                if not loc or not support_loc or loc[0] != support_loc[0] or not _event_name_matches(obj, sentence):
+                    continue
+        if event["action"] in {"take", "put", "release", "transfer"}:
+            endpoints_supported = True
+            for field, prepositions in (("source", r"from|out of"),
+                                        ("destination", r"to|into|onto|on|in|atop")):
+                endpoint = event.get(field)
+                if endpoint is None:
+                    continue
+                # Explicit names and relation must occur together; another
+                # observer or container elsewhere in RAW is not an endpoint.
+                relation_pattern = r"\b(?:" + prepositions + r")\s+(?:(?:the|her|his|their|its)\s+)?"
+                key = _event_name_key(endpoint)
+                text = _event_name_key(sentence)
+                if not re.search(relation_pattern + re.escape(key) + r"\b", text):
+                    endpoints_supported = False
+                    break
+            if not endpoints_supported:
+                continue
+        for match in re.finditer(r"\b(?:" + pattern + r")\b", sentence, re.I):
+            prefix = sentence[max(0, match.start() - 35):match.start()]
+            if re.search(r"\b(?:not|never|cannot|can't|doesn't|does not|without)\b", prefix, re.I):
+                continue
+            # Do not borrow another registered Subject's verb in a coordinated sentence.
+            prior_actors = []
+            for subject in state.get("subjects", {}).values():
+                name_pattern = r"\b" + re.escape(str(subject.get("name") or "")) + r"\b"
+                prior_actors.extend((named.start(), subject.get("name"))
+                                    for named in re.finditer(name_pattern, sentence[:match.start()], re.I))
+            if prior_actors and _event_name_key(max(prior_actors)[1]) != _event_name_key(event["actor"]):
+                continue
+            return None
+    return "accepted RAW does not explicitly support this actor/object action"
+
+
+def _event_destination_location(state, value, event_index):
+    """Resolve a place or a fixed surface through its canonical owning location."""
+    loc = _event_resolve_entity(state, "location", value, event_index, optional=True)
+    fixture = _event_resolve_entity(state, "prop", value, event_index, optional=True)
+    owner = None
+    if fixture and fixture[1].get("mobility") == "fixed":
+        owner_id = fixture[1].get("placement", {}).get("location_id")
+        if owner_id in state.get("locations", {}):
+            owner = (owner_id, state["locations"][owner_id])
+    if owner and loc and owner[0] != loc[0]:
+        raise WorldStateEventExtractionError(
+            f"event {event_index}: destination fixture and named location disagree.")
+    return loc or owner
+
+
 def translate_world_state_events(world_state, events, raw_scene, *, segment_number):
     opening = copy.deepcopy(world_state)
     name_resolution = _world_state_event_name_resolution(opening)
     actions, action_names, current = [], [], copy.deepcopy(opening)
+    diagnostics = []
+    unresolved_positions = set()
     for event_index, event in enumerate(events, 1):
-        for action in _translate_world_state_event(current, event, raw_scene, segment_number, event_index):
-            trial = actions + [action]
-            trial_names = action_names + _state_action_ids_to_names([action], current)
-            try:
+        try:
+            if event.get("_extraction_issue"):
+                raise WorldStateEventExtractionError(event["_extraction_issue"])
+            if (_event_name_key(event.get("actor")) in unresolved_positions
+                    and event.get("action") in {"release", "put"}
+                    and not event.get("destination")):
+                raise WorldStateEventExtractionError("implicit placement depends on an earlier rejected movement")
+            issue = _event_raw_support_issue(event, raw_scene, current)
+            if issue:
+                raise WorldStateEventExtractionError(issue)
+            event_actions = _translate_world_state_event(
+                current, event, raw_scene, segment_number, event_index)
+            if not event_actions:
+                status, reason = "skipped", "no persistent state change or resolvable destination"
+                if event.get("action") in {"move", "enter", "exit"} and event.get("destination"):
+                    if not _event_destination_location(current, event["destination"], event_index):
+                        unresolved_positions.add(_event_name_key(event.get("actor")))
+            else:
+                # One semantic event is the atomic unit. Never retain a partial
+                # expansion if one of its dependent reducer operations fails.
+                trial_names = action_names + _state_action_ids_to_names(event_actions, current)
                 parsed = parse_and_dry_run_state_actions(
                     opening, {"state_actions": trial_names}, segment_number=int(segment_number),
                     name_resolution=name_resolution, raw_scene=raw_scene)
-            except (TypeError, ValueError, json.JSONDecodeError) as error:
-                raise WorldStateEventExtractionError(f"event {event_index}: translation failed: {error}") from error
-            failure = next((item for item in parsed["outcomes"] if not item.accepted), None)
-            if failure:
-                raise WorldStateEventExtractionError(
-                    f"event {event_index} ({event['action']}): reducer rejected translation: {failure.code}: {failure.message}")
-            if parsed.get("omitted_support_actions"):
-                console_log(f"WORLDSTATE EVENT {event_index} support change omitted without RAW evidence.", flush=True)
-                continue
-            if parsed["outcomes"] and parsed["outcomes"][-1].code == "no_change":
-                console_log(f"WORLDSTATE EVENT {event_index} omitted as a no-op.", flush=True)
-                continue
-            actions.append(action)
-            action_names.append(trial_names[-1])
-            current = reduce_world_state(opening, parsed["state_actions"], segment_number=int(segment_number)).world_state
+                failure = next((item for item in parsed["outcomes"] if not item.accepted), None)
+                if failure:
+                    raise WorldStateEventExtractionError(
+                        f"reducer rejected translation: {failure.code}: {failure.message}")
+                if parsed.get("omitted_support_actions"):
+                    raise WorldStateEventExtractionError("support change omitted without RAW evidence")
+                new_outcomes = parsed["outcomes"][len(actions):]
+                if new_outcomes and all(item.code == "no_change" for item in new_outcomes):
+                    status, reason = "skipped", "already recorded; no state change"
+                else:
+                    actions.extend(event_actions)
+                    action_names = trial_names
+                    current = reduce_world_state(
+                        opening, parsed["state_actions"], segment_number=int(segment_number)).world_state
+                    status, reason = "accepted", "RAW evidence and reducer preconditions satisfied"
+                    if event.get("action") in {"move", "enter", "exit"}:
+                        unresolved_positions.discard(_event_name_key(event.get("actor")))
+        except (WorldStateEventExtractionError, TypeError, ValueError, KeyError, IndexError) as error:
+            status, reason = "rejected", str(error)
+            if event.get("action") in {"move", "enter", "exit"}:
+                unresolved_positions.add(_event_name_key(event.get("actor")))
+        diagnostics.append({"event_index": event_index, "status": status, "reason": reason})
+        console_log(f"WORLDSTATE EVENT {event_index} {status}: {reason}", flush=True)
     final = parse_and_dry_run_state_actions(
         opening, {"state_actions": action_names}, segment_number=int(segment_number),
         name_resolution=name_resolution, raw_scene=raw_scene)
     failure = next((item for item in final["outcomes"] if not item.accepted), None)
     if failure:
         raise WorldStateEventExtractionError(f"reducer rejected event batch: {failure.code}: {failure.message}")
-    return final
+    return {**final, "event_diagnostics": diagnostics, "raw_scene": raw_scene}
 
 
 def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_number, run_id=None, run_config=None):
@@ -41445,6 +41835,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     static_setting_description=static_setting_description,
                     canonical_location_state=canonical_location_state,
                     character_references=character_references,
+                    location_transition_context=bundle.get("location_transition_context", ""),
                 ),
                 response_format=None,
                 parse_json_response=False,
@@ -43197,6 +43588,7 @@ def _run_main(
                     spatial_location,
                     static_setting=static_setting,
                     location_name=story_location_metadata["starting_location"],
+                    source_text=story + "\n" + base_subject_definitions,
                     history_metadata={"run_id": run_id},
                 )
                 story_location_metadata["setting_description"] = (
@@ -44224,6 +44616,9 @@ def _run_main(
                     spatial_description,
                     static_setting=static_setting,
                     location_name=requested_name,
+                    world_state=world_state,
+                    source_text=story + "\n" + base_subject_definitions,
+                    traversal_text=beat_text,
                     neighboring_location_context=neighboring_location_context,
                     history_metadata={
                         "run_id": run_id,
@@ -44469,17 +44864,11 @@ def _run_main(
                 f"{origin_setting}. DESTINATION ENVIRONMENT AT SEGMENT END — "
                 f"{destination_name}: {destination_setting}."
             )
-            location_transition_context = (
-                f"Start from each Subject's individual opening WorldState position "
-                f"in {origin_name}. Show the physical movement through the "
-                f"transition and end after entry into {destination_name}. Move only "
-                "Subjects whose actions in CURRENT BEAT establish that movement; "
-                "unrelated Subjects retain their actual positions."
+            location_transition_context = build_location_transition_context(
+                origin_name,
+                destination_name,
+                has_preceding_guide=int(segment_number) > 1,
             )
-            if int(segment_number) > 1:
-                location_transition_context += (
-                    " The preceding rendered segment remains the opening guide."
-                )
             location_reference_video_paths = [
                 str(origin_context.get("location_reference_video") or "").strip(),
                 str(location_context.get("location_reference_video") or "").strip(),

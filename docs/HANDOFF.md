@@ -941,3 +941,87 @@ Fix observed failures in order. Explain the failure and proposed fix before maki
 - `_fixed_prop_motion_issue` now also rejects attempts to pull a fixed fixture *from / into / onto* another location while allowing simple contact such as pulling on a post to steady oneself. The prop-state validator system prompt clarifies this distinction.
 - Regression tests in `tests/test_location_state_reference.py` cover immutable neighboring input, unchanged JSON isolation, runtime transition wiring, output profile, and fixed-fixture contact vs displacement.
 - Commits: `a158f607` (context and validator tuning), `aea103bc` (transition wiring and fixed-pull guard), `cc181257` (focused regressions). **GitHub changes reviewed; pytest and local GPT-OSS 20B/ComfyUI runs have not been executed**. Existing `generation_state.json` was created with inconsistent prior geometry and cannot demonstrate the new behavior without regenerating location descriptions.
+
+## 2026-10-16 — WorldState events, canonical destinations, and transition endpoints
+
+Implemented on `multi-location-support`, starting from remote/local head
+`89b621298e24189f1a4f753a80cb51104d996db3`.
+
+- Found an additional cause of zero-action commits: successful event translation
+  did not return the immutable RAW echo required by `_assert_event_raw_unchanged`.
+  The wrapper consequently discarded otherwise accepted actions. Translation now
+  returns that echo and retains the integrity check.
+- Independent events are validated and reduced in order. An invalid entry no
+  longer erases unrelated valid events, including mixed malformed extraction
+  entries. Each event's reducer-operation expansion remains atomic. Reducer
+  preconditions still protect dependent operations; an unresolved earlier move
+  also blocks implicit placement at an assumed new location. Every event logs
+  acceptance, omission, or rejection with its reason and original index.
+- RAW grounding rejects unsupported actor/action, destination, ownership endpoint,
+  mechanism, and clothing interpretations. Fixed-fixture contacts remain
+  nonpersistent. Extractor claims of consuming/transferring "all" cannot override
+  RAW's stated amount. No actions are invented to make state advance.
+- Movement destinations resolve existing names and fixed surfaces/entrances to
+  their canonical owning locations. The scene-location selector also reuses
+  fixed-surface owners instead of registering those surfaces as new locations;
+  selection itself still does not move a Subject. Regressions commit Alice from
+  her house's front step to the rabbit-hole interior and then the meadow, using
+  each committed state as the next segment's opening.
+- Accepted destination prose rejects local redeclarations or detailed measured
+  reconstructions of known neighboring fixtures through the existing bounded
+  prose repair. JSON extraction still receives only accepted prose and the
+  canonical name. Python then reconciles fixed fixtures against existing names,
+  types, and owners before registration. Known neighboring fixtures keep their
+  original ID/owner; ambiguous identities fail rather than acquire another copy.
+  Same-owner fixtures and distinct names are preserved. An extraction-to-seeding
+  regression verifies one canonical fixture and one H3 WorldState fixture entry.
+- Passage geometry is checked before JSON extraction/reference rendering using
+  authored story/Subject information and the current traversal. Explicit body or
+  shoulder widths work across anatomies; explicitly identified adult humans without
+  authored body widths get a conservative 35-cm width screen. Explicit sizes in
+  fictional settings take precedence over that fallback. Explicit subject height is checked for
+  upright walking, allowing crouching/crawling. Dimension parsing separates length
+  from width/height and handles decimal/unit forms. Authored passage conflicts
+  are reported before an LLM call and cannot be cleared by omitting their
+  measurement in prose repair. Unrelated measured openings do not automatically
+  constrain another traversal. Spatial refinement now preserves source sizes and
+  uses relative scale instead of requiring invented numeric dimensions.
+- Transition-only creative/repair context now establishes opening WorldState and
+  the source-owned destination outcome. It leaves incidental travel choreography
+  to H3 while preserving explicit actions, prop changes, dialogue, injuries, and
+  required movement manner. Final H3 retains `<Video 1>` as origin and `<Video 2>`
+  as destination with separate temporal roles. The timestamp assembler preserves
+  accepted action text; accepted RAW is not stripped afterward. Same-location
+  prompting and the completed-segment WorldState commit boundary remain intact.
+
+Verification performed locally:
+
+- `pytest -q tests/test_world_state_event_extraction.py tests/test_location_fixture_geometry_repairs.py tests/test_location_surface_aliases.py tests/test_transition_policy.py tests/test_split_raw_pipeline.py tests/test_continuation_frame_anchor.py`
+  — **86 passed, 3 subtests passed**.
+- `pytest -q tests/test_world_state_foundation.py -k 'StateActionSupportEvidenceTests or WorldStateTransactionTests or WorldStateReducerTests'`
+  — **40 passed, 66 deselected, 6 subtests passed**.
+- Broader location-reference, WorldState prompt-authority, and pre-Director replay
+  modules — **76 passed, 6 failed**. All six failures were independently reproduced
+  in an archived clean copy of the starting commit: old static-setting/period,
+  physical-validator and wardrobe expectations, old readable-WorldState wording,
+  and replay assuming the creative request precedes scene-location selection.
+  The changed spatial-size and transition assertions were updated to the requested
+  contracts. The full repository suite is not claimed healthy.
+- `python -m py_compile minimax.py world_state.py story_planner.py` and
+  `git diff --check` passed. Inspected assembled H3 output preserving a weapon
+  drop and spoken dialogue with ordered origin/destination references.
+- Runtime files are overwritten into `/mnt/h/StableDiffusion/automation` and
+  compared byte-for-byte before delivery.
+
+Known limits and next acceptance: lexical event grounding deliberately skips
+ambiguous/pronoun-only or unusual paraphrases instead of inventing state. Fixture
+identity matching is conservative; unsupported aliases fail or require clearer
+ownership rather than semantic guessing. Geometry checks cover explicit numeric
+clearances and known body sizes, not a general anatomy/spatial reasoner; unknown
+forms, complex shape changes, and ambiguous source-to-passage relationships still
+need semantic validation and real acceptance. No new LLM calls, cloud dependencies,
+or alternative state authorities were added. **No local GPT-OSS 20B generation or
+ComfyUI render was run for this change.** Run a fresh Alice generation from authored
+inputs with regenerated location descriptions and reference videos, inspect event
+diagnostics and committed locations for all six segments, then verify the visual
+transitions. Old generated location/reference artifacts do not verify these fixes.

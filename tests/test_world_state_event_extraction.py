@@ -88,6 +88,15 @@ def test_event_extractor_prompt_requires_explicit_persistent_physical_changes():
     assert messages[1]["content"] == "RAW SCENE\nAmy wipes the counter."
 
 
+def test_raw_amount_is_bound_to_the_affected_container_and_explicit_emptying():
+    assert minimax._event_amount(
+        event("consume", "Amy", "cup"),
+        "Amy drinks all the ale from the mug, then sips from the cup.") == "partial"
+    assert minimax._event_amount(
+        event("transfer", "Amy", "ale", source="barrel", destination="mug"),
+        "Amy empties the barrel into the mug.") == "all"
+
+
 def test_support_standing_maps_to_subject_specific_set_support():
     state, _ = state_with_entities(mug=False)
     raw = "At 00:01.000, Amy steps onto polished table 3."
@@ -168,7 +177,7 @@ def test_event_operations_cover_enter_exit_place_pour_consume_clothing_and_lock(
     mug["contents"] = [{"substance": "ale", "amount": "none", "consumable": True}]
     mug["placement"] = {"kind": "located", "location_id": location_id,
                         "support_id": prop_id(state, "polished table 3")}
-    raw = "Amy enters, takes the mug, sets it on the table, pours ale into it, Goblin drinks all the ale, Amy puts on a coat, locks the door, and Elf exits."
+    raw = "Amy enters Tavern, takes the mug from polished table 3, sets the mug on polished table 3, pours ale from barrel into mug, Goblin drinks all the ale from the mug, Amy puts on a coat, locks the door, and Elf exits."
     events = [
         event("enter", "Amy", destination="Tavern"),
         event("take", "Amy", "mug", source="polished table 3", relation="from"),
@@ -197,17 +206,19 @@ def test_ambiguous_names_and_unknown_supports_fail_closed():
     state["subjects"]["subject_5"] = copy.deepcopy(state["subjects"]["subject_3"])
     state["subjects"]["subject_5"]["id"] = "subject_5"
     state["subjects"]["subject_5"]["name"] = "Dragon2"
-    with pytest.raises(minimax.WorldStateEventExtractionError, match="ambiguous subject"):
-        minimax.translate_world_state_events(
-            state, [event("move", "Dragon", destination="Tavern")],
-            "Dragon moves.", segment_number=1,
-        )
+    # Exact canonical names take precedence over another entity's loose alias.
+    result = minimax.translate_world_state_events(
+        state, [event("move", "Dragon", destination="Tavern")],
+        "Dragon moves to Tavern.", segment_number=1,
+    )
+    assert result["state_actions"] == []  # Already there.
     state, _ = state_with_entities(mug=False)
-    with pytest.raises(minimax.WorldStateEventExtractionError, match="registered support origin"):
-        minimax.translate_world_state_events(
-            state, [event("take", "Amy", "new cloth", source="apron pocket")],
-            "Amy takes new cloth from apron pocket.", segment_number=1,
-        )
+    rejected = minimax.translate_world_state_events(
+        state, [event("take", "Amy", "new cloth", source="apron pocket")],
+        "Amy takes new cloth from apron pocket.", segment_number=1,
+    )
+    assert rejected["state_actions"] == []
+    assert "registered support origin" in rejected["event_diagnostics"][0]["reason"]
 
 
 def test_noop_events_are_omitted_and_reducer_rejection_does_not_mutate_opening():
@@ -219,8 +230,9 @@ def test_noop_events_are_omitted_and_reducer_rejection_does_not_mutate_opening()
     )
     assert no_op["state_actions"] == []
     invalid = [event("take", "Amy", "door")]
-    with pytest.raises(minimax.WorldStateEventExtractionError, match="reducer rejected translation"):
-        minimax.translate_world_state_events(state, invalid, "Amy enters.", segment_number=1)
+    rejected = minimax.translate_world_state_events(state, invalid, "Amy enters.", segment_number=1)
+    assert rejected["state_actions"] == []
+    assert rejected["event_diagnostics"][0]["status"] == "rejected"
     assert state == opening
 
 
@@ -283,7 +295,7 @@ def test_malformed_event_repair_budget_is_bounded_and_does_not_commit():
     assert state == opening
 
 
-def test_translation_failure_discards_prior_events_and_preserves_opening_world_state():
+def test_translation_failure_preserves_independent_events_and_opening_world_state():
     state, _ = state_with_entities(mug=False)
     opening = copy.deepcopy(state)
     raw = "Amy locks the door, then retrieves a new cloth from her apron pocket."
@@ -296,8 +308,8 @@ def test_translation_failure_discards_prior_events_and_preserves_opening_world_s
             state, raw, segment_number=1
         )
     assert result["accepted"] is True
-    assert result["events"] == []
-    assert result["state_actions"] == []
+    assert result["events"] == response["events"]
+    assert [action["op"] for action in result["state_actions"]] == ["lock"]
     assert result["raw_scene"] == raw
     assert any(
         "new prop 'new cloth' has no registered support origin" in call.args[0]
@@ -403,3 +415,158 @@ def test_event_extraction_does_not_swallow_non_connection_transport_failure():
                 "Amy opens the entrance.",
                 segment_number=1,
             )
+
+
+def test_invalid_independent_event_preserves_move_and_original_action_index():
+    state, _ = state_with_entities(mug=False)
+    state, destination = seed_canonical_static_location_state(
+        state, {"location": {"name": "Garden"}, "anchors": [], "objects": []})
+    response = {"events": [
+        {"action": "unsupported"},
+        event("move", "Amy", destination="Garden"),
+        event("modify", "narrowing tunnel walls", "hat", result="bobs"),
+    ]}
+    with mock.patch("minimax.ask_llm", return_value=response):
+        result = minimax.extract_and_dry_run_world_state_events(
+            state, "Amy walks to Garden. The narrowing tunnel walls recede.", segment_number=1)
+    assert len(result["state_actions"]) == 1
+    assert result["state_actions"][0]["action_id"] == "event_0001_002"
+    assert result["state_actions"][0]["destination_location_id"] == destination
+    assert [row["status"] for row in result["event_diagnostics"]] == ["rejected", "accepted", "rejected"]
+
+
+def test_canonical_surface_movement_commits_and_becomes_next_segment_opening():
+    state = new_world_state({"subjects": {
+        "1": {"subject_id": 1, "name": "Alice", "picture_ids": []},
+    }})
+    state, front = seed_canonical_static_location_state(state, {
+        "location": {"name": "Front step of Alice's house"}, "anchors": [], "objects": []})
+    state = seed_story_start_presence(state, [{
+        "name": "Alice", "initial_state": "standing at the entrance",
+    }], location_id=front)
+    state, hole = seed_canonical_static_location_state(
+        state, {"location": {"name": "Rabbit-hole interior"}, "anchors": [], "objects": []})
+    state, meadow = seed_canonical_static_location_state(
+        state, {"location": {"name": "Meadow"}, "anchors": [], "objects": []})
+    state = register_explicit_persistent_props(state, [
+        {"name": "mossy floor", "kind": "support", "mobility": "fixed",
+         "needed_for_state": True, "reason": "A canonical surface.", "location_id": hole}])
+    generation = {"world_state": state}
+    for segment, raw, destination, expected in [
+        (1, "Alice descends to the mossy floor at the bottom of the rabbit hole.",
+         "mossy floor at the bottom of the rabbit hole", hole),
+        (2, "Alice walks into the Meadow.", "Meadow", meadow),
+    ]:
+        opening = copy.deepcopy(generation["world_state"])
+        result = minimax.translate_world_state_events(
+            opening, [event("move", "Alice", destination=destination)], raw,
+            segment_number=segment)
+        committed = minimax.commit_accepted_director_world_state(
+            generation, opening,
+            {"state_actions_dry_run_accepted": True, "state_actions": result["state_actions"]}, segment)
+        assert committed["subjects"]["subject_1"]["location_id"] == expected
+        assert generation["world_state"] == committed
+    assert state["subjects"]["subject_1"]["location_id"] == front
+    assert len(generation["world_state"]["locations"]) == 3
+
+
+def test_unsupported_move_and_hat_gesture_never_generate_persistent_actions():
+    state, origin = state_with_entities(mug=False, wardrobe=True)
+    state, _ = seed_canonical_static_location_state(
+        state, {"location": {"name": "Garden"}, "anchors": [], "objects": []})
+    result = minimax.translate_world_state_events(state, [
+        event("move", "Amy", destination="Garden"),
+        event("modify", "Amy", "tunic", relation="upper", result="bobs"),
+    ], "Amy does not walk to Garden. Amy's tunic bobs as she waves.", segment_number=1)
+    assert result["state_actions"] == []
+    assert state["subjects"]["subject_1"]["location_id"] == origin
+
+
+def test_one_event_expansion_is_atomic_while_later_independent_event_survives():
+    state, _ = state_with_entities(mug=False)
+    state, garden = seed_canonical_static_location_state(
+        state, {"location": {"name": "Garden"}, "anchors": [], "objects": []})
+    original = minimax._translate_world_state_event
+    def expanded(current, evt, raw, segment, index):
+        if index == 1:
+            return [
+                {"action_id": "dependent_move", "op": "move", "subject_id": "subject_1",
+                 "destination_location_id": garden},
+                {"action_id": "dependent_pickup", "op": "pickup", "actor_subject_id": "subject_1",
+                 "prop_id": prop_id(state, "door")},
+            ]
+        return original(current, evt, raw, segment, index)
+    with mock.patch("minimax._translate_world_state_event", side_effect=expanded):
+        result = minimax.translate_world_state_events(state, [
+            event("move", "Amy", destination="Garden"),
+            event("modify", "Goblin", "door", result="locked"),
+        ], "Amy walks to Garden. Goblin locks the door.", segment_number=1)
+    assert [row["op"] for row in result["state_actions"]] == ["lock"]
+    assert result["event_diagnostics"][0]["status"] == "rejected"
+
+
+def test_extractor_cannot_invent_destination_or_reverse_raw_mechanism_result():
+    state, _ = state_with_entities(mug=False)
+    state, _ = seed_canonical_static_location_state(
+        state, {"location": {"name": "Garden"}, "anchors": [], "objects": []})
+    result = minimax.translate_world_state_events(state, [
+        event("move", "Amy", destination="Garden"),
+        event("enter", "Amy", destination="Garden"),
+        event("modify", "Amy", "door", result="locked"),
+    ], "Amy walks beside the Tavern. Amy opens the door.", segment_number=1)
+    assert result["state_actions"] == []
+    assert all(row["status"] == "rejected" for row in result["event_diagnostics"])
+
+
+def test_extractor_cannot_borrow_another_subjects_movement_or_later_destination():
+    state, _ = state_with_entities(mug=False)
+    state, _ = seed_canonical_static_location_state(
+        state, {"location": {"name": "Garden"}, "anchors": [], "objects": []})
+    for raw in [
+        "Amy watches as Goblin walks into Garden.",
+        "Amy walks beside the Tavern. Goblin walks into Garden.",
+    ]:
+        result = minimax.translate_world_state_events(
+            state, [event("move", "Amy", destination="Garden")], raw, segment_number=1)
+        assert result["state_actions"] == []
+
+
+def test_implicit_release_cannot_depend_on_rejected_movement():
+    state, _ = state_with_entities(cloth_held=True, mug=False)
+    result = minimax.translate_world_state_events(state, [
+        event("move", "Amy", destination="unregistered courtyard"),
+        event("release", "Amy", "cleaning cloth"),
+        event("modify", "Goblin", "door", result="locked"),
+    ], "Amy walks into the unregistered courtyard. Amy drops the cleaning cloth. Goblin locks the door.",
+        segment_number=1)
+    assert [row["op"] for row in result["state_actions"]] == ["lock"]
+    assert "earlier rejected movement" in result["event_diagnostics"][1]["reason"]
+
+
+def test_placement_cannot_become_unsupported_handoff_to_observer():
+    state, _ = state_with_entities(cloth_held=True, mug=False)
+    result = minimax.translate_world_state_events(state, [
+        event("put", "Amy", "cleaning cloth", destination="Goblin"),
+    ], "Amy puts the cleaning cloth on polished table 3 while Goblin watches.", segment_number=1)
+    assert result["state_actions"] == []
+    assert result["event_diagnostics"][0]["status"] == "rejected"
+
+
+def test_transfer_cannot_invent_source_or_destination_from_other_raw_mentions():
+    state, _ = state_with_entities(barrel=True)
+    result = minimax.translate_world_state_events(state, [
+        event("transfer", "Amy", "ale", source="barrel", destination="mug"),
+    ], "Amy pours ale from the mug onto the floor beside the barrel.", segment_number=1)
+    assert result["state_actions"] == []
+
+
+def test_extracted_all_cannot_empty_contents_when_raw_only_establishes_a_sip():
+    state, _ = state_with_entities()
+    result = minimax.translate_world_state_events(state, [
+        event("consume", "Amy", "mug", relation="all", result="ale"),
+    ], "Amy sips ale from the mug.", segment_number=1)
+    assert minimax._event_amount(event("consume", "Amy", "mug", relation="all", result="ale"),
+                                 "Amy sips ale from the mug.", state) == "partial"
+    assert all(action["amount"] != "all" for action in result["state_actions"])
+    end = minimax.reduce_world_state(state, result["state_actions"], segment_number=1).world_state
+    assert end["props"][prop_id(end, "mug")]["contents"][0]["amount"] != "none"
