@@ -242,7 +242,13 @@ class ContinuitySchedulingTests(unittest.TestCase):
         )
 
     def _run_two_segment_render_schedule(
-        self, *, vision_continuity=0, fail_first_render=False
+        self,
+        *,
+        vision_continuity=0,
+        fail_first_render=False,
+        fail_speculative_prep=False,
+        fail_authoritative_prep=False,
+        phase_boundary=False,
     ):
         args = _args(total_length=12.0, vision_continuity=vision_continuity)
         args.test_prompt_generation = False
@@ -257,6 +263,7 @@ class ContinuitySchedulingTests(unittest.TestCase):
         args.capture_h3_fixture = None
         args.capture_h3_segment = None
         render_one_started = threading.Event()
+        render_one_completed = threading.Event()
         release_render_one = threading.Event()
         release_render_two = threading.Event()
         visual_started = threading.Event()
@@ -265,8 +272,55 @@ class ContinuitySchedulingTests(unittest.TestCase):
         render_two_started = threading.Event()
         stitch_started = threading.Event()
         director_openings = {}
+        director_bundles = {}
+        director_two_started_during_render = []
         render_sources = []
         durable_snapshots = []
+        phase_logs = []
+        world_state_prep_calls = {}
+
+        beats_for_run = (
+            [
+                minimax.BeatDefinition("Amy begins the first action.", phase_number=1),
+                minimax.BeatDefinition(
+                    "Amy begins the second action.", phase_number=2, phase_start=True
+                ),
+            ]
+            if phase_boundary
+            else []
+        )
+        macro_arc = (
+            {
+                "phases": [
+                    {
+                        "phase_number": 1,
+                        "beat_start": 1,
+                        "beat_end": 1,
+                        "narrative_purpose": minimax.SOURCE_SPAN_PHASE_PURPOSE,
+                        "source_text": "Amy begins the first action.",
+                        "required_events": [{
+                            "beat_number": 1,
+                            "event": "Amy begins the first action.",
+                            "state_effects": [],
+                        }],
+                    },
+                    {
+                        "phase_number": 2,
+                        "beat_start": 2,
+                        "beat_end": 2,
+                        "narrative_purpose": minimax.SOURCE_SPAN_PHASE_PURPOSE,
+                        "source_text": "Amy begins the second action.",
+                        "required_events": [{
+                            "beat_number": 2,
+                            "event": "Amy begins the second action.",
+                            "state_effects": [],
+                        }],
+                    },
+                ]
+            }
+            if phase_boundary
+            else {"phases": []}
+        )
 
         location_state = {
             "location": {"name": "Room"},
@@ -296,7 +350,11 @@ class ContinuitySchedulingTests(unittest.TestCase):
             director_openings[segment] = copy.deepcopy(
                 bundle.get("world_state_opening")
             )
+            director_bundles[segment] = copy.deepcopy(bundle)
             if segment == 2:
+                director_two_started_during_render.append(
+                    not render_one_completed.is_set()
+                )
                 director_two_started.set()
             subject_id = next(iter(bundle["world_state_opening"]["subjects"]))
             counter_id = next(
@@ -366,6 +424,7 @@ class ContinuitySchedulingTests(unittest.TestCase):
                     raise AssertionError("test did not release Segment 1 render")
                 if fail_first_render:
                     raise RuntimeError("simulated Segment 1 render failure")
+                render_one_completed.set()
             else:
                 render_two_started.set()
                 if not release_render_one.is_set():
@@ -399,12 +458,25 @@ class ContinuitySchedulingTests(unittest.TestCase):
                 "frame_paths": [],
             }
 
+        def prepare_world_state(state, segment_number, *_args, **_kwargs):
+            segment_number = int(segment_number)
+            world_state_prep_calls[segment_number] = (
+                world_state_prep_calls.get(segment_number, 0) + 1
+            )
+            if segment_number == 2 and (
+                fail_authoritative_prep
+                or (fail_speculative_prep and world_state_prep_calls[2] == 1)
+            ):
+                raise ValueError("simulated Segment 2 preparation failure")
+            return state, []
+
         original_isfile = os.path.isfile
         original_getsize = os.path.getsize
         patches = (
             mock.patch("minimax.parse_args", return_value=args),
             mock.patch("minimax.configure_formatter"),
             mock.patch("minimax.configure_reference_image_overrides"),
+            mock.patch("minimax.copy_reference_image_inputs"),
             mock.patch("minimax.load_text_file", side_effect=load_text),
             mock.patch("minimax.load_or_generate_character_canon", return_value={
                 "fields": ["age", "clothing", "gender"],
@@ -412,15 +484,22 @@ class ContinuitySchedulingTests(unittest.TestCase):
             }),
             mock.patch("minimax.canonicalize_defined_subject_wardrobes", return_value={}),
             mock.patch("minimax.parse_story_beat_instructions", return_value=("A story.", [])),
-            mock.patch("minimax.load_beats", return_value=[]),
-            mock.patch("minimax.load_or_generate_beats", return_value=[]),
-            mock.patch("minimax.load_story_arc", return_value={"phases": []}),
+            mock.patch("minimax.load_beats", return_value=beats_for_run),
+            mock.patch("minimax.load_or_generate_beats", return_value=beats_for_run),
+            mock.patch("minimax.load_story_arc", return_value=macro_arc),
             mock.patch("minimax.load_canonical_data", return_value={}),
             mock.patch("minimax.load_phrase_exclusions", return_value=[]),
             mock.patch("minimax.reset_prompt_history"),
             mock.patch("minimax.validate_runtime_environment"),
             mock.patch("minimax.load_workflow", return_value={}),
             mock.patch("minimax.validate_workflow"),
+            mock.patch("minimax.validate_refresh_workflow"),
+            mock.patch(
+                "minimax.console_log",
+                side_effect=lambda *args, **_kwargs: phase_logs.append(" ".join(
+                    str(arg) for arg in args
+                )),
+            ),
             mock.patch("minimax.verify_reference_images"),
             mock.patch("minimax.verify_global_loras"),
             mock.patch(
@@ -446,7 +525,10 @@ class ContinuitySchedulingTests(unittest.TestCase):
                 "name": "Amy", "initial_state": "Amy is in the room."
             }]),
             mock.patch("minimax.extract_registered_subject_story_start_presence", side_effect=seed_known_presence),
-            mock.patch("minimax.prepare_segment_world_state_for_director", side_effect=lambda state, *_a, **_k: (state, [])),
+            mock.patch(
+                "minimax.prepare_segment_world_state_for_director",
+                side_effect=prepare_world_state,
+            ),
             mock.patch("minimax.os.path.isfile", side_effect=isfile),
             mock.patch("minimax.os.path.getsize", side_effect=getsize),
             mock.patch("minimax.request_segment_llm", side_effect=request_segment),
@@ -497,22 +579,28 @@ class ContinuitySchedulingTests(unittest.TestCase):
                                 "next Director request crossed the visual continuity gate",
                             )
                             release_visual.set()
-                        self.assertTrue(
-                            director_two_started.wait(5),
-                            "Segment 2 Director request was not prepared at the expected time",
-                        )
-                        subject_two = next(iter(director_openings[2]["subjects"].values()))
-                        counter_id = next(
-                            prop_id for prop_id, prop in
-                            director_openings[2]["props"].items()
-                            if prop.get("name") == "counter"
-                        )
-                        self.assertEqual(subject_two.get("support_id"), counter_id)
+                        if not vision_continuity and not fail_speculative_prep:
+                            self.assertTrue(
+                                director_two_started.wait(5),
+                                "Segment 2 Director request was not prepared at the expected time",
+                            )
+                        if director_two_started.is_set():
+                            subject_two = next(iter(
+                                director_openings[2]["subjects"].values()
+                            ))
+                            counter_id = next(
+                                prop_id for prop_id, prop in
+                                director_openings[2]["props"].items()
+                                if prop.get("name") == "counter"
+                            )
+                            self.assertEqual(
+                                subject_two.get("support_id"), counter_id
+                            )
                         self.assertFalse(
                             render_two_started.is_set(),
                             "Segment 2 render must wait for Segment 1's video",
                         )
-                        if not vision_continuity:
+                        if not vision_continuity and not fail_speculative_prep:
                             self.assertTrue(durable_snapshots)
                             self.assertTrue(all(
                                 not snapshot.get("segments")
@@ -548,6 +636,51 @@ class ContinuitySchedulingTests(unittest.TestCase):
                             return
                         release_render_one.set()
                         release_visual.set()
+                        if fail_speculative_prep:
+                            if fail_authoritative_prep:
+                                with self.assertRaisesRegex(
+                                    ValueError,
+                                    "simulated Segment 2 preparation failure",
+                                ):
+                                    run.result(timeout=10)
+                                self.assertEqual(world_state_prep_calls[2], 2)
+                                self.assertFalse(director_two_started.is_set())
+                                self.assertTrue(durable_snapshots[-1].get("segments"))
+                                committed_subject = next(iter(
+                                    durable_snapshots[-1]["world_state"][
+                                        "subjects"
+                                    ].values()
+                                ))
+                                committed_counter = next(
+                                    prop_id for prop_id, prop in
+                                    durable_snapshots[-1]["world_state"][
+                                        "props"
+                                    ].items()
+                                    if prop.get("name") == "counter"
+                                )
+                                self.assertEqual(
+                                    committed_subject.get("support_id"),
+                                    committed_counter,
+                                )
+                                return
+                            self.assertTrue(director_two_started.wait(5))
+                            self.assertEqual(world_state_prep_calls[2], 2)
+                            self.assertEqual(
+                                director_two_started_during_render,
+                                [False],
+                                "fallback must prepare only after Segment 1 render",
+                            )
+                            subject_two = next(iter(
+                                director_openings[2]["subjects"].values()
+                            ))
+                            counter_id = next(
+                                prop_id for prop_id, prop in
+                                director_openings[2]["props"].items()
+                                if prop.get("name") == "counter"
+                            )
+                            self.assertEqual(
+                                subject_two.get("support_id"), counter_id
+                            )
                         self.assertTrue(render_two_started.wait(5))
                         self.assertFalse(
                             stitch_started.is_set(),
@@ -572,6 +705,27 @@ class ContinuitySchedulingTests(unittest.TestCase):
         )
         self.assertEqual(final_subject.get("support_id"), final_counter_id)
         self.assertTrue(stitch_started.is_set())
+        if phase_boundary:
+            self.assertEqual(
+                director_openings[2]["subjects"][next(iter(
+                    director_openings[2]["subjects"]
+                ))].get("support_id"),
+                final_counter_id,
+            )
+            self.assertEqual(len(director_two_started_during_render), 1)
+            self.assertTrue(director_two_started_during_render[0])
+            self.assertEqual(
+                director_bundles[2]["current_phase"]["phase_number"], 2
+            )
+            self.assertEqual(
+                director_bundles[2]["assigned_source"],
+                "Amy begins the second action.",
+            )
+            self.assertEqual(
+                sum("Starting phase 2 at segment 2" in line for line in phase_logs),
+                1,
+            )
+
 
     def test_projected_director_prompt_overlaps_render_but_next_render_waits(self):
         self._run_two_segment_render_schedule()
@@ -581,6 +735,18 @@ class ContinuitySchedulingTests(unittest.TestCase):
 
     def test_failed_render_rolls_back_speculative_next_segment_state(self):
         self._run_two_segment_render_schedule(fail_first_render=True)
+
+    def test_speculative_setup_failure_falls_back_to_normal_preparation(self):
+        self._run_two_segment_render_schedule(fail_speculative_prep=True)
+
+    def test_normal_preparation_failure_still_propagates(self):
+        self._run_two_segment_render_schedule(
+            fail_speculative_prep=True,
+            fail_authoritative_prep=True,
+        )
+
+    def test_phase_boundary_prefetch_uses_projected_state_once(self):
+        self._run_two_segment_render_schedule(phase_boundary=True)
 
 
 if __name__ == "__main__":

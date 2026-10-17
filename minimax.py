@@ -45131,6 +45131,23 @@ def _run_main(
         if pre_director_replay is not None
         else {}
     )
+    prepared_phase_segments = set()
+
+    def initialize_segment_phase(segment_number):
+        """Apply the active phase-start behavior once for this run."""
+        segment_number = int(segment_number)
+        if segment_number in prepared_phase_segments:
+            return
+        if is_new_phase_start(beats, segment_number):
+            phase_number = beats[segment_number - 1].phase_number
+            console_log(
+                f"Starting phase {phase_number} at segment {segment_number}; retaining "
+                "dynamically created Subjects from earlier phases."
+            )
+            # Subject cleanup remains intentionally disabled so identities from
+            # earlier phases persist. Keep active phase setup here if it is
+            # reintroduced, so projected preparation can snapshot it atomically.
+        prepared_phase_segments.add(segment_number)
 
     def prepare_current_segment_world_state(segment_number):
         """Register beat-established identities/props before Request 1."""
@@ -45865,6 +45882,7 @@ def _run_main(
         nonlocal active_location_id
         nonlocal subject_definitions, additional_subject_definitions
         nonlocal prepared_world_state_segments, prepared_world_state_subject_names
+        nonlocal prepared_phase_segments
         nonlocal speculative_preparation_active, defer_location_reference_render
 
         next_segment = int(current_segment) + 1
@@ -45879,6 +45897,7 @@ def _run_main(
         original_prepared_subject_names = copy.deepcopy(
             prepared_world_state_subject_names
         )
+        original_prepared_phase_segments = set(prepared_phase_segments)
         prepared_context = None
         bundle = None
         setup_error = None
@@ -45890,6 +45909,7 @@ def _run_main(
             )
             # These are the same pre-Director stages run at the top of the
             # normal segment loop, now applied to the detached projected end.
+            initialize_segment_phase(next_segment)
             prepare_scene_location_for_segment(next_segment)
             prepare_current_segment_world_state(next_segment)
             bundle = build_segment_bundle(
@@ -45920,6 +45940,7 @@ def _run_main(
                 "prepared_world_state_subject_names": copy.deepcopy(
                     prepared_world_state_subject_names
                 ),
+                "prepared_phase_segments": set(prepared_phase_segments),
                 "generated_prompts_payload": copy.deepcopy(
                     generated_prompts_payload
                 ),
@@ -45940,16 +45961,11 @@ def _run_main(
             additional_subject_definitions = original_additional_subject_definitions
             prepared_world_state_segments = original_prepared_segments
             prepared_world_state_subject_names = original_prepared_subject_names
+            prepared_phase_segments = original_prepared_phase_segments
             speculative_preparation_active = False
             defer_location_reference_render = False
 
         if setup_error is not None:
-            console_log(
-                f"Could not prepare Segment {next_segment} while Segment "
-                f"{current_segment} renders; the normal segment path will retry "
-                f"afterward: {type(setup_error).__name__}: {setup_error}",
-                flush=True,
-            )
             return {"setup_error": setup_error}
         if bundle is None or prepared_context is None:
             return {"setup_error": RuntimeError(
@@ -45974,6 +45990,7 @@ def _run_main(
         nonlocal active_location_id
         nonlocal subject_definitions, additional_subject_definitions
         nonlocal prepared_world_state_segments, prepared_world_state_subject_names
+        nonlocal prepared_phase_segments
 
         prepared = prefetch_record.get("prepared_context")
         if not isinstance(prepared, dict):
@@ -46007,6 +46024,9 @@ def _run_main(
         prepared_world_state_subject_names = copy.deepcopy(
             prepared.get("prepared_world_state_subject_names", {})
         )
+        prepared_phase_segments = set(
+            prepared.get("prepared_phase_segments", set())
+        )
         payload = prepared.get("generated_prompts_payload")
         if isinstance(payload, dict):
             generated_prompts_payload.clear()
@@ -46038,24 +46058,7 @@ def _run_main(
         generation_state.get("segments", [])
     )[-DIALOGUE_HISTORY_SEGMENTS_MAX:]
     for segment in segments_to_generate:
-        if is_new_phase_start(beats, segment):
-            #Dynamic Subject cleanup at phase boundaries is intentionally
-            #disabled so Subjects established in earlier phases persist.
-            # continuity_state, removed_subject_names = (
-            #     reset_generation_state_subjects_for_new_phase(
-            #         generation_state,
-            #         base_subject_definitions,
-            #         continuity_state,
-            #     )
-            # )
-            # additional_subject_definitions = []
-            # subject_definitions = base_subject_definitions
-            # save_generation_state(generation_state)
-            phase_number = beats[segment - 1].phase_number
-            console_log(
-                f"Starting phase {phase_number} at segment {segment}; retaining "
-                "dynamically created Subjects from earlier phases."
-            )
+        initialize_segment_phase(segment)
         prepare_scene_location_for_segment(segment)
         # Register the selected location's canonical fixtures/supports before
         # interpreting current-Beat Subject candidates, so the existing
@@ -46112,8 +46115,6 @@ def _run_main(
                         "because the confirmed beat, continuity, or subject state "
                         "differed; re-querying the LLM."
                     )
-            except LLMConnectionError:
-                raise
             except Exception as error:
                 console_log(
                     f"WARNING: prefetched LLM response for segment {segment} failed: "
@@ -46941,13 +46942,10 @@ def _run_main(
             )
             continue
 
-        deferred_prefetch_error = None
-        next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
         if (
             segment < total_segments
             and not vision_required
             and director_prefetch_executor is not None
-            and not next_segment_starts_phase
         ):
             try:
                 accepted_actions = request1_result.get("state_actions", [])
@@ -46982,10 +46980,8 @@ def _run_main(
                     continuity_summary,
                     next_dialogue_exclusions,
                 )
-                deferred_prefetch_error = prefetched_next.pop(
-                    "setup_error", None
-                )
-                if deferred_prefetch_error is None:
+                speculative_setup_error = prefetched_next.pop("setup_error", None)
+                if speculative_setup_error is None:
                     console_log(
                         f"Started Director prompt preparation for Segment "
                         f"{segment + 1} while Segment {segment}'s ComfyUI render "
@@ -46993,14 +46989,21 @@ def _run_main(
                         flush=True,
                     )
                 else:
+                    console_log(
+                        f"Discarded speculative preparation for Segment "
+                        f"{segment + 1}; normal preparation will run after "
+                        f"Segment {segment} completes: "
+                        f"{type(speculative_setup_error).__name__}: "
+                        f"{speculative_setup_error}",
+                        flush=True,
+                    )
                     prefetched_next = None
             except Exception as error:
-                deferred_prefetch_error = error
                 prefetched_next = None
                 console_log(
-                    f"Could not project Segment {segment}'s accepted WorldState "
-                    f"for Segment {segment + 1} prefetch; continuing after the "
-                    f"current render: {type(error).__name__}: {error}",
+                    f"Discarded speculative preparation for Segment "
+                    f"{segment + 1}; normal preparation will run after Segment "
+                    f"{segment} completes: {type(error).__name__}: {error}",
                     flush=True,
                 )
 
@@ -47164,9 +47167,6 @@ def _run_main(
                     generation_state.pop("prefetched_next_prompt", None)
                     save_generation_state(generation_state)
         console_log(f"Completed segment {segment} committed with its rendered video.")
-
-        if deferred_prefetch_error is not None:
-            raise deferred_prefetch_error
 
         next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
         if (

@@ -1231,3 +1231,42 @@ Verification:
 
 No runtime prompts, reducer semantics, visual observations, checkpoint schema,
 or render workflow were changed. No live ComfyUI acceptance render was run.
+
+## 2026-10-17 — make speculative prefetch failures recoverable across phases
+
+Corrected the non-visual asynchronous scheduling path. Failures while projecting
+or preparing Segment N+1 are now discarded as speculative work: Segment N can
+finish rendering, commit its accepted WorldState, and checkpoint normally. The
+next Segment then runs its ordinary authoritative preparation; failures in that
+path still propagate, including infrastructure failures. Failures from a
+speculative Director future likewise fall back to a normal Director request,
+while errors from that authoritative request remain fatal.
+
+When visual continuity is disabled, projected Director preparation can now
+overlap the current render even if the next Segment begins a new phase. Phase
+initialization runs against the projected context before location and
+WorldState preparation, and its initialized marker is published with that
+context after the preceding render succeeds. Visual-continuity gating is
+unchanged. Render failure still cancels speculative work and retains the last
+valid checkpoint; later rendering and stitching remain serialized behind the
+preceding video.
+
+Verification:
+
+- Focused event-controlled scheduling regressions — **6 passed**. They cover
+  speculative setup failure and normal-path fallback, authoritative preparation
+  failure propagation, cross-phase prefetch with projected WorldState and one
+  phase initialization, visual-continuity gating, and render-failure rollback.
+- `tests/test_stitching.py` — **10 passed**.
+- Combined `tests/test_continuity_scheduling.py tests/test_stitching.py` — **17
+  passed, 3 failed**. The three failures are existing legacy harness/contracts:
+  the old background-render test does not reach Segment 2 with its no-prefetch
+  executor setup, and two direct `request_segment_llm` tests assume the previous
+  combined RAW response contract / omit the required Director user context.
+  All six new scheduling regressions passed.
+- `python -m py_compile minimax.py tests/test_continuity_scheduling.py` and
+  `git diff --check` passed.
+
+No runtime prompts, WorldState reducer semantics, location resolution, scene
+generation, checkpoint format, or render workflow changed. No live ComfyUI
+acceptance render was run.
