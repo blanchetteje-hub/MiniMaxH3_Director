@@ -49,7 +49,10 @@ from gpt_formatter import (
 )
 from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
-from pipeline_recovery import PipelineStageRetryError, run_pipeline_stage_with_backstep
+from pipeline_recovery import (
+    PipelineStageExhaustedError, PipelineStageRetryError,
+    run_pipeline_stage_with_backstep,
+)
 from story_planner import StoryPlan, build_story_plan
 from world_state import (
     CURRENT_SEGMENT_PROP_KINDS,
@@ -725,6 +728,8 @@ REFERENCE_IMAGE_NODE_NAMES = tuple(
 )
 
 REFERENCE_IMAGE_OVERRIDES = {}
+UNAVAILABLE_OPTIONAL_PICTURE_IDS = set()
+REQUIRED_CONFIGURED_PICTURE_USES = {}
 
 # ------------------------------------------------------------
 # REQUEST MODES AND STRUCTURED OUTPUT SCHEMAS
@@ -2952,6 +2957,19 @@ def load_workflow(path):
         raise RuntimeError(f"Workflow must contain a JSON object: {path}")
 
     apply_reference_image_overrides(workflow, f"workflow '{path}'")
+    if UNAVAILABLE_OPTIONAL_PICTURE_IDS:
+        disabled_nodes = {str(node_id) for node_id, node in workflow.items()
+            if isinstance(node, dict) and node.get("_meta", {}).get("title") in {
+                REFERENCE_IMAGE_NODE_NAMES[number - 1] for number in UNAVAILABLE_OPTIONAL_PICTURE_IDS}}
+        def disconnect(inputs):
+            for key, value in list(inputs.items()):
+                if isinstance(value, list) and len(value) == 2 and str(value[0]) in disabled_nodes:
+                    del inputs[key]
+                elif isinstance(value, dict):
+                    disconnect(value)
+        for node in workflow.values():
+            if isinstance(node, dict):
+                disconnect(node.get("inputs", {}))
     return workflow
 
 
@@ -2960,6 +2978,8 @@ def configure_reference_image_overrides(arguments):
     """Set the six optional command-line image overrides for this process."""
 
     global REFERENCE_IMAGE_OVERRIDES
+    UNAVAILABLE_OPTIONAL_PICTURE_IDS.clear()
+    REQUIRED_CONFIGURED_PICTURE_USES.clear()
     overrides = {}
     for image_number in range(1, 7):
         value = getattr(arguments, f"image{image_number}", None)
@@ -3323,6 +3343,78 @@ def disconnect_reference_images(
     return removed
 
 
+class ReferenceAssetError(RuntimeError):
+    """A required external reference cannot be fixed by regenerating LLM output."""
+
+
+def _reference_image_optional(node):
+    # Explicit workflow metadata; connected configured images are required by default.
+    return node.get("_meta", {}).get("reference_optional") is True
+
+
+def _check_optional_picture_removal(picture_ids):
+    for number in picture_ids:
+        required_use = REQUIRED_CONFIGURED_PICTURE_USES.get(number)
+        if required_use:
+            raise ReferenceAssetError(
+                f"Cannot remove unavailable optional <Picture {number}>: "
+                f"{required_use} requires that Picture. Restore the missing image or "
+                "make the optional policy explicit in every configured use."
+            )
+
+
+def remove_optional_picture_bindings(subject_definitions, picture_ids):
+    """Remove unavailable optional image bindings without changing authored files."""
+    removed = set(picture_ids or ())
+    lines = []
+    for line in str(subject_definitions or "").splitlines():
+        legacy = re.match(r"(?i)^\s*(?:<\s*)?Picture\s+(\d+)\s*>?\s+is\s+(.+)$", line)
+        if legacy and int(legacy[1]) in removed:
+            line = f"<Subject {legacy[1]}> is {legacy[2]}"
+        line = re.sub(r"(?i)<Picture\s+(\d+)>",
+                      lambda match: "" if int(match[1]) in removed else match[0], line)
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def verify_subject_identity_references(subject_definitions):
+    """Check authored Picture dependencies even when a template slot is disconnected."""
+    missing_optional = set()
+    picture_ids = {number for subject in parse_subject_registry(subject_definitions).values()
+                   for number in subject.get("picture_ids", [])}
+    if not picture_ids:
+        return missing_optional
+    workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    for number in sorted(picture_ids):
+        if number in UNAVAILABLE_OPTIONAL_PICTURE_IDS:
+            missing_optional.add(number)
+            continue
+        if not 1 <= number <= len(REFERENCE_IMAGE_NODE_NAMES):
+            raise ReferenceAssetError(f"Authored identity <Picture {number}> has no configured image slot.")
+        _, node = find_workflow_node(workflow, REFERENCE_IMAGE_NODE_NAMES[number - 1], "authored identity references", "LoadImage")
+        name = node.get("inputs", {}).get("image")
+        path, issue = _validate_comfy_input_image(name, COMFY_INPUT)
+        if _is_reference_placeholder(name):
+            issue = "template placeholder cannot supply authored identity"
+        if issue:
+            if _reference_image_optional(node):
+                missing_optional.add(number)
+            else:
+                raise ReferenceAssetError(f"Required authored identity <Picture {number}> is invalid ({issue}): {path}. Restore the image or set --image{number} to a valid file.")
+    _check_optional_picture_removal(missing_optional)
+    UNAVAILABLE_OPTIONAL_PICTURE_IDS.update(missing_optional)
+    return missing_optional
+
+
+def preflight_reference_images(*, refresh=False, input_directory=None):
+    """Validate configured identity assets before any LLM or render dispatch."""
+    return verify_reference_images(
+        load_workflow(INITIAL_WORKFLOW_FILE), load_workflow(APPEND_WORKFLOW_FILE),
+        input_directory=input_directory,
+        refresh_workflow=load_workflow(REFRESH_WORKFLOW_FILE) if refresh else None,
+    )
+
+
 # Verify existing images on connected workflow image inputs.
 def verify_reference_images(
     initial_workflow,
@@ -3380,7 +3472,8 @@ def verify_reference_images(
                     "has no image filename."
                 )
                 continue
-            image_references[image_number] = image_name.strip()
+            if not _is_reference_placeholder(image_name):
+                image_references[image_number] = image_name.strip()
         return image_references
 
     initial_references = active_references(
@@ -3438,26 +3531,51 @@ def verify_reference_images(
                 f"{refresh_name!r}."
             )
 
+    optional_removed = set()
     for image_number in range(1, 7):
-        image_name = (
-            initial_references.get(image_number)
-            or append_references.get(image_number)
-            or refresh_references.get(image_number)
-        )
-        if image_name is None:
-            continue
-        image_path, decode_error = _validate_comfy_input_image(
-            image_name,
-            input_directory,
-        )
-        if decode_error is not None:
-            console_log(
-                f"WARNING: Image {image_name} for reference slot "
-                f"{image_number} is invalid ({decode_error}) and will be "
-                f"disconnected before queueing: {image_path}"
-            )
-            continue
-        console_log(f"Image {image_name} decoded and verified.")
+        checked = set()
+        for workflow, label, references in (
+            (initial_workflow, "initial workflow", initial_references),
+            (append_workflow, "append workflow", append_references),
+            (refresh_workflow, "refresh workflow", refresh_references),
+        ):
+            image_name = references.get(image_number)
+            if image_name is None:
+                continue
+            _, node = find_workflow_node(workflow, REFERENCE_IMAGE_NODE_NAMES[image_number - 1], label, "LoadImage")
+            image_path, decode_error = _validate_comfy_input_image(image_name, input_directory)
+            if decode_error is not None:
+                if not _reference_image_optional(node):
+                    raise ReferenceAssetError(
+                        f"Required identity reference <Picture {image_number}> in {label} "
+                        f"is invalid ({decode_error}): {image_path}. Restore the image, "
+                        f"set --image{image_number} to a valid file, or explicitly mark "
+                        "its LoadImage node _meta.reference_optional=true."
+                    )
+                optional_removed.add(image_number)
+                console_log(f"Optional identity reference <Picture {image_number}> unavailable: {image_path}; removing its bindings.")
+            elif image_name not in checked:
+                console_log(f"Image {image_name} decoded and verified.")
+                checked.add(image_name)
+    # Record required uses before any disconnect, including slots whose initial
+    # source is disconnected but may still be used by authored identity lookup.
+    for workflow, label, references in (
+        (initial_workflow, "initial workflow", initial_references),
+        (append_workflow, "append workflow", append_references),
+        (refresh_workflow, "refresh workflow", refresh_references),
+    ):
+        for image_number in references:
+            _, node = find_workflow_node(workflow, REFERENCE_IMAGE_NODE_NAMES[image_number - 1], label, "LoadImage")
+            if not _reference_image_optional(node):
+                REQUIRED_CONFIGURED_PICTURE_USES[image_number] = label
+    _check_optional_picture_removal(optional_removed)
+    UNAVAILABLE_OPTIONAL_PICTURE_IDS.update(optional_removed)
+    # A slot removed in one template must not remain active in another.
+    for workflow, kind in ((initial_workflow, "initial"), (append_workflow, "append"), (refresh_workflow, "refresh")):
+        if workflow is not None and optional_removed:
+            prune_missing_reference_images(workflow, kind + " workflow", kind,
+                input_directory=input_directory, excluded_picture_ids=optional_removed)
+    return optional_removed
 
 
 # Verify that command-line LoRAs exist in ComfyUI's LoRA directory.
@@ -3505,6 +3623,7 @@ def build_run_config(
     disable_subject_removal=False,
     visual_style=DEFAULT_VISUAL_STYLE,
     world_state_seed=None,
+    authored_subject_definitions=None,
 ):
     visual_style = normalize_visual_style(visual_style)
     # Auto-discovered video subjects are durable continuity metadata, not a
@@ -3512,7 +3631,7 @@ def build_run_config(
     # resumable run's source fingerprint stable as its registry grows.
     source_subject_definitions = "\n".join(
         line
-        for line in str(subject_definitions or "").splitlines()
+        for line in str(subject_definitions if authored_subject_definitions is None else authored_subject_definitions).splitlines()
         if not re.search(
             r"(?i)\b(?:created|established)\s+in\s+generated\s+video\s+"
             r"segment\s+\d+",
@@ -9695,7 +9814,42 @@ def _location_name_key(value):
     return " ".join(re.findall(r"[a-z0-9]+", str(value or "").casefold()))
 
 
-def resolve_world_state_location_alias(world_state, candidate_name):
+def _is_connection_fixture(fixture):
+    registration = fixture.get("provenance", {}).get("registration", {})
+    type_name = str(registration.get("source_type", ""))
+    name = str(fixture.get("name", ""))
+    connection = r"\b(entrance|opening|aperture|door(?:way)?|portal|tunnel|cave|hole|stairs?|stairway|staircase|hatch|gate)\b"
+    if re.search(connection, type_name, re.I):
+        return True
+    # "Cave floor" is a surface in a place, not the connection into that place.
+    surface = r"\b(floor|ground|landing|platform|table|shelf)\b"
+    if re.search(surface, type_name, re.I) or (
+            fixture.get("kind") in {"support", "fixture_support"}
+            and re.search(surface, name, re.I)):
+        return False
+    return bool(re.search(connection, name, re.I))
+
+
+def matching_connection_fixture_ids(world_state, candidate_name, origin_location_id=""):
+    """Find a named registered entrance without confusing its near-side owner."""
+    query = _location_name_key(candidate_name)
+    matches = []
+    for fixture_id, fixture in (world_state or {}).get("props", {}).items():
+        if (not isinstance(fixture, dict) or fixture.get("mobility") != "fixed"
+                or not _is_connection_fixture(fixture)):
+            continue
+        if origin_location_id and fixture.get("placement", {}).get("location_id") != origin_location_id:
+            continue
+        name = _location_name_key(fixture.get("name"))
+        base = re.sub(r"\b(entrance|opening|aperture|doorway|door|portal|interior|the|a|an|to|into|of)\b", " ", name)
+        base = re.split(r"\b(?:at|beside|near|by)\b", base, maxsplit=1)[0]
+        base = " ".join(base.split())
+        if name == query or (base and (f" {base} " in f" {query} " or f" {query} " in f" {base} ")):
+            matches.append(fixture_id)
+    return matches
+
+
+def resolve_world_state_location_alias(world_state, candidate_name, *, connections=(), origin_location_id=""):
     """Resolve an exact or unambiguous contained name among registered locations."""
     query = _location_name_key(candidate_name)
     if not query:
@@ -9731,12 +9885,26 @@ def resolve_world_state_location_alias(world_state, candidate_name):
         return matches[0]
     # A selector may name a floor, doorway, or fixture instead of its place.
     # Follow an existing fixed fixture's owner; never mint a location for it.
+    connection_ids = matching_connection_fixture_ids(world_state, candidate_name, origin_location_id)
+    linked = {edge.get("destination_location_id") for edge in connections
+              if isinstance(edge, dict)
+              and edge.get("entrance_fixture_id") in connection_ids
+              and (not origin_location_id or edge.get("origin_location_id") == origin_location_id)
+              and edge.get("destination_location_id") in locations}
+    if len(linked) > 1:
+        raise ValueError(f"Connection {candidate_name!r} has ambiguous canonical destinations.")
+    if linked:
+        return next(iter(linked))
     fixture_owners = set()
     for fixture in world_state.get("props", {}).values():
         if not isinstance(fixture, dict) or fixture.get("mobility") != "fixed":
             continue
         name = _location_name_key(fixture.get("name"))
         if not name or not (name == query or f" {name} " in f" {query} "):
+            continue
+        if _is_connection_fixture(fixture):
+            # Entrance ownership identifies the near side, never the place
+            # beyond the entrance. Missing connectivity remains unresolved.
             continue
         owner = fixture.get("placement", {}).get("location_id")
         if owner in locations:
@@ -20340,7 +20508,7 @@ def parse_scene_location_selection(raw_result):
     }
 
 
-def resolve_scene_location_destination(world_state, active_location_id, selection):
+def resolve_scene_location_destination(world_state, active_location_id, selection, *, connections=(), source_text="", beat_text=""):
     """Resolve the selected destination without mutating Subject positions."""
     classification = str((selection or {}).get("classification") or "")
     requested_name = str((selection or {}).get("location_name") or "").strip()
@@ -20364,12 +20532,25 @@ def resolve_scene_location_destination(world_state, active_location_id, selectio
     destination_id = resolve_world_state_location_alias(
         world_state,
         requested_name,
+        connections=connections, origin_location_id=origin_id,
     )
     if destination_id and destination_id == origin_id:
         raise ValueError(
             f"Scene location selector classified the segment as {classification}, "
             "but its destination resolves to the active origin location."
         )
+    if destination_id is None and source_text:
+        # A generated selector label alone cannot authorize a new environment.
+        # Require its named place (or a named canonical entrance) in source and
+        # in the current assigned traversal, with no new model call.
+        query_tokens = set(_location_name_key(requested_name).split())
+        source_tokens = set(_location_name_key(source_text).split())
+        beat_tokens = set(_location_name_key(beat_text).split())
+        content_tokens = query_tokens - {"the", "a", "an", "of", "her", "his", "their", "dark", "bright", "interior", "inside"}
+        source_named = bool(content_tokens) and content_tokens.issubset(source_tokens)
+        beat_named = bool(content_tokens) and content_tokens.issubset(beat_tokens)
+        if not source_named or (beat_text and not beat_named):
+            raise ValueError(f"Unregistered destination {requested_name!r} lacks named source/current-beat support; repair location selection locally.")
     return {
         "classification": classification,
         "origin_location_id": origin_id,
@@ -20377,6 +20558,40 @@ def resolve_scene_location_destination(world_state, active_location_id, selectio
         "location_name": requested_name,
         "requires_registration": destination_id is None,
     }
+
+
+def resolve_scene_location_selection_locally(
+    world_state, active_location_id, beat_text, active_description, registered_locations,
+    *, cached_selection=None, source_text="", connections=(), llm_request=None,
+    history_metadata=None, attempts=3,
+):
+    """Repair only selector output; keep accepted canon and location state intact."""
+    latest_issue = ""
+    for attempt in range(1, max(1, int(attempts)) + 1):
+        try:
+            if attempt == 1 and cached_selection is not None:
+                selection = normalize_cached_scene_location_selection(cached_selection)
+                if selection is None:
+                    raise ValueError("Cached scene-location selection has no supported contract.")
+            else:
+                context = active_description
+                if latest_issue:
+                    context += "\nLOCATION SELECTION VALIDATION ISSUE\n" + latest_issue
+                selection = extract_scene_location_selection(
+                    beat_text, context, registered_locations, llm_request=llm_request,
+                    history_metadata={**dict(history_metadata or {}), "attempt": attempt},
+                )
+            resolution = resolve_scene_location_destination(
+                world_state, active_location_id, selection, connections=connections,
+                source_text=source_text, beat_text=beat_text,
+            )
+            return selection, resolution
+        except ValueError as error:
+            latest_issue = str(error)
+            console_log(f"Scene location selection attempt {attempt}/{attempts} rejected locally: {latest_issue}", flush=True)
+    raise DestinationLocationStageError(
+        f"Scene location selection exhausted {attempts} local attempts: {latest_issue}"
+    )
 
 
 def normalize_cached_scene_location_selection(selection):
@@ -21507,6 +21722,24 @@ def parse_story_setting_text_description(raw_result):
     return description
 
 
+class NeighborFixtureIdentityError(ValueError):
+    """Accepted prose does not identify a fixture's canonical owner clearly."""
+
+
+def _distinct_local_fixture(description, fixture_name, location_name):
+    """Require explicit separate-instance evidence before keeping a shared name."""
+    name = re.escape(_event_name_key(fixture_name))
+    for clause in re.split(r"(?<!\d)[.!?](?!\d)|[;\n]", str(description)):
+        text = _event_name_key(clause)
+        if not re.search(r"\b" + name + r"\b", text):
+            continue
+        distinct = (re.search(r"\b(?:another|different|separate|second|new)\s+" + name + r"\b", text)
+                    or re.search(r"\b" + name + r"\s+(?:is |that is )?distinct from\b", text))
+        if distinct and _event_name_key(location_name) in text:
+            return True
+    return False
+
+
 def reconcile_neighboring_location_fixtures(location_state, world_state, description=""):
     """Keep known neighboring fixtures under their original canonical owner.
 
@@ -21521,36 +21754,56 @@ def reconcile_neighboring_location_fixtures(location_state, world_state, descrip
             known.append((prop_id, prop))
     def key(value):
         return _event_name_key(value)
+    def identity_key(value):
+        # A landmark named only after a spatial relation is not the object
+        # being named: "garden south of the post" is a garden, not that post.
+        head = re.split(
+            r"\b(?:at|beside|near|beyond|outside|inside|next to|"
+            r"(?:north|south|east|west)(?:ern)? of)\b",
+            str(value), maxsplit=1, flags=re.I,
+        )[0].strip()
+        return key(head or value)
     for section in ("anchors", "objects"):
         retained = []
         for item in result.get(section, []):
-            name = key(item.get("name", ""))
+            name = identity_key(item.get("name", ""))
             matches = [(pid, prop) for pid, prop in known
-                       if (key(prop.get("name", "")) == name
+                       if (identity_key(prop.get("name", "")) == name
                            or (len(name.split()) >= 2 and
-                               (f" {name} " in f" {key(prop.get('name', ''))} "
-                                or f" {key(prop.get('name', ''))} " in f" {name} ")))]
+                               (f" {name} " in f" {identity_key(prop.get('name', ''))} "
+                                or f" {identity_key(prop.get('name', ''))} " in f" {name} ")))]
             if not matches:
                 retained.append(item)
                 continue
             if len(matches) != 1:
-                raise ValueError(f"Ambiguous neighboring fixture identity: {item['name']!r}")
+                raise NeighborFixtureIdentityError(
+                    f"Ambiguous neighboring fixture identity: {item['name']!r}; canonical owners: "
+                    + repr([world_state.get("locations", {}).get(prop.get("placement", {}).get("location_id"), {}).get("name", "unknown") for _, prop in matches])
+                )
             prop_id, prop = matches[0]
             owner = (world_state or {}).get("locations", {}).get(
                 prop.get("placement", {}).get("location_id"), {}).get("name", "")
             if key(owner) == key(result.get("location", {}).get("name", "")):
                 retained.append(item)
                 continue
+            if _distinct_local_fixture(description, item["name"], result.get("location", {}).get("name", "")):
+                retained.append(item)
+                continue
             type_name = key(prop.get("provenance", {}).get("registration", {}).get("source_type", ""))
             if type_name and type_name != key(item.get("type", "")):
-                raise ValueError(f"Conflicting neighboring fixture type: {item['name']!r}")
+                raise NeighborFixtureIdentityError(f"Conflicting neighboring fixture type: {item['name']!r}; canonical owner {owner!r}, canonical type {type_name!r}, extracted type {item.get('type')!r}. Clarify whether this is the existing neighboring fixture or a genuinely distinct local fixture.")
             # A generic 'door' may be a second physical door. Require ownership
             # or explicit neighbor orientation rather than silently merging it.
-            evidence = key(str(description) + " " + json.dumps(item))
             distinctive = bool(re.search(r"[’\']s\b", str(item.get("name", ""))))
-            oriented = bool(owner and f" {key(owner)} " in f" {evidence} ")
+            # Ownership evidence must describe this fixture, not another
+            # sentence that happens to mention the same neighboring place.
+            fixture_clauses = [key(clause) for clause in re.split(
+                r"(?<!\d)[.!?](?!\d)|[;\n]", str(description))
+                if f" {name} " in f" {key(clause)} "]
+            oriented = bool(owner and any(f" {key(owner)} " in f" {clause} "
+                                         for clause in fixture_clauses))
             if not distinctive and not oriented:
-                raise ValueError(f"Ambiguous neighboring fixture {item['name']!r}; clarify its owner")
+                raise NeighborFixtureIdentityError(f"Ambiguous neighboring fixture {item['name']!r}; canonical owner {owner!r}; clarify neighboring orientation versus a genuinely distinct local fixture.")
             console_log(f"Reused neighboring fixture {item['name']!r} ({prop_id}), owner {owner!r}; excluded duplicate registration.", flush=True)
         result[section] = retained
     return result
@@ -21766,7 +22019,16 @@ def build_story_setting_description_repair_messages(
         },
     ]
 
-class StorySettingJSONExtractionError(ValueError):
+class DestinationLocationStageError(PipelineStageExhaustedError):
+    def __init__(self, diagnostic):
+        super().__init__("destination_location", diagnostic)
+
+
+class StorySettingDescriptionError(DestinationLocationStageError, ValueError):
+    """Physical-description repair budget exhausted at its owning stage."""
+
+
+class StorySettingJSONExtractionError(DestinationLocationStageError, ValueError):
     """JSON-only extraction exhausted; do not discard accepted physical text."""
 
 
@@ -21792,7 +22054,7 @@ def extract_story_setting_description(
         location_name=location_name,
     )
     if source_geometry_issues:
-        raise ValueError("Authored physical conflict requires source clarification: " + "; ".join(source_geometry_issues))
+        raise StorySettingDescriptionError("Authored physical conflict requires source clarification: " + "; ".join(source_geometry_issues))
     base_messages = build_story_setting_description_messages(
         spatial_location, static_setting=static_setting,
         neighboring_location_context=neighboring_location_context,
@@ -21836,6 +22098,8 @@ def extract_story_setting_description(
                 fixture_name = str(prop.get("name") or "").strip()
                 if not fixture_name or not owner or owner.casefold() == str(location_name).strip().casefold():
                     continue
+                if _distinct_local_fixture(candidate_description, fixture_name, location_name):
+                    continue
                 for clause in re.split(r"(?<!\d)[.!?](?!\d)|[;\n]", candidate_description):
                     if fixture_name.lower() not in clause.lower():
                         continue
@@ -21869,48 +22133,54 @@ def extract_story_setting_description(
                 f"story_setting_extract repair attempt {repair_attempt}/{max_repairs} accepted.",
                 flush=True,
             )
-        break
-
-    if not accepted_description:
-        raise ValueError(
-            f"Could not validate spatial setting text after {max_repairs} repairs; "
-            f"latest validation issue: {previous_issue or 'unknown description error'}"
+        # JSON syntax/schema retries use the unchanged accepted prose. A
+        # semantic identity failure returns to this same bounded prose loop.
+        json_messages = build_story_setting_json_extraction_messages(
+            accepted_description, location_name=location_name,
         )
+        latest_issue = ""
+        max_json_attempts = max(1, int(json_attempts))
+        for attempt in range(1, max_json_attempts + 1):
+            raw = llm_request(
+                [dict(message) for message in json_messages],
+                response_format=None,
+                parse_json_response=False,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "story_setting_json_extract",
+                    "attempt": attempt,
+                },
+            )
+            try:
+                result = parse_story_setting_json_extraction(
+                    raw, description=accepted_description, location_name=location_name,
+                )
+                result["location_state"] = reconcile_neighboring_location_fixtures(
+                    result["location_state"], world_state, accepted_description,
+                )
+                return result
+            except NeighborFixtureIdentityError as error:
+                previous_issue = str(error)
+                previous_raw = accepted_description
+                accepted_description = ""
+                console_log(f"Destination fixture reconciliation requires physical-description repair: {previous_issue}", flush=True)
+                break
+            except (TypeError, ValueError) as error:
+                latest_issue = str(error)
+                console_log(
+                    f"story_setting_json_extract attempt {attempt}/{max_json_attempts} "
+                    f"rejected; retrying fresh from accepted description: {latest_issue}",
+                    flush=True,
+                )
+        if accepted_description:
+            raise StorySettingJSONExtractionError(
+                "Could not extract location_state JSON from accepted description after "
+                f"{max_json_attempts} attempts: {latest_issue}"
+            )
 
-    json_messages = build_story_setting_json_extraction_messages(
-        accepted_description, location_name=location_name,
-    )
-    latest_issue = ""
-    max_json_attempts = max(1, int(json_attempts))
-    for attempt in range(1, max_json_attempts + 1):
-        raw = llm_request(
-            [dict(message) for message in json_messages],
-            response_format=None,
-            parse_json_response=False,
-            history_metadata={
-                **dict(history_metadata or {}),
-                "purpose": "story_setting_json_extract",
-                "attempt": attempt,
-            },
-        )
-        try:
-            result = parse_story_setting_json_extraction(
-                raw, description=accepted_description, location_name=location_name,
-            )
-            result["location_state"] = reconcile_neighboring_location_fixtures(
-                result["location_state"], world_state, accepted_description,
-            )
-            return result
-        except (TypeError, ValueError) as error:
-            latest_issue = str(error)
-            console_log(
-                f"story_setting_json_extract attempt {attempt}/{max_json_attempts} "
-                f"rejected; retrying fresh from accepted description: {latest_issue}",
-                flush=True,
-            )
-    raise StorySettingJSONExtractionError(
-        "Could not extract location_state JSON from accepted description after "
-        f"{max_json_attempts} attempts: {latest_issue}"
+    raise StorySettingDescriptionError(
+        f"Could not validate destination physical description after {max_repairs} repairs; "
+        f"latest validation issue: {previous_issue or 'unknown description error'}"
     )
 
 
@@ -35416,6 +35686,8 @@ def subject_identity_reference_image(subject_record):
         return ""
     if picture_id <= 0 or picture_id > len(REFERENCE_IMAGE_NODE_NAMES):
         return ""
+    if picture_id in UNAVAILABLE_OPTIONAL_PICTURE_IDS:
+        return ""
 
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     label = f"identity source workflow '{INITIAL_WORKFLOW_FILE}'"
@@ -35434,7 +35706,9 @@ def subject_identity_reference_image(subject_record):
         COMFY_INPUT,
     )
     if decode_error is not None:
-        raise FileNotFoundError(
+        if _reference_image_optional(image_node):
+            return ""
+        raise ReferenceAssetError(
             f"Identity reference <Picture {picture_id}> for "
             f"{subject_record.get('name')!r} is invalid ({decode_error}): "
             f"{image_path}"
@@ -39733,7 +40007,9 @@ def _translate_world_state_event(state, event, raw_scene, segment_number, event_
         origin = _event_destination_location(state, source, event_index)
         if origin and actor.get("location_id") != origin[0]:
             raise WorldStateEventExtractionError(f"event {event_index}: movement source conflicts with current canonical position.")
-    if op in {"move", "enter", "exit"} and (destination or (obj if op == "enter" else None)):
+    if (op in {"move", "enter", "exit"}
+            and not event.get("_connected_movement_evidence")
+            and (destination or (obj if op == "enter" else None))):
         mentioned_destination = destination or obj
         if not _event_name_matches(mentioned_destination, raw_scene):
             resolved = _event_destination_location(state, mentioned_destination, event_index)
@@ -39971,23 +40247,26 @@ def _world_state_event_name_resolution(world_state):
     }
 
 
+WORLD_STATE_EVENT_RAW_PATTERNS = {
+    "move": r"mov(?:e[sd]?|ing)|step(?:s|ped|ping)?|walk(?:s|ed|ing)?|run(?:s|ning)?|ran|descend\w*|ascend\w*|fall(?:s|ing)?|fell|reach\w*|land\w*|arriv\w*|cross\w*|climb\w*|crawl\w*|jump\w*|sink\w*|sank|slid\w*|enter\w*|emerg\w*",
+    "enter": r"enter\w*|step\w*|walk\w*|arriv\w*|reach\w*|come\w*|came",
+    "exit": r"exit\w*|leav\w*|left|depart\w*|emerg\w*|step\w*|walk\w*",
+    "take": r"tak(?:e[sn]?|ing)|took|pick\w*|retriev\w*|pull\w*|grab\w*|receiv\w*|acquir\w*|hold\w*|held",
+    "put": r"put\w*|plac\w*|set\w*|hand\w*|giv\w*|gave|pass\w*|drop\w*",
+    "release": r"releas\w*|drop\w*|let(?:s)? go|relinquish\w*",
+    "transfer": r"pour\w*|transfer\w*|empt\w*",
+    "consume": r"consum\w*|eat\w*|ate|drink\w*|drank|sip\w*|finish\w*",
+    "modify": r"unlock\w*|lock\w*|clos\w*|shut\w*|open\w*|put(?:s|ting)? on|tak(?:e[sd]?|ing) off|took off|remov\w*|replac\w*|chang\w*|don\w*|wear\w*|torn|tear\w*|rip\w*|damag\w*|dirt\w*|soil\w*|wet|dry|clean\w*|stain\w*",
+}
+
+
 def _event_raw_support_issue(event, raw_scene, state):
     """Conservative lexical grounding; the accepted RAW remains the authority.
 
     These checks reject unsupported event interpretations, rather than inferring
     missing events. The reducer separately validates physical preconditions.
     """
-    patterns = {
-        "move": r"mov(?:e[sd]?|ing)|step(?:s|ped|ping)?|walk(?:s|ed|ing)?|run(?:s|ning)?|ran|descend\w*|ascend\w*|fall(?:s|ing)?|fell|reach\w*|land\w*|arriv\w*|cross\w*|climb\w*|crawl\w*|jump\w*|sink\w*|sank|slid\w*|enter\w*|emerg\w*",
-        "enter": r"enter\w*|step\w*|walk\w*|arriv\w*|reach\w*|come\w*|came",
-        "exit": r"exit\w*|leav\w*|left|depart\w*|emerg\w*|step\w*|walk\w*",
-        "take": r"tak(?:e[sn]?|ing)|took|pick\w*|retriev\w*|pull\w*|grab\w*|receiv\w*|acquir\w*|hold\w*|held",
-        "put": r"put\w*|plac\w*|set\w*|hand\w*|giv\w*|gave|pass\w*|drop\w*",
-        "release": r"releas\w*|drop\w*|let(?:s)? go|relinquish\w*",
-        "transfer": r"pour\w*|transfer\w*|empt\w*",
-        "consume": r"consum\w*|eat\w*|ate|drink\w*|drank|sip\w*|finish\w*",
-        "modify": r"unlock\w*|lock\w*|clos\w*|shut\w*|open\w*|put(?:s|ting)? on|tak(?:e[sd]?|ing) off|took off|remov\w*|replac\w*|chang\w*|don\w*|wear\w*|torn|tear\w*|rip\w*|damag\w*|dirt\w*|soil\w*|wet|dry|clean\w*|stain\w*",
-    }
+    patterns = WORLD_STATE_EVENT_RAW_PATTERNS
     pattern = patterns.get(event["action"], r"(?!)")
     if event["action"] == "modify":
         signal = _event_name_key(str(event.get("relation") or "") + " " + str(event.get("result") or ""))
@@ -40053,12 +40332,111 @@ def _event_raw_support_issue(event, raw_scene, state):
     return "accepted RAW does not explicitly support this actor/object action"
 
 
+def _event_connected_movement_grounding(event, raw_scene, state, context):
+    """Ground paraphrased traversal using accepted text and an existing connection.
+
+    A selector's chosen destination is deliberately absent from this contract.
+    Source context identifies the journey; RAW must actually perform it.
+    """
+    if event.get("action") not in {"move", "enter"} or not context:
+        return None
+    if event.get("object") and not _event_name_matches(event["object"], raw_scene):
+        return None
+    actor = _event_resolve_entity(state, "subject", event.get("actor"), 0, optional=True)
+    if actor is None:
+        return None
+    actor_id, actor_record = actor
+    origin = actor_record.get("location_id")
+    source_text = "\n".join(str(context.get(key) or "") for key in ("current_beat", "assigned_source"))
+    requested = set(_event_name_key(event.get("destination") or event.get("object")).split())
+    candidates = []
+    for connection in context.get("connections", []):
+        if not isinstance(connection, dict) or connection.get("origin_location_id") != origin:
+            continue
+        destination_id = connection.get("destination_location_id")
+        destination = state.get("locations", {}).get(destination_id)
+        entrance = state.get("props", {}).get(connection.get("entrance_fixture_id"))
+        if (not destination or not entrance or destination_id == origin
+                or entrance.get("placement", {}).get("location_id") != origin):
+            continue
+        place_name = str(destination.get("name") or "")
+        entrance_name = str(entrance.get("name") or "")
+        entrance_base = re.sub(r"\s+(?:entrance|doorway|door|opening|portal|hatch)$", "", entrance_name, flags=re.I)
+        names = {place_name, entrance_name, entrance_base}
+        # This overlap only identifies a registered endpoint. It cannot prove
+        # movement: source, canonical connection, and RAW traversal are required.
+        tokens = set(_event_name_key(place_name).split()) - {"the", "interior", "inside"}
+        if not tokens or len(tokens & requested) < min(2, len(tokens)):
+            continue
+        if not any(_event_name_matches(name, source_text) for name in names if name):
+            continue
+        source_sentences = re.split(r"(?<=[.!?])\s+|[\r\n]+", source_text)
+        if not any(re.search(r"\b(?:" + WORLD_STATE_EVENT_RAW_PATTERNS[event["action"]] + r")\b", sentence, re.I)
+                   and not re.search(r"\b(?:not|never|cannot|without)\b", sentence, re.I)
+                   and any(_event_name_matches(name, sentence) for name in names if name)
+                   for sentence in source_sentences):
+            continue
+        if not any(_event_name_matches(name, raw_scene) for name in names if name):
+            continue
+        candidates.append((destination_id, destination, entrance))
+    unique = {item[0]: item for item in candidates}
+    if len(unique) != 1:
+        return None
+    destination_id, destination, entrance = next(iter(unique.values()))
+    antecedent = None
+    known_entrance = False
+    movement_pattern = WORLD_STATE_EVENT_RAW_PATTERNS[event["action"]]
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", str(raw_scene or "")):
+        if (_event_name_matches(destination["name"], sentence)
+                or _event_name_matches(entrance["name"], sentence)):
+            known_entrance = True
+        mentioned = [subject_id for subject_id, subject in state.get("subjects", {}).items()
+                     if _event_name_matches(subject.get("name"), sentence)]
+        if mentioned:
+            antecedent = mentioned[0] if len(mentioned) == 1 else None
+        actor_explicit = actor_id in mentioned and len(mentioned) == 1
+        pronoun = bool(re.search(r"\b(?:she|he|they|it)\b", sentence, re.I))
+        if not actor_explicit and not (pronoun and antecedent == actor_id and not mentioned):
+            continue
+        if not re.search(r"\b(?:" + movement_pattern + r")\b", sentence, re.I):
+            continue
+        if re.search(r"\b(?:not|never|cannot|without|will|would|might|tries|attempts)\b", sentence, re.I):
+            continue
+        if not re.search(r"\b(?:through|into|inside|down|enters?|entered)\b", sentence, re.I):
+            continue
+        named_endpoint = (_event_name_matches(destination["name"], sentence)
+                          or _event_name_matches(entrance["name"], sentence))
+        complements = re.findall(r"\b(?:through|into|inside)\s+([^.;,]+)", sentence, re.I)
+        endpoint = re.split(r"\b(?:through|into|inside|and|then)\b", complements[-1], flags=re.I)[-1].strip() if complements else ""
+        deictic_endpoints = {"the opening", "this opening", "that opening", "the entrance",
+                            "the doorway", "the door", "the portal", "the hatch", "the passage",
+                            "darkness", "the darkness", "the interior", "inside"}
+        endpoint_key = _event_name_key(endpoint)
+        if endpoint and not any(_event_name_matches(name, endpoint) for name in (destination["name"], entrance["name"])):
+            if not known_entrance or endpoint_key not in deictic_endpoints:
+                continue
+        elif not named_endpoint and not (known_entrance and endpoint_key in deictic_endpoints):
+            continue
+        conflicting = [location_id for location_id, location in state.get("locations", {}).items()
+                       if location_id not in {origin, destination_id}
+                       and _event_name_matches(location.get("name"), sentence)]
+        if conflicting:
+            continue
+        return {"destination_location_id": destination_id,
+                "destination_name": destination["name"],
+                "entrance_fixture_id": entrance["id"],
+                "raw_evidence": sentence.strip(),
+                "basis": "explicit RAW traversal, source destination, and registered connection"}
+    return None
+
+
 def _event_destination_location(state, value, event_index):
     """Resolve a place or a fixed surface through its canonical owning location."""
     loc = _event_resolve_entity(state, "location", value, event_index, optional=True)
     fixture = _event_resolve_entity(state, "prop", value, event_index, optional=True)
     owner = None
-    if fixture and fixture[1].get("mobility") == "fixed":
+    if (fixture and fixture[1].get("mobility") == "fixed"
+            and not _is_connection_fixture(fixture[1])):
         owner_id = fixture[1].get("placement", {}).get("location_id")
         if owner_id in state.get("locations", {}):
             owner = (owner_id, state["locations"][owner_id])
@@ -40068,7 +40446,7 @@ def _event_destination_location(state, value, event_index):
     return loc or owner
 
 
-def translate_world_state_events(world_state, events, raw_scene, *, segment_number):
+def translate_world_state_events(world_state, events, raw_scene, *, segment_number, grounding_context=None):
     opening = copy.deepcopy(world_state)
     name_resolution = _world_state_event_name_resolution(opening)
     actions, action_names, current = [], [], copy.deepcopy(opening)
@@ -40082,11 +40460,26 @@ def translate_world_state_events(world_state, events, raw_scene, *, segment_numb
                     and event.get("action") in {"release", "put"}
                     and not event.get("destination")):
                 raise WorldStateEventExtractionError("implicit placement depends on an earlier rejected movement")
-            issue = _event_raw_support_issue(event, raw_scene, current)
-            if issue:
-                raise WorldStateEventExtractionError(issue)
+            evidence = None
+            semantic_event = event
+            if (_event_name_key(event.get("actor")) in {"she", "he", "they", "it"}
+                    and event.get("action") in {"move", "enter"}):
+                named = [subject for subject in current.get("subjects", {}).values()
+                         if _event_name_matches(subject.get("name"), raw_scene)]
+                if len(named) == 1:
+                    semantic_event = {**event, "actor": named[0]["name"]}
+            evidence = _event_connected_movement_grounding(
+                semantic_event, raw_scene, current, grounding_context)
+            translated_event = semantic_event
+            if evidence:
+                translated_event = {**semantic_event, "destination": evidence["destination_name"],
+                                    "_connected_movement_evidence": evidence}
+            else:
+                issue = _event_raw_support_issue(semantic_event, raw_scene, current)
+                if issue:
+                    raise WorldStateEventExtractionError(issue)
             event_actions = _translate_world_state_event(
-                current, event, raw_scene, segment_number, event_index)
+                current, translated_event, raw_scene, segment_number, event_index)
             if not event_actions:
                 status, reason = "skipped", "no persistent state change or resolvable destination"
                 if event.get("action") in {"move", "enter", "exit"} and event.get("destination"):
@@ -40114,6 +40507,8 @@ def translate_world_state_events(world_state, events, raw_scene, *, segment_numb
                     current = reduce_world_state(
                         opening, parsed["state_actions"], segment_number=int(segment_number)).world_state
                     status, reason = "accepted", "RAW evidence and reducer preconditions satisfied"
+                    if evidence:
+                        reason += "; " + evidence["basis"] + ": " + evidence["raw_evidence"]
                     if event.get("action") in {"move", "enter", "exit"}:
                         unresolved_positions.discard(_event_name_key(event.get("actor")))
         except (WorldStateEventExtractionError, TypeError, ValueError, KeyError, IndexError) as error:
@@ -40131,7 +40526,7 @@ def translate_world_state_events(world_state, events, raw_scene, *, segment_numb
     return {**final, "event_diagnostics": diagnostics, "raw_scene": raw_scene}
 
 
-def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_number, run_id=None, run_config=None):
+def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_number, run_id=None, run_config=None, grounding_context=None):
     immutable_raw = _director_strip_camera_instructions(str(raw_scene or ""))
     opening_hash = hashlib.sha256(json.dumps(world_state, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
     metadata = {"run_id": run_id, "source_sha256": (run_config or {}).get("source_sha256"),
@@ -40163,7 +40558,7 @@ def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_nu
         if events is None:
             raise WorldStateEventExtractionError(f"No event list returned for Segment {segment_number}.")
         console_log("WORLDSTATE EVENTS " + json.dumps({"segment": segment_number, "events": events}, ensure_ascii=False), flush=True)
-        result = translate_world_state_events(world_state, events, immutable_raw, segment_number=int(segment_number))
+        result = translate_world_state_events(world_state, events, immutable_raw, segment_number=int(segment_number), grounding_context=grounding_context)
         _assert_event_raw_unchanged(immutable_raw, result, segment_number)
     except (
         LLMConnectionError,
@@ -42862,6 +43257,35 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
                 restored_reference_overrides[image_number] = str(raw_path).strip()
     restored_reference_overrides.update(REFERENCE_IMAGE_OVERRIDES)
     REFERENCE_IMAGE_OVERRIDES = restored_reference_overrides
+    optional_missing_pictures = preflight_reference_images(
+        refresh=config.get("refresh_interval") is not None,
+    ) or set()
+    for record in prompts:
+        generated_pictures = {
+            int(reference.get("picture_number") or 0)
+            for reference in (record.get("character_reference_images") or {}).values()
+            if isinstance(reference, dict)
+        }
+        removed_bindings = optional_missing_pictures - generated_pictures
+        record["subject_definitions"] = remove_optional_picture_bindings(
+            record.get("subject_definitions", ""), removed_bindings,
+        )
+        record["excluded_picture_ids"] = sorted(set(record.get("excluded_picture_ids", [])) | removed_bindings)
+        record["h3_prompt"] = remove_optional_picture_bindings(
+            record.get("h3_prompt", ""), removed_bindings,
+        )
+    # Validate every configured saved-job dependency before the first render.
+    for job in payload.get("reference_jobs", []):
+        source = job.get("identity_source") or {}
+        if source.get("kind") != "configured_picture":
+            continue
+        image_name = source.get("image_name")
+        image_path, issue = _validate_comfy_input_image(image_name, COMFY_INPUT)
+        if issue:
+            if source.get("optional") is True:
+                job["identity_source"] = {"kind": "none"}
+            else:
+                raise ReferenceAssetError(f"Required saved identity image is invalid ({issue}): {image_path}. Restore the file or regenerate the prompt package with the intended reference.")
     segment_length = float(config["segment_length"])
     total_length = float(config["total_length"])
     megapixels = float(config["megapixels"])
@@ -43229,6 +43653,11 @@ def _run_main(
 ):
     args = parse_args()
     configure_reference_image_overrides(args)
+    optional_missing_pictures = set()
+    if not (getattr(args, "use_prompts", None) or getattr(args, "generate_from_prompts", False)):
+        optional_missing_pictures = preflight_reference_images(
+            refresh=getattr(args, "refresh", None) is not None,
+        ) or set()
     pre_director_replay = None
     replay_fixture_path = getattr(args, "pre_director_replay_fixture", None)
     if replay_fixture_path:
@@ -43382,6 +43811,11 @@ def _run_main(
         str(replay_inputs.get("subject_definitions") or "")
         if pre_director_replay is not None
         else load_text_file(SUBJECT_DEFINITIONS_FILE, required=False)
+    )
+    authored_subject_definitions = base_subject_definitions
+    optional_missing_pictures.update(verify_subject_identity_references(authored_subject_definitions))
+    base_subject_definitions = remove_optional_picture_bindings(
+        base_subject_definitions, optional_missing_pictures,
     )
     subject_definitions = base_subject_definitions
     existing_beats = (
@@ -43830,8 +44264,9 @@ def _run_main(
             getattr(args, "disable_subject_removal", False)
         ),
         visual_style=visual_style,
+        authored_subject_definitions=authored_subject_definitions,
         world_state_seed=authoritative_world_state_seed_from_subject_definitions(
-            base_subject_definitions,
+            authored_subject_definitions,
             SUBJECT_DEFINITIONS_FILE,
         ),
     )
@@ -44438,7 +44873,7 @@ def _run_main(
         """Select, register, and prepare one location before any Director call."""
         nonlocal active_location_id
         segment_number = int(segment_number)
-        metadata = generation_state.get("metadata")
+        metadata = copy.deepcopy(generation_state.get("metadata"))
         if not isinstance(metadata, dict):
             metadata = {}
         contexts = metadata.get("location_contexts")
@@ -44545,41 +44980,17 @@ def _run_main(
                         context.get("setting_description") or ""
                     ) if isinstance(context, dict) else "",
                 })
-            selection = normalize_cached_scene_location_selection(
-                selection_cache.get(cache_key)
+            selection, resolution = resolve_scene_location_selection_locally(
+                world_state, active_location_id, beat_text,
+                str(active_context.get("setting_description") or ""), registered_locations,
+                cached_selection=selection_cache.get(cache_key),
+                source_text=expanded_story_context or story,
+                connections=metadata.get("location_connections", []),
+                history_metadata={"run_id": run_id, "segment": segment_number},
             )
-            if selection is None:
-                selection = extract_scene_location_selection(
-                    beat_text,
-                    (
-                        str(active_context.get("setting_description") or "")
-                        if isinstance(active_context, dict)
-                        else ""
-                    ),
-                    registered_locations,
-                    history_metadata={
-                        "run_id": run_id,
-                        "segment": segment_number,
-                    },
-                )
-                selection_cache[cache_key] = copy.deepcopy(selection)
-                metadata["scene_location_selections"] = selection_cache
-                generation_state["metadata"] = metadata
-                checkpoint_generation_state()
-            elif selection_cache.get(cache_key) != selection:
-                # Normalize earlier selector checkpoints in-place so retries and
-                # resume use the same compact classification contract.
-                selection_cache[cache_key] = copy.deepcopy(selection)
-                metadata["scene_location_selections"] = selection_cache
-                generation_state["metadata"] = metadata
-                checkpoint_generation_state()
+            selection_cache[cache_key] = copy.deepcopy(selection)
             classification = selection["classification"]
             requested_name = selection["location_name"]
-            resolution = resolve_scene_location_destination(
-                world_state,
-                active_location_id,
-                selection,
-            )
             selected_id = str(resolution.get("destination_location_id") or "")
             if resolution.get("requires_registration"):
                 # A transitioning origin is already accepted physical truth.
@@ -44634,7 +45045,6 @@ def _run_main(
                     canonical_state,
                     location_name=requested_name,
                 )
-                generation_state["world_state"] = world_state
                 context = {
                     "location_id": selected_id,
                     "name": requested_name,
@@ -44698,6 +45108,19 @@ def _run_main(
                 origin_context,
                 segment_number,
             )
+        context = ensure_location_reference_for_segment(context, segment_number)
+        # Seed/reconcile against a candidate copy. Publish only after the whole
+        # destination stage succeeds; a failed reference leaves canon intact.
+        generation_state["world_state"] = world_state
+        if classification == "transitioning":
+            entrance_ids = matching_connection_fixture_ids(world_state, requested_name, origin_id)
+            if len(entrance_ids) == 1:
+                connection = {"origin_location_id": origin_id,
+                              "entrance_fixture_id": entrance_ids[0],
+                              "destination_location_id": selected_id}
+                connections = metadata.setdefault("location_connections", [])
+                if connection not in connections:
+                    connections.append(connection)
         active_location_id = selected_id
         cached_ids[cache_key] = selected_id
         metadata["active_location_id"] = selected_id
@@ -44715,10 +45138,6 @@ def _run_main(
         generation_state["metadata"] = metadata
         generation_state["location_state"] = copy.deepcopy(
             context.get("location_state", {})
-        )
-        context = ensure_location_reference_for_segment(
-            context,
-            segment_number,
         )
         metadata["location_contexts"] = contexts
         metadata["location_reference_video"] = str(
@@ -45299,6 +45718,13 @@ def _run_main(
                 segment_number=segment,
                 run_id=run_id,
                 run_config=run_config,
+                grounding_context={
+                    "current_beat": segment_bundle.get("current_beat_text", ""),
+                    "assigned_source": segment_bundle.get("assigned_source", ""),
+                    "connections": copy.deepcopy(
+                        (generation_state.get("metadata") or {}).get("location_connections", [])
+                    ),
+                },
             )
         except (
             LLMConnectionError,
@@ -46346,97 +46772,43 @@ def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
     return contiguous + 1
 
 
-# Run the command-line application under a persistent recovery supervisor.
+# Each stage owns recovery; the entry point must never replay accepted upstream work.
 def main():
     reset_console_logs()
     console_log("Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
-    recovery_resume_segment = None
-    previous_failure = None
-    repeated_failure_count = 0
-    while True:
-        try:
-            # Recreate worker pools after every failed attempt. Their context
-            # managers drain/cancel the old work before the next recovery pass.
+    try:
+        with ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="continuity-summary",
+        ) as summary_executor:
             with ThreadPoolExecutor(
-                max_workers=1,
-                thread_name_prefix="continuity-summary",
-            ) as summary_executor:
+                max_workers=1, thread_name_prefix="director-prefetch",
+            ) as director_prefetch_executor:
                 with ThreadPoolExecutor(
-                    max_workers=1,
-                    thread_name_prefix="director-prefetch",
-                ) as director_prefetch_executor:
-                    with ThreadPoolExecutor(
-                        max_workers=1,
-                        thread_name_prefix="comfyui-render",
-                    ) as render_executor:
-                        return _run_main(
-                            summary_executor,
-                            director_prefetch_executor,
-                            render_executor,
-                            recovery_resume_segment=recovery_resume_segment,
-                        )
-        except (LLMConnectionError, ComfyUIConnectionError):
-            # The only automatic fatal conditions: required external runtime is
-            # unreachable. Prompt-only mode never enters the ComfyUI path.
-            raise
-        except KeyboardInterrupt:
-            raise
-        except SystemExit:
-            # argparse exits are command-line usage handling, not generation
-            # failures. The three fatal runtime conditions are handled above.
-            raise
-        except NameError as error:
-            # A programming error cannot be fixed by re-generating LLM stages.
-            console_log(
-                f"FATAL: Python programming error (not recoverable by retry): {error}",
-                file=sys.stderr, flush=True,
-            )
-            raise
-        except Exception as error:
-            # Always resume at the first incomplete segment. If failure
-            # occurred after a RAW-producing stage, this rebuilds that segment
-            # from its immutable opening state instead of replaying completed
-            # segments or restarting the entire run from Segment 1.
-            recovery_resume_segment = _checkpoint_recovery_resume_segment()
-            if recovery_resume_segment is None:
-                recovery_resume_segment = 1
-            failure = (type(error).__name__, str(error), recovery_resume_segment)
-            if failure == previous_failure:
-                repeated_failure_count += 1
-            else:
-                previous_failure = failure
-                repeated_failure_count = 1
-            if repeated_failure_count >= 3:
-                console_log(
-                    "FATAL: identical failure repeated three times at the same "
-                    f"incomplete segment {recovery_resume_segment}: {error}",
-                    file=sys.stderr, flush=True,
-                )
-                raise
-            if isinstance(error, PipelineStageRetryError):
-                console_log(
-                    f"Backstep requested: {error.stage_name} -> "
-                    f"{error.previous_stage}; restarting from incomplete "
-                    f"segment {recovery_resume_segment}.",
-                    file=sys.stderr,
-                    flush=True,
-                )
-            console_log(
-                f"WARNING: recoverable generation failure: {error}",
-                file=sys.stderr,
-                flush=True,
-            )
-            console_log(
-                "Restarting from the last committed checkpoint at segment "
-                f"{recovery_resume_segment}; the existing ARC/beat plan is retained.",
-                file=sys.stderr,
-                flush=True,
-            )
-            if os.environ.get("MINIMAX_DEBUG", "").strip().casefold() in {
-                "1", "true", "yes", "on"
-            }:
-                traceback.print_exc()
-            time.sleep(1)
+                    max_workers=1, thread_name_prefix="comfyui-render",
+                ) as render_executor:
+                    return _run_main(
+                        summary_executor,
+                        director_prefetch_executor,
+                        render_executor,
+                        recovery_resume_segment=None,
+                    )
+    except (LLMConnectionError, ComfyUIConnectionError, KeyboardInterrupt, SystemExit):
+        raise
+    except Exception as error:
+        if isinstance(error, (NameError, AttributeError, TypeError, AssertionError, IndexError)):
+            category = "Python programming error (not recoverable by retry)"
+        elif isinstance(error, PipelineStageExhaustedError):
+            category = f"required stage {error.stage_name!r} exhausted local recovery"
+        else:
+            category = f"{type(error).__name__} at the owning stage"
+        console_log(
+            f"FATAL: {category}: {error}. Stopping without upstream replay; "
+            "accepted outputs and completed-segment checkpoints are preserved.",
+            file=sys.stderr, flush=True,
+        )
+        if os.environ.get("MINIMAX_DEBUG", "").strip().casefold() in {"1", "true", "yes", "on"}:
+            traceback.print_exc()
+        raise
 
 
 if __name__ == "__main__":

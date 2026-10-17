@@ -494,9 +494,11 @@ class LocationStateReferenceTests(unittest.TestCase):
         selection_start = source.index("def prepare_scene_location_for_segment(")
         selection_end = source.index("# Assemble the prefetched data", selection_start)
         selection_body = source[selection_start:selection_end]
-        cached = selection_body.index("selection_cache.get(cache_key)")
-        selector = selection_body.index("extract_scene_location_selection(")
-        self.assertLess(cached, selector)
+        self.assertIn("cached_selection=selection_cache.get(cache_key)", selection_body)
+        self.assertIn("resolve_scene_location_selection_locally(", selection_body)
+        resolver_body = inspect.getsource(minimax.resolve_scene_location_selection_locally)
+        self.assertLess(resolver_body.index("cached_selection is not None"),
+                        resolver_body.index("extract_scene_location_selection("))
         prefetch_location = source.index(
             "prepare_scene_location_for_segment(segment + 1)"
         )

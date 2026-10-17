@@ -1025,3 +1025,93 @@ ComfyUI render was run for this change.** Run a fresh Alice generation from auth
 inputs with regenerated location descriptions and reference videos, inspect event
 diagnostics and committed locations for all six segments, then verify the visual
 transitions. Old generated location/reference artifacts do not verify these fixes.
+
+## 2026-10-17 — stop Segment-1 replay and recover within the failed stage
+
+Implemented on `multi-location-support`, starting from `b2691097`. Read the
+operating contract, prior handoff, and that commit before editing. Investigated
+the supplied automation `console_logs.txt`, `generation_state.json`, and
+`prompt_history.txt`: 11 supervisor restarts, zero completed segments, repeatedly
+regenerated canon/wardrobe/start state, selector-to-origin collisions, semantic
+fixture errors retried as identical JSON extractions, and a missing required
+`/home/j/AI/ComfyUI/input/amy.jpg`. That file is still absent; it was not replaced.
+
+- Required configured image assets now fail preflight before canon, wardrobe,
+  LLM requests, or render dispatch. Authored Picture dependencies are also checked
+  when their LoadImage slots are disconnected. Saved prompt/reference-job assets
+  are validated before saved rendering. `ReferenceAssetError` gives the expected
+  path and a repair/override action.
+- Optionality is explicit: `_meta.reference_optional: true` on a LoadImage node;
+  saved-job configured-picture sources may explicitly set `optional: true`.
+  Unavailable optional Pictures are disconnected and removed from runtime Subject
+  and H3 bindings, including workflow reload and checkpoint-derived binding paths.
+  A required use of the same Picture in another workflow prevents optional
+  removal. Original authored files, canonical identity provenance, and source
+  fingerprints remain unchanged; tests cover bindings not returning on resume.
+- Removed the entry point's blanket `_run_main` replay. Escaped failures stop
+  with a diagnostic and preserve accepted outputs/completed checkpoints. Recoverable
+  output errors remain inside their existing owning-stage budgets. The shared
+  backstep helper now allows at most one explicitly declared predecessor
+  correction by default; root-stage or exhausted recovery raises
+  `PipelineStageExhaustedError`. Programming/infrastructure errors do not request
+  narrative regeneration. No new persistent intermediate-state cache was added.
+- Semantic fixture ambiguity/type conflicts now raise a distinct error carrying
+  the fixture, canonical owner/type, and exact uncertainty. JSON syntax/schema
+  errors retain unchanged-input extraction retries; fixture identity failures
+  return immediately to the existing bounded physical-description repair. The
+  repaired prose is validated before new JSON extraction and deterministic
+  reconciliation. Exhaustion is terminal at the location stage. Explicitly
+  distinct local fixtures are preserved; unrelated owner mentions do not silently
+  merge them. A spatial suffix such as "garden south of wooden post" identifies
+  a garden relative to a post; it no longer makes the garden match the post's
+  identity/type, reproducing and correcting another error in the supplied log.
+- Canonical location names resolve before connection fixtures. Entrance/portal
+  fixtures no longer alias a destination interior to their near-side owner.
+  Known fixed floors/surfaces still resolve their owning place. Supported missing
+  interiors can use the existing registration flow. Selector inconsistencies get
+  bounded local corrections carrying their precise diagnostic. Successful stage
+  preparation records canonical `{origin_location_id, entrance_fixture_id,
+  destination_location_id}` connections in checkpoint metadata; this does not
+  move a Subject or add a second WorldState authority.
+- Destination preparation uses detached metadata and candidate WorldState, then
+  publishes only after reference preparation succeeds. A regression executes the
+  actual nested stage and verifies that reference failure preserves canon,
+  wardrobe, initial location, WorldState, nested metadata, and checkpoint writes.
+- Movement paraphrases and unambiguous pronouns can use the current Beat/assigned
+  source plus an accepted connection. RAW must independently perform the traversal
+  through that entrance or a supported deictic reference. Selection alone is
+  insufficient; another doorway, unregistered endpoint, conflicting actor, or
+  unsupported prop event is rejected. Logs include the actual RAW evidence and
+  connection basis. Independent invalid events still preserve valid actions.
+  No additional LLM calls or broad creative Director prompt rewrites were added.
+
+Verification:
+
+- `pytest -q tests/test_stage_local_recovery.py tests/test_reference_asset_preflight.py tests/test_destination_stage_recovery.py tests/test_world_state_event_extraction.py tests/test_location_fixture_geometry_repairs.py tests/test_location_surface_aliases.py tests/test_transition_policy.py tests/test_split_raw_pipeline.py tests/test_oct15_loop_regressions.py tests/test_reference_pruning.py`
+  — **137 passed, 26 subtests passed**. Tests prove the automatic Segment-1 replay
+  loop is eliminated: escaped downstream errors call `_run_main` once, missing
+  required images make no expensive calls, and local exhaustion terminates.
+- Existing `RuntimeRecoverySupervisorTests` selection — **7 passed**; affected
+  assertions now require terminal propagation instead of upstream replay.
+- Existing WorldState support/transaction/reducer selection — **40 passed,
+  66 deselected, 6 subtests passed**.
+- Broader resume/workflow/location suites — **137 passed, 9 failed,
+  17 subtests passed**. All nine failures reproduce on a clean archived
+  `b2691097`: four old print/logging mock expectations, four existing location
+  prompt/wardrobe expectations, and the existing fallback wardrobe-seeding
+  failure. The changed missing-image expectation and selector cache-order
+  regression were migrated to the new contracts. Full suite health is not claimed.
+- An additional older prompt-mode integration selection was interrupted in an
+  unmocked LLM connection-retry wait; it has no passing result. No actual local
+  GPT-OSS generation or ComfyUI render was performed for acceptance.
+- `py_compile`, `git diff --check`, and byte comparisons of changed Python files
+  against their overwritten automation counterparts passed before delivery.
+
+Remaining acceptance: restore the missing required identity image or provide a
+valid override (or explicitly mark all its uses optional), then run the fresh
+local Alice generation. Verify local ownership repair, entrance/interior geometry,
+connection-grounded movement commits, and visual transitions. Paraphrases without
+an accepted connection, ambiguous actor/endpoint references, and unsupported new
+location names intentionally remain conservative; older checkpoints without
+connection metadata may need location preparation regenerated. Automated tests
+establish recovery boundaries, not six-segment film quality or rendered validation.

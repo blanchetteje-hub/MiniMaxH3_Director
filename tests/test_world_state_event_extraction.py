@@ -570,3 +570,91 @@ def test_extracted_all_cannot_empty_contents_when_raw_only_establishes_a_sip():
     assert all(action["amount"] != "all" for action in result["state_actions"])
     end = minimax.reduce_world_state(state, result["state_actions"], segment_number=1).world_state
     assert end["props"][prop_id(end, "mug")]["contents"][0]["amount"] != "none"
+
+
+def connected_movement_fixture():
+    state, origin = state_with_entities(mug=False)
+    state, destination = seed_canonical_static_location_state(
+        state, {"location": {"name": "dark rabbit hole"}, "anchors": [], "objects": []})
+    state = register_explicit_persistent_props(state, [
+        {"name": "rabbit hole entrance", "kind": "fixture", "mobility": "fixed",
+         "needed_for_state": True, "reason": "Canonical connection entrance.", "location_id": origin}])
+    connection = {"origin_location_id": origin,
+                  "entrance_fixture_id": prop_id(state, "rabbit hole entrance"),
+                  "destination_location_id": destination}
+    context = {"current_beat": "Amy looks down into a dark rabbit hole, leans forward and steps through the opening.",
+               "assigned_source": "", "connections": [connection]}
+    return state, destination, context
+
+
+@pytest.mark.parametrize("pronoun", [False, True])
+def test_connected_movement_paraphrase_and_pronoun_commit_canonical_destination(pronoun):
+    state, destination, context = connected_movement_fixture()
+    raw = ("Amy stands beside the rabbit hole entrance. She looks down into the dark rabbit hole. "
+           + ("She" if pronoun else "Amy") + " steps through the opening into the darkness.")
+    movement = event("move", "She" if pronoun else "Amy", destination="darkness inside rabbit hole")
+    result = minimax.translate_world_state_events(
+        state, [event("modify", "narrowing walls", "hat", result="bobs"), movement], raw,
+        segment_number=1, grounding_context=context)
+    assert len(result["state_actions"]) == 1
+    assert result["state_actions"][0]["destination_location_id"] == destination
+    generation = {"world_state": copy.deepcopy(state)}
+    committed = minimax.commit_accepted_director_world_state(
+        generation, state, {"state_actions_dry_run_accepted": True,
+                            "state_actions": result["state_actions"]}, 1)
+    assert committed["subjects"]["subject_1"]["location_id"] == destination
+    assert "registered connection" in result["event_diagnostics"][1]["reason"]
+    assert "steps through" in result["event_diagnostics"][1]["reason"]
+
+
+@pytest.mark.parametrize("missing_evidence", ["connection", "source", "raw", "actor"])
+def test_connected_movement_requires_all_independent_grounding_evidence(missing_evidence):
+    state, _, context = connected_movement_fixture()
+    raw = "Amy looks into the dark rabbit hole. Amy steps through the opening into darkness."
+    actor = "Amy"
+    if missing_evidence == "connection":
+        context["connections"] = []
+    elif missing_evidence == "source":
+        context["current_beat"] = "Amy stands in the Tavern."
+    elif missing_evidence == "raw":
+        raw = "Amy looks into the dark rabbit hole. Amy remains beside the opening."
+    else:
+        actor = "Invented visitor"
+    result = minimax.translate_world_state_events(
+        state, [event("move", actor, destination="darkness inside rabbit hole")], raw,
+        segment_number=1, grounding_context=context)
+    assert result["state_actions"] == []
+
+
+def test_connected_movement_does_not_guess_ambiguous_pronoun_antecedent():
+    state, _, context = connected_movement_fixture()
+    raw = "Amy and Goblin stand beside the dark rabbit hole. She steps through the opening into darkness."
+    result = minimax.translate_world_state_events(
+        state, [event("move", "Amy", destination="darkness inside rabbit hole")], raw,
+        segment_number=1, grounding_context=context)
+    assert result["state_actions"] == []
+
+
+def test_event_entrance_name_resolves_far_side_only_with_supported_connection():
+    state, destination, context = connected_movement_fixture()
+    raw = "Amy looks into the dark rabbit hole. Amy steps through the rabbit hole entrance."
+    result = minimax.translate_world_state_events(
+        state, [event("move", "Amy", destination="rabbit hole entrance")], raw,
+        segment_number=1, grounding_context=context)
+    assert result["state_actions"][0]["destination_location_id"] == destination
+    missing = minimax.translate_world_state_events(
+        state, [event("move", "Amy", destination="rabbit hole entrance")], raw,
+        segment_number=1)
+    assert missing["state_actions"] == []
+
+
+@pytest.mark.parametrize("different_endpoint", [
+    "a different doorway", "the opening into an unregistered barn", "another portal",
+])
+def test_connection_context_cannot_override_a_different_unregistered_raw_endpoint(different_endpoint):
+    state, _, context = connected_movement_fixture()
+    raw = "Amy looks into the dark rabbit hole. Amy steps through " + different_endpoint + "."
+    result = minimax.translate_world_state_events(
+        state, [event("move", "Amy", destination="darkness inside rabbit hole")], raw,
+        segment_number=1, grounding_context=context)
+    assert result["state_actions"] == []

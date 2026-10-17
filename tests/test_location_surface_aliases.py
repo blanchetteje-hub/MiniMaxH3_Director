@@ -48,3 +48,19 @@ def test_movable_object_does_not_define_a_location_alias():
     state, _, _ = surface_world()
     next(iter(state["props"].values()))["mobility"] = "movable"
     assert minimax.resolve_world_state_location_alias(state, "mossy floor") is None
+
+
+def test_surface_named_for_a_cave_remains_a_surface_not_a_portal():
+    state, _, destination = surface_world()
+    fixture = next(iter(state["props"].values()))
+    fixture["name"] = "mossy cave floor"
+    assert minimax._is_connection_fixture(fixture) is False
+    assert minimax.resolve_world_state_location_alias(state, "mossy cave floor") == destination
+
+
+def test_movable_portal_named_prop_cannot_define_canonical_connectivity():
+    state, _, _ = surface_world()
+    fixture = next(iter(state["props"].values()))
+    fixture["name"] = "cave entrance"
+    fixture["mobility"] = "movable"
+    assert minimax.matching_connection_fixture_ids(state, "cave") == []

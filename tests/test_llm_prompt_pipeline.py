@@ -2578,7 +2578,7 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
         self.assertEqual(attempts, ["stale", "current"])
         self.assertEqual(rebuilds, ["identity bindings"])
 
-    def test_main_recovers_generation_errors_in_prompt_only_mode(self):
+    def test_main_stops_exhausted_generation_without_replaying_prompt_preparation(self):
         with (
             patch.object(
                 minimax.sys,
@@ -2593,11 +2593,12 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
             patch("minimax._checkpoint_file_signature", return_value=None),
             patch("minimax.time.sleep"),
         ):
-            self.assertEqual(minimax.main(), "done")
+            with self.assertRaisesRegex(RuntimeError, "post-director structural failure"):
+                minimax.main()
 
-        self.assertEqual(run_main.call_count, 2)
+        self.assertEqual(run_main.call_count, 1)
 
-    def test_main_retries_recoverable_failure_from_checkpoint(self):
+    def test_main_preserves_checkpoint_without_replaying_upstream_stages(self):
         with (
             patch(
                 "minimax._run_main",
@@ -2613,15 +2614,12 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
             ),
             patch("minimax.time.sleep"),
         ):
-            self.assertEqual(minimax.main(), "done")
+            with self.assertRaisesRegex(RuntimeError, "recoverable"):
+                minimax.main()
 
-        self.assertEqual(run_main.call_count, 2)
+        self.assertEqual(run_main.call_count, 1)
         self.assertIsNone(
             run_main.call_args_list[0].kwargs["recovery_resume_segment"]
-        )
-        self.assertEqual(
-            run_main.call_args_list[1].kwargs["recovery_resume_segment"],
-            4,
         )
 
     def test_main_propagates_llm_connection_failure(self):
@@ -2645,7 +2643,7 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
             with self.assertRaises(KeyboardInterrupt):
                 minimax.main()
 
-    def test_main_recovers_state_extraction_failure(self):
+    def test_escaped_state_extraction_failure_does_not_restart_the_run(self):
         with (
             patch.object(minimax.sys, "argv", ["minimax.py", "8", "64", "0.5"]),
             patch(
@@ -2660,7 +2658,8 @@ class RuntimeRecoverySupervisorTests(unittest.TestCase):
             patch("minimax.time.sleep") as sleep,
             patch("minimax._checkpoint_file_signature", return_value=None),
         ):
-            self.assertEqual(minimax.main(), "done")
+            with self.assertRaisesRegex(minimax.WorldStateEventExtractionError, "all action-only repairs failed"):
+                minimax.main()
 
-        self.assertEqual(run_main.call_count, 2)
-        sleep.assert_called_once_with(1)
+        self.assertEqual(run_main.call_count, 1)
+        sleep.assert_not_called()

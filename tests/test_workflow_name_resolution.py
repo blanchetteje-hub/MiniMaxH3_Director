@@ -443,7 +443,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             self.assertEqual(print_mock.call_count, 6)
             print_mock.assert_any_call("Image opening.png decoded and verified.")
 
-    def test_reference_image_mapping_must_match_between_workflows(self):
+    def test_missing_append_reference_fails_even_if_initial_slot_is_placeholder(self):
         initial = copy.deepcopy(self.initial)
         append = copy.deepcopy(self.append)
         _, initial_node = minimax.find_workflow_node(
@@ -461,12 +461,9 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         )
         node["inputs"]["image"] = "different.png"
 
-        with mock.patch("builtins.print") as print_mock:
-            minimax.verify_reference_images(initial, append, tempfile.gettempdir())
-        print_mock.assert_any_call(
-            "WARNING: Reference Image 1 differs between workflows: "
-            f"'{initial_image}' vs 'different.png'."
-        )
+        with mock.patch("minimax.console_log") as print_mock:
+            with self.assertRaisesRegex(minimax.ReferenceAssetError, "different.png"):
+                minimax.verify_reference_images(initial, append, tempfile.gettempdir())
 
     def test_unconnected_reference_image_slot_is_skipped(self):
         initial = copy.deepcopy(self.initial)
