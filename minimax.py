@@ -46141,7 +46141,8 @@ def _run_main(
         llm_result = dict(payload["llm_result"])
         raw_subject_names = []
         resolved_subject_names = []
-        accepted_raw_scene = str(payload.get("raw_scene") or "").strip()
+        carried_final_subjects = []
+        accepted_raw_scene = str(payload.get("raw_scene") or "")
         resolved_raw_scene = accepted_raw_scene
         raw_scene_timeline_duration = _director_raw_scene_timeline_duration(
             segment_bundle["current_duration"],
@@ -46180,7 +46181,6 @@ def _run_main(
             # Keep the accepted Director text byte-for-byte intact throughout
             # this no-discovery path, including its existing end-state wording.
             resolved_raw_scene = accepted_raw_scene
-            carried_final_subjects = []
         elif subject_resolution_succeeded:
             resolved_raw_scene, carried_final_subjects = (
                 _director_carry_forward_final_subjects(

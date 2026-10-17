@@ -1,0 +1,117 @@
+{
+  "provenance": {
+    "captured_inputs": "Segment 1 visible-Subject requests and registered-subject rows from supplied prompt_history.txt / console_logs.txt",
+    "run_id": "cf437e1b-4a78-46dd-9170-ee279e9a9493",
+    "resolver_responses": "RECONSTRUCTED: exact response JSON was not logged; duplicate collective rows reproduce the captured conflicting-identities error."
+  },
+  "known_subjects": [
+    {
+      "subject_id": "<Subject 143295876112037>",
+      "name": "TurbanedMan3"
+    },
+    {
+      "subject_id": "<Subject 15892124491628>",
+      "name": "TurbanedMan4"
+    },
+    {
+      "subject_id": "<Subject 1>",
+      "name": "Alice"
+    },
+    {
+      "subject_id": "<Subject 208193795821140>",
+      "name": "TurbanedMan1"
+    },
+    {
+      "subject_id": "<Subject 247512449923334>",
+      "name": "TurbanedMan2"
+    },
+    {
+      "subject_id": "<Subject 2>",
+      "name": "Knight"
+    }
+  ],
+  "registered_subjects": [
+    {
+      "id": "subject_1",
+      "name": "Alice",
+      "presence": "present"
+    },
+    {
+      "id": "subject_2",
+      "name": "Knight",
+      "presence": "absent"
+    },
+    {
+      "id": "subject_turbanedman1_a2e08681cb77",
+      "name": "TurbanedMan1",
+      "presence": "unknown"
+    },
+    {
+      "id": "subject_turbanedman2_12a811f6f9ac",
+      "name": "TurbanedMan2",
+      "presence": "unknown"
+    },
+    {
+      "id": "subject_turbanedman3_406813052cba",
+      "name": "TurbanedMan3",
+      "presence": "unknown"
+    },
+    {
+      "id": "subject_turbanedman4_eee3bb6f4907",
+      "name": "TurbanedMan4",
+      "presence": "unknown"
+    }
+  ],
+  "location_name": "a sun-lit clearing in a dense forest",
+  "raw_scene": "At 00:00.000, Alice stands in the center of a sunlit forest clearing.  \nAt 00:01.500, Each of the four turbaned men with beards grasps one of Alice’s wrists and presses it against her chest.  \nAt 00:03.200, The oak tree at the west corner and tall pines lining the north edge frame the scene.  \nAt 00:04.800, Light from the northeast bathes their faces and the leaf litter on the ground.\nEnd continuity state: Light from the northeast bathes their faces and the leaf litter on the ground.",
+  "resolver_responses": [
+    {
+      "subjects": [
+        {
+          "raw_name": "turbaned men with beards",
+          "subject_id": "<Subject 143295876112037>",
+          "is_new": false
+        },
+        {
+          "raw_name": "turbaned men with beards",
+          "subject_id": "<Subject 15892124491628>",
+          "is_new": false
+        },
+        {
+          "raw_name": "turbaned men with beards",
+          "subject_id": "<Subject 208193795821140>",
+          "is_new": false
+        },
+        {
+          "raw_name": "turbaned men with beards",
+          "subject_id": "<Subject 247512449923334>",
+          "is_new": false
+        }
+      ]
+    },
+    {
+      "subjects": [
+        {
+          "raw_name": "turbaned men with beards",
+          "subject_id": "<Subject 143295876112037>",
+          "is_new": false
+        },
+        {
+          "raw_name": "turbaned men with beards",
+          "subject_id": "<Subject 15892124491628>",
+          "is_new": false
+        },
+        {
+          "raw_name": "turbaned men with beards",
+          "subject_id": "<Subject 208193795821140>",
+          "is_new": false
+        },
+        {
+          "raw_name": "turbaned men with beards",
+          "subject_id": "<Subject 247512449923334>",
+          "is_new": false
+        }
+      ]
+    }
+  ]
+}

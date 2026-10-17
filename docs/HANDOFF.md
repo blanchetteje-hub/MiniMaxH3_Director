@@ -1,5 +1,38 @@
 # MiniMax H3 — Development Handoff
 
+## 2026-10-17 — optional visible-Subject fallback continuation
+
+Fixed the Segment 1 crash after two optional visible-Subject extraction failures.
+The caller now initializes `carried_final_subjects` for every segment before the
+resolution branches. Accepted RAW is retained exactly, including surrounding
+whitespace, when extraction falls back. The existing two-attempt boundary and
+conflicting-identity rejection are unchanged.
+
+The captured collective description of four separately registered men remains
+prose on fallback. Empty optional identity results neither create a fifth Subject
+nor choose one individual for the collective. Existing canonical IDs and presence
+are preserved; unresolved collective prose does not establish individual Picture
+bindings. No additional collective-resolution contract was needed for this crash.
+
+Verification:
+
+- Before the fix, the two caller replay variants reproduced `UnboundLocalError`.
+- `tests/test_visible_subject_fallback.py` — **3 passed**. The replay executes the
+  production caller statements through WorldState event validation, then real
+  reference binding and H3 assembly, with external LLM requests stubbed. It checks
+  exact RAW preservation, empty carry-forward, unchanged identities/presence,
+  ambiguity rejection, and no phantom Subject or invented Picture binding.
+- Resolver regressions selected with `visible_subject or raw_subject_resolution`
+  — **16 passed, 209 deselected** across the selected files, including the replay.
+- Full fallback, WorldState event extraction, reference pruning, and split RAW
+  suites — **72 passed, 26 subtests passed**. No failures in these final runs.
+
+The fixture uses actual Segment 1 RAW, vocabulary, and registered IDs from the
+run logs. Resolver response JSON was not logged: the two conflicting responses
+are explicitly reconstructed to reproduce the observed error. Runtime prompts,
+Beat/location selection, reducer semantics, asynchronous rendering, and checkpoint
+behavior were not changed. Local GPT-OSS 20B/ComfyUI acceptance remains pending.
+
 ## 2026-10-06 — object-state-work: canonical spatial location_state
 
 Implemented the location-state split on `object-state-work`.
