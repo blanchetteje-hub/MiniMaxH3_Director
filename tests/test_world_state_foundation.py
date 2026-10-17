@@ -55,9 +55,74 @@ class CurrentSegmentSubjectDiagnosticTests(unittest.TestCase):
     def test_subject_evidence_accepts_unquoted_exact_excerpt(self):
         source = "A green goblin leans over the counter."
         parsed = minimax.parse_current_segment_subject_result(
-            self._subject_candidate("leans over the counter"), source
+            self._subject_candidate("A green goblin leans over the counter"), source
         )
         self.assertEqual(parsed[0]["name"], "Goblin_1")
+
+    def test_pronoun_only_continuation_cannot_create_a_phantom_subject(self):
+        source = "The hole narrows as she falls; she lands on moss and pushes herself upright."
+        candidate = {
+            "subjects": [{
+                "name": "Human1",
+                "physical_form": "humanoid",
+                "gender": "female",
+                "source_description": "unknown",
+                "evidence": "she lands on moss",
+            }],
+        }
+        self.assertEqual(
+            minimax.parse_current_segment_subject_result(candidate, source), []
+        )
+
+    def test_pre_director_pipeline_does_not_register_pronoun_only_human1(self):
+        source = (
+            "The hole narrows as she falls; she lands on moss and pushes herself upright."
+        )
+        state = new_world_state({"source_sha256": "pronoun-continuation"})
+        state = seed_predefined_subject_identities(state, [{
+            "subject_id": 1, "name": "Alice", "gender": "female",
+        }])
+        state, location_id = seed_canonical_static_location_state(
+            state,
+            {"location": {"name": "Rabbit-hole interior"}, "anchors": [], "objects": []},
+        )
+        state = seed_story_start_presence(
+            state, [{"name": "Alice", "initial_state": "at the opening"}],
+            location_id=location_id,
+        )
+        response = {"subjects": [{
+            "name": "Human1",
+            "physical_form": "humanoid",
+            "gender": "female",
+            "source_description": "unknown",
+            "evidence": "she lands on moss",
+        }]}
+        with patch(
+            "minimax.extract_current_segment_persistent_props", return_value=[]
+        ), patch("minimax.extract_subject_canonical_wardrobe") as wardrobe:
+            prepared, added = minimax.prepare_segment_world_state_for_director(
+                state, 2, source, source, "Story.", llm_request=Mock(return_value=response),
+            )
+        self.assertEqual(added, [])
+        self.assertEqual(prepared, state)
+        self.assertEqual(
+            {subject["name"] for subject in prepared["subjects"].values()}, {"Alice"}
+        )
+        wardrobe.assert_not_called()
+
+    def test_explicit_unnamed_animate_person_remains_registerable(self):
+        source = "A visitor steps into the room and greets the group."
+        candidate = {
+            "subjects": [{
+                "name": "Human1",
+                "physical_form": "humanoid",
+                "gender": "unknown",
+                "source_description": "A visitor",
+                "evidence": "A visitor steps into the room",
+            }],
+        }
+        parsed = minimax.parse_current_segment_subject_result(candidate, source)
+        self.assertEqual(parsed[0]["name"], "Human1")
 
     def test_subject_evidence_rejects_quoted_invented_excerpt(self):
         with self.assertRaisesRegex(ValueError, "not quoted from the current beat/source"):

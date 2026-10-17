@@ -1115,3 +1115,76 @@ an accepted connection, ambiguous actor/endpoint references, and unsupported new
 location names intentionally remain conservative; older checkpoints without
 connection metadata may need location preparation regenerated. Automated tests
 establish recovery boundaries, not six-segment film quality or rendered validation.
+
+## 2026-10-17 — normalize location proposals and preserve connected movement
+
+Read the current `PROJECT_NOTES.md` and this handoff before editing. The supplied
+automation `console_logs.txt` is from the latest run that hit the `new_location`
+failure. It shows the selector returning `new_location` / `the forest clearing`
+three times even though that alias resolves to the active Forest Clearing ID.
+The resolver then rejected the proposal and repeated the same LLM call until
+local recovery was exhausted. The same log also shows Segment 2's invalid event
+interpretations being discarded as an empty batch; it does **not** contain the
+rabbit-hole movement example, which is covered with explicit replay-style tests.
+
+- When `new_location` resolves uniquely to the active canonical location and the
+  Beat establishes no departure to another registered place, Python now
+  normalizes it to `same_location`. It reuses the existing ID/reference without
+  another selector call or location registration. The original selector result
+  and the deterministic reason are retained in the resolution metadata/log.
+  Registered destinations, connected entrances, and ambiguous aliases still
+  follow their existing resolution or bounded-recovery paths.
+- Connected movement grounding no longer requires the event's destination label
+  to lexically match the canonical destination when the source, accepted RAW,
+  and registered entrance connection establish a unique traversal. An
+  unambiguous pronoun/body-part actor reference resolves to the one registered
+  Subject named in the RAW context; ambiguous antecedents remain rejected.
+  Before returning an event batch, Python now detects a registered Subject's
+  source- and RAW-grounded connected traversal if no accepted move/enter action
+  records its destination. That condition raises an explicit continuity error
+  instead of being swallowed by optional event-extraction fail-open. Rejected
+  event batches remain uncommitted; unrelated unsupported event interpretations
+  can still be discarded while supported independent actions survive.
+- Current-segment Subject candidates require positive identity evidence beyond a
+  pronoun/action-only excerpt. A weak candidate is omitted without discarding
+  other valid candidates, preventing a pronoun continuation from creating a
+  placeholder Subject. An explicitly described unnamed person/creature remains
+  eligible. The existing registered-prop/location filter still blocks ordinary
+  inanimate candidates; animated entities remain allowed when the source
+  explicitly establishes animation.
+- Pronoun resolution now accepts only exact replacements of pronoun spans with
+  canonical registered Subject names, including grammatical possessives and
+  unambiguous plural name lists. It preserves all other RAW text, timestamps,
+  annotations, line structure, and end continuity. A response that changes any
+  of these is rejected and the accepted input RAW is retained. No runtime LLM
+  prompt, schema, retry, geometry, or fixed-fixture contact rule was changed.
+- The existing tunnel/fixture geometry rules remain in place: north/south
+  position, orientation, travel/extension, and elevation are distinct claims;
+  neighboring fixtures remain references rather than being copied into the new
+  location. Fixed-fixture contact remains non-acquisition.
+
+Verification:
+
+- Full focused modules — **388 passed, 12 failed, 30 subtests passed** across
+  `test_location_state_reference.py`, `test_world_state_event_extraction.py`,
+  `test_world_state_foundation.py`, `test_director_retry.py`, and
+  `test_location_fixture_geometry_repairs.py`. All 12 failures were reproduced
+  unchanged at starting commit `55c7c42d`: existing wardrobe/subject-start
+  expectations, older prompt-string assertions, stale retry-count assertions,
+  and an existing event-output expectation. No new regression test failed.
+- Targeted selections: WorldState event extraction **42 passed**; fixture
+  geometry **20 passed**; pronoun-resolution regressions **16 passed**;
+  location-selection regressions **7 passed**; additional geometry/neighbor
+  checks **6 passed**; Subject identity/phantom-candidate checks **7 passed**.
+- `py_compile` and `git diff --check` passed. These tests establish deterministic
+  alias resolution, event grounding, Subject filtering, and RAW preservation;
+  they do not establish end-to-end local GPT-OSS 20B behavior or rendered video
+  quality.
+
+Next local acceptance: run the same-location multi-segment story and the Alice
+front-step → connected interior traversal through local GPT-OSS 20B and ComfyUI.
+Verify the selector makes one call for the same canonical location, each accepted
+connected traversal commits before the following Segment opens, and an
+unreconciled required traversal stops with its explicit continuity diagnostic.
+Also inspect local Subject registration and final renders; automated tests do
+not certify the complete film pipeline.

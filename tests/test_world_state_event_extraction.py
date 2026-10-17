@@ -620,10 +620,90 @@ def test_connected_movement_requires_all_independent_grounding_evidence(missing_
         raw = "Amy looks into the dark rabbit hole. Amy remains beside the opening."
     else:
         actor = "Invented visitor"
+    if missing_evidence == "actor":
+        with pytest.raises(minimax.RequiredWorldStateMovementError, match="no StateAction commits"):
+            minimax.translate_world_state_events(
+                state, [event("move", actor, destination="darkness inside rabbit hole")], raw,
+                segment_number=1, grounding_context=context)
+    else:
+        result = minimax.translate_world_state_events(
+            state, [event("move", actor, destination="darkness inside rabbit hole")], raw,
+            segment_number=1, grounding_context=context)
+        assert result["state_actions"] == []
+
+
+def test_connected_movement_event_with_body_part_actor_resolves_and_commits():
+    state, destination, context = connected_movement_fixture()
+    raw = (
+        "Amy looks into the dark rabbit hole. "
+        "Amy steps through the rabbit hole entrance. "
+        "She falls into the dark rabbit hole. "
+        "Her foot lands on the mossy ground at the bottom."
+    )
+    events = [
+        event("move", "her foot", destination="rabbit hole entrance"),
+        event("modify", "unregistered tunnel walls", "hat", result="bobs"),
+    ]
+    opening = copy.deepcopy(state)
     result = minimax.translate_world_state_events(
-        state, [event("move", actor, destination="darkness inside rabbit hole")], raw,
-        segment_number=1, grounding_context=context)
-    assert result["state_actions"] == []
+        state, events, raw, segment_number=1, grounding_context=context,
+    )
+    assert len(result["state_actions"]) == 1
+    assert result["state_actions"][0]["subject_id"] == "subject_1"
+    assert result["state_actions"][0]["destination_location_id"] == destination
+    assert [row["status"] for row in result["event_diagnostics"]] == [
+        "accepted", "rejected",
+    ]
+    generation = {"world_state": opening}
+    committed = minimax.commit_accepted_director_world_state(
+        generation, opening,
+        {"state_actions_dry_run_accepted": True,
+         "state_actions": result["state_actions"]},
+        1,
+    )
+    assert committed["subjects"]["subject_1"]["location_id"] == destination
+    assert generation["world_state"] == committed
+
+
+def test_omitted_connected_traversal_is_explicit_continuity_failure_not_empty_commit():
+    state, destination, context = connected_movement_fixture()
+    context["current_beat"] = (
+        "Amy steps from the front step through the rabbit hole and lands in its interior."
+    )
+    raw = (
+        "Amy steps through the rabbit hole entrance. "
+        "She falls into the dark rabbit hole."
+    )
+    opening = copy.deepcopy(state)
+    with pytest.raises(
+        minimax.RequiredWorldStateMovementError,
+        match="Amy to dark rabbit hole",
+    ):
+        minimax.translate_world_state_events(
+            state, [], raw, segment_number=1, grounding_context=context,
+        )
+    assert state == opening
+    assert state["subjects"]["subject_1"]["location_id"] != destination
+
+
+def test_extraction_boundary_does_not_fail_open_on_required_connected_traversal():
+    state, _destination, context = connected_movement_fixture()
+    context["current_beat"] = (
+        "Amy steps from the front step through the rabbit hole and enters the interior."
+    )
+    raw = (
+        "Amy looks into the dark rabbit hole. "
+        "Amy steps through the rabbit hole entrance. "
+        "She falls into the dark rabbit hole."
+    )
+    opening = copy.deepcopy(state)
+    with mock.patch("minimax.ask_llm", return_value={"events": []}), \
+            mock.patch("minimax.console_log"):
+        with pytest.raises(minimax.RequiredWorldStateMovementError):
+            minimax.extract_and_dry_run_world_state_events(
+                state, raw, segment_number=1, grounding_context=context,
+            )
+    assert state == opening
 
 
 def test_connected_movement_does_not_guess_ambiguous_pronoun_antecedent():

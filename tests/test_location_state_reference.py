@@ -209,6 +209,74 @@ class LocationStateReferenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ambiguously matches"):
             minimax.resolve_world_state_location_alias(world_state, "Garden")
 
+    def test_same_canonical_location_normalizes_false_new_location_once(self):
+        world_state = minimax.empty_world_state("same-location-normalization")
+        world_state["locations"] = {
+            "location_clearing": {
+                "id": "location_clearing", "name": "Forest Clearing",
+            },
+        }
+        llm = mock.Mock(return_value={
+            "classification": "new_location",
+            "location_name": "the forest clearing",
+        })
+        selection, resolution = minimax.resolve_scene_location_selection_locally(
+            world_state,
+            "location_clearing",
+            "The knight enters the forest clearing and joins the group.",
+            "A forest clearing surrounded by trees.",
+            [{"id": "location_clearing", "name": "Forest Clearing"}],
+            llm_request=llm,
+        )
+        self.assertEqual(llm.call_count, 1)
+        self.assertEqual(selection, {
+            "classification": "same_location", "location_name": "",
+        })
+        self.assertEqual(resolution["destination_location_id"], "location_clearing")
+        self.assertFalse(resolution["requires_registration"])
+        self.assertIn("new_location/'the forest clearing'", resolution["normalization_diagnostic"])
+        self.assertEqual(
+            resolution["selector_proposal"],
+            {"classification": "new_location", "location_name": "the forest clearing"},
+        )
+
+    def test_false_new_location_does_not_hide_a_registered_departure(self):
+        world_state = minimax.empty_world_state("departure-normalization")
+        world_state["locations"] = {
+            "location_clearing": {"id": "location_clearing", "name": "Forest Clearing"},
+            "location_hole": {"id": "location_hole", "name": "Rabbit-hole Interior"},
+        }
+        # The departure can be established by another already-registered
+        # canonical location; do not normalize it back to the origin.
+        with self.assertRaisesRegex(ValueError, "active origin"):
+            minimax.resolve_scene_location_destination(
+                world_state,
+                "location_clearing",
+                {"classification": "new_location", "location_name": "Forest Clearing"},
+                beat_text="Alice walks from the Forest Clearing into Rabbit-hole Interior.",
+            )
+
+    def test_same_location_segments_do_not_register_or_retry_selector(self):
+        world_state = minimax.empty_world_state("repeated-same-location")
+        world_state["locations"] = {
+            "location_clearing": {"id": "location_clearing", "name": "Forest Clearing"},
+        }
+        llm = mock.Mock(side_effect=[
+            {"classification": "new_location", "location_name": "forest clearing"},
+            {"classification": "new_location", "location_name": "Forest Clearing"},
+        ])
+        for beat in ("Alice waves in the forest clearing.", "Alice sits in the forest clearing."):
+            selection, resolution = minimax.resolve_scene_location_selection_locally(
+                world_state, "location_clearing", beat, "Forest clearing.",
+                [{"id": "location_clearing", "name": "Forest Clearing"}],
+                llm_request=llm,
+            )
+            self.assertEqual(selection["classification"], "same_location")
+            self.assertEqual(resolution["destination_location_id"], "location_clearing")
+            self.assertFalse(resolution["requires_registration"])
+        self.assertEqual(llm.call_count, 2)
+        self.assertEqual(len(world_state["locations"]), 1)
+
     def test_location_reference_paths_are_stable_per_location_and_run(self):
         first = minimax.location_reference_output_path("location_one", "run-123")
         same = minimax.location_reference_output_path("location_one", "run-123")

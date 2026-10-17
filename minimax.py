@@ -4242,6 +4242,7 @@ def _is_registered_non_subject_candidate(candidate, world_state, source_text="")
     else:
         candidate_name = str(candidate or "")
         evidence = description = ""
+    world_state = world_state if isinstance(world_state, dict) else {}
     # A known Subject stays a Subject even when their name appears in a
     # place or fixture label (e.g. "front step of Alice's house").
     if any(
@@ -4288,6 +4289,31 @@ def _filter_registered_non_subject_candidates(candidates, world_state, source_te
     return accepted
 
 
+def _subject_candidate_has_positive_identity_evidence(name, evidence):
+    """Require evidence for an entity, not merely a pronoun/action mention."""
+    name = " ".join(str(name or "").split()).strip()
+    evidence = " ".join(str(evidence or "").split())
+    if not name or not evidence:
+        return False
+    if _phrase_occurs_in_text(name, evidence):
+        return True
+    type_key, _numbered = _functional_subject_type_key(name)
+    type_words = [word for word in type_key.split() if len(word) >= 3]
+    if any(_phrase_occurs_in_text(word, evidence) for word in type_words):
+        return True
+    # Functional Subject labels may use a stable general role name while the
+    # exact source phrase uses another ordinary animate noun (e.g. Human1 for
+    # an explicitly distinct person). A pronoun-only action is insufficient.
+    animate_noun = re.compile(
+        r"\b(?:person|people|human|man|men|woman|women|girl|girls|boy|boys|"
+        r"child|children|visitor|visitors|stranger|strangers|guest|guests|"
+        r"guard|guards|soldier|soldiers|knight|knights|figure|figures|"
+        r"creature|creatures|animal|animals|being|beings|someone|somebody)\b",
+        re.IGNORECASE,
+    )
+    return animate_noun.search(evidence) is not None
+
+
 def parse_current_segment_subject_result(raw_result, current_beat, assigned_source=""):
     """Validate identity-only Subject candidates against exact beat evidence."""
     candidate = raw_result
@@ -4327,6 +4353,15 @@ def parse_current_segment_subject_result(raw_result, current_beat, assigned_sour
                 f"Current-segment Subject evidence for {normalized['name']!r} "
                 "is not quoted from the current beat/source."
             )
+        if not _subject_candidate_has_positive_identity_evidence(
+            normalized["name"], evidence_for_match
+        ):
+            console_log(
+                "Ignoring current-segment Subject candidate without positive "
+                "identity evidence: " + normalized["name"],
+                flush=True,
+            )
+            continue
         if (
             normalized["source_description"].casefold() not in source_text.casefold()
             and normalized["source_description"].casefold() != "unknown"
@@ -11050,6 +11085,10 @@ class BeatGenerationError(RuntimeError):
 
 class WorldStateEventExtractionError(BeatGenerationError):
     """Validated RAW events could not be safely translated into WorldState."""
+
+
+class RequiredWorldStateMovementError(WorldStateEventExtractionError):
+    """Accepted RAW establishes a connected traversal that state omitted."""
 
 
 # Repair a narrow local-model error such as ``"growl" snarls``.
@@ -20535,6 +20574,26 @@ def resolve_scene_location_destination(world_state, active_location_id, selectio
         connections=connections, origin_location_id=origin_id,
     )
     if destination_id and destination_id == origin_id:
+        if (classification == "new_location"
+                and not _beat_establishes_registered_departure(
+                    world_state, origin_id, beat_text, connections=connections
+                )):
+            diagnostic = (
+                f"Normalized selector proposal new_location/{requested_name!r} to "
+                f"same_location because it uniquely resolves to active location "
+                f"{(world_state.get('locations') or {}).get(origin_id, {}).get('name', origin_id)!r} "
+                "and the Beat establishes no departure to another registered place."
+            )
+            console_log("SCENE LOCATION NORMALIZATION: " + diagnostic, flush=True)
+            return {
+                "classification": "same_location",
+                "origin_location_id": origin_id,
+                "destination_location_id": origin_id,
+                "location_name": "",
+                "requires_registration": False,
+                "selector_proposal": copy.deepcopy(selection),
+                "normalization_diagnostic": diagnostic,
+            }
         raise ValueError(
             f"Scene location selector classified the segment as {classification}, "
             "but its destination resolves to the active origin location."
@@ -20558,6 +20617,48 @@ def resolve_scene_location_destination(world_state, active_location_id, selectio
         "location_name": requested_name,
         "requires_registration": destination_id is None,
     }
+
+
+def _beat_establishes_registered_departure(
+    world_state, origin_location_id, beat_text, *, connections=()
+):
+    """Check whether the Beat names a different registered place in a traversal."""
+    text = str(beat_text or "")
+    if not text or not origin_location_id:
+        return False
+    movement = re.compile(
+        r"\b(?:enter\w*|step\w*|walk\w*|run\w*|fall\w*|fell|"
+        r"descend\w*|ascend\w*|cross\w*|travel\w*|move\w*|leave\w*|"
+        r"exit\w*|depart\w*|emerge\w*)\b",
+        re.IGNORECASE,
+    )
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", text):
+        if not movement.search(sentence):
+            continue
+        for location_id, location in (world_state.get("locations") or {}).items():
+            if location_id == origin_location_id or not isinstance(location, dict):
+                continue
+            if _event_name_matches(location.get("name"), sentence):
+                return True
+        for connection in connections or ():
+            if not isinstance(connection, dict):
+                continue
+            if (connection.get("origin_location_id") != origin_location_id
+                    or connection.get("destination_location_id") == origin_location_id):
+                continue
+            fixture = (world_state.get("props") or {}).get(
+                connection.get("entrance_fixture_id"), {}
+            )
+            if isinstance(fixture, dict) and _event_name_matches(
+                fixture.get("name"), sentence
+            ):
+                return True
+        origin = (world_state.get("locations") or {}).get(origin_location_id, {})
+        origin_name = str(origin.get("name") or "") if isinstance(origin, dict) else ""
+        if (re.search(r"\b(?:leave\w*|exit\w*|depart\w*|head\s+out|walk\s+out|step\s+out)\b", sentence, re.I)
+                and (not origin_name or _event_name_matches(origin_name, sentence))):
+            return True
+    return False
 
 
 def resolve_scene_location_selection_locally(
@@ -20585,6 +20686,11 @@ def resolve_scene_location_selection_locally(
                 world_state, active_location_id, selection, connections=connections,
                 source_text=source_text, beat_text=beat_text,
             )
+            if resolution.get("normalization_diagnostic"):
+                selection = {
+                    "classification": resolution["classification"],
+                    "location_name": "",
+                }
             return selection, resolution
         except ValueError as error:
             latest_issue = str(error)
@@ -39021,6 +39127,82 @@ def build_director_pronoun_resolution_messages(
     ]
 
 
+def _director_pronoun_resolution_content_issue(original, returned, subject_definitions):
+    """Allow only exact pronoun-to-canonical-name substitutions in RAW."""
+    definitions = str(subject_definitions or "")
+    registry = parse_subject_registry(definitions)
+    subject_names = [str(item.get("name") or "").strip() for item in registry.values()]
+    # The canonical formatter emits one Subject per line. Also recognize
+    # multiple compact bindings on one line, which appear in older saved
+    # checkpoints and test/replay inputs.
+    for match in re.finditer(
+        r"<Subject\s+[^>]+>\s+is\s+(.+?)(?=\s*<Subject\s+[^>]+>|$)",
+        definitions,
+        re.IGNORECASE | re.DOTALL,
+    ):
+        candidate = re.split(
+            r"\s+(?:\(|shown\s+in\b|references\b)|[,;\n]",
+            match.group(1).strip(),
+            maxsplit=1,
+            flags=re.IGNORECASE,
+        )[0].strip().rstrip(".").strip()
+        if candidate:
+            subject_names.append(candidate)
+    subject_names = list(dict.fromkeys(subject_names))
+    subject_names = [name for name in subject_names if name]
+    if not subject_names:
+        return "no registered Subject names are available for a substitution"
+
+    original = str(original or "")
+    returned = str(returned or "")
+    if original == returned:
+        return ""
+    pronouns = {"she", "he", "they", "it", "him", "her", "them", "his", "their", "its"}
+    object_followers = {
+        "a", "an", "the", "some", "any", "each", "every", "this", "that",
+        "these", "those", "to", "for", "with", "from", "at", "by", "of",
+        "into", "onto", "on", "off", "about", "as", "because", "when",
+        "while", "if", "though", "and", "but", "or", "who", "whom", "which",
+        "that", "was", "were", "is", "are", "be", "been", "being", "has",
+        "have", "had", "can", "could", "will", "would", "shall", "should",
+        "may", "might", "must", "did", "does", "do", "not", "never",
+    }
+    determiners = {"my", "your", "his", "her", "its", "our", "their", "whose"}
+    name_pattern = "(?:" + "|".join(
+        re.escape(name) for name in sorted(subject_names, key=len, reverse=True)
+    ) + ")"
+    plural_pattern = name_pattern + r"(?:\s+and\s+" + name_pattern + r")+"
+    parts = []
+    cursor = 0
+    for match in re.finditer(r"\b(?:she|he|they|it|him|her|them|his|their|its)\b", original, re.I):
+        parts.append(re.escape(original[cursor:match.start()]))
+        pronoun = match.group().casefold()
+        following_match = re.match(r"\s+(\w+)", original[match.end():], re.UNICODE)
+        following = following_match.group(1).casefold() if following_match else ""
+        possessive_position = pronoun in {"their", "its"} or (
+            pronoun in {"her", "his"}
+            and bool(following)
+            and following not in object_followers
+            and following not in determiners
+        )
+        alternatives = [re.escape(match.group())]
+        if possessive_position:
+            alternatives.extend((name_pattern + r"['’]s", plural_pattern + r"['’]s"))
+        else:
+            alternatives.append(name_pattern)
+            if pronoun in {"they", "them"}:
+                alternatives.append(plural_pattern)
+        parts.append("(?:" + "|".join(alternatives) + ")")
+        cursor = match.end()
+    parts.append(re.escape(original[cursor:]))
+    if re.fullmatch("".join(parts), returned, re.IGNORECASE | re.UNICODE):
+        return ""
+    return (
+        "the response changed text outside canonical Subject-name replacements "
+        "of pronouns"
+    )
+
+
 def resolve_director_raw_scene_pronouns(
     raw_scene,
     subject_definitions="",
@@ -39030,7 +39212,7 @@ def resolve_director_raw_scene_pronouns(
     segment_seconds=None,
 ):
     """Resolve clear person pronouns in timed RAW; preserve end state exactly."""
-    original = _canonicalize_director_timestamps(raw_scene).strip()
+    original = str(raw_scene or "").strip()
     if not original or not str(subject_definitions or "").strip():
         return original
 
@@ -39058,7 +39240,7 @@ def resolve_director_raw_scene_pronouns(
         raise ValueError("RAW pronoun resolver must return only raw_scene.")
 
     returned_timed_raw = str(result.get("raw_scene", "")).strip()
-    resolved_timed = _canonicalize_director_timestamps(returned_timed_raw).strip()
+    resolved_timed = returned_timed_raw
     console_log(
         "Checking pronouns segment: LLM result="
         + (resolved_timed or "<empty>"),
@@ -39069,21 +39251,36 @@ def resolve_director_raw_scene_pronouns(
     input_timestamp_values = _director_timestamp_lexemes(timed_original)
     returned_timestamp_values = _director_timestamp_lexemes(returned_timed_raw)
     if returned_timestamp_values != input_timestamp_values:
-        raise ValueError(
+        issue = (
             "RAW pronoun resolver changed timestamps: expected exact timestamp "
             f"sequence {input_timestamp_values!r}, received "
             f"{returned_timestamp_values!r}."
         )
+        console_log("RAW PRONOUN RESOLUTION REJECTED; preserving accepted input: " + issue, flush=True)
+        return original
+
+    content_issue = _director_pronoun_resolution_content_issue(
+        timed_original, returned_timed_raw, subject_definitions
+    )
+    if content_issue:
+        console_log(
+            "RAW PRONOUN RESOLUTION REJECTED; preserving accepted input: "
+            + content_issue,
+            flush=True,
+        )
+        return original
 
     range_errors = _director_timestamp_range_errors(
         resolved_timed,
         segment_seconds=segment_seconds,
     )
     if range_errors:
-        raise ValueError(
-            "RAW pronoun resolver returned out-of-range timestamps: "
-            + "; ".join(range_errors)
+        console_log(
+            "RAW PRONOUN RESOLUTION REJECTED; preserving accepted input: "
+            "out-of-range timestamps: " + "; ".join(range_errors),
+            flush=True,
         )
+        return original
 
     resolved = (resolved_timed + "\n" + end_state_original).strip()
     structure_errors = _director_raw_scene_structure_errors(
@@ -39091,10 +39288,12 @@ def resolve_director_raw_scene_pronouns(
         segment_seconds,
     )
     if structure_errors:
-        raise ValueError(
-            "RAW pronoun resolver changed shot-script structure: "
-            + "; ".join(structure_errors)
+        console_log(
+            "RAW PRONOUN RESOLUTION REJECTED; preserving accepted input: "
+            "changed shot-script structure: " + "; ".join(structure_errors),
+            flush=True,
         )
+        return original
 
     if resolved_timed == timed_original:
         console_log("Checking pronouns segment: no replacements.", flush=True)
@@ -39932,6 +40131,46 @@ def _event_resolve_entity(world_state, category, value, event_index, *, optional
     raise WorldStateEventExtractionError(f"event {event_index}: unknown registered {category} name {value!r}.")
 
 
+def _event_subject_for_anaphoric_actor(world_state, actor_reference, action, raw_scene):
+    """Resolve a pronoun/body-part actor only from one unambiguous RAW Subject."""
+    actor_text = " ".join(str(actor_reference or "").split())
+    if action not in {"move", "enter", "exit"} or not re.search(
+        r"\b(?:she|he|they|it|her|him|them|his|their|its)\b", actor_text, re.I
+    ):
+        return None
+    movement = re.compile(
+        r"\b(?:" + WORLD_STATE_EVENT_RAW_PATTERNS.get(action, r"(?!)") + r")\b",
+        re.I,
+    )
+    subjects = world_state.get("subjects", {}) if isinstance(world_state, dict) else {}
+    antecedent = None
+    candidates = set()
+    for sentence in re.split(r"(?<=[.!?])\s+|[\r\n]+", str(raw_scene or "")):
+        mentioned = []
+        for subject_id, subject in subjects.items():
+            name = str(subject.get("name") or "")
+            if name and _event_name_matches(name, sentence):
+                mentioned.append(subject_id)
+        mentioned = list(dict.fromkeys(mentioned))
+        if len(mentioned) == 1:
+            antecedent = mentioned[0]
+        elif len(mentioned) > 1:
+            antecedent = None
+        if not movement.search(sentence):
+            continue
+        if len(mentioned) == 1:
+            candidates.add(mentioned[0])
+        elif not mentioned and antecedent is not None and re.search(
+            r"\b(?:she|he|they|it|her|him|them|his|their|its)\b", sentence, re.I
+        ):
+            candidates.add(antecedent)
+    if len(candidates) != 1:
+        return None
+    subject_id = next(iter(candidates))
+    subject = subjects.get(subject_id)
+    return (subject_id, subject) if isinstance(subject, dict) else None
+
+
 def _event_amount(event, raw_scene, state=None):
     # An extractor's "all" is not evidence that RAW emptied a vessel.
     verbs = {"consume": r"consum\w*|eat\w*|ate|drink\w*|drank|sip\w*|finish\w*",
@@ -40344,6 +40583,10 @@ def _event_connected_movement_grounding(event, raw_scene, state, context):
         return None
     actor = _event_resolve_entity(state, "subject", event.get("actor"), 0, optional=True)
     if actor is None:
+        actor = _event_subject_for_anaphoric_actor(
+            state, event.get("actor"), event.get("action"), raw_scene
+        )
+    if actor is None:
         return None
     actor_id, actor_record = actor
     origin = actor_record.get("location_id")
@@ -40365,9 +40608,6 @@ def _event_connected_movement_grounding(event, raw_scene, state, context):
         names = {place_name, entrance_name, entrance_base}
         # This overlap only identifies a registered endpoint. It cannot prove
         # movement: source, canonical connection, and RAW traversal are required.
-        tokens = set(_event_name_key(place_name).split()) - {"the", "interior", "inside"}
-        if not tokens or len(tokens & requested) < min(2, len(tokens)):
-            continue
         if not any(_event_name_matches(name, source_text) for name in names if name):
             continue
         source_sentences = re.split(r"(?<=[.!?])\s+|[\r\n]+", source_text)
@@ -40378,11 +40618,17 @@ def _event_connected_movement_grounding(event, raw_scene, state, context):
             continue
         if not any(_event_name_matches(name, raw_scene) for name in names if name):
             continue
-        candidates.append((destination_id, destination, entrance))
+        place_tokens = set(_event_name_key(place_name).split()) - {"the", "interior", "inside"}
+        overlap = bool(place_tokens and len(place_tokens & requested) >= min(2, len(place_tokens)))
+        candidates.append((destination_id, destination, entrance, overlap))
     unique = {item[0]: item for item in candidates}
+    if len(unique) > 1:
+        preferred = {key: value for key, value in unique.items() if value[3]}
+        if len(preferred) == 1:
+            unique = preferred
     if len(unique) != 1:
         return None
-    destination_id, destination, entrance = next(iter(unique.values()))
+    destination_id, destination, entrance, _overlap = next(iter(unique.values()))
     antecedent = None
     known_entrance = False
     movement_pattern = WORLD_STATE_EVENT_RAW_PATTERNS[event["action"]]
@@ -40430,6 +40676,45 @@ def _event_connected_movement_grounding(event, raw_scene, state, context):
     return None
 
 
+def _uncommitted_connected_movements(state, actions, raw_scene, context):
+    """List source/RAW-grounded connected crossings missing from the action batch."""
+    if not isinstance(context, dict):
+        return []
+    represented = set()
+    for action in actions or []:
+        if action.get("op") in {"move", "enter"}:
+            destination_id = action.get("destination_location_id") or action.get("location_id")
+            represented.add((action.get("subject_id"), destination_id))
+    missing = []
+    for subject_id, subject in (state.get("subjects") or {}).items():
+        if not isinstance(subject, dict) or not subject.get("name"):
+            continue
+        origin_id = subject.get("location_id")
+        if not origin_id or origin_id == "unknown":
+            continue
+        for connection in context.get("connections", []) or []:
+            if not isinstance(connection, dict) or connection.get("origin_location_id") != origin_id:
+                continue
+            destination_id = connection.get("destination_location_id")
+            destination = (state.get("locations") or {}).get(destination_id)
+            if not isinstance(destination, dict) or destination_id == origin_id:
+                continue
+            evidence = _event_connected_movement_grounding(
+                {"action": "move", "actor": subject["name"],
+                 "destination": destination.get("name")},
+                raw_scene, state, context,
+            )
+            if evidence and (subject_id, destination_id) not in represented:
+                missing.append({
+                    "subject_id": subject_id,
+                    "subject_name": subject["name"],
+                    "destination_location_id": destination_id,
+                    "destination_name": destination.get("name"),
+                    "evidence": evidence["raw_evidence"],
+                })
+    return missing
+
+
 def _event_destination_location(state, value, event_index):
     """Resolve a place or a fixed surface through its canonical owning location."""
     loc = _event_resolve_entity(state, "location", value, event_index, optional=True)
@@ -40462,12 +40747,16 @@ def translate_world_state_events(world_state, events, raw_scene, *, segment_numb
                 raise WorldStateEventExtractionError("implicit placement depends on an earlier rejected movement")
             evidence = None
             semantic_event = event
-            if (_event_name_key(event.get("actor")) in {"she", "he", "they", "it"}
-                    and event.get("action") in {"move", "enter"}):
-                named = [subject for subject in current.get("subjects", {}).values()
-                         if _event_name_matches(subject.get("name"), raw_scene)]
-                if len(named) == 1:
-                    semantic_event = {**event, "actor": named[0]["name"]}
+            actor_reference = event.get("actor")
+            actor = _event_resolve_entity(
+                current, "subject", actor_reference, event_index, optional=True
+            )
+            if actor is None:
+                actor = _event_subject_for_anaphoric_actor(
+                    current, actor_reference, event.get("action"), raw_scene
+                )
+            if actor is not None:
+                semantic_event = {**event, "actor": actor[1]["name"]}
             evidence = _event_connected_movement_grounding(
                 semantic_event, raw_scene, current, grounding_context)
             translated_event = semantic_event
@@ -40523,6 +40812,20 @@ def translate_world_state_events(world_state, events, raw_scene, *, segment_numb
     failure = next((item for item in final["outcomes"] if not item.accepted), None)
     if failure:
         raise WorldStateEventExtractionError(f"reducer rejected event batch: {failure.code}: {failure.message}")
+    missing_movements = _uncommitted_connected_movements(
+        opening, final["state_actions"], raw_scene, grounding_context
+    )
+    if missing_movements:
+        details = "; ".join(
+            f"{item['subject_name']} to {item['destination_name']} "
+            f"(RAW: {item['evidence']})"
+            for item in missing_movements
+        )
+        raise RequiredWorldStateMovementError(
+            "Accepted RAW and the assigned source establish a registered "
+            "location traversal, but no StateAction commits the Subject's "
+            f"destination: {details}"
+        )
     return {**final, "event_diagnostics": diagnostics, "raw_scene": raw_scene}
 
 
@@ -40568,6 +40871,11 @@ def extract_and_dry_run_world_state_events(world_state, raw_scene, *, segment_nu
     ):
         # Infrastructure failures are not optional extraction failures. Do not
         # turn a failed service/filesystem request into an accepted empty batch.
+        raise
+    except RequiredWorldStateMovementError:
+        # A semantically required connected traversal cannot silently become an
+        # accepted empty bookkeeping batch. The diagnostic is surfaced to the
+        # segment's existing required-stage recovery boundary.
         raise
     except (
         WorldStateEventExtractionError,
@@ -44962,6 +45270,7 @@ def _run_main(
         world_state = generation_state.get("world_state")
         if not isinstance(world_state, dict):
             raise ValueError("Scene location selection requires canonical WorldState.")
+        resolution = {}
         if not beats:
             selected_id = active_location_id
             classification = "same_location"
@@ -45091,6 +45400,14 @@ def _run_main(
             "classification": classification,
             "origin_location_id": origin_id,
             "destination_location_id": selected_id,
+            **({
+                "selector_proposal": copy.deepcopy(
+                    resolution.get("selector_proposal")
+                ),
+                "normalization_diagnostic": resolution.get(
+                    "normalization_diagnostic"
+                ),
+            } if resolution.get("normalization_diagnostic") else {}),
         }
         if classification == "transitioning":
             if not origin_id:
