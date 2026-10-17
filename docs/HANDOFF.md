@@ -1188,3 +1188,46 @@ connected traversal commits before the following Segment opens, and an
 unreconciled required traversal stops with its explicit continuity diagnostic.
 Also inspect local Subject registration and final renders; automated tests do
 not certify the complete film pipeline.
+
+## 2026-10-17 — overlap Director preparation with serialized renders
+
+Restored asynchronous next-Segment Director preparation for rendered runs when
+visual continuity is not due. Once Segment N has an accepted StateAction batch,
+Python reduces it against N's immutable opening state and prepares Segment N+1
+from that projected result while N's ComfyUI render is in flight. Pre-Director
+location selection and WorldState seeding run as part of that preparation, so
+the Director request sees the correct next-Segment inputs without waiting for
+the current video.
+
+The projection and pre-Director seeds remain detached from the durable
+checkpoint until Segment N's render succeeds. A render failure cancels and
+discards its speculative Director request and clears the persisted prefetch;
+the current segment is not marked complete and the opening WorldState remains
+canonical. After a successful render, the existing reducer commit and completed
+segment record are checkpointed, then the prepared next-Segment context is
+published only if its projected opening hash still matches. Segment N+1's
+render is still submitted only after Segment N has produced its video, keeping
+AddGuide/previous-video dependencies and ComfyUI rendering ordered. Visual
+continuity continues to complete before next-Segment preparation when its
+cadence requires it. Prompt-only generation is unchanged.
+
+Verification:
+
+- New deterministic two-Segment scheduling regressions — **3 passed**. They
+  prove Director prompt overlap with Segment 1 rendering, projected WorldState
+  use, no durable completion/state before render success, speculative rollback
+  after render failure, visual-continuity gating, Segment 2 render waiting for
+  Segment 1's video, and final stitching waiting for the last render.
+- `python -m py_compile minimax.py tests/test_continuity_scheduling.py` and
+  `git diff --check` passed.
+- A broader legacy selection across continuity scheduling, stitch barriers,
+  prompt-generation mode, and resume reported **71 passed, 8 failed, 9
+  subtests passed** after replacing the obsolete continuity-opening harness.
+  Failures were in older continuity harnesses/contracts, outdated
+  prompt-generation call-count expectations, a stitch test whose legacy
+  harness did not reach rendering, and a pre-existing wardrobe fallback resume
+  assertion. The new scheduling regressions passed; those broader failures
+  remain unmodified and are not claimed as passing.
+
+No runtime prompts, reducer semantics, visual observations, checkpoint schema,
+or render workflow were changed. No live ComfyUI acceptance render was run.

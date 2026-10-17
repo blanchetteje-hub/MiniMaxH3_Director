@@ -44833,9 +44833,14 @@ def _run_main(
     else:
         continuity_source = "world_state"
 
+    speculative_preparation_active = False
+    defer_location_reference_render = False
+
     # Serialize the shared checkpoint without racing a prefetch worker.
     def checkpoint_generation_state():
         """Serialize the shared checkpoint without racing a prefetch worker."""
+        if speculative_preparation_active:
+            return
         with generation_state_lock:
             save_generation_state(generation_state)
 
@@ -45263,7 +45268,8 @@ def _run_main(
             generated_prompts_payload["config"]["location_reference_video"] = str(
                 context.get("location_reference_video") or ""
             )
-            save_generated_prompts_file(generated_prompts_payload)
+            if not speculative_preparation_active:
+                save_generated_prompts_file(generated_prompts_payload)
             checkpoint_generation_state()
             return copy.deepcopy(context)
 
@@ -45473,7 +45479,8 @@ def _run_main(
             if isinstance(location_context, dict)
             and str(location_context.get("location_reference_video") or "").strip()
         }
-        save_generated_prompts_file(generated_prompts_payload)
+        if not speculative_preparation_active:
+            save_generated_prompts_file(generated_prompts_payload)
         checkpoint_generation_state()
         console_log(
             f"Segment {segment_number} uses location "
@@ -45519,6 +45526,18 @@ def _run_main(
                     ],
                     "noise_seed": generate_random_seed(),
                 })
+        elif defer_location_reference_render:
+            # The next Director request can use the known setting before its
+            # panorama is rendered. Keep ComfyUI serialized: the main loop
+            # creates this reference after the preceding segment render has
+            # completed and before submitting the next segment render.
+            context["location_reference_video"] = expected_path
+            console_log(
+                f"Deferred location-reference render for "
+                f"{context.get('name') or location_id} until the preceding "
+                "segment render completes.",
+                flush=True,
+            )
         elif (
             os.path.isfile(expected_path)
             and os.path.getsize(expected_path) > 0
@@ -45832,6 +45851,175 @@ def _run_main(
             flush=True,
         )
         return payload
+
+    def prepare_projected_segment_prefetch(
+        current_segment,
+        projected_world_state,
+        completed_ids,
+        recent_items,
+        opening_state,
+        opening_summary_text,
+        dialogue_exclusions,
+    ):
+        """Prepare one next-segment Director request without publishing its state."""
+        nonlocal active_location_id
+        nonlocal subject_definitions, additional_subject_definitions
+        nonlocal prepared_world_state_segments, prepared_world_state_subject_names
+        nonlocal speculative_preparation_active, defer_location_reference_render
+
+        next_segment = int(current_segment) + 1
+        original_generation_state = copy.deepcopy(generation_state)
+        original_prompts_payload = copy.deepcopy(generated_prompts_payload)
+        original_active_location_id = active_location_id
+        original_subject_definitions = subject_definitions
+        original_additional_subject_definitions = copy.deepcopy(
+            additional_subject_definitions
+        )
+        original_prepared_segments = set(prepared_world_state_segments)
+        original_prepared_subject_names = copy.deepcopy(
+            prepared_world_state_subject_names
+        )
+        prepared_context = None
+        bundle = None
+        setup_error = None
+        speculative_preparation_active = True
+        defer_location_reference_render = True
+        try:
+            generation_state["world_state"] = copy.deepcopy(
+                projected_world_state
+            )
+            # These are the same pre-Director stages run at the top of the
+            # normal segment loop, now applied to the detached projected end.
+            prepare_scene_location_for_segment(next_segment)
+            prepare_current_segment_world_state(next_segment)
+            bundle = build_segment_bundle(
+                next_segment,
+                completed_ids,
+                recent_items,
+                opening_state,
+                opening_summary_text,
+                dialogue_exclusions,
+            )
+            prepared_context = {
+                "projected_world_state_sha256": world_state_sha256(
+                    projected_world_state
+                ),
+                "world_state": copy.deepcopy(generation_state.get("world_state")),
+                "metadata": copy.deepcopy(generation_state.get("metadata", {})),
+                "location_state": copy.deepcopy(
+                    generation_state.get("location_state", {})
+                ),
+                "active_location_id": active_location_id,
+                "subject_definitions": subject_definitions,
+                "additional_subject_definitions": copy.deepcopy(
+                    additional_subject_definitions
+                ),
+                "prepared_world_state_segments": set(
+                    prepared_world_state_segments
+                ),
+                "prepared_world_state_subject_names": copy.deepcopy(
+                    prepared_world_state_subject_names
+                ),
+                "generated_prompts_payload": copy.deepcopy(
+                    generated_prompts_payload
+                ),
+            }
+        except Exception as error:
+            setup_error = error
+        finally:
+            # A speculative location, identity, or prop seed must never reach
+            # disk before the segment whose actions produced its opening has
+            # rendered successfully.
+            with generation_state_lock:
+                generation_state.clear()
+                generation_state.update(original_generation_state)
+            generated_prompts_payload.clear()
+            generated_prompts_payload.update(original_prompts_payload)
+            active_location_id = original_active_location_id
+            subject_definitions = original_subject_definitions
+            additional_subject_definitions = original_additional_subject_definitions
+            prepared_world_state_segments = original_prepared_segments
+            prepared_world_state_subject_names = original_prepared_subject_names
+            speculative_preparation_active = False
+            defer_location_reference_render = False
+
+        if setup_error is not None:
+            console_log(
+                f"Could not prepare Segment {next_segment} while Segment "
+                f"{current_segment} renders; the normal segment path will retry "
+                f"afterward: {type(setup_error).__name__}: {setup_error}",
+                flush=True,
+            )
+            return {"setup_error": setup_error}
+        if bundle is None or prepared_context is None:
+            return {"setup_error": RuntimeError(
+                f"Segment {next_segment} speculative preparation returned no bundle."
+            )}
+
+        cancellation_event = threading.Event()
+        future = director_prefetch_executor.submit(
+            request_prefetched_segment,
+            bundle,
+            cancellation_event,
+        )
+        return {
+            "segment": next_segment,
+            "cancellation_event": cancellation_event,
+            "future": future,
+            "prepared_context": prepared_context,
+        }
+
+    def publish_projected_segment_preparation(prefetch_record):
+        """Publish prefetched opening facts only after its source render committed."""
+        nonlocal active_location_id
+        nonlocal subject_definitions, additional_subject_definitions
+        nonlocal prepared_world_state_segments, prepared_world_state_subject_names
+
+        prepared = prefetch_record.get("prepared_context")
+        if not isinstance(prepared, dict):
+            return False
+        committed_world_state = generation_state.get("world_state")
+        if world_state_sha256(committed_world_state) != prepared.get(
+            "projected_world_state_sha256"
+        ):
+            console_log(
+                f"Discarded speculative preparation for Segment "
+                f"{prefetch_record.get('segment')}: committed WorldState does not "
+                "match its projected opening.",
+                flush=True,
+            )
+            return False
+        candidate_world_state = prepared.get("world_state")
+        validate_world_state(candidate_world_state)
+        generation_state["world_state"] = copy.deepcopy(candidate_world_state)
+        generation_state["metadata"] = copy.deepcopy(prepared.get("metadata", {}))
+        generation_state["location_state"] = copy.deepcopy(
+            prepared.get("location_state", {})
+        )
+        active_location_id = str(prepared.get("active_location_id") or "")
+        subject_definitions = str(prepared.get("subject_definitions") or "")
+        additional_subject_definitions = copy.deepcopy(
+            prepared.get("additional_subject_definitions", [])
+        )
+        prepared_world_state_segments = set(
+            prepared.get("prepared_world_state_segments", set())
+        )
+        prepared_world_state_subject_names = copy.deepcopy(
+            prepared.get("prepared_world_state_subject_names", {})
+        )
+        payload = prepared.get("generated_prompts_payload")
+        if isinstance(payload, dict):
+            generated_prompts_payload.clear()
+            generated_prompts_payload.update(copy.deepcopy(payload))
+            save_generated_prompts_file(generated_prompts_payload)
+        checkpoint_generation_state()
+        console_log(
+            f"Published Segment {prefetch_record.get('segment')} pre-Director "
+            "WorldState and location preparation after its preceding render "
+            "committed.",
+            flush=True,
+        )
+        return True
 
     run_start_time = time.perf_counter()
     prefetched_next = None
@@ -46753,12 +46941,77 @@ def _run_main(
             )
             continue
 
+        deferred_prefetch_error = None
+        next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
+        if (
+            segment < total_segments
+            and not vision_required
+            and director_prefetch_executor is not None
+            and not next_segment_starts_phase
+        ):
+            try:
+                accepted_actions = request1_result.get("state_actions", [])
+                projection = reduce_world_state(
+                    segment_bundle["world_state_opening"],
+                    accepted_actions,
+                    segment_number=int(segment),
+                )
+                if not projection.committed:
+                    failure = next(
+                        (
+                            outcome for outcome in projection.outcomes
+                            if not outcome.accepted
+                        ),
+                        None,
+                    )
+                    diagnostic = (
+                        f"{failure.code}: {failure.message}"
+                        if failure is not None
+                        else "reducer rejected the action batch without a diagnostic"
+                    )
+                    raise BeatGenerationError(
+                        f"Segment {segment} accepted StateActions could not produce "
+                        f"a projected opening for the next Segment: {diagnostic}."
+                    )
+                prefetched_next = prepare_projected_segment_prefetch(
+                    segment,
+                    projection.world_state,
+                    completed_beat_ids,
+                    recent_results,
+                    continuity_state,
+                    continuity_summary,
+                    next_dialogue_exclusions,
+                )
+                deferred_prefetch_error = prefetched_next.pop(
+                    "setup_error", None
+                )
+                if deferred_prefetch_error is None:
+                    console_log(
+                        f"Started Director prompt preparation for Segment "
+                        f"{segment + 1} while Segment {segment}'s ComfyUI render "
+                        "continues. Its render will wait for this Segment's video.",
+                        flush=True,
+                    )
+                else:
+                    prefetched_next = None
+            except Exception as error:
+                deferred_prefetch_error = error
+                prefetched_next = None
+                console_log(
+                    f"Could not project Segment {segment}'s accepted WorldState "
+                    f"for Segment {segment + 1} prefetch; continuing after the "
+                    f"current render: {type(error).__name__}: {error}",
+                    flush=True,
+                )
+
         # Stateful Director actions must reach the canonical commit before the
-        # next Segment opening is built, even when vision cadence is disabled.
+        # next Segment opening is used. When visual analysis is not required,
+        # its Director prompt may be prepared against the detached projection
+        # while this render finishes; the projection is not yet checkpointed.
         if not vision_required and segment < total_segments:
             console_log(
-                f"Segment {segment} vision continuity is skipped; waiting for its "
-                "render so WorldState can commit before the next Segment opens."
+                f"Segment {segment} vision continuity is skipped; its render must "
+                "succeed before projected WorldState can be published."
             )
         try:
             (
@@ -46900,7 +47153,20 @@ def _run_main(
                     "newly_completed_beat_ids": prompt_completed_beat_ids,
                 }
             save_generation_state(generation_state)
+            if (
+                prefetched_next is not None
+                and prefetched_next.get("prepared_context") is not None
+            ):
+                if not publish_projected_segment_preparation(prefetched_next):
+                    prefetched_next["cancellation_event"].set()
+                    if not prefetched_next["future"].done():
+                        prefetched_next["future"].cancel()
+                    generation_state.pop("prefetched_next_prompt", None)
+                    save_generation_state(generation_state)
         console_log(f"Completed segment {segment} committed with its rendered video.")
+
+        if deferred_prefetch_error is not None:
+            raise deferred_prefetch_error
 
         next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
         if (
