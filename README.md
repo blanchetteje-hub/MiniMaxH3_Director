@@ -12,6 +12,11 @@ scripts, remote machines, and repeatable runs.
 This project does not provide the MiniMax H3 model weights, ComfyUI, or an LLM.
 You supply those separately and connect them through the setup below.
 
+## Current state
+On hold temporarily. The 20B model was so limited, it was becoming nearly impossible
+to get it to work right deterministically. With the advent of large models with MoE architecture, 
+I can continue this project once my other projects reach a certain point.
+
 ## What it does
 
 - Accepts a paragraph, outline, or full story in `story.txt`.
